@@ -29,7 +29,7 @@ export const STAFF_ROLES: Record<StaffRole, StaffRoleDef> = noProto({
     label: 'Aquarist',
     plural: 'Aquarists',
     // lane:staff2 — fast-metabolism tanks get small meals up to four times a day (src/sim/staff/work.ts mealsPerDay)
-    blurb: 'Feeds assigned tanks two to four times a day, changes water when nitrate climbs, keeps the glass clean. Never breeds, moves or sells animals.',
+    blurb: 'Feeds assigned tanks two to four times a day (fry get their first foods from your stock), changes water when nitrate climbs, keeps the glass clean. Never breeds, moves or sells animals.',
     wage: [60, 160],
   },
   stock_manager: {

@@ -97,6 +97,20 @@ export function ProductionTab({ g, sel, onSelect }: { g: GameState; sel: string 
   );
 }
 
+/**
+ * Who feeds what the raise tank holds (Audit 2026-11-17, H2): a brood gets its first foods from a live-food doser, on
+ * its keeper's rounds or by hand (an Autofeeder feeds animals, never fry); juveniles waiting there eat from the
+ * Autofeeder too.
+ */
+function raiseFeeding(g: GameState, v: LineView): string {
+  const brood = v.raising.dayOf !== undefined;
+  if (v.raise && doserOf(v.raise)) return 'baby brine and infusoria from the doser';
+  if (!brood && v.raising.feeding) return `${v.raising.feeding.food} ${v.raising.feeding.meals}× a day from the Autofeeder`;
+  const keeper = v.raise ? (g.staff?.roster ?? []).find((m) => m.role === 'aquarist' && m.tankIds.includes(v.raise!.id)) : undefined;
+  if (keeper) return brood ? `first foods on ${keeper.name.split(' ')[0]}’s rounds` : `fed on ${keeper.name.split(' ')[0]}’s rounds`;
+  return brood ? 'first foods by hand, or from a keeper or a live-food doser' : 'fed by hand';
+}
+
 /** The line's status word (Running, Paused by you, Paused); Operations › Lines shows it too. */
 export function StatusWord({ v }: { v: LineView }) {
   if (v.status === 'running')
@@ -309,7 +323,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
         <Stage id="raise" n={2} icon={<Sprout size={16} />} title="Raise" active={v.active === 'raise'} pill={<TankPill g={g} tankId={line.tanks.raise} />}>
           <p>
             {v.raising.count > 0
-              ? `${v.raising.count} ${v.raising.word} · ${v.raise && doserOf(v.raise) ? 'baby brine and infusoria from the doser' : v.raising.feeding ? `${v.raising.feeding.food} ${v.raising.feeding.meals}× a day from the Autofeeder` : 'first foods by hand or on keepers’ rounds'}`
+              ? `${v.raising.count} ${v.raising.word} · ${raiseFeeding(g, v)}`
               : 'Waiting for the next clutch'}
           </p>
           {v.raising.dayOf !== undefined && v.raising.ofDays && (

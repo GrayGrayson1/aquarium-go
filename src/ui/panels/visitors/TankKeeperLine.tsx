@@ -26,12 +26,14 @@ export function TankKeeperLine({ game, tank }: { game: GameState; tank: Tank }) 
     meals = 2;
   }
   const often = meals === 4 ? 'four times a day (small meals for fast-metabolism fish)' : meals === 3 ? 'three times a day (a late snack for fast-metabolism fish)' : 'twice a day';
+  // Audit 2026-11-17 (H2): a nursery of fry only — the keeper gives them their first foods
+  const fryOnly = !Object.values(game.creatures).some((c) => c.tankId === tank.id && (c.status === 'alive' || c.status === 'listed')) && Object.values(game.clutches).some((cl) => cl.tankId === tank.id && cl.count > 0);
   return (
     <button
       type="button"
       className="st-keeperline"
       data-testid="tank-card-keeper"
-      title={`${keeper.name} feeds this tank ${often} and keeps its water clean. Open Staff`}
+      title={fryOnly ? `${firstName} feeds the fry their first foods and keeps the water clean. Open Staff` : `${keeper.name} feeds this tank ${often} and keeps its water clean. Open Staff`}
       onClick={() => useUI.getState().set({ panel: 'visitors', panelTarget: 'tab:staff' /* lane:w2-ui */ })}
     >
       <StaffAvatar seed={keeper.avatarSeed} role={keeper.role} size={22} name={keeper.name} />
