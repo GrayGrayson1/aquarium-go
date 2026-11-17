@@ -18,6 +18,8 @@ import {
   isGone,
   isMature,
   isResting,
+  makeTankInfo,
+  readinessFactors,
   spName,
   spPlural,
   stageProgress,
@@ -59,6 +61,44 @@ function conditioningHint(sp: SpeciesDefinition): string {
   const tags = sp.breeding.conditions.needsConditioningFood;
   if (tags?.length) return `Condition them with ${tags.slice(0, 3).map((t) => t.replace(/_/g, ' ')).join(', ')} for a day or two.`;
   return 'Keep them healthy, well fed and calm — condition builds over a few hours.';
+}
+
+/**
+ * audit E4: what is holding this animal's breeding condition down, from the same terms as the readiness target. Food
+ * was always blamed, though a crowded tank or a low comfort can keep it under 60 whatever it eats.
+ */
+export function readinessHint(state: GameState, c: Creature, sp: SpeciesDefinition, hour: number): string {
+  const tank = c.tankId ? state.tanks[c.tankId] : undefined;
+  if (!tank) return conditioningHint(sp);
+  const info = makeTankInfo(state, tank, hour, () => []);
+  const factors = readinessFactors(tank, c, sp, hour, info);
+  if (!factors) return conditioningHint(sp);
+  let target = 1;
+  for (const x of factors) target *= x.mult;
+  // the target is in reach: condition just takes time (or the right food) to build
+  if (target * 100 >= READY) return conditioningHint(sp);
+  const worst = factors.reduce((a, b) => (b.mult < a.mult ? b : a));
+  const pron = c.sex === 'female' || c.reproRole === 'female' ? 'her' : c.sex === 'male' || c.reproRole === 'male' ? 'his' : 'its';
+  switch (worst.key) {
+    case 'crowded':
+      return `${tank.name} is crowded (${Math.round(info.loadRatio() * 100)}% stocked) — animals breed less in a full tank. Sell or move some animals.`;
+    case 'comfort':
+      return `${c.name} isn’t comfortable enough to breed (comfort ${Math.round(c.stats.comfort)}%) — the notes under Condition on ${pron} card say why.`;
+    case 'health':
+      return `${c.name} needs to be healthier to breed (health ${Math.round(c.stats.health)}%) — clean water and good food help.`;
+    case 'stress':
+      return 'Reduce stress: hides, calm tankmates, stable water, no glass tapping.';
+    case 'hunger':
+      return 'Feed them well for a day.';
+    case 'temp_range':
+      return `${tank.name} is outside the temperature ${spPlural(sp)} need (${sp.tempC.min}–${sp.tempC.max} °C).`;
+    case 'too_cool':
+      return `Warm the tank to about ${(sp.breeding.conditions.minTempC ?? sp.tempC.min) + 1} °C — they breed in warmer water.`;
+    case 'too_warm':
+      return `Cool the tank below ${sp.breeding.conditions.maxTempC ?? sp.tempC.max} °C — they breed in cooler water.`;
+    default:
+      return conditioningHint(sp);
+  }
 }
 
 export function evaluatePair(state: GameState, aId: string, bId: string, forStart = false): PairEvaluation {
@@ -181,7 +221,7 @@ export function evaluatePair(state: GameState, aId: string, bId: string, forStar
 
   // Condition (only worth mentioning when nothing bigger blocks).
   if (!reasons.length && !mod.introducedByKeeper) {
-    for (const c of [a, b]) if (c.stats.breedingReadiness < READY) soft(`${c.name} isn’t in breeding condition yet (readiness ${Math.round(c.stats.breedingReadiness)}%).`, conditioningHint(sp));
+    for (const c of [a, b]) if (c.stats.breedingReadiness < READY) soft(`${c.name} isn’t in breeding condition yet (readiness ${Math.round(c.stats.breedingReadiness)}%).`, readinessHint(state, c, sp, hour));
   }
 
   // Apart: "ok" means Start breeding can bring them together; anything else is fixed once they share a tank.

@@ -874,33 +874,56 @@ export function makeTankInfo(state: GameState, tank: Tank, hour: number, risks: 
 
 // ───────────────────────────── readiness ─────────────────────────────
 
-/** Target breeding readiness 0..100 from welfare, water, conditioning foods, crowding and cooldown. */
-export function readinessTarget(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, info: TankInfo): number {
-  if (!isMature(c, sp, hour)) return 0;
+/** audit E4: one term of the breeding readiness target (what holds it down, for the pairing check's advice). */
+export type ReadinessFactorKey = 'water_type' | 'health' | 'stress' | 'hunger' | 'comfort' | 'illness' | 'temp_range' | 'too_cool' | 'too_warm' | 'conditioning' | 'crowded' | 'tank_small' | 'fertility';
+export interface ReadinessFactor {
+  key: ReadinessFactorKey;
+  mult: number;
+}
+
+/**
+ * The terms of the readiness target, in the order they multiply (null: the target is 0 outright — immature, held by a
+ * production line, resting, or water it can't live in). `readinessTarget` multiplies these in this order, so its value
+ * is bit-for-bit what it was before the terms were named.
+ */
+export function readinessFactors(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, info: TankInfo): ReadinessFactor[] | null {
+  if (!isMature(c, sp, hour)) return null;
   // lane:production — a line holding its pair (paused, waiting for room, missing a partner or tank) keeps them from
   // spawning, the same way resting does (PROD-010; the mechanism recorded in PLAN.md chunk 4).
-  if (c.repro?.lineHold) return 0;
-  if (isResting(c, hour)) return 0;
+  if (c.repro?.lineHold) return null;
+  if (isResting(c, hour)) return null;
   // Shared salinity model (same as the purchase gate / welfare): a tolerated environment breeds, but less keenly.
-  if (!fitsEnvironment(sp, tank.environment)) return 0;
+  if (!fitsEnvironment(sp, tank.environment)) return null;
   const s = c.stats;
-  let f = tank.environment === sp.environment ? 1 : 0.7;
-  f *= ramp(s.health, 45, 85);
-  f *= 1 - ramp(s.stress, 45, 90);
-  f *= 1 - ramp(s.hunger, 55, 90);
-  f *= 0.4 + 0.6 * ramp(s.comfort, 25, 65);
-  if (c.illness) f *= 0.3;
+  const out: ReadinessFactor[] = [];
+  const add = (key: ReadinessFactorKey, mult: number) => out.push({ key, mult });
+  add('water_type', tank.environment === sp.environment ? 1 : 0.7);
+  add('health', ramp(s.health, 45, 85));
+  add('stress', 1 - ramp(s.stress, 45, 90));
+  add('hunger', 1 - ramp(s.hunger, 55, 90));
+  add('comfort', 0.4 + 0.6 * ramp(s.comfort, 25, 65));
+  if (c.illness) add('illness', 0.3);
   const t = tank.water.tempC;
   const cond = sp.breeding.conditions;
-  if (t < sp.tempC.min || t > sp.tempC.max) f *= 0.15;
-  if (cond.minTempC !== undefined && t < cond.minTempC - 0.25) f *= 0.4;
-  if (cond.maxTempC !== undefined && t > cond.maxTempC + 0.25) f *= 0.35;
-  if (cond.needsConditioningFood?.length) f *= 0.45 + 0.55 * conditioningLevel(tank, c, sp, hour);
+  if (t < sp.tempC.min || t > sp.tempC.max) add('temp_range', 0.15);
+  if (cond.minTempC !== undefined && t < cond.minTempC - 0.25) add('too_cool', 0.4);
+  if (cond.maxTempC !== undefined && t > cond.maxTempC + 0.25) add('too_warm', 0.35);
+  if (cond.needsConditioningFood?.length) add('conditioning', 0.45 + 0.55 * conditioningLevel(tank, c, sp, hour));
   const load = info.loadRatio();
-  if (load > 1.05) f *= 0.15;
-  else if (load > 0.85) f *= 0.6;
-  if (cond.minTankGallons && gallonsOf(tank) < cond.minTankGallons) f *= 0.5;
-  f *= Math.min(1, 0.85 + 0.3 * ((c.genome?.potentials?.fertility ?? 50) / 100));
+  if (load > 1.05) add('crowded', 0.15);
+  else if (load > 0.85) add('crowded', 0.6);
+  if (cond.minTankGallons && gallonsOf(tank) < cond.minTankGallons) add('tank_small', 0.5);
+  add('fertility', Math.min(1, 0.85 + 0.3 * ((c.genome?.potentials?.fertility ?? 50) / 100)));
+  return out;
+}
+
+/** Target breeding readiness 0..100 from welfare, water, conditioning foods, crowding and cooldown. */
+export function readinessTarget(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, info: TankInfo): number {
+  const factors = readinessFactors(tank, c, sp, hour, info);
+  if (!factors) return 0;
+  // the first term (water type) is 1 or 0.7, so 1 × it is exact: the product is the one the inline code computed
+  let f = 1;
+  for (const x of factors) f *= x.mult;
   return 100 * clamp01(f);
 }
 

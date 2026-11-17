@@ -11,6 +11,7 @@ import { simRng } from '@/sim/rng';
 import { advanceWorld } from '@/sim/world';
 import { devForceBreeding, separateCreature } from '@/sim/life/breeding/actions';
 import { clutchStatus } from '@/sim/life/breeding';
+import { readinessHint } from '@/sim/life/breeding/check';
 import { createClutch, mintJuveniles } from '@/sim/life/breeding/clutch';
 import { getSpecies } from '@/data/species';
 import { makeContext } from '@/sim/context';
@@ -125,5 +126,30 @@ describe('E2/E3: the clutch card shows the room, the eaters and the per-clutch c
     const from = state.log.length;
     mintJuveniles(state, cl, big, sp, state.clock.hour, makeContext(state, 1));
     expect(logFrom(state, from).join(' ')).toMatch(/10 young fancy guppies .* 20 more were rehomed to local hobbyists\. You keep up to 10 young from each clutch\./);
+  });
+});
+
+describe('E4: the pairing check names what holds breeding condition down', () => {
+  it('a crowded tank is named, not food', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 41 });
+    const tank = createTank(state, 'g10', 'freshwater_planted', { cycled: true, name: 'Community' });
+    const rng = simRng(state);
+    const bella = addCreature(state, createCreature(state, rng, 'fancy_guppy', { sex: 'female', ageDays: 90, name: 'Bella' }), tank.id);
+    for (let i = 0; i < 30; i++) addCreature(state, createCreature(state, rng, 'fancy_guppy', { sex: i % 2 ? 'male' : 'female', ageDays: 90 }), tank.id);
+    keeper(state, 25);
+    bella.stats.breedingReadiness = 10;
+    expect(readinessHint(state, bella, getSpecies('fancy_guppy'), state.clock.hour)).toMatch(/^Community is crowded \(\d+% stocked\) — animals breed less in a full tank\. Sell or move some animals\.$/);
+  });
+
+  it('low comfort is named; with everything fine the old advice stays', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 42 });
+    const tank = createTank(state, 'g29', 'freshwater_planted', { cycled: true, name: 'Community' });
+    const bella = addCreature(state, createCreature(state, simRng(state), 'fancy_guppy', { sex: 'female', ageDays: 90, name: 'Bella' }), tank.id);
+    keeper(state, 25);
+    const sp = getSpecies('fancy_guppy');
+    expect(readinessHint(state, bella, sp, state.clock.hour)).toBe('Keep them healthy, well fed and calm — condition builds over a few hours.');
+    bella.stats.comfort = 5;
+    bella.stats.health = 70;
+    expect(readinessHint(state, bella, sp, state.clock.hour)).toBe('Bella isn’t comfortable enough to breed (comfort 5%) — the notes under Condition on her card say why.');
   });
 });
