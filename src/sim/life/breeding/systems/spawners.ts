@@ -50,6 +50,10 @@ export const eggScatterModule = makePairSpawner({
   },
 });
 
+/** audit E26: the otocinclus shares the corydoras' module; its courtship line names it, not "cory". */
+export const substrateCourtText = (m: { name: string }, f: { name: string }, sp: Parameters<typeof spName>[0]) =>
+  `${m.name} and friends are dashing along the glass after ${f.name} — ${/corydoras/i.test(sp.commonName) ? 'cory' : spName(sp)} spawning behaviour!`;
+
 /** Corydoras: males jostle a female, T-position, sticky eggs pressed onto the glass. */
 export const substrateSpawnerModule = makePairSpawner({
   id: 'substrate_spawner',
@@ -69,7 +73,7 @@ export const substrateSpawnerModule = makePairSpawner({
   extraSites: 6,
   maleRestFrac: 0.4,
   text: {
-    court: (m, f) => `${m.name} and friends are dashing along the glass after ${f.name} — cory spawning behaviour!`,
+    court: (m, f, sp) => substrateCourtText(m, f, sp),
     spawn: (m, f, sp, n) => `${f.name} and ${m.name} formed the classic “T-position” and ${f.name} pressed ${plural(n, 'sticky egg')} onto the glass. The adults will eat them — move them to a nursery tank (Livestock › Eggs & fry).`,
   },
   status: (state, c) => (c.repro.stage === 'spawning' ? { label: 'Spawning in the T-position', progress: c.repro.progress } : null),
