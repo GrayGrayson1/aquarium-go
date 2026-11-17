@@ -24,6 +24,7 @@ import { tankKitPrice, kitEquipmentFor, kitSwapNote, type KitEquipment } from '@
 import { findFreeSpot, waterClassLock, guideHoldLine } from '@/sim/facility';
 import { decorWaterNote } from './decorWater'; // Audit 2026-11-17 (G7)
 import { STRUGGLING_HEALTH } from '@/ui/common/notify'; // Audit 2026-11-17 (G8)
+import { SellStoredEquipment } from './SellBack'; // Audit 2026-11-17 (G22)
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { formatTemp } from '@/ui/common/format';
 import { usePanelGame, safe, useIsPhone, useTempText } from '../common/hooks';
@@ -798,7 +799,9 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
   const tank = g.tanks[tankId];
   const gal = gallonsOf(tank);
   const installed = tank.equipment;
-  const storage = g.inventory.equipment.filter((e) => getEquipmentDef(e.defId)?.environments.includes(tank.environment));
+  // Audit 2026-11-17 (G22): every stored unit, whatever this tank's water (Install says when one can't go here), so each
+  // can be sold
+  const storage = g.inventory.equipment;
   const shopAll = EQUIPMENT.filter((e) => e.environments.includes(tank.environment)).map((e) => ({ e, fits: gal >= e.gallonsRange.min * 0.6 && gal <= e.gallonsRange.max * 1.4, installed: installed.some((x) => x.defId === e.id) }));
   // chunk 19 (ADR-0055 decision 3, QOL-003) — what to buy, searched and by kind (a tank card's "Buy a heater" opens on Heaters)
   const kinds = [...new Set(shopAll.map(({ e }) => e.kind))].filter((k) => EQUIP_CHIP[k]);
@@ -899,6 +902,7 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
                   <Button size="sm" disabled={!!fit?.blocked} title={fit?.blocked ? fit.text : undefined} onClick={() => act({ k: 'installEquipment', tank: tankId, def: e.defId, instance: e.id }, { sound: 'place', kind: fit && fit.level !== 'ok' && !fit.general && !fit.soft ? 'warning' : undefined })}>
                     <Check size={14} /> {fit?.blocked ? fit.label : 'Install'}
                   </Button>
+                  <SellStoredEquipment inst={e} />
                 </div>
               );
             })}

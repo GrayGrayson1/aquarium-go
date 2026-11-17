@@ -23,8 +23,12 @@ import { decorWaterNote } from '@/ui/panels/build/decorWater';
 import { WATER_CLASS_BLURB } from '@/ui/panels/common/format';
 import { tankAttention, tankAttentionLevel } from '@/ui/common/notify';
 import { RESEARCH_BY_ID } from '@/data/research';
+import { applyCommand } from '@/sim/commands';
+import { removeEquipment } from '@/sim/care';
+import { getEquipmentDef } from '@/data/catalog/equipment';
+import { equipmentSellValue } from '@/sim/economy/sellBack';
 
-const game = (starterId: StarterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
+const game =(starterId: StarterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
 
 /** Put the game in the store (a server render reads the store's initial state too). */
 function use(g: GameState): void {
@@ -157,5 +161,43 @@ describe('G8: a fading plant or coral is an alert', () => {
     expect(tankAttentionLevel(g, t.id)).not.toBe('good');
     t.decor.find((d) => d.id === 'd-test')!.health = 60;
     expect(tankAttention(g, t.id).items.some((i) => /hammer coral/.test(i.text))).toBe(false);
+  });
+});
+
+describe('G22 (the owner’s answer): the store buys stored equipment back at half price', () => {
+  it('sells one stored unit for half its price, by its condition, and takes it out of storage', () => {
+    const g = game('betta');
+    const t = g.tanks[g.tankOrder[0]];
+    const unit = t.equipment[0];
+    expect(removeEquipment(g, t.id, unit.id).ok).toBe(true);
+    const def = getEquipmentDef(unit.defId)!;
+    g.inventory.equipment.find((e) => e.id === unit.id)!.condition = 1;
+    const money = g.finance.money;
+    const half = Math.round(def.price / 2);
+    const res = applyCommand(g, { k: 'sellEquipment', instance: unit.id });
+    expect(res.ok, res.message).toBe(true);
+    expect(res.message).toBe(`${def.name} sold for $${half}.`);
+    expect(g.finance.money).toBeCloseTo(money + half, 6);
+    expect(g.inventory.equipment.some((e) => e.id === unit.id)).toBe(false);
+    // the same unit again: refused, and nothing changes
+    expect(applyCommand(g, { k: 'sellEquipment', instance: unit.id }).ok).toBe(false);
+    expect(g.finance.money).toBeCloseTo(money + half, 6);
+  });
+  it('a worn unit fetches less, and a broken one half that again', () => {
+    const def = { price: 100 } as Parameters<typeof equipmentSellValue>[0];
+    expect(equipmentSellValue(def, { condition: 1 })).toBe(50);
+    expect(equipmentSellValue(def, { condition: 0.5 })).toBe(25);
+    expect(equipmentSellValue(def, { condition: 0.5, failed: true })).toBe(13);
+    expect(equipmentSellValue(undefined, { condition: 1 })).toBe(0);
+  });
+  it('in a shared shop the second member to sell the same unit is told who sold it', () => {
+    const g = game('betta');
+    const t = g.tanks[g.tankOrder[0]];
+    const unit = t.equipment[0];
+    removeEquipment(g, t.id, unit.id);
+    expect(applyCommand(g, { k: 'sellEquipment', instance: unit.id }, { id: 'a', name: 'Ann', at: 1000, owner: true }).ok).toBe(true);
+    const late = applyCommand(g, { k: 'sellEquipment', instance: unit.id }, { id: 'b', name: 'Bo', at: 2000 });
+    expect(late.ok).toBe(false);
+    expect(late.message).toBe('Ann already sold that equipment.');
   });
 });

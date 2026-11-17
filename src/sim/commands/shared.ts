@@ -119,6 +119,7 @@ export function staleOf(state: GameState, cmd: Command): Stale | null {
     case 'repairEquipment':
       return own(state.tanks, cmd.tank)?.equipment.some((e) => e.id === cmd.equip) ? null : { key: `e:${cmd.equip}`, noun: 'equipment' };
     case 'installEquipment':
+    case 'sellEquipment': // Audit 2026-11-17 (G22)
       return state.inventory.equipment.some((e) => e.id === cmd.instance) ? null : { key: `e:${cmd.instance}`, noun: 'equipment' };
     case 'hireStaff':
       return (state.staff?.candidates ?? []).some((c) => c.id === cmd.candidate) ? null : { key: `s:${cmd.candidate}`, noun: 'candidate' };
@@ -179,6 +180,8 @@ function touchesOf(state: GameState, cmd: Command, res: CommandResult): [string,
       return [[`e:${cmd.equip}`, 'repaired']];
     case 'installEquipment':
       return [[`e:${cmd.instance}`, 'installed']];
+    case 'sellEquipment': // Audit 2026-11-17 (G22)
+      return [[`e:${cmd.instance}`, 'sold']];
     case 'hireStaff':
       return [[`s:${cmd.candidate}`, 'hired']];
     case 'fireStaff':

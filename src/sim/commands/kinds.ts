@@ -29,6 +29,8 @@ type Kinds =
   | { k: 'installEquipment'; tank: string; def: string; instance: string }
   | { k: 'repairEquipment'; tank: string; equip: string }
   | { k: 'removeEquipment'; tank: string; equip: string }
+  // Audit 2026-11-17 (G22, the owner's answer): the local store buys a stored unit back
+  | { k: 'sellEquipment'; instance: string }
   | { k: 'setLighting'; tank: string; preset?: LightPreset; intensity?: number; onHour?: number; offHour?: number; moonlight?: boolean }
   | { k: 'setSignage'; tank: string; on: boolean }
   | { k: 'renameTank'; tank: string; name: string }

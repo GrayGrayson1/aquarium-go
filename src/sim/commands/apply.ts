@@ -22,6 +22,7 @@ import { holdAll, resumeAll, setHold } from '../automation/hold';
 import { assignTank, autoAssignAll, fireStaff, hireStaff, setStockBudget } from '../staff/roster';
 import { addQuarantineTank, createLine, endLine, setKeepRules, setLinePair, setLineRule, setLineRunning, setLineTank } from '../production';
 import { enterShow, withdrawEntry } from '../shows';
+import { sellStoredEquipment } from '../economy/sellBack'; // Audit 2026-11-17 (G22)
 import { POOL_FAILED_TEXT } from '../pool';
 import type { Command } from './kinds';
 
@@ -121,6 +122,8 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
       return repairEquipment(state, cmd.tank, cmd.equip);
     case 'removeEquipment':
       return removeEquipment(state, cmd.tank, cmd.equip);
+    case 'sellEquipment':
+      return sellStoredEquipment(state, cmd.instance);
     case 'setLighting': {
       const patch: Parameters<typeof setLighting>[2] = {};
       if (cmd.preset !== undefined) patch.preset = cmd.preset;

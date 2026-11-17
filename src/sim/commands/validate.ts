@@ -74,6 +74,7 @@ const SCHEMA: Schema = {
   installEquipment: { tank: id, def: id, instance: id },
   repairEquipment: { tank: id, equip: id },
   removeEquipment: { tank: id, equip: id },
+  sellEquipment: { instance: id }, // Audit 2026-11-17 (G22)
   setLighting: {
     tank: id,
     preset: opt(en(['daylight', 'warm', 'planted', 'reef_actinic', 'reef_full', 'moonlight', 'sunset', 'cool'])),
