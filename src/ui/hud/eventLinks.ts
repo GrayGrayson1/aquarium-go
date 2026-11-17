@@ -114,7 +114,7 @@ export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId' | 'of
   if (typeof e.offerId === 'string' && e.offerId) return { panel: 'market', target: `offer:${e.offerId}`, where: '', label: 'Open the shop' };
   if (/^New arrivals at the shop:|^Market special:/.test(text)) return { panel: 'market', target: 'tab:shop', where: '', label: 'Open the shop' };
   if (NURSERY_ADVICE.test(text) && YOUNG_WORD.test(text)) return EGGS_AND_FRY;
-  if (/^The aquarium club dropped off a little food/.test(text)) return { panel: 'finances', target: null, where: '', label: 'Ways to raise cash' }; // audit 2026-11-17: the club's food parcel
+  if (/^The aquarium club dropped off a little food/.test(text)) return { panel: 'finances', target: 'cash', where: '', label: 'Ways to raise cash' }; // audit 2026-11-17: the club's food parcel (opens on the ideas)
   if (MONEY_NEWS.test(text)) return { panel: 'finances', target: null, where: '', label: 'Open Finances' }; // audit 2026-11-17 (F2)
   return null;
 }

@@ -492,5 +492,7 @@ export function maybeSpecial(state: GameState, rng: Rng, start: number, dt: numb
   // audit 2026-11-17 (F6) — "today only" says until when (a special lasts 6–10 game hours, so the hour matters)
   const h = Math.round(hourOfDay(o.expiresHour)) % 24;
   const until = `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}`;
-  emitEvent(state, { kind: 'market', text: `Market special: ${o.label} from ${o.seller} — ${fmtMoney(o.price)}, today only, until about ${until}.`, toast: shimmer || (fits && news), offerId: o.id, ...(notice ? { notice } : {}) });
+  // (one leaving after midnight leaves "tonight", as the offer screen says: review note)
+  const when = h < 5 ? `until about ${until} tonight` : `today only, until about ${until}`;
+  emitEvent(state, { kind: 'market', text: `Market special: ${o.label} from ${o.seller} — ${fmtMoney(o.price)}, ${when}.`, toast: shimmer || (fits && news), offerId: o.id, ...(notice ? { notice } : {}) });
 }

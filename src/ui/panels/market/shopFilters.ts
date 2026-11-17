@@ -7,6 +7,10 @@
 import { create } from 'zustand';
 import type { GameState, ShopOffer, SpeciesDefinition, Tank } from '@/types';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks'; // audit 2026-11-17 (F17)
+import { expectedTempC } from '@/sim/water/env'; // review note (F17)
+
+/** The compatibility engine's temperature tolerance (src/sim/compat/engine.ts: past the range by more than 0.2 °C). */
+const TEMP_FIT_TOLERANCE_C = 0.2;
 import { useGame } from '@/state/game';
 import { findSpecies } from '@/data/species';
 import { fitsEnvironment } from '@/sim/compat/salinity';
@@ -81,8 +85,15 @@ export function sortOffers(list: ShopOffer[], sort: ShopSort): ShopOffer[] {
  */
 export function tankFits(sp: SpeciesDefinition, t: Tank): boolean {
   if (!fitsEnvironment(sp, t.environment)) return false;
-  const temp = t.water?.tempC;
-  if (typeof temp === 'number' && Number.isFinite(temp) && (temp < sp.tempC.min || temp > sp.tempC.max)) return false;
+  // review note: the temperature the tank is heading for (its heater and room), with the compatibility engine's
+  // tolerance, so a new tank still warming up isn't hidden (the current reading lags for hours)
+  let temp: number | null = null;
+  try {
+    temp = expectedTempC(t);
+  } catch {
+    temp = t.water?.tempC ?? null;
+  }
+  if (typeof temp === 'number' && Number.isFinite(temp) && (temp < sp.tempC.min - TEMP_FIT_TOLERANCE_C || temp > sp.tempC.max + TEMP_FIT_TOLERANCE_C)) return false;
   return (TANK_TIER_BY_ID[t.tierId]?.gallons ?? 0) >= sp.recommendedMinTankGallons * 0.5;
 }
 

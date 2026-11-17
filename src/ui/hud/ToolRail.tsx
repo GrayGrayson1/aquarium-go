@@ -53,6 +53,7 @@ import { safe, useMedia } from '../common/safe';
 import { tutorialFlag, act } from '../common/actions';
 import { Button, Chip, Slider, Toggle, formatMoney } from '../kit';
 import { buyFoodPack, openFoodInSupplies, tankFoodAlert, youngFoodNeed } from '../common/foodStock';
+import { CASH_LINK } from '../common/moneyShort'; // review fix (audit 2026-11-17)
 
 // ───────────── helpers ─────────────
 
@@ -166,7 +167,7 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
               onClick={() => {
                 sfx('open');
                 useShell.getState().set({ popover: null });
-                useUI.getState().set({ panel: 'finances', panelTarget: null });
+                useUI.getState().set({ ...CASH_LINK }); // review fix: Finances opens on its ways to raise cash
               }}
             >
               Ways to raise cash

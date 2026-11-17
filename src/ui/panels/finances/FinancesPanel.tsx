@@ -2,7 +2,7 @@
  * Finances — balance, 14-day income vs expenses chart, categorised ledger, operating cost by tank, and debt/loan
  * status with concrete advice. OWNER: lane "ui-panels".
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Wallet, TrendingUp, TrendingDown, Receipt, Gauge, TriangleAlert, HandCoins, Lightbulb, Landmark, Layers, Building2, Users, ChevronRight } from 'lucide-react';
 import type { LedgerEntry } from '@/types';
@@ -23,6 +23,17 @@ export function FinancesPanel() {
   const g = usePanelGame(1000);
   const [filter, setFilter] = useState<LedgerFilter>('all');
   const [cat, setCat] = useState<LedgerEntry['category'] | 'all'>('all');
+  // review fix (audit 2026-11-17) — every "Ways to raise cash" link opens Finances with the target 'cash': the ideas
+  // show (whatever the balance) and come into view
+  const target = useUI((s) => s.panelTarget);
+  const [wantIdeas, setWantIdeas] = useState(() => useUI.getState().panelTarget === CASH_TARGET);
+  useEffect(() => {
+    if (target !== CASH_TARGET) return;
+    setWantIdeas(true);
+    useUI.getState().set({ panelTarget: null });
+    const t = window.setTimeout(() => document.querySelector('[data-testid="finance-ideas"]')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 120);
+    return () => window.clearTimeout(t);
+  }, [target]);
 
   const data = useMemo(() => {
     if (!g) return null;
@@ -70,7 +81,7 @@ export function FinancesPanel() {
   const loan = g.finance.loan;
   const runway = data.ops.total > 0 ? money / data.ops.total : Infinity;
   // audit 2026-11-17 (F1) — also when money stands between the animals and their food (Supplies' "Ways to raise cash")
-  const tips = inDebt || runway < 3 || safe(() => needsCashIdeas(g), false) ? safe(() => cashIdeas(g), []) : [];
+  const tips = inDebt || runway < 3 || wantIdeas || safe(() => needsCashIdeas(g), false) ? safe(() => cashIdeas(g), []) : [];
   // lane:fix-integrate-ui — an empty room the player can't restock: the club lends a restart at its second midnight
   // (the first one only notes it), so say which midnight (P5-08)
   const stranded = safe(() => restartNeed(g), null);
@@ -133,7 +144,7 @@ export function FinancesPanel() {
           </Callout>
         )}
         {tips.length > 0 && (
-          <div className="pn-card pn-advice">
+          <div className="pn-card pn-advice" data-testid="finance-ideas">
             <SectionHead title="Ways to raise cash" icon={<Lightbulb size={14} />} />
             <ul>
               {tips.map((t, i) => {
@@ -290,6 +301,9 @@ export function FinancesPanel() {
     </PanelLayout>
   );
 }
+
+/** The Finances target every "Ways to raise cash" link opens with (moneyShort.CASH_LINK). */
+const CASH_TARGET = 'cash';
 
 /** Audit 2026-11-17 (F2) — where each way to raise cash is done (a quick sale opens that animal's quick-sell dialog). */
 const CASH_IDEA_LINK: Partial<Record<CashIdea['kind'], { panel: PanelId; target: string | null; label: string }>> = {

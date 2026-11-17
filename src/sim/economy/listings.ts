@@ -467,18 +467,21 @@ export interface ListingPreview {
 }
 
 /**
- * The buyers who bid are mostly the ones a listing suits: their fit lifts a private value about 10 % above fair value
- * on average (measured on the bid model, audit 2026-11-17: first offers' median ≈ 0.96× fair value).
+ * The typical bidder's fit and timing together (review of audit 2026-11-17, F3). Bidders are picked by interest, so
+ * their fit is a little above 1, and later bids are a little lower; measured on the bid model with natural arrivals
+ * (72-hour listings of one betta, six neons, a platy pair, one axolotl and four guppies, 25 seeds each), the two
+ * cancel: first offers' median is 0.90×–0.93× fair value (0.925× over all), the middle half about 0.79×–1.03×, and
+ * 60–69 % land in typicalOpening's 0.73×–1.05× (the platy pair, worth a few dollars, rounds its bids to whole dollars
+ * and is left out of these figures). tests/sim/audit-money-f.test.ts runs the measurement again on a few seeds.
  */
-const TYPICAL_BIDDER_FIT = 1.1;
+const TYPICAL_BIDDER_FIT = 1.0;
 
 /**
  * Audit 2026-11-17 (F3) — where buyers' FIRST offers usually land for a listing worth `expected`, from the bid model
- * itself (arrivals): a bidder's private value is fair value × fit × noise (±11 %), and they open at their archetype's
- * `opening` share of it (bargain hunters lower). The archetypes' average opening range, at the typical bidder's fit,
- * one spread either side: about 0.8×–1.15× fair value, where most first offers land. The listing screen's advice and
- * the "Listed …" line quote this; a bid under the reserve is turned down automatically, so the reserve advice is
- * measured against it.
+ * itself (arrivals): a bidder's private value is fair value × fit × timing × noise (±11 %), and they open at their
+ * archetype's `opening` share of it (bargain hunters lower). The archetypes' average opening range, at the typical
+ * bidder's fit and timing, one spread either side: about 0.73×–1.05× fair value, where about two in three first offers
+ * land. The listing screen's advice and the "Listed …" line quote this.
  */
 export function typicalOpening(expected: number): { low: number; high: number } {
   const arch = Object.values(BUYER_ARCHETYPES);
@@ -486,6 +489,25 @@ export function typicalOpening(expected: number): { low: number; high: number } 
   const lo = arch.reduce((a, d) => a + d.opening[0], 0) / arch.length;
   const hi = arch.reduce((a, d) => a + d.opening[1], 0) / arch.length;
   return { low: nicePrice(expected * lo * TYPICAL_BIDDER_FIT * dmath.exp(-0.11)), high: nicePrice(expected * hi * TYPICAL_BIDDER_FIT * dmath.exp(0.11)) };
+}
+
+/**
+ * Review of audit 2026-11-17 (F3) — what a reserve does to first offers (a bid under it is turned down automatically),
+ * in bands of fair value measured on the bid model (as above; the share of first offers under a reserve there):
+ * 0.73× 11–17 %, 0.8× 20–25 %, 0.86× 32–39 %, 0.9× 43–51 %, 0.96× 57–67 %, 1.0× 57–69 %, 1.05× 72–80 %, 1.1×
+ * 84–89 %. So: at or under typicalOpening's bottom (≈ 0.73×) most reach it; to 0.85× some are turned down; to 0.92×
+ * about half; to its top (≈ 1.05×) more than half; above that, most.
+ */
+export const RESERVE_BANDS = { half: 0.85, overHalf: 0.92 } as const;
+export type ReserveBand = 'most_reach' | 'some' | 'half' | 'over_half' | 'most_below';
+export function reserveBand(reserve: number, expected: number): ReserveBand | null {
+  const o = typicalOpening(expected);
+  if (!(o.high > 0)) return null;
+  if (reserve > o.high) return 'most_below';
+  if (reserve > expected * RESERVE_BANDS.overHalf) return 'over_half';
+  if (reserve > expected * RESERVE_BANDS.half) return 'half';
+  if (reserve > o.low) return 'some';
+  return 'most_reach';
 }
 
 /** Everything the listing dialog needs before the player commits. */

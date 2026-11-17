@@ -71,8 +71,9 @@ function AnimatedMoney({ value, short }: { value: number; short?: boolean }) {
     };
   }, [value, reduced]);
   // audit 2026-11-17 (F11) — rounded down: never more than the player has (a $200 price is affordable at "$200")
+  // (a debt is written as the sim writes it, "−$12.40": review note)
   const whole = Math.floor(shown + 1e-6);
-  return <>{short ? formatMoneyShort(whole) : formatMoney(whole)}</>;
+  return <>{shown < 0 && shown > -10_000 ? wholeMoney(shown) : short ? formatMoneyShort(whole) : formatMoney(whole)}</>;
 }
 
 /** Phones: "$54.4k" so the top bar never overlaps itself (the full amount stays in the label and tooltip). */
