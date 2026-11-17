@@ -356,7 +356,7 @@ test.describe('QOL-003 and QOL-004: search, filters and Find anything', () => {
     await tid(page, 'supplies-search').fill('zzz');
     await aq(page, 'setUI', { panel: 'market', panelTarget: 'food:flake_tropical' }); // the bell's "Low food" row
     await expect(tid(page, 'supplies-search')).toHaveValue('');
-    await expect(page.locator('[data-food-row="flake_tropical"]')).toBeVisible();
+    await expect(page.locator('[data-food-row="flake_tropical"]').first()).toBeVisible();
   });
 
   test('Find anything opens a screen with the keyboard alone', async ({ page }) => {

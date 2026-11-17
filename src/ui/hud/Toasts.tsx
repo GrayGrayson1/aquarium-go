@@ -24,7 +24,6 @@ import { useSettings } from '@/state/settings';
 import { sfx } from '@/audio/sfx';
 import { EventIcon, type AnyKind } from './eventIcons';
 import { focusTank } from './AlertsPopover';
-import { useTankCardTab } from '../cards/tankCardTab'; // audit B4
 import { useShell } from '../common/shellStore';
 import { MOBILE_QUERY, SHORT_LANDSCAPE_QUERY, safe, useMedia } from '../common/safe';
 import { tutorialChain } from '@/data/quests';
@@ -36,6 +35,7 @@ import { isExpired, pickShown, prio, ttlOf, PREEMPT_AFTER_MS, URGENT_PRIO } from
 import { UpdatePrompt, useNewBuildAvailable } from './UpdatePrompt';
 import { StaleTabBanner, useStaleBanner } from '@/game/StaleTabBanner';
 import { useShared } from '../shared/store'; // chunk 13
+import { guardLeave } from '../panels/common/leaveGuard'; // audit B6 review
 import { othersEvent } from '../shared/activity';
 
 interface Entry {
@@ -507,17 +507,21 @@ function ToastItem({ e, onDone, sheet = false }: { e: Entry; onDone: () => void;
   const tap = toastTap(e, v, sheet, pinned);
   const onAct = () => {
     const to = toastGo(e, v, useGame.getState().game);
-    if (to?.to === 'log') {
+    // audit B6 review: a listing with typed prices asks before the whole move (Leave completes it, Keep changes nothing)
+    if (to?.to === 'panel' || to?.to === 'tank')
+      guardLeave(() => {
+        if (to.to === 'panel') {
+          // lane:w2-ui — unlocks / show results open where they live
+          sfx('open');
+          useUI.getState().set({ panel: to.panel, panelTarget: to.target });
+        } else {
+          focusTank(to.tankId, to.card, to.gear ? 'gear' : undefined);
+          if (to.creatureId) useUI.getState().set({ selectedCreatureId: to.creatureId });
+        }
+      });
+    else if (to?.to === 'log') {
       sfx('open');
       useShell.getState().set({ popover: 'alerts' });
-    } else if (to?.to === 'panel') {
-      // lane:w2-ui — unlocks / show results open where they live
-      sfx('open');
-      useUI.getState().set({ panel: to.panel, panelTarget: to.target });
-    } else if (to?.to === 'tank') {
-      if (to.gear) useTankCardTab.setState({ want: 'gear' });
-      focusTank(to.tankId, to.card);
-      if (to.creatureId) useUI.getState().set({ selectedCreatureId: to.creatureId });
     }
     onDone();
   };

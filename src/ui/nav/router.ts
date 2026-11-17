@@ -360,8 +360,11 @@ export function applyRoute(route: Route, filters?: ShopFilters, mode: 'push' | '
 
 /** Navigate from code (a button that opens a screen): apply the route and push its address (§6.3). */
 export function go(route: Route, opts: { replace?: boolean; filters?: ShopFilters; fromNotification?: boolean } = {}): void {
-  if (opts.fromNotification) useNav.setState({ fromNotification: true });
-  applyRoute(route, opts.filters, opts.replace ? 'replace' : 'push');
+  // audit B6 review: a sub-view holding the player's work (the listing wizard) asks first; Leave completes the move
+  guardLeave(() => {
+    if (opts.fromNotification) useNav.setState({ fromNotification: true });
+    applyRoute(route, opts.filters, opts.replace ? 'replace' : 'push');
+  });
 }
 
 function onHashChange(): void {

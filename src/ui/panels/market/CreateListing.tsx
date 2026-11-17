@@ -64,6 +64,10 @@ const durationPreset = (h: number) => DURATIONS.find((d) => d.hours === h);
 
 const isYoung = (c: Creature) => c.lifeStage === 'juvenile' || c.lifeStage === 'fry' || c.lifeStage === 'larva';
 
+/** Audit B6 — what leaving the wizard throws away, in the question's words. */
+export const leaveDetail = (prices: boolean, photo: boolean): string =>
+  prices && photo ? 'Your prices and photo won’t be kept.' : photo ? 'Your photo won’t be kept.' : 'Your prices won’t be kept.';
+
 export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; seed: WizardSeed; onCancel: () => void; onDone: (listingId?: string) => void }) {
   useExpandSheet(); // lane:fix-integrate-ui — the wizard is not a SubView: expand the phone sheet while it is open (P4-09)
   const [step, setStep] = useState<Step>(seed.kind ? 'items' : 'kind');
@@ -79,13 +83,14 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
   const [photo, setPhoto] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [titleTouched, setTitleTouched] = useState(false);
-  // audit B6: once prices are typed or a photo is taken, Back, Cancel, ×, Escape or going elsewhere asks first
-  const dirty = priceTouched || photo != null;
+  // audit B6: once prices are typed or a photo is taken, Back, Cancel, ×, Escape or going elsewhere asks first, naming
+  // what would be lost
+  const hasPhoto = photo != null;
   useEffect(() => {
-    if (!dirty) return;
-    setLeaveGuard({ panel: 'market', title: 'Leave this listing?', detail: 'Your prices and photo won’t be kept.' });
+    if (!priceTouched && !hasPhoto) return;
+    setLeaveGuard({ panel: 'market', title: 'Leave this listing?', detail: leaveDetail(priceTouched, hasPhoto) });
     return () => setLeaveGuard(null);
-  }, [dirty]);
+  }, [priceTouched, hasPhoto]);
   const cancel = () => guardLeave(onCancel);
 
   // lane:fix-panels — residents of a tank listed as a whole aquarium can't be listed on their own either (sim rule)
