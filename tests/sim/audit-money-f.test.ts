@@ -24,7 +24,7 @@ import { installFoodRoom } from '@/sim/automation/food';
 import { unlockProgress } from '@/sim/facility';
 import { lockViews } from '@/ui/panels/common/UnlockHelp';
 import { useShopFilters, useShopSearch } from '@/ui/panels/market/shopFilters';
-import { ListingsTab } from '@/ui/panels/market/Listings';
+import { ListingsTab, CounterNotes } from '@/ui/panels/market/Listings';
 import { decorSellOffer } from '@/ui/panels/build/BuildPanel';
 import { DECOR } from '@/data/catalog/decor';
 import { decorSellValue } from '@/sim/aquascape';
@@ -526,6 +526,18 @@ describe('F15: Build’s decor "Sell" says what it pays, and a grown-in piece as
     expect(decorSellOffer(g, piece(coral.id), coral)).toEqual({ pays: decorSellValue(coral, piece(coral.id)), ask: true });
     expect(decorSellOffer(g, piece(rock.id), rock).ask).toBe(false);
     expect(decorSellOffer(g, piece(rock.id), rock).pays).toBe(Math.round(rock.price * 0.5));
+  });
+});
+
+describe('F16: a counter-offer says it is binding, with the Accept dialog’s warnings', () => {
+  it('the line, the starter and the last aquarium', () => {
+    const out = text(renderToStaticMarkup(createElement(CounterNotes, { starter: 'Ember', lastTank: true, buyer: 'Maya', serious: ['Ember is guarding eggs.'] })));
+    expect(out).toContain('If they agree, the sale goes through straight away.');
+    expect(out).toContain('Ember is your starter Your very first companion goes with this sale.');
+    expect(out).toContain('This is your last aquarium The tank, its gear and decor all go to Maya if they agree.');
+    expect(out).toContain('Ember is guarding eggs.');
+    const plain = text(renderToStaticMarkup(createElement(CounterNotes, { lastTank: false, buyer: 'Maya', serious: [] })));
+    expect(plain).toBe('If they agree, the sale goes through straight away.');
   });
 });
 

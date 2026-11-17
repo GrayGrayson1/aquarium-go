@@ -453,6 +453,7 @@ function BidRow({ g, l, b, buyer }: { g: GameState; l: Listing; b: Bid; buyer?: 
             <span className="pn-tiny pn-muted">
               Suggested {formatMoney(suggested)}. {hint}
             </span>
+            <CounterNotes starter={starter?.name} lastTank={l.kind === 'tank' && lastTank} buyer={name} serious={serious} />
           </div>
           <div className="pn-row pn-gap-2">
             <Button size="sm" onClick={() => setCountering(false)}>
@@ -523,6 +524,33 @@ function BidRow({ g, l, b, buyer }: { g: GameState; l: Listing; b: Bid; buyer?: 
         </div>
       </Modal>
     </li>
+  );
+}
+
+/**
+ * Audit 2026-11-17 (F16) — a counter the buyer accepts sells at once (completeSale), so the counter form says so and
+ * shows the Accept dialog's warnings: the starter, the last aquarium, and the sim's serious sale warnings.
+ */
+export function CounterNotes({ starter, lastTank, buyer, serious }: { starter?: string; lastTank: boolean; buyer: string; serious: string[] }) {
+  return (
+    <>
+      <span className="pn-tiny pn-tone-watch" data-testid="bid-counter-binding">If they agree, the sale goes through straight away.</span>
+      {starter && (
+        <Callout tone="watch" icon={<Sparkles size={16} />} title={`${starter} is your starter`}>
+          Your very first companion goes with this sale.
+        </Callout>
+      )}
+      {lastTank && (
+        <Callout tone="danger" icon={<TriangleAlert size={16} />} title="This is your last aquarium">
+          The tank, its gear and decor all go to {buyer} if they agree.
+        </Callout>
+      )}
+      {serious.map((w) => (
+        <Callout key={w} tone={/carrying|guarding|spawning|expecting/i.test(w) ? 'danger' : 'watch'} icon={<TriangleAlert size={16} />}>
+          {w}
+        </Callout>
+      ))}
+    </>
   );
 }
 
