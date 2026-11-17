@@ -28,7 +28,6 @@ import {
   ChevronDown,
   Coins,
   Tag,
-  Users,
   Eye,
   Wrench,
   Power,
@@ -531,9 +530,6 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
               {exhibit.factors.slice(0, 4).map((f, i) => (
                 <Meter key={i} label={f.label} value={f.value} display={f.note ?? Math.round(f.value)} />
               ))}
-              <div className="ag-small ag-muted">
-                <Users size={12} aria-hidden style={{ verticalAlign: '-2px' }} /> Draws about {exhibit.visitorAppeal.toFixed(1)} visitors/hour when open.
-              </div>
             </div>
           </div>
         ) : (

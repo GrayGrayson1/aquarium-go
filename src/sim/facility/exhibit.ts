@@ -315,7 +315,14 @@ export function exhibitReport(state: GameState, tankId: string): ExhibitReport {
   if (info.factors.clarity < 0.6) notes.clarity = 'Algae or cloudy water dulls the view.';
   if (info.empty) notes.charisma = 'No animals yet.';
   else if (info.awardNote) notes.charisma = info.awardNote; // lane:shows
-  const factors = (Object.keys(EXHIBIT_WEIGHTS) as ExhibitFactorKey[]).map((k) => ({ label: FACTOR_LABELS[k], value: Math.round(info.factors[k] * 100), note: notes[k] }));
+  // Audit 2026-11-17 (H9): the factors with the most to gain first — a tip to act on (a sign, clearer water, welfare),
+  // then the weightiest shortfall — so the tank card's first four always show what would help most
+  const tips: ReadonlySet<ExhibitFactorKey> = new Set<ExhibitFactorKey>(['welfare', 'signage', 'clarity']);
+  const gain = (k: ExhibitFactorKey) => (tips.has(k) && notes[k] ? 1e6 : 0) + EXHIBIT_WEIGHTS[k] * (1 - info.factors[k]);
+  const factors = (Object.keys(EXHIBIT_WEIGHTS) as ExhibitFactorKey[])
+    .map((k, i) => ({ k, i, g: gain(k) }))
+    .sort((a, b) => b.g - a.g || a.i - b.i)
+    .map(({ k }) => ({ label: FACTOR_LABELS[k], value: Math.round(info.factors[k] * 100), note: notes[k] }));
   if (info.welfareGate < 1) factors.push({ label: 'Welfare gate', value: Math.round(info.welfareGate * 100), note: 'Score multiplier from animal welfare.' });
   return { score: info.score, factors, visitorAppeal: Math.round(info.appeal * 100) / 100 };
 }

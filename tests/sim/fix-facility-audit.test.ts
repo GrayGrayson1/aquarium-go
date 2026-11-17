@@ -386,6 +386,18 @@ describe('Audit 2026-11-17 (H6): a worry or a critic names the real cause', () =
   });
 });
 
+describe('Audit 2026-11-17 (H9): the tank card shows the exhibit factors with the most to gain', () => {
+  it('a tip to act on comes first (no sign, cloudy water), then the weightiest shortfalls', () => {
+    const g = shop(9, 1);
+    const t = Object.values(g.tanks).find((x) => x.name === 'Betta Bower')!;
+    t.signage = false;
+    const first4 = exhibitReport(g, t.id).factors.slice(0, 4).map((f) => f.label);
+    expect(first4[0]).toBe('Educational sign'); // it was the eighth of ten, never shown
+    t.signage = true;
+    expect(exhibitReport(g, t.id).factors.slice(0, 4).map((f) => f.label)).not.toContain('Educational sign');
+  });
+});
+
 // ───────────────────────────── moments ─────────────────────────────
 
 describe('S04-04: visitor moments are noun phrases', () => {
