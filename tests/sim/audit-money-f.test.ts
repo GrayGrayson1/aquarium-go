@@ -17,7 +17,9 @@ import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas, wholeMoney 
 import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
 import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, devOpenMarket, createListing, forceBuyerVisit, acceptBid, restartNeed, tankKitPrice } from '@/sim/economy';
-import { cheapestKit } from '@/sim/economy/purchases';
+import { cheapestKit, HOLD_RELEASE_HOURS } from '@/sim/economy/purchases';
+import { applyCommand, type Actor } from '@/sim/commands';
+import { GAME_HOURS_PER_REAL_SECOND } from '@/sim/time';
 import { marketAccess, cashSuggestions, dailyOperatingCost, quickSellQuote } from '@/sim/economy';
 import { installWaterRoom } from '@/sim/automation/water';
 import { installFoodRoom } from '@/sim/automation/food';
@@ -272,17 +274,52 @@ describe('F6 (the owner’s choice): an open offer stays while you look', () => 
     expect(buyOffer(held, o.id, held.tankOrder[0]).message).not.toMatch(/expired/);
   });
 
-  it('released on close: it leaves at the next check', () => {
+  it('released on close: it leaves within about 20 real seconds (review fix: not at once)', () => {
     const g = shopWorld();
     const o = leavingAtRestock(g);
     devStepEconomy(g, at8(g) - g.clock.hour - 0.1, { market: true });
     holdOffer(g, o.id);
     pastRestock(g);
     expect(g.market.stock.some((x) => x.id === o.id)).toBe(true);
+    const start = o.holdStartHour;
     expect(holdOffer(g, o.id, true).ok).toBe(true);
-    expect(o.holdUntilHour).toBeUndefined();
-    devStepEconomy(g, 0.2, { market: true });
+    expect(o.holdStartHour).toBe(start); // the start is kept, so a later renewal stays inside the same cap
+    expect(o.holdUntilHour).toBeCloseTo(g.clock.hour + HOLD_RELEASE_HOURS, 6);
+    devStepEconomy(g, HOLD_RELEASE_HOURS / 2, { market: true });
+    expect(g.market.stock.some((x) => x.id === o.id)).toBe(true);
+    devStepEconomy(g, HOLD_RELEASE_HOURS / 2 + 0.2, { market: true });
     expect(g.market.stock.some((x) => x.id === o.id)).toBe(false);
+  });
+
+  it('in a shared shop, one member closing the offer leaves it for another who is still looking', () => {
+    const g = shopWorld();
+    const o = leavingAtRestock(g);
+    const ana = (at: number): Actor => ({ id: 'm_ana', name: 'Ana', at });
+    const ben = (at: number): Actor => ({ id: 'm_ben', name: 'Ben', at });
+    devStepEconomy(g, at8(g) - g.clock.hour - 0.5, { market: true });
+    expect(applyCommand(g, { k: 'holdOffer', offer: o.id }, ana(1_000)).ok).toBe(true);
+    expect(applyCommand(g, { k: 'holdOffer', offer: o.id }, ben(1_000)).ok).toBe(true);
+    pastRestock(g); // its time is up: only the hold keeps it
+    expect(applyCommand(g, { k: 'holdOffer', offer: o.id, release: true }, ben(20_000)).ok).toBe(true);
+    devStepEconomy(g, 15 * GAME_HOURS_PER_REAL_SECOND, { market: true }); // Ana's screen renews every 15 real s
+    expect(g.market.stock.some((x) => x.id === o.id)).toBe(true);
+    expect(applyCommand(g, { k: 'holdOffer', offer: o.id }, ana(35_000)).ok).toBe(true);
+    devStepEconomy(g, 1.5, { market: true });
+    expect(g.market.stock.some((x) => x.id === o.id)).toBe(true);
+    expect(o.holdUntilHour! - g.clock.hour).toBeGreaterThan(HOLD_RELEASE_HOURS);
+  });
+
+  it('a partial buy releases the rest of the group the same way (not at once)', () => {
+    const g = game();
+    g.market.stock = [];
+    const rng = simRng(g);
+    const o: ShopOffer = { id: 'offer_part', kind: 'group', speciesId: 'neon_tetra', creatures: Array.from({ length: 6 }, () => createCreature(g, rng, 'neon_tetra')), price: 30, unitPrice: 6, seller: 'Test Breeder', expiresHour: g.clock.hour + 48 };
+    g.market.stock.push(o);
+    holdOffer(g, o.id);
+    const start = o.holdStartHour;
+    expect(buyOffer(g, o.id, g.tankOrder[0], [0, 1]).ok).toBe(true);
+    expect(o.holdStartHour).toBe(start);
+    expect(o.holdUntilHour).toBeCloseTo(g.clock.hour + HOLD_RELEASE_HOURS, 6);
   });
 
   it('the safety limit: a screen left open (or a dropped connection) can’t keep an offer forever', () => {

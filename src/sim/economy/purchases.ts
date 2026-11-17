@@ -27,6 +27,7 @@ import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { spend, canAfford } from './finance';
 import { isFoodAvailable, soldWithWords, offerHeld } from './shop';
 import { marketTimeScale, NEGOTIATION_HOLD_HOURS, MAX_NEGOTIATION_HOLD_HOURS } from './listings'; // F6: the bid hold's windows
+import { GAME_HOURS_PER_REAL_SECOND } from '../time';
 import { clonePlain, fmtMoney, finite, nicePrice, pushCapped, speciesPlural, roundCents, aOrAn } from './util'; // lane:w2-ui: aOrAn ("an 800 Gallon Exhibit")
 
 /** Marine salt mix price per kg. */
@@ -137,9 +138,8 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
     offer.creatures = keep;
     offer.kind = keep.length > 1 ? 'group' : 'creature';
     if (keep.length > 1 && /^(Group|Colony) of \d+/.test(offer.label ?? '')) offer.label = offer.label!.replace(/of \d+/, `of ${keep.length}`);
-    // F6: buying releases the hold; the rest of the group leaves at its own time
-    delete offer.holdUntilHour;
-    delete offer.holdStartHour;
+    // F6: buying releases the hold (in a shared shop, someone else may still be looking: see releaseHold)
+    releaseHold(state, offer);
   }
   bumpCounter(state, 'purchases');
   bumpCounter(state, 'animalsBought', bought.length);
@@ -161,7 +161,7 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
  * Audit 2026-11-17 (F6, the owner's choice: "Hold it while I'm looking") — an offer the player has open stays until
  * they buy it or close it, the way a bid waits while they write a counter-offer (holdBidForCounter): each call holds it
  * for NEGOTIATION_HOLD_HOURS (≈ 2 real minutes at any speed) past now, so the screen renews it while it is open;
- * `release` (close) ends it. A screen left open can't keep an offer forever: the whole hold is capped at
+ * `release` (close) ends it soon (releaseHold). A screen left open can't keep an offer forever: the whole hold is capped at
  * MAX_NEGOTIATION_HOLD_HOURS from its start (≈ 6 real minutes), after which the offer leaves at the next check if its
  * time is up. The shop restocks around a held offer as usual (refreshStock).
  */
@@ -169,8 +169,7 @@ export function holdOffer(state: GameState, offerId: string, release = false): A
   const offer = state.market.stock.find((o) => o.id === offerId);
   if (!offer) return fail('That offer is no longer available.');
   if (release) {
-    delete offer.holdUntilHour;
-    delete offer.holdStartHour;
+    releaseHold(state, offer);
     return { ok: true, message: '' };
   }
   const now = state.clock.hour;
@@ -181,6 +180,20 @@ export function holdOffer(state: GameState, offerId: string, release = false): A
   const until = Math.min(offer.holdStartHour + MAX_NEGOTIATION_HOLD_HOURS * k, now + NEGOTIATION_HOLD_HOURS * k);
   offer.holdUntilHour = Math.max(offer.holdUntilHour ?? 0, until);
   return { ok: true, message: '' };
+}
+
+/** How long a released hold lingers (≈ 20 real seconds at any speed): longer than another screen's 15 s renewal. */
+export const HOLD_RELEASE_HOURS = 20 * GAME_HOURS_PER_REAL_SECOND;
+
+/**
+ * Review fix (audit 2026-11-17, F6) — closing an offer (or buying part of it) ends the hold soon rather than at once:
+ * its end is cut to about 20 real seconds from now and its start kept. In a shared shop another member may still be
+ * looking; their 15 s renewal then keeps it (still inside the cap from the same start). In a solo game a closed
+ * offer whose time is up leaves within those 20 seconds.
+ */
+function releaseHold(state: GameState, offer: ShopOffer): void {
+  if (offer.holdUntilHour === undefined) return;
+  offer.holdUntilHour = Math.min(offer.holdUntilHour, state.clock.hour + HOLD_RELEASE_HOURS * marketTimeScale(state));
 }
 
 // ───────────────────────────── tanks ─────────────────────────────
