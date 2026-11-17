@@ -57,6 +57,8 @@ export interface ExhibitInfo {
   concernText?: string;
   /** The animal visitors are worried about (unwell first, then starving) — reaction lines name this one, not the star. */
   concernCreature?: Creature;
+  /** What worries them (Audit 2026-11-17, H6): the reaction line follows it. */
+  concernCause?: 'sick' | 'starving' | 'water' | 'stress';
   empty: boolean;
   speciesIds: string[];
   groups: string[];
@@ -258,11 +260,13 @@ export function exhibitInfo(state: GameState, tank: Tank): ExhibitInfo {
   const concerned = !empty && (sickFrac > 0 || suffering > 0 || welfare < 0.42 || tank.cache?.status === 'danger');
   let concernText: string | undefined;
   let concernCreature: Creature | undefined;
+  let concernCause: ExhibitInfo['concernCause'];
   if (concerned) {
     const sickOne = creatures.find((c) => c.illness || (c.stats && (c.stats.health < 45 || c.stats.stress > 78)));
     const starving = creatures.find((c) => (c.stats?.hunger ?? 0) >= 90);
     concernCreature = sickOne ?? starving;
     concernText = sickOne ? `${sickOne.name} doesn’t look well` : starving ? `${starving.name} looks half-starved` : (tank.cache?.waterStatus ?? tank.cache?.status) === 'danger' ? 'the water looks wrong' : 'the animals seem stressed';
+    concernCause = sickOne ? 'sick' : starving ? 'starving' : (tank.cache?.waterStatus ?? tank.cache?.status) === 'danger' ? 'water' : 'stress';
   }
 
   let main: string | null = null;
@@ -285,6 +289,7 @@ export function exhibitInfo(state: GameState, tank: Tank): ExhibitInfo {
     concerned,
     concernText,
     concernCreature,
+    ...(concernCause ? { concernCause } : {}),
     empty,
     speciesIds: [...bySpecies.keys()],
     groups: [...groups],

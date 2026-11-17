@@ -45,7 +45,7 @@ export {
   researchList,
 } from './progression';
 export type { TutorialStepView, QuestView, UnlockProgressView, ResearchView, CondStatus } from './progression';
-export { stepVisitors, visitorSummary, fairAdmission, admissionDraw, isOpenAt, ARCHETYPES, archetypeLabel, WEEKDAYS, weekdayOf } from './visitors';
+export { stepVisitors, visitorSummary, fairAdmission, admissionDraw, isOpenAt, ARCHETYPES, archetypeLabel, WEEKDAYS, weekdayOf, criticWhyOf, criticText } from './visitors';
 export type { VisitorSummary, VisitorArchetype, ArchetypeDef } from './visitors';
 export { exhibitInfo, sizeFactor, EXHIBIT_WEIGHTS } from './exhibit';
 export type { ExhibitInfo, ExhibitFactorKey } from './exhibit';

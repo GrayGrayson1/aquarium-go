@@ -23,7 +23,7 @@ import { findSpecies } from '@/data/species';
 import { facilityLevelIndex, getFacilityLevel } from '@/data/facilities';
 import { exhibitInfo, type ExhibitInfo, type ExhibitFactorKey } from './exhibit';
 import { stateReachability } from './layout';
-import { pickLine, pushReaction, FRIEND_NAMES, NEIGHBOUR_NAMES, type ReactionContext, type ReactionVars } from './reactions';
+import { pickConcernLine, pickCriticLine, pickLine, pushReaction, FRIEND_NAMES, NEIGHBOUR_NAMES, type CriticWhy, type ReactionContext, type ReactionVars } from './reactions';
 import { addMastery, addReputation, bumpCounter, isUnlocked, tutorialStepId } from './progression';
 import { theTank } from '../economy/util';
 import { docentEffect, type DocentEffect } from '../staff'; // lane:staff
@@ -168,9 +168,12 @@ function tankName(state: GameState, id: string): string {
   return state.tanks[id]?.name ?? 'tank';
 }
 
-/** The animal a reaction is about: the exhibit's star, or the unwell one when the visitor is concerned. */
+/**
+ * The animal a reaction is about: the exhibit's star, or the unwell one when the visitor is concerned. A worry about
+ * the water or the tank as a whole names no animal (Audit 2026-11-17, H6: it named the healthy star "sick").
+ */
 function subjectOf(e: ExhibitInfo, mood?: VisitorReaction['mood']): ExhibitInfo['star'] {
-  return mood === 'concerned' && e.concernCreature ? e.concernCreature : e.star;
+  return mood === 'concerned' ? e.concernCreature : e.star;
 }
 
 function varsFor(state: GameState, e: ExhibitInfo, mood?: VisitorReaction['mood']): ReactionVars {
@@ -187,6 +190,26 @@ function varsFor(state: GameState, e: ExhibitInfo, mood?: VisitorReaction['mood'
   };
 }
 
+/** What put an unimpressed critic off most: the visit's biggest minus, else its dullest exhibit (Audit 2026-11-17, H6). */
+export function criticWhyOf(losses: { concern: number; price: number; crowd: number }, worried: boolean): CriticWhy {
+  const top = Math.max(losses.concern, losses.price, losses.crowd);
+  if (top <= 0) return 'dull';
+  if (top === losses.concern && worried) return 'concern';
+  if (top === losses.price) return 'price';
+  if (top === losses.crowd) return 'crowd';
+  return 'dull';
+}
+
+/** A critic's log line: praise, or what put them off (Audit 2026-11-17, H6: it named the tank that wowed them). */
+export function criticText(state: GameState, why: CriticWhy | 'good', e: Pick<ExhibitInfo, 'tankId' | 'concernText'>): string {
+  const tank = theTank(tankName(state, e.tankId));
+  if (why === 'good') return `A visiting critic praised ${tank}: “welfare and beauty, done right.” (+reputation)`;
+  if (why === 'concern' && e.concernText) return `A visiting critic was unimpressed by ${tank}: ${e.concernText}. (−reputation)`;
+  if (why === 'price') return 'A visiting critic found the tickets too dear for what’s on show. (−reputation)';
+  if (why === 'crowd') return 'A visiting critic found it too crowded to see the tanks. (−reputation)';
+  return `A visiting critic was unimpressed by ${tank}. (−reputation)`;
+}
+
 // ───────────────────────────── a single visit ─────────────────────────────
 
 interface VisitOutcome {
@@ -197,8 +220,10 @@ interface VisitOutcome {
   concerned: number;
   /** Stars this visitor gasped at (one entry per wow). */
   starWows: string[];
-  reaction?: { ctx: ReactionContext; mood: VisitorReaction['mood']; e: ExhibitInfo; priority: number };
+  reaction?: { ctx: ReactionContext; mood: VisitorReaction['mood']; e: ExhibitInfo; priority: number; why?: CriticWhy };
   critic?: 'good' | 'bad';
+  /** An unimpressed critic: what put them off most, and the exhibit it's about (Audit 2026-11-17, H6). */
+  criticWhy?: { why: CriticWhy; e: ExhibitInfo };
 }
 
 interface VisitEnv {
@@ -238,6 +263,8 @@ function simulateVisit(state: GameState, rng: Rng, arch: ArchetypeDef, env: Visi
   const enjoyments: number[] = [];
   let wows = 0;
   let concerned = 0;
+  let worry: ExhibitInfo | undefined; // the first exhibit that worried this visitor (H6)
+  let dullest: { e: ExhibitInfo; enjoy: number } | undefined;
   const starWows: string[] = [];
   let reaction: VisitOutcome['reaction'];
   const consider = (r: NonNullable<VisitOutcome['reaction']>) => {
@@ -259,6 +286,7 @@ function simulateVisit(state: GameState, rng: Rng, arch: ArchetypeDef, env: Visi
     if (env.occupancy > env.capacity * 0.6 && e.gallons < 30) enjoy *= 0.9;
     enjoy = Math.max(0, Math.min(1, enjoy));
     enjoyments.push(enjoy);
+    if (!dullest || enjoy < dullest.enjoy) dullest = { e, enjoy };
     for (const s of e.speciesIds) seenSpecies.set(s, (seenSpecies.get(s) ?? 0) + 1);
     for (const g of e.groups) seenGroups.set(g, (seenGroups.get(g) ?? 0) + 1);
 
@@ -276,7 +304,10 @@ function simulateVisit(state: GameState, rng: Rng, arch: ArchetypeDef, env: Visi
       wows++;
       if (e.star) starWows.push(e.star.id); // credited per represented visitor by publicStep
     }
-    if (concern) concerned++;
+    if (concern) {
+      concerned++;
+      worry ??= e;
+    }
     stat.popularity += (enjoy * 100 - stat.popularity) * Math.min(1, 0.03 * weight);
     if (!Number.isFinite(stat.popularity)) stat.popularity = 50;
 
@@ -309,10 +340,12 @@ function simulateVisit(state: GameState, rng: Rng, arch: ArchetypeDef, env: Visi
   if (env.levelOrder >= 3) sat += 3;
   // crowding
   const crowd = env.capacity > 0 ? env.occupancy / env.capacity : 0;
-  sat -= Math.max(0, crowd - 0.6) * 40 * (1 - arch.crowdTolerance);
+  const crowdLoss = Math.max(0, crowd - 0.6) * 40 * (1 - arch.crowdTolerance);
+  sat -= crowdLoss;
   // price vs value
   const x = env.fair > 0 ? env.admission / env.fair : 0;
-  if (x > 1) sat -= (x - 1) * 25 * arch.priceSensitivity;
+  const priceLoss = x > 1 ? (x - 1) * 25 * arch.priceSensitivity : 0;
+  if (x > 1) sat -= priceLoss;
   else sat += (1 - x) * 4 * arch.priceSensitivity;
   // learning
   sat += env.signFrac * arch.education * 8 + Math.min(1, env.kiosks) * arch.education * 3;
@@ -332,11 +365,18 @@ function simulateVisit(state: GameState, rng: Rng, arch: ArchetypeDef, env: Visi
   if (sat >= 55 && rng.chance(Math.min(0.8, cons * (sat / 100) * 0.35 * (1 + 0.6 * Math.min(2, env.donationBoxes)) * (env.docent?.donation ?? 1)))) donation = arch.budget * rng.range(0.04, 0.12) * (concerned > 0 ? 0.5 : 1);
 
   let critic: VisitOutcome['critic'];
+  let criticWhy: VisitOutcome['criticWhy'];
   if (arch.id === 'critic') {
     critic = sat >= 72 ? 'good' : sat < 45 ? 'bad' : undefined;
-    if (critic && reaction) reaction = { ctx: critic === 'good' ? 'critic_good' : 'critic_bad', mood: critic === 'good' ? 'wow' : 'concerned', e: reaction.e, priority: 6 };
+    if (critic === 'bad') {
+      // Audit 2026-11-17 (H6): the visit's biggest minus — a worrying exhibit, the price or the crowd — else its dullest exhibit
+      const why = criticWhyOf({ concern: Math.min(2, concerned) * 14, price: priceLoss, crowd: crowdLoss }, !!worry);
+      const at = why === 'concern' ? worry : dullest?.e ?? reaction?.e;
+      if (at) criticWhy = { why, e: at };
+    }
+    if (critic && reaction) reaction = critic === 'good' ? { ctx: 'critic_good', mood: 'wow', e: reaction.e, priority: 6 } : { ctx: 'critic_bad', mood: 'concerned', e: criticWhy?.e ?? reaction.e, priority: 6, why: criticWhy?.why ?? 'dull' };
   }
-  return { sat, tip, donation, wows, concerned, starWows, reaction, critic };
+  return { sat, tip, donation, wows, concerned, starWows, reaction, critic, ...(criticWhy ? { criticWhy } : {}) };
 }
 
 // ───────────────────────────── public opening ─────────────────────────────
@@ -460,7 +500,8 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
     if (o.reaction) reactions.push(o.reaction);
     for (const id of o.starWows) starWowCount.set(id, (starWowCount.get(id) ?? 0) + 1);
     if (o.critic) {
-      const e = o.reaction?.e ?? infos[0];
+      const e = (o.critic === 'bad' ? o.criticWhy?.e : undefined) ?? o.reaction?.e ?? infos[0];
+      const why = o.critic === 'bad' ? o.criticWhy?.why ?? 'dull' : undefined;
       const good = o.critic === 'good';
       // A sample stands for `weight` visitors, critics included: a busy hall gets the same critic swing per person
       // whether it was watched at 1× (every visitor sampled) or caught up offline (16 samples for 60 people).
@@ -479,7 +520,7 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
       if (good && toast) live.warnedHour['critic:praise_toast'] = h;
       emitEvent(state, {
         kind: good ? 'celebrate' : 'warning',
-        text: good ? `A visiting critic praised ${theTank(tankName(state, e.tankId))}: “welfare and beauty, done right.” (+reputation)` : `A visiting critic was unimpressed by ${theTank(tankName(state, e.tankId))}. (−reputation)`,
+        text: criticText(state, good ? 'good' : why ?? 'dull', e),
         tankId: e.tankId,
         toast,
       });
@@ -540,7 +581,9 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
     // chunk 17 — an exhibit with no star (an empty tank) names no animal: the key is left out, never held as undefined
     // (SHARED-SHOPS.md §3.2 rule 10; the lockstep test caught it on another random stream)
     const subject = subjectOf(r.e, r.mood)?.id;
-    pushReaction(v.reactions, { hour: h, tankId: r.e.tankId, ...(subject ? { creatureId: subject } : {}), text: pickLine(rng, r.ctx, vars), mood: r.mood });
+    // Audit 2026-11-17 (H6): a worry's line follows its cause, a critic's what put them off (one draw either way)
+    const text = r.ctx === 'concerned' && r.e.concernCause ? pickConcernLine(rng, r.e.concernCause, vars) : r.ctx === 'critic_bad' && r.why ? pickCriticLine(rng, r.why, vars) : pickLine(rng, r.ctx, vars);
+    pushReaction(v.reactions, { hour: h, tankId: r.e.tankId, ...(subject ? { creatureId: subject } : {}), text, mood: r.mood });
     if (r.mood === 'wow') {
       const stat = v.exhibit[r.e.tankId];
       if (stat) stat.lastFeatured = h;
