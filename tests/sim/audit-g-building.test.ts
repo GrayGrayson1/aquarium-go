@@ -17,6 +17,9 @@ import { GROUPS, UnlocksTab, researchLockKeys, researchTankLine } from '@/ui/pan
 import { RESEARCH } from '@/data/research';
 import { unlockLink, unlockWhere } from '@/ui/hud/eventLinks';
 import { useGame } from '@/state/game';
+import { useUI } from '@/state/ui';
+import { ensureFocusedTank } from '@/ui/hud/tankGuard';
+import { TankBar } from '@/ui/hud/TankBar';
 import { TopBar } from '@/ui/hud/TopBar';
 import { MoreSheetBody } from '@/ui/hud/MoreSheet';
 import { ResearchPanel } from '@/ui/panels/research/ResearchPanel';
@@ -524,5 +527,31 @@ describe('G26: only the part of the Rooms line that leaves Build is a link', () 
     use(g);
     const html = renderToStaticMarkup(createElement(Rooms, { g, onOpen: () => {} }));
     expect(html).toMatch(/Buy and upgrade machines here\. <button[^>]*data-testid="rooms-to-operations"[^>]*>Operations runs them day to day/);
+  });
+});
+
+describe('G28 (B-231 e): the first tank bought after selling every tank doesn’t drop Build on a phone', () => {
+  it('the focus guard waits while a tank is being placed (its landing focuses it), then focuses as before', () => {
+    const g = game('betta');
+    use(g);
+    const ui0 = { ...useUI.getState() };
+    try {
+      useUI.setState({ screen: 'game', focusedTankId: null, tool: 'tank_place' });
+      ensureFocusedTank();
+      expect(useUI.getState().focusedTankId).toBeNull();
+      useUI.setState({ tool: 'none' });
+      ensureFocusedTank();
+      expect(useUI.getState().focusedTankId).toBe(g.tankOrder[0]);
+    } finally {
+      useUI.setState({ screen: ui0.screen, focusedTankId: ui0.focusedTankId, tool: ui0.tool, view: ui0.view, selectedCreatureId: ui0.selectedCreatureId, followCreatureId: ui0.followCreatureId, cameraMode: ui0.cameraMode });
+    }
+  });
+  it('with no tank left, the switcher offers the way to buy one', () => {
+    const g = game('betta');
+    g.tanks = {};
+    g.tankOrder = [];
+    use(g);
+    const html = renderToStaticMarkup(createElement(TankBar));
+    expect(html).toMatch(/data-testid="tank-buy-first"[^>]*>No tank · Buy one</);
   });
 });
