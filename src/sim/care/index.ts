@@ -720,11 +720,13 @@ export function repairEquipment(state: GameState, tankId: string, equipmentId: s
   if (!inst.failed && inst.condition > REPAIR_FROM) return fail(`The ${def.name} is working fine.`);
   const cost = Math.max(5, Math.round(def.price * 0.35));
   if (!spend(state, cost, 'equipment', `Repair ${def.name} (${tank.name})`)) return fail(`Repairing the ${def.name} costs ${money(cost)} — not enough money.`);
+  const wasOff = !inst.on;
   inst.failed = false;
   delete inst.failMode;
   inst.condition = Math.max(inst.condition, 0.9);
   inst.on = true;
-  return { ok: true, message: `Repaired the ${def.name} for ${money(cost)}.` };
+  // Audit 2026-11-17 C16 — a repair switches the unit on: say so when it was off (a stuck heater the player switched off)
+  return { ok: true, message: `Repaired the ${def.name} for ${money(cost)}${wasOff ? ' and switched it on' : ''}.` };
 }
 
 export function setLighting(

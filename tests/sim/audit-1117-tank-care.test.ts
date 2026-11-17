@@ -557,3 +557,20 @@ describe('C15: the screens use the sim’s own lines', () => {
     expect(repairEquipment(s, t.id, f.id).ok).toBe(true);
   });
 });
+
+describe('C16 (the part with no decision): a repair that switches a unit back on says so', () => {
+  it('a stuck heater switched off, then repaired', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    s.finance.money = 500;
+    const heater = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'heater')!;
+    heater.failed = true;
+    heater.failMode = 'stuck_on';
+    heater.on = false;
+    expect(repairEquipment(s, t.id, heater.id).message).toMatch(/^Repaired the .+ for \$\d+ and switched it on\.$/);
+    expect(heater.on).toBe(true);
+    heater.failed = true;
+    heater.failMode = 'off';
+    expect(repairEquipment(s, t.id, heater.id).message).not.toMatch(/switched it on/);
+  });
+});
