@@ -22,7 +22,7 @@ import { normalizeGenome, resolvePhenotype as resolvePhenotypeImpl, rollGenome a
 import { computePersonalityModifiers, rollPersonalityTags, PERSONALITY_INFO } from './personality';
 import { generateName, takenNames, nameRngFor } from './names';
 import { ageDaysOf, initialReproRole, lifeStageFor, observableSex, sizeAtAge } from './growth';
-import { stepTankCreaturesImpl, lifeMeta } from './step';
+import { stepTankCreaturesImpl, lifeMeta, lastHurtBy } from './step';
 import { buildTankEnv, habitatFit, livingIn, stressFactors, waterProblemText, type StressFactor } from './welfare';
 import { illnessDef } from './illness';
 import { foodsFor, menuFor } from '@/data/species/guide'; // lane:guide
@@ -265,7 +265,10 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
     else watch = true;
   }
   if ((c.life?.injury ?? 0) > 20) {
-    notes.push('Healing from injuries — check for aggressive or nipping tank mates.');
+    // Audit 2026-11-17 (D11): name the tank mate when its History says who it was
+    const by = lastHurtBy(c);
+    const obj = c.sex === 'female' ? 'her' : c.sex === 'male' ? 'him' : 'it';
+    notes.push(by ? `Healing from injuries — ${by.label} has been ${by.verb} ${obj}.` : 'Healing from injuries — check for aggressive or nipping tank mates.');
     watch = true;
   }
   // Audit 2026-11-17 (D10): the tank card says "stressed" above 55 whatever the cause, so the card always says why or

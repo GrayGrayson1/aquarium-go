@@ -8,6 +8,7 @@ import { newGame } from '@/sim/newGame';
 import { createTank } from '@/sim/tanks';
 import { createCreature, addCreature, stepTankCreatures, creatureWellbeing } from '@/sim/life';
 import { makeContext } from '@/sim/context';
+import { lastHurtBy } from '@/sim/life/step';
 import { simRng, mulberry32 } from '@/sim/rng';
 import { previewAddition, evaluateComposition, simpleMember, neutralContext } from '@/sim/compat';
 import { getSpecies, ALL_SPECIES } from '@/data/species';
@@ -281,5 +282,31 @@ describe('D10: the card’s meters and its Condition box tell the same story', (
     expect(w.notes.some((n) => n.startsWith('Habitat:'))).toBe(true);
     expect(w.notes[0].startsWith('Habitat:')).toBe(false);
     expect(w.headline).not.toMatch(/^Habitat/);
+  });
+});
+
+describe('D11: a death or injury from a tank mate names the tank mate', () => {
+  const hurt = () => {
+    const s = base();
+    const t = createTank(s, 'g20L', 'freshwater_tropical', { cycled: true });
+    const mango = addCreature(s, createCreature(s, mulberry32(12), 'fancy_guppy', { sex: 'female', ageDays: 60, name: 'Mango' }), t.id);
+    mango.history.push({ hour: s.clock.hour - 5, kind: 'note', text: 'Hurt by Rex the tiger barb (fin nip).' });
+    mango.life = { ...(mango.life ?? {}), injury: 40, damage: { injury: 80 } };
+    return { s, t, mango };
+  };
+
+  it('the healing note says who has been nipping her', () => {
+    const { s, mango } = hurt();
+    expect(lastHurtBy(mango)).toEqual({ label: 'Rex the tiger barb', verb: 'nipping' });
+    expect(creatureWellbeing(s, mango).notes).toContain('Healing from injuries — Rex the tiger barb has been nipping her.');
+  });
+
+  it('a death from accumulated injuries names the attacker', () => {
+    const { s, t, mango } = hurt();
+    mango.stats.health = 0;
+    stepTankCreatures(s, t, 1, makeContext(s, 1));
+    expect(mango.status).toBe('dead');
+    expect(mango.deathCause).toBe('injuries from Rex the tiger barb');
+    expect(s.log.some((e) => e.text === 'Mango has passed away from injuries — Rex the tiger barb kept nipping her. Keep them apart.')).toBe(true);
   });
 });

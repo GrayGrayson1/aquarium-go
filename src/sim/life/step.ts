@@ -87,6 +87,19 @@ export function pushHistory(c: Creature, ev: Creature['history'][number]): void 
   if (c.history.length > HISTORY_CAP) c.history.splice(0, c.history.length - HISTORY_CAP);
 }
 
+/**
+ * Audit 2026-11-17 (D11): the tank mate that last hurt this animal, from its History ("Hurt by Rex the tiger barb (fin
+ * nip)."), so a death or a healing note can name it without a new save field. Null when nothing hurt it.
+ */
+export function lastHurtBy(c: Creature): { label: string; verb: 'nipping' | 'chasing' | 'attacking' } | null {
+  const h = Array.isArray(c.history) ? c.history : [];
+  for (let i = h.length - 1; i >= 0; i--) {
+    const m = h[i]?.kind === 'note' ? /^Hurt by (.+) \(([a-z ]+)\)\.$/.exec(h[i].text ?? '') : null;
+    if (m) return { label: m[1], verb: /nip/.test(m[2]) ? 'nipping' : m[2] === 'harassment' ? 'chasing' : 'attacking' };
+  }
+  return null;
+}
+
 export function lifeMeta(c: Creature): NonNullable<Creature['life']> {
   if (!c.life) c.life = {};
   return c.life;
@@ -258,8 +271,16 @@ function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
       const f = stressFactors(state, env, c, sp, hour)[0];
       return { kind: 'stress', cause: 'long-term stress', text: `${name} has passed away after a long period of stress${f ? ` (${f.label})` : ''}.` };
     }
-    case 'injury':
+    case 'injury': {
+      // Audit 2026-11-17 (D11): name the tank mate that kept hurting it (its History has the last one)
+      const by = lastHurtBy(c);
+      if (by) {
+        const p = pronoun(c);
+        const obj = p.they === 'she' ? 'her' : p.they === 'he' ? 'him' : 'them';
+        return { kind: 'injury', cause: `injuries from ${by.label}`, text: `${name} has passed away from injuries — ${by.label} kept ${by.verb} ${obj}. Keep them apart.` };
+      }
       return { kind: 'injury', cause: 'injuries from tank mates', text: `${name} has passed away from injuries caused by tank mates. Some animals simply can't share a tank.` };
+    }
     case 'harassment': {
       const p = pronoun(c);
       return { kind: 'injury', cause: 'harassment by a tank mate', text: `${name} has passed away after being chased and bitten by a tank mate. A female must be moved out of a male's tank as soon as spawning is over, and ${p.they === 'they' ? 'harassed animals need' : 'a harassed animal needs'} a tank of ${p.their} own to recover.` };

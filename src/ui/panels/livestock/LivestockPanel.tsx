@@ -648,6 +648,7 @@ function YoungView({ g }: { g: GameState }) {
 
 function PastView({ g, past }: { g: GameState; past: Creature[] }) {
   const { shown, more } = usePaged(past.length, past.length);
+  const { close } = useSheet(); // Audit 2026-11-17 (D11): a past resident's row opens its card (cause, lineage, history)
   const { t } = useTempText(); // Audit 2026-11-17 (D8)
   if (past.length === 0)
     return (
@@ -663,7 +664,15 @@ function PastView({ g, past }: { g: GameState; past: Creature[] }) {
         const last = c.history.at(-1);
         return (
           <li key={c.id} className="pn-lsrow pn-lsrow--past">
-            <span className="pn-lsrow__main pn-lsrow__main--static">
+            <button
+              type="button"
+              className="pn-lsrow__main"
+              aria-label={`Open ${c.name}’s card`}
+              onClick={() => {
+                useUI.getState().set({ selectedCreatureId: c.id });
+                close();
+              }}
+            >
               <CreaturePortrait creature={c} size={44} />
               <span className="pn-lsrow__id">
                 <span className="pn-lsrow__name">
@@ -678,7 +687,7 @@ function PastView({ g, past }: { g: GameState; past: Creature[] }) {
                 <span className="pn-small pn-muted">{c.status === 'sold' ? last?.text ?? 'Sold to a new home.' : c.deathCause ? `Lost — ${t(c.deathCause)}` : 'Passed away.'}</span>
               </span>
               <Chip tone={c.status === 'sold' ? 'gold' : 'neutral'}>{c.status === 'sold' ? 'Rehomed' : 'In memory'}</Chip>
-            </span>
+            </button>
           </li>
         );
       })}
