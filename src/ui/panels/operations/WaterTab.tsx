@@ -178,7 +178,7 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
           <span className="ops-row__title">Salt water · {g1(saltDay)} gal</span>
           <Stack parts={[flows.salt.changes, flows.salt.hatchery]} colors={['var(--c-aqua)', 'var(--c-violet)']} />
           <Legend color="var(--c-aqua)" text={`Water changes · ${flows.salt.tanks} salt ${flows.salt.tanks === 1 ? 'tank' : 'tanks'}`} value={flows.salt.changes} />
-          {flows.salt.hatchery > 0 && <Legend color="var(--c-violet)" text="Brine shrimp hatchery" value={flows.salt.hatchery} />}
+          {flows.salt.hatchery > 0 && <Legend color="var(--c-violet)" text="Brine Shrimp Hatchery" value={flows.salt.hatchery} />}
         </>
       )}
     </section>

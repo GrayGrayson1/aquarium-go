@@ -177,3 +177,27 @@ describe('Audit 2026-11-17 (J31, the part that needs no choice): a hobbyist is a
     expect(s).toContain('goes to another fishkeeper. Aquarium animals should never be released into the wild.');
   });
 });
+
+describe('Audit 2026-11-17 (J32): a machine or a tier has one name on a screen', () => {
+  it('the Map, Water, Feed and Overview use the Build › Facility names, and the locked tiles name their tier', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 7 });
+    expect(tierLadder(g).map((t) => t.name)).toEqual(['Water room', 'Live food room', 'Breeding facility', 'Operations Desk']);
+    const cases: [string, string, string][] = [
+      ['ui/panels/operations/MapTab.tsx', 'name="Prep station"', 'name="Water Prep Station"'],
+      ['ui/panels/operations/MapTab.tsx', 'name="Salt mixer"', 'name="Salt Mixing Station"'],
+      ['ui/panels/operations/MapTab.tsx', 'Salt reserve"', 'name="Salt water reserve"'],
+      ['ui/panels/operations/MapTab.tsx', 'title="Supplies" ', 'title="Supplies shelf" '],
+      ['ui/panels/operations/MapTab.tsx', 'Brine shrimp hatchery', '`Brine Shrimp Hatchery · ${room.cones.length}`'],
+      ['ui/panels/operations/WaterTab.tsx', 'text="Brine shrimp hatchery"', 'text="Brine Shrimp Hatchery"'],
+      ['ui/panels/operations/Overview.tsx', "title: 'Hatchery'", "title: 'Brine Shrimp Hatchery'"],
+      ['ui/panels/operations/Overview.tsx', "name: 'Operations tools'", "name: 'Operations Desk'"],
+      ['ui/panels/operations/Overview.tsx', "name: 'More lines'", "name: 'Breeding facility'"],
+      ['ui/panels/operations/Overview.tsx', "name: 'Live food', ", "name: 'Live food room', "],
+    ];
+    for (const [file, gone, now] of cases) {
+      const s = src(file);
+      expect(s, `${file}: ${gone}`).not.toContain(gone);
+      expect(s, `${file}: ${now}`).toContain(now);
+    }
+  });
+});

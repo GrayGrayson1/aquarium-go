@@ -259,13 +259,13 @@ function WaterArea({ ctx }: { ctx: Ctx }) {
   return (
     <Area ctx={ctx} id="water" title="Water room" dim={L === 'animals'} style={{ gridColumn: ctx.small ? undefined : 'span 2' }}>
       <div className="ops-area__tiles" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-        <Machine ctx={ctx} id="prep" name="Prep station" sub={`${prepRate(room)} gal an hour`} />
-        <Machine ctx={ctx} id="mixer" name="Salt mixer" sub={mixer} warn={salt?.state === 'out' && !held} />
+        <Machine ctx={ctx} id="prep" name="Water Prep Station" sub={`${prepRate(room)} gal an hour`} />
+        <Machine ctx={ctx} id="mixer" name="Salt Mixing Station" sub={mixer} warn={salt?.state === 'out' && !held} />
         <Machine ctx={ctx} id="fresh" name="Fresh reserve" sub={`${Math.floor(room.fresh)} / ${freshCap(room)} gal`}>
           <OpsBar value={room.fresh / freshCap(room)} label="Fresh reserve" />
         </Machine>
-        <Machine ctx={ctx} id="salt" name="Salt reserve" sub={!needed ? 'Not needed' : salt?.state === 'out' && salt.shortDay ? `Runs short on about Day ${salt.shortDay}` : `${Math.floor(room.salt)} / ${saltCap(room)} gal`} warn={salt?.state === 'out'}>
-          <OpsBar value={room.salt / saltCap(room)} kind="salt" label="Salt reserve" />
+        <Machine ctx={ctx} id="salt" name="Salt water reserve" sub={!needed ? 'Not needed' : salt?.state === 'out' && salt.shortDay ? `Runs short on about Day ${salt.shortDay}` : `${Math.floor(room.salt)} / ${saltCap(room)} gal`} warn={salt?.state === 'out'}>
+          <OpsBar value={room.salt / saltCap(room)} kind="salt" label="Salt water reserve" />
         </Machine>
       </div>
     </Area>
@@ -297,7 +297,7 @@ function SuppliesArea({ ctx }: { ctx: Ctx }) {
   }
   const fed = [...byFood.entries()];
   return (
-    <Area ctx={ctx} id="supplies" title="Supplies" dim={L === 'animals' || L === 'water'}>
+    <Area ctx={ctx} id="supplies" title="Supplies shelf" dim={L === 'animals' || L === 'water'}>
       {(g.facility.water || g.inventory.salt > 0) && <Machine ctx={ctx} id="saltmix" name="Salt mix" sub={`${g1(g.inventory.salt)} kg${salt ? ` · ${saltWord(g, salt)}` : ''}`} warn={salt?.state === 'out'} />}
       {fed.length ? (
         fed.map(([id, k]) => <Machine key={id} ctx={ctx} id={`dry:${id}`} name={getFoodDef(id)?.name ?? id} sub={`${Math.floor(g.inventory.foods[id] ?? 0)} · ${k === 1 ? 'Autofeeder' : `${k} Autofeeders`}`} />)
@@ -340,7 +340,7 @@ function FoodArea({ ctx }: { ctx: Ctx }) {
     <Area ctx={ctx} id="food" title="Live food room" dim={L === 'water' || L === 'animals'} style={{ gridColumn: ctx.small ? undefined : 'span 2' }}>
       <div className="ops-area__tiles" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
         <Machine ctx={ctx} id="jars" name={`Infusoria jars · ${room.jars.length}`} sub={`${Math.round((room.jars.length * FOOD_ROOM.jarYield * 24) / FOOD_ROOM.jarHours)} servings a day${next('jar')}`} />
-        <Machine ctx={ctx} id="cones" name={`Brine shrimp hatchery · ${room.cones.length}`} sub={`${room.cones.length * FOOD_ROOM.coneYield} servings a day${next('cone')}`} />
+        <Machine ctx={ctx} id="cones" name={`Brine Shrimp Hatchery · ${room.cones.length}`} sub={`${room.cones.length * FOOD_ROOM.coneYield} servings a day${next('cone')}`} />
       </div>
     </Area>
   );
@@ -577,7 +577,7 @@ function RoomDetails({ ctx, room, nav }: { ctx: Ctx; room: RoomId; nav: OpsNav }
       {room === 'water' && g.facility.water && (
         <div className="ops-rows">
           <Kv k="Fresh reserve" v={`${Math.floor(g.facility.water.fresh)} / ${freshCap(g.facility.water)} gal`} />
-          <Kv k="Salt reserve" v={`${Math.floor(g.facility.water.salt)} / ${saltCap(g.facility.water)} gal`} />
+          <Kv k="Salt water reserve" v={`${Math.floor(g.facility.water.salt)} / ${saltCap(g.facility.water)} gal`} />
         </div>
       )}
       {room === 'food' && g.facility.food && (

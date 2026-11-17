@@ -234,6 +234,6 @@ export function tierLadder(g: GameState): LadderTier[] {
       reqs: [researchReq(g, 'central_water_supply'), researchReq(g, 'breeding_program'), researchReq(g, 'live_food_cultures')],
     },
     { tier: 4, key: 'lines', name: 'Breeding facility', desc: 'More production lines that share tanks', open: t.slots >= 2, reqs: [...slotsReq(t.slots), ...levelReq(g, 'specialty_shop')] },
-    { tier: 5, key: 'tools', name: 'Operations', desc: 'Bottlenecks, schedules, weekly money, manual mode', open: t.desk, reqs: [...levelReq(g, 'aquarium_store'), researchReq(g, 'operations_desk')] },
+    { tier: 5, key: 'tools', name: 'Operations Desk', desc: 'Bottlenecks, schedules, weekly money, manual mode', open: t.desk, reqs: [...levelReq(g, 'aquarium_store'), researchReq(g, 'operations_desk')] },
   ];
 }

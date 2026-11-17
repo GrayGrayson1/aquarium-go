@@ -427,7 +427,7 @@ export function jobText(g: GameState, j: ScheduledJob): { title: string; detail:
     case 'jar':
       return { title: 'Infusoria', detail: `Jar ${j.index} harvest · ${j.servings} servings` };
     case 'cone':
-      return { title: 'Hatchery', detail: `Cone ${j.index} harvest · ${j.servings} servings` };
+      return { title: 'Brine Shrimp Hatchery', detail: `Cone ${j.index} harvest · ${j.servings} servings` };
     case 'shelves': {
       const title = j.check === 'first' ? `${first(j.who)} checks the shelves` : `${first(j.who)}’s second check`;
       const detail = j.saltBlocked ? 'Food first · salt mix won’t fit the budget' : j.buys ? (j.buys.length ? `Buys ${j.buys.slice(0, 2).join(' and ')}${j.buys.length > 2 ? ` and ${j.buys.length - 2} more` : ''}` : 'Nothing to reorder') : j.check === 'second' ? 'Salt mix if the budget allows' : 'Reorders what runs low';
@@ -475,9 +475,9 @@ function Today({ g, manual }: { g: GameState; manual: boolean }) {
 
 const LOCKED: Record<'water' | 'food' | 'lines' | 'tools', { icon: ReactNode; name: string; desc: string }> = {
   water: { icon: <Droplets size={17} aria-hidden />, name: 'Water room', desc: 'Fresh and salt water for every tank' },
-  food: { icon: <Egg size={17} aria-hidden />, name: 'Live food', desc: 'Baby brine shrimp and infusoria for fry' },
-  lines: { icon: <Factory size={17} aria-hidden />, name: 'More lines', desc: 'A second line at a Specialty Shop' },
-  tools: { icon: <Gauge size={17} aria-hidden />, name: 'Operations tools', desc: 'Problems, weekly money and Hold all' },
+  food: { icon: <Egg size={17} aria-hidden />, name: 'Live food room', desc: 'Baby brine shrimp and infusoria for fry' },
+  lines: { icon: <Factory size={17} aria-hidden />, name: 'Breeding facility', desc: 'A second line at a Specialty Shop' },
+  tools: { icon: <Gauge size={17} aria-hidden />, name: 'Operations Desk', desc: 'Problems, weekly money and Hold all' },
 };
 
 function lockedTiles(tier: OpsTier, nav: OpsNav, before: boolean): ReactNode[] {
