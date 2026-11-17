@@ -310,3 +310,24 @@ describe('D11: a death or injury from a tank mate names the tank mate', () => {
     expect(s.log.some((e) => e.text === 'Mango has passed away from injuries — Rex the tiger barb kept nipping her. Keep them apart.')).toBe(true);
   });
 });
+
+describe('D13: a tank a little past a temperature limit is Conditional, and the reading keeps its decimal', () => {
+  const at = (tempC: number) => {
+    const d = getSpecies('discus');
+    return evaluateComposition([simpleMember(d, 6, 'mixed')], { ...neutralContext(d, d), neutral: false, flowIndex: 1, lightLevel: 1, expectedTempC: tempC }).report;
+  };
+
+  it('half a degree under a discus’s minimum: caution, “about 25.5 °C”', () => {
+    const min = getSpecies('discus').tempC.min;
+    const r = at(min - 0.5);
+    const temp = r.reasons.find((x) => x.category === 'temperature' && /too cold/.test(x.text))!;
+    expect(temp.severity).toBe('caution');
+    expect(temp.text).toContain(`about ${min - 0.5} °C`);
+  });
+
+  it('more than a degree past it: still a warning (High risk)', () => {
+    const min = getSpecies('discus').tempC.min;
+    const temp = at(min - 2).reasons.find((x) => x.category === 'temperature' && /too cold/.test(x.text))!;
+    expect(temp.severity).toBe('warning');
+  });
+});

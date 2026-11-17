@@ -33,6 +33,7 @@ import { withArticle } from '../economy/util'; // lane:w2-ui ("An ocellaris clow
 import { fitsEnvironment, offIdealEnvironmentNote, sharedEnvironments, waterNeedPhrase } from './salinity'; // lane:brackish
 import * as dmath from '../dmath';
 import { SLIGHTLY_SMALL_TANK } from '../life/growth'; // Audit 2026-11-17 (D4)
+import { TEMP_TOLERANCE_C } from '../water/constants'; // Audit 2026-11-17 (D13)
 
 // ───────────────────────────── contracts ─────────────────────────────
 
@@ -387,7 +388,12 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
     const t = ctx.expectedTempC;
     const r = sp.tempC;
     if (t > r.max + 0.2 || t < r.min - 0.2) {
-      add('warning', 'temperature', `This tank runs at about ${t.toFixed(0)} °C — too ${t > r.max ? 'warm' : 'cold'} for ${name} (${r.min}–${r.max}\u00a0°C).` /* lane:ui-panels (0.5 §7.5) — the range stays on one line */, {
+      // Audit 2026-11-17 (D13): like pH, the water report's bands: up to TEMP_TOLERANCE_C past the limit the sim only
+      // adds stress (Conditional); beyond it, harm (High risk). Near the limit the reading keeps a decimal, so 25.5 °C
+      // never reads as "about 26 °C — too cold" for a 26 °C minimum.
+      const past = t > r.max ? t - r.max : r.min - t;
+      const shown = past < 1 ? Number(t.toFixed(1)).toString() : t.toFixed(0);
+      add(past > TEMP_TOLERANCE_C ? 'warning' : 'caution', 'temperature', `This tank runs at about ${shown} °C — too ${t > r.max ? 'warm' : 'cold'} for ${name} (${r.min}–${r.max}\u00a0°C).` /* lane:ui-panels (0.5 §7.5) — the range stays on one line */, {
         // lane:guide — name the setting to aim for, and that a warm room needs cooling, not a lower heater
         mitigation:
           t > r.max
