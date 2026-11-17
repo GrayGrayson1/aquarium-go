@@ -620,9 +620,12 @@ export function friendBlocker(state: GameState, h: number = state.clock.hour): F
     return { kind: 'unwell', tankId: worst.id, reason: worst.cache?.statusReason ?? null };
   }
   const hod = hourOfDay(h);
-  if (hod < 9 || hod >= 21) return { kind: 'night' };
+  if (hod < FRIEND_HOURS[0] || hod >= FRIEND_HOURS[1]) return { kind: 'night' };
   return null;
 }
+
+/** Friends drop by between these hours of the day (9 AM to 9 PM; the guide quotes them, audit A1). */
+export const FRIEND_HOURS: readonly [number, number] = [9, 21];
 
 /** After the first three friend visits, toast one at most every this many game hours (the rest are logged). */
 const FRIEND_TOAST_EVERY_H = 44;
@@ -641,7 +644,7 @@ function friendStep(state: GameState, h: number, rng: Rng): void {
   if (firstMoney && (state.progress.counters.friend_visits ?? 0) <= visitsAtStep) live.nextFriendHour = Math.min(live.nextFriendHour, h + 0.9);
   if (h < live.nextFriendHour) return;
   const hod = hourOfDay(h);
-  if (hod < 9 || hod >= 21) return;
+  if (hod < FRIEND_HOURS[0] || hod >= FRIEND_HOURS[1]) return;
   // only when something healthy is worth showing off
   const candidates = state.tankOrder
     .map((id) => state.tanks[id])

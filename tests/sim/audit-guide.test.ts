@@ -49,14 +49,14 @@ describe('A1: a step waiting on friends says why none can come', () => {
     expect(visits(g)).toBeGreaterThan(before);
   });
 
-  it('at night: friends visit between 9 am and 9 pm (and time is what helps)', () => {
+  it('at night: friends visit between 9:00 AM and 9:00 PM, in the clock’s own style (and time is what helps)', () => {
     const g = newGame({ starterId: 'axolotl', starterName: 'Mochi', seed: 4 });
     walkTo(g, 'first_money');
     advanceWorld(g, 3, { focusTankId: g.tankOrder[0] });
     expect(friendBlocker(g, 22)).toEqual({ kind: 'night' });
     expect(friendBlocker(g, 24 + 8.5)).toEqual({ kind: 'night' });
     g.clock.hour = 24 + 22; // 10 pm on day 2
-    expect(friendWait(g, 'first_goal')).toEqual({ text: 'Friends visit between 9 am and 9 pm.', time: true });
+    expect(friendWait(g, 'first_goal')).toEqual({ text: 'Friends visit between 9:00 AM and 9:00 PM.', time: true });
     expect(friendWait(g, 'feed')).toBeNull(); // only the steps that wait on friends
   });
 
@@ -123,6 +123,28 @@ describe('A1: the guide names an animal that is still there', () => {
     expect(lines.some((l) => /^Ember is|companion|settled|personality|one of a kind/.test(l))).toBe(false); // (the tank keeps its name)
     expect(lines.length).toBeGreaterThan(0);
   });
+
+  it('with no animal left, the steps’ words stay grammatical (review of A1)', () => {
+    const step = (starter: string, id: string) => tutorialChain(starter).find((s) => s.id === id)!;
+    const none = (t: string) => fillGuide(t, null, 'animal', false);
+    expect(none(step('axolotl', 'habitat').body)).toBe('Axolotls dislike bright light. Add a cave or a plant from Build so your animals have a shady retreat.');
+    expect(none(step('lined_seahorse', 'feed').body)).toBe('Tap Target and offer frozen mysis right to your animals. Seahorses are slow, deliberate eaters — target feeding makes sure your animals get a full share before anything else can snatch it.');
+    expect(none(step('betta', 'feed').done!)).toBe('Your animals ate well.');
+    expect(none(step('betta', 'meet').done!)).toBe('Nice to meet you!');
+    expect(none(step('betta', 'observe').body)).toBe('Keep watching.'); // ("When {name} sees something new he…" is about that one fish)
+    expect(none(step('betta', 'meet').body)).toBe('Say hello.');
+    expect(none(step('pea_puffer', 'meet').body)).toBe('There’s no animal to show right now. Bring one home from the Market first.');
+    expect(none(step('axolotl', 'first_goal').body)).toMatch(/^Keep your animals’ tank looking lovely/);
+    // every step and line of every chain: no "{name}" left, no sentence starting in lower case, no "your animals is/has/gets"
+    for (const starter of ['axolotl', 'betta', 'pea_puffer', 'ocellaris_clownfish', 'lined_seahorse']) {
+      for (const s of tutorialChain(starter)) {
+        for (const t of [s.title, s.body, s.done ?? '']) {
+          const out = none(t);
+          expect(out, `${starter} ${s.id}`).not.toMatch(/\{name\}|your animals (is|has|gets|sees)\b|(^|[.!?]\s+)your animals/);
+        }
+      }
+    }
+  });
 });
 
 describe('A5, A10: the finale says where the quests and the guide’s reward are, in the layout’s words', () => {
@@ -186,6 +208,25 @@ describe('A12: the axolotl’s feed step suggests the earthworm it names, not th
     expect(guideMentions(clown, 'Marine Pellets')).toBe(true);
     expect(guideMentions(clown, 'Frozen Mysis Shrimp')).toBe(true);
   });
+
+  it('the first sentence ends at a full stop followed by a space, as before (a "1.5" doesn’t end it), with no lookbehind', async () => {
+    expect(guideMentions('Tap Feed and drop 1.5 earthworms near Mochi. Axolotls hunt by smell.', 'Earthworms')).toBe(true);
+    expect(guideMentions('Tap Feed and drop 1.5 earthworms near Mochi. Axolotls hunt by smell.', 'Axolotl Pellets')).toBe(false);
+    expect(guideMentions('Drop an earthworm', 'Earthworms')).toBe(true); // no full stop: all of it
+    // a regex lookbehind doesn't parse on Safari below 16.4, and one in any module stops the whole game loading there
+    const { readdirSync, readFileSync, statSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const found: string[] = [];
+    const walk = (dir: string) => {
+      for (const f of readdirSync(dir)) {
+        const p = join(dir, f);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (/\.(ts|tsx)$/.test(f) && /\(\?<[=!]/.test(readFileSync(p, 'utf8'))) found.push(p);
+      }
+    };
+    walk(join(process.cwd(), 'src'));
+    expect(found).toEqual([]);
+  });
 });
 
 describe('A3: the betta’s and seahorse’s nursery step opens Tanks (a tank’s purpose), not Build', () => {
@@ -199,6 +240,31 @@ describe('A3: the betta’s and seahorse’s nursery step opens Tanks (a tank’
     const axo = tutorialChain('axolotl').find((s) => s.id === 'upgrade')!;
     expect(axo.hintTarget).toBe('dock-build');
     expect(guideAim('upgrade', axo.hintTarget, 'axolotl', screen({ panel: 'build' }), axo.reward?.unlocks ?? [])?.candidates[0]).toBe('[data-testid="panel-build"] [data-tier-id="g40B"]');
+  });
+});
+
+describe('A3: the nursery step and the unlock it hands out say what they really do', () => {
+  it('any tank can already be a nursery; the `nursery` key is breeding know-how for two research projects', async () => {
+    const { UNLOCK_KEYS } = await import('@/data/unlockKeys');
+    const { RESEARCH } = await import('@/data/research');
+    const { unlockLink } = await import('@/ui/hud/eventLinks');
+    const { setTankPurpose } = await import('@/sim/tankOps');
+    // what the key gates: these two research projects, and nothing else
+    expect(RESEARCH.filter((r) => r.requires.some((c) => c.type === 'unlocked' && c.key === 'nursery')).map((r) => r.id).sort()).toEqual(['genetics_lab', 'live_food_cultures']);
+    // a new game's tank can be a nursery at once
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 9 });
+    expect(g.progress.unlocked).not.toContain('nursery');
+    expect(setTankPurpose(g, g.tankOrder[0], 'nursery').ok).toBe(true);
+    // so nothing names it as tanks
+    expect(UNLOCK_KEYS.nursery).toBe('Breeding know-how');
+    expect(unlockLink('nursery')).toMatchObject({ panel: 'research', where: 'Needed for the Genetics Lab and Live Food Cultures in Research.' });
+    expect(RESEARCH.find((r) => r.id === 'breeding_program')!.blurb).toBe('Breeding know-how that opens the way to the Genetics Lab and Live Food Cultures. Any tank can already be a nursery: set its purpose in Tanks.');
+    for (const id of ['betta', 'lined_seahorse']) {
+      const up = tutorialChain(id).find((s) => s.id === 'upgrade')!;
+      expect(up.reward?.unlocks, id).toEqual(['nursery']);
+      expect(up.body, id).toMatch(/^Earn a little more reputation to unlock breeding know-how\. Any tank can already be a nursery: set its purpose in Tanks/);
+      expect(up.body, id).not.toMatch(/nursery tanks/);
+    }
   });
 });
 
@@ -234,7 +300,7 @@ describe('A8: the phone tour’s money stop has no star to point at', () => {
   it('phones say where reputation is; computers keep the star', () => {
     const phone = tourStops({ mobile: true, social: false, unlocked: () => true }).find((s) => s.id === 'money')!;
     expect(phone.body).not.toMatch(/star/);
-    expect(phone.body).toMatch(/top of Research, under More/);
+    expect(phone.body).toMatch(/: see it at the top of More\.$/); // More's header shows it (G6)
     const desk = tourStops({ mobile: false, social: false, unlocked: () => true }).find((s) => s.id === 'money')!;
     expect(desk.body).toMatch(/\(the star\)/);
   });
@@ -249,6 +315,29 @@ describe('A4: a new game always starts with its guide showing', () => {
       expect(useSettings.getState().showTutorialHints).toBe(true);
       guideOnForNewGame();
       expect(useSettings.getState().showTutorialHints).toBe(true);
+    } finally {
+      useSettings.getState().update({ showTutorialHints: was });
+    }
+  });
+});
+
+describe('A4: the naming screen’s own way into a new game turns the guide on', () => {
+  it('enterNewGame (what "Begin" calls) switches "Guide hints" back on and puts the new aquarium on screen', async () => {
+    const { enterNewGame } = await import('@/ui/screens/NamingScreen');
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const was = useSettings.getState().showTutorialHints;
+    try {
+      useSettings.getState().update({ showTutorialHints: false });
+      const g = newGame({ starterId: 'axolotl', starterName: 'Mochi', seed: 4 });
+      enterNewGame(g);
+      expect(useSettings.getState().showTutorialHints).toBe(true);
+      expect(useGame.getState().game?.saveId).toBe(g.saveId);
+      expect(useUI.getState().screen).toBe('game');
+      // and "Begin" goes through it
+      const { readFileSync } = await import('node:fs');
+      const src = readFileSync('src/ui/screens/NamingScreen.tsx', 'utf8');
+      expect(src.slice(src.indexOf('const begin = async')).match(/\benterNewGame\(g\);/)).not.toBeNull();
     } finally {
       useSettings.getState().update({ showTutorialHints: was });
     }
