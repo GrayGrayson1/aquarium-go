@@ -16,7 +16,7 @@ import { planNotification } from '@/ui/notify/rules';
 
 vi.setConfig({ testTimeout: 240_000 });
 
-const ENDING = /^Bidding on ".+" ends in about \d+ hours?\. Best offer so far: \$[\d,.]+ from .+$/;
+const ENDING = /^Bidding on ".+" ends in about \d+ game hours?\. Best offer so far: \$[\d,.]+ from .+$/;
 
 function listed(reserve = 1e6): { g: GameState; l: Listing } {
   const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 13 });
@@ -55,7 +55,7 @@ describe('ADR-0022 decision 5: "auction ending soon"', () => {
     run(g, l.endsHour - 0.01);
     const evs = endingEvents(g);
     expect(evs).toHaveLength(1);
-    expect(evs[0].text).toBe(`Bidding on "${l.title}" ends in about 3 hours. Best offer so far: $150 from Coral Reef Co.`);
+    expect(evs[0].text).toBe(`Bidding on "${l.title}" ends in about 3 game hours. Best offer so far: $150 from Coral Reef Co.`);
     expect(evs[0]).toMatchObject({ kind: 'market', listingId: l.id, toast: true, notice: { topic: 'auction_ending', vars: { title: l.title, buyer: 'Coral Reef Co.', amount: 150 } } });
     const p = planNotification(evs[0], { hour: g.clock.hour, tankName: () => null })!;
     expect(p).toMatchObject({ category: 'market', title: `Ending soon: ${l.title}`, body: 'Best offer so far: $150 from Coral Reef Co.', route: `#/market/listings/${l.id}` });
@@ -69,7 +69,7 @@ describe('ADR-0022 decision 5: "auction ending soon"', () => {
     expect(endingEvents(g)).toEqual([]);
     openBid(g, l, 90);
     run(g, l.endsHour - 0.01);
-    expect(endingEvents(g).map((e) => e.text)).toEqual([`Bidding on "${l.title}" ends in about 1 hour. Best offer so far: $90 from Coral Reef Co.`]);
+    expect(endingEvents(g).map((e) => e.text)).toEqual([`Bidding on "${l.title}" ends in about 1 game hour. Best offer so far: $90 from Coral Reef Co.`]);
   });
 
   it('a big step that lands in the window fires it once; one that jumps past the end leaves it to "Bidding closed"', () => {

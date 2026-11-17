@@ -18,7 +18,7 @@
  */
 import type { GameEvent } from '@/types';
 import { fmtMoney as formatMoney } from '@/sim/economy/util'; // the log's own money format ("$120", "$4.50")
-import { untilTime } from '../panels/common/format';
+import { realIn, speedNote } from '../panels/common/format'; // Audit 2026-11-17 (J2): was untilTime (game hours)
 import { convertTempText } from '../common/format'; // Audit 2026-11-17 (J1)
 
 export type NotifyCategory = 'rare' | 'care' | 'market' | 'breeding' | 'shows' | 'auto';
@@ -39,8 +39,13 @@ export interface PlannedNotification {
 
 /** What the rules may look up in the game they're reading (names that are not on the event itself). */
 export interface RuleLookups {
-  /** The game hour now ("It leaves in 14 h"). */
+  /** The game hour now. */
   hour: number;
+  /**
+   * Audit 2026-11-17 (J2): the clock's speed, so a notification read outside the game gives real time ("It leaves in
+   * about 2 min", "… at 3×", "… (paused)"); absent reads as 1×.
+   */
+  speed?: number;
   tankName(id: string): string | null;
   /** lane:automation (chunk 5) — the Operations Desk is researched: Automation notifications open Problems, else the problem's tab. */
   desk?: boolean;
@@ -81,7 +86,9 @@ export function planNotification(e: GameEvent, look: RuleLookups): PlannedNotifi
   const make = (category: NotifyCategory, title: string, body: string, route: string, priority: 'normal' | 'danger' = 'normal'): PlannedNotification => ({ category, title, body, route, priority, tag: category });
   const shopRoute = typeof e.offerId === 'string' && e.offerId ? `#/shop/fish/${seg(e.offerId)}` : '#/shop';
   const listingRoute = typeof e.listingId === 'string' && e.listingId ? `#/market/listings/${seg(e.listingId)}` : '#/market/listings';
-  const leaves = (until: number | null) => (until === null ? null : untilTime(until, look.hour));
+  // Audit 2026-11-17 (J2): real time, as the bids and shows count it (14 game hours is about 2 real minutes at 1×)
+  const speed = look.speed ?? 1;
+  const leaves = (until: number | null) => (until === null ? null : until <= look.hour ? 'now' : `in ${realIn(until - look.hour, speed)}${speedNote(speed)}`);
   const inUnit = (text: string) => convertTempText(text, look.tempUnit ?? 'C') ?? text; // Audit 2026-11-17 (J1)
 
   switch (topic) {

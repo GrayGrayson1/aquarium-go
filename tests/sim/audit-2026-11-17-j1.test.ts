@@ -17,6 +17,10 @@ import type { LineView } from '@/sim/production/view';
 import { EquipRow } from '@/ui/panels/market/Supplies';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getSpecies } from '@/data/species';
+import { simRng } from '@/sim/rng';
+import { createCreature, addCreature } from '@/sim/life';
+import { devOpenMarket, devStepEconomy, createListing, previewListing, forceBuyerVisit, counterBid } from '@/sim/economy';
+import { creatureShowReasons } from '@/sim/shows/eligibility';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -102,5 +106,32 @@ describe('J1: a player on °F reads °F in the log, the bell, notifications and 
   it('the zebra danio’s range has both ends in °C, so both convert', () => {
     const fact = getSpecies('zebra_danio').encyclopedia.funFact;
     expect(convertTempText(fact, 'F')).toMatch(/from 76\.3 °F to 101\.5 °F/);
+  });
+});
+
+describe('J2: a time read outside the game is real time; a game span beside a real one says its clock', () => {
+  it('a counter’s reply time and a fresh arrival say game hours (the bids beside them count real minutes)', () => {
+    let said = '';
+    for (let seed = 1; seed <= 40 && !said; seed++) {
+      const g = newGame({ starterId: 'axolotl', starterName: 'Mochi', seed });
+      devOpenMarket(g);
+      devStepEconomy(g, 0.5);
+      g.finance.money = 5000;
+      const c = addCreature(g, createCreature(g, simRng(g), 'axolotl', { ageDays: 60 }), g.tankOrder[0]);
+      c.stats.health = 100;
+      delete c.illness;
+      const pv = previewListing(g, { kind: 'creature', creatureIds: [c.id] });
+      const r = createListing(g, { kind: 'creature', creatureIds: [c.id], reserve: pv.suggestedReserve, buyNow: 0, durationHours: 168 });
+      const l = g.market.listings.find((x) => x.id === r.listingId)!;
+      for (let i = 0; i < 60 && !l.bids.some((b) => b.status === 'open') && l.status === 'active'; i++) forceBuyerVisit(g, l.id);
+      const b = l.bids.find((x) => x.status === 'open');
+      if (!b) continue;
+      said = counterBid(g, l.id, b.id, Math.round(b.amount * 1.05)).message ?? '';
+    }
+    expect(said).toMatch(/\. Expect a reply in about \d+ game hours?\.$/);
+    const g = base();
+    const c = Object.values(g.creatures)[0];
+    c.acquiredHour = g.clock.hour - 3;
+    expect(creatureShowReasons(g, c).join('\n')).toMatch(/Still settling in \(arrived 3 game hours ago\)/);
   });
 });

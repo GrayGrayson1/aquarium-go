@@ -121,7 +121,11 @@ export function creatureShowReasons(state: GameState, c: Creature, opts: { forJu
   else if ((c.repro?.carryingUntilHour ?? -Infinity) > now) out.push('Carrying young');
   else if (Object.values(state.clutches ?? {}).some((cl) => cl.guardedById === c.id)) out.push('Guarding a clutch');
   const arrived = Math.max(Number.isFinite(c.acquiredHour) ? c.acquiredHour : -Infinity, c.life?.settledSinceHour ?? -Infinity);
-  if (now - arrived < SHOW_RULES.settleHours) out.push(`Still settling in (arrived ${Math.max(1, Math.round(now - arrived))} h ago)`);
+  if (now - arrived < SHOW_RULES.settleHours) {
+    // Audit 2026-11-17 (J2): game hours say so (the rest line below counts real minutes)
+    const h = Math.max(1, Math.round(now - arrived));
+    out.push(`Still settling in (arrived ${h} game hour${h === 1 ? '' : 's'} ago)`);
+  }
   const tank = state.tanks[c.tankId];
   if ((tank.cache?.waterStatus ?? tank.cache?.status) === 'danger') out.push('Its tank’s water needs attention first');
   if (!opts.forJudging) {

@@ -30,13 +30,24 @@ const at = (h: number, m = 0) => h * 60 + m;
 describe('NOTIFY-003, NOTIFY-004: events → notifications', () => {
   it('Rare stock: a Prismatic offer opens its offer, or the shop without one', () => {
     const p = plan({ kind: 'market', offerId: 'offer_k3', notice: { topic: 'prismatic', vars: { species: 'betta', morph: 'Royal Blue Halfmoon', seller: 'Coral Cove', until: 114 } } });
-    expect(p).toEqual({ category: 'rare', title: 'Prismatic betta in the shop', body: 'Coral Cove just stocked a Prismatic Royal Blue Halfmoon. It leaves in 14 h.', route: '#/shop/fish/offer_k3', priority: 'normal', tag: 'rare' });
+    expect(p).toEqual({ category: 'rare', title: 'Prismatic betta in the shop', body: 'Coral Cove just stocked a Prismatic Royal Blue Halfmoon. It leaves in about 2 min.', route: '#/shop/fish/offer_k3', priority: 'normal', tag: 'rare' });
     expect(plan({ kind: 'market', notice: { topic: 'prismatic', vars: { species: 'betta', morph: 'Red Veiltail', seller: 'A', until: 110 } } })?.route).toBe('#/shop');
+  });
+
+  // Audit 2026-11-17 (J2): read outside the game, the time is real time (14 game hours were "14 h", about 2 real
+  // minutes at 1×), with the clock's speed as the bids and shows say it
+  it('Rare stock: the time left is real time, at the clock’s speed', () => {
+    const p = (speed: number | undefined, until: number) => planNotification(ev({ kind: 'market', notice: { topic: 'prismatic', vars: { species: 'betta', morph: 'Red Veiltail', seller: 'A', until } } }), { ...look, speed })?.body;
+    expect(p(1, 114)).toBe('A just stocked a Prismatic Red Veiltail. It leaves in about 2 min.');
+    expect(p(3, 114)).toBe('A just stocked a Prismatic Red Veiltail. It leaves in about 1 min at 3×.');
+    expect(p(10, 114)).toBe('A just stocked a Prismatic Red Veiltail. It leaves in under a minute at 10×.');
+    expect(p(0, 114)).toBe('A just stocked a Prismatic Red Veiltail. It leaves in about 2 min (paused).');
+    expect(p(undefined, 100)).toBe('A just stocked a Prismatic Red Veiltail. It leaves now.');
   });
 
   it('Rare stock: a special reads "Today only: {morph}" / "{Seller} · {price}. Leaves in {time}."', () => {
     const p = plan({ kind: 'market', offerId: 'offer_s1', notice: { topic: 'special', vars: { morph: 'Pair of Koi Bettas', seller: 'Finn’s Fish', price: 48, until: 106 } } });
-    expect(p).toMatchObject({ category: 'rare', title: 'Today only: Pair of Koi Bettas', body: 'Finn’s Fish · $48. Leaves in 6 h.', route: '#/shop/fish/offer_s1' });
+    expect(p).toMatchObject({ category: 'rare', title: 'Today only: Pair of Koi Bettas', body: 'Finn’s Fish · $48. Leaves in about 1 min.', route: '#/shop/fish/offer_s1' });
   });
 
   it('Animal care: "{Tank}" / "{reason}", to the equipment, the animal or the tank; danger comes first', () => {

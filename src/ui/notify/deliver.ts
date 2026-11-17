@@ -103,7 +103,7 @@ export function notificationsFor(events: readonly GameEvent[], env: DeliveryEnv)
   return out;
 }
 
-export const lookupsFor = (g: GameState): RuleLookups => ({ hour: g.clock.hour, tankName: (id) => g.tanks[id]?.name ?? null, desk: g.progress.unlocked.includes('operations_desk'), tempUnit: useSettings.getState().tempUnit /* Audit 2026-11-17 (J1) */ });
+export const lookupsFor = (g: GameState): RuleLookups => ({ hour: g.clock.hour, speed: g.clock.speed /* Audit 2026-11-17 (J2) */, tankName: (id) => g.tanks[id]?.name ?? null, desk: g.progress.unlocked.includes('operations_desk'), tempUnit: useSettings.getState().tempUnit /* Audit 2026-11-17 (J1) */ });
 
 const pageAway = (): boolean => typeof document !== 'undefined' && document.visibilityState === 'visible' && !document.hasFocus();
 const localMinutes = (): number => {

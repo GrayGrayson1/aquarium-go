@@ -17,7 +17,7 @@ import { TankThumb } from '../common/TankThumb';
 import { BuyerAvatar } from '../common/Avatar';
 import { useSheet } from '../common/PanelLayout';
 import { livingInTank } from '../common/derive';
-import { ARCHETYPE_LABEL, LISTING_KIND_LABEL, untilTime, relTime, plural, realIn, realAgo, speedNote, nameList } from '../common/format';
+import { ARCHETYPE_LABEL, LISTING_KIND_LABEL, relTime, plural, realIn, realAgo, speedNote, nameList, formatSpan } from '../common/format'; // Audit 2026-11-17 (J2): formatSpan, not untilTime
 import { FragListingVisual } from './FragListing'; // lane:frags
 import { PHOTO_REF } from '@/types/shared'; // chunk 13
 import { useSharedPhoto } from '@/ui/shared/photos';
@@ -212,7 +212,8 @@ function ListingCard({ g, l, defaultOpen, focus }: { g: GameState; l: Listing; d
             {l.status === 'active' ? (
               // past its end a listing only stays open while a bid is still being answered
               <Chip tone={l.endsHour - now < 4 ? 'watch' : 'neutral'} icon={<Hourglass size={11} />}>
-                {l.endsHour <= now ? 'Bidding closed' : `Ends ${untilTime(l.endsHour, now)}`}
+                {/* Audit 2026-11-17 (J2): its game span says its clock, then the real wait its bids are counted in */}
+                {l.endsHour <= now ? 'Bidding closed' : `Ends in ${formatSpan(l.endsHour - now)} of game time · ${realIn(l.endsHour - now, g.clock.speed)}${speedNote(g.clock.speed)}`}
               </Chip>
             ) : (
               <Chip tone={l.status === 'invalidated' ? 'danger' : 'neutral'}>{l.status === 'expired' ? 'Expired' : l.status === 'withdrawn' ? 'Withdrawn' : 'Cancelled'}</Chip>

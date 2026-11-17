@@ -1128,7 +1128,8 @@ export function counterBid(state: GameState, listingId: string, bidId: string, a
   b.counterResponseHour = state.clock.hour + Math.max(0.5, rng.range(1, 3.5) * (1.3 - patience));
   delete b.response;
   const hrs = Math.max(1, Math.round(b.counterResponseHour - state.clock.hour));
-  return { ok: true, message: `Counter of ${fmtMoney(amt)} sent to ${b.buyerName ?? 'the buyer'}. Expect a reply in about ${hrs} h.` };
+  // Audit 2026-11-17 (J2): game hours say so (the bids beside it count real minutes; 2 game hours are about 20 s)
+  return { ok: true, message: `Counter of ${fmtMoney(amt)} sent to ${b.buyerName ?? 'the buyer'}. Expect a reply in about ${hrs} game hour${hrs === 1 ? '' : 's'}.` };
 }
 
 /**
@@ -1454,11 +1455,11 @@ function auctionEndingSoon(state: GameState, l: Listing, now: number): void {
   const best = bestOpen(l);
   if (!best) return;
   (l.alerts ??= []).push('ending');
-  const h = Math.max(1, Math.round(l.endsHour - now));
+  const h = Math.max(1, Math.round(l.endsHour - now)); // Audit 2026-11-17 (J2): said as game hours
   const buyer = best.buyerName ?? 'a buyer';
   emitEvent(state, {
     kind: 'market',
-    text: `Bidding on "${l.title}" ends in about ${h} hour${h === 1 ? '' : 's'}. Best offer so far: ${fmtMoney(best.amount)} from ${buyer}${/[.!?]$/.test(buyer) ? '' : '.'}`,
+    text: `Bidding on "${l.title}" ends in about ${h} game hour${h === 1 ? '' : 's'}. Best offer so far: ${fmtMoney(best.amount)} from ${buyer}${/[.!?]$/.test(buyer) ? '' : '.'}`,
     listingId: l.id,
     toast: true,
     notice: { topic: 'auction_ending', vars: { title: l.title, buyer, amount: best.amount } },
