@@ -315,7 +315,7 @@ describe('D11: a death or injury from a tank mate names the tank mate', () => {
 
   it('the healing note says who has been nipping her', () => {
     const { s, mango } = hurt();
-    expect(lastHurtBy(mango)).toEqual({ label: 'Rex the tiger barb', verb: 'nipping' });
+    expect(lastHurtBy(mango, s.clock.hour)).toEqual({ label: 'Rex the tiger barb', verb: 'nipping' });
     expect(creatureWellbeing(s, mango).notes).toContain('Healing from injuries — Rex the tiger barb has been nipping her.');
   });
 
@@ -326,6 +326,18 @@ describe('D11: a death or injury from a tank mate names the tank mate', () => {
     expect(mango.status).toBe('dead');
     expect(mango.deathCause).toBe('injuries from Rex the tiger barb');
     expect(s.log.some((e) => e.text === 'Mango has passed away from injuries — Rex the tiger barb kept nipping her. Keep them apart.')).toBe(true);
+  });
+
+  it('only a recent hurt names anyone (the review: never a tank mate from weeks ago), and a sting is “stung”', () => {
+    const { s, t, mango } = hurt();
+    mango.history = [{ hour: s.clock.hour - 24 * 20, kind: 'note', text: 'Hurt by Rex the tiger barb (fin nip).' }];
+    expect(lastHurtBy(mango, s.clock.hour)).toBeNull();
+    expect(creatureWellbeing(s, mango).notes).toContain('Healing from injuries — check for aggressive or nipping tank mates.');
+    mango.history.push({ hour: s.clock.hour - 3, kind: 'note', text: 'Hurt by Blossom the bubble-tip anemone (sting).' });
+    expect(lastHurtBy(mango, s.clock.hour)?.verb).toBe('stinging');
+    mango.stats.health = 0;
+    stepTankCreatures(s, t, 1, makeContext(s, 1));
+    expect(s.log.some((e) => e.text === 'Mango has passed away from injuries — Blossom the bubble-tip anemone stung her. Keep them apart.')).toBe(true);
   });
 });
 
