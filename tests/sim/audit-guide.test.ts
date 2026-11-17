@@ -18,8 +18,11 @@ import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { tutorialChain } from '@/data/quests';
 import { currentCoachStep, friendWait } from '@/ui/tutorial/guideText';
-import { finaleLines } from '@/ui/tutorial/TutorialCoach';
+import { finaleLines, finaleNext } from '@/ui/tutorial/TutorialCoach';
 import { guideAim, type GuideScreen } from '@/ui/tutorial/guideTargets';
+import { eventLink } from '@/ui/hud/eventLinks';
+import { navDots } from '@/ui/common/notify';
+import { DOCK_ITEMS } from '@/ui/hud/Dock';
 
 /** Press Next (or let the step complete) until the guide is on `id`. */
 function walkTo(g: GameState, id: string): void {
@@ -116,6 +119,28 @@ describe('A1: the guide names an animal that is still there', () => {
     const lines = finaleLines(g);
     expect(lines.some((l) => /^Ember is|companion|settled|personality|one of a kind/.test(l))).toBe(false); // (the tank keeps its name)
     expect(lines.length).toBeGreaterThan(0);
+  });
+});
+
+describe('A5, A10: the finale says where the quests and the guide’s reward are, in the layout’s words', () => {
+  it('Research › Quests and the $100 for "First steps"; Shows in the dock, or under More on a phone', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 9 });
+    walkTo(g, 'preview');
+    tutorialAdvance(g, 'opened_research');
+    expect(g.progress.tutorial.done).toBe(true);
+    expect(finaleNext(g, false)).toBe('Next: breeding, bigger tanks and a shop of your own. Club shows are open too — find Shows in the dock. Your first goals, and $100 for finishing the guide, are waiting in Research › Quests.');
+    expect(finaleNext(g, true)).toContain('find Shows under More.');
+    g.progress.quests.find((q) => q.id === 'tutorial')!.status = 'claimed';
+    expect(finaleNext(g, false)).toMatch(/Your first goals are waiting in Research › Quests\.$/);
+  });
+
+  it('a finished quest is a Research dot (More’s on a phone) and its toast leads to the claim', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 9 });
+    expect(navDots(g, DOCK_ITEMS).research).toBeUndefined();
+    walkTo(g, 'preview');
+    tutorialAdvance(g, 'opened_research');
+    expect(navDots(g, DOCK_ITEMS).research).toEqual({ level: 'new', label: '1 quest reward to claim', target: 'tab:quests' });
+    expect(eventLink({ kind: 'celebrate', text: 'Quest complete: Feeding routine — claim your reward!' })).toEqual({ panel: 'research', target: 'tab:quests', where: 'Claim it in Research › Quests.', label: 'Claim it' });
   });
 });
 

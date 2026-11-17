@@ -11,13 +11,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
-import { Compass, ChevronDown, ChevronUp, X, ArrowRight, Hand, Check, FastForward, Sparkles, FlaskConical, Play, Store } from 'lucide-react';
+import { Compass, ChevronDown, ChevronUp, X, ArrowRight, Hand, Check, FastForward, Sparkles, FlaskConical, Play, Store, ScrollText } from 'lucide-react';
 import type { GameSpeed, GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
 import { sfx } from '@/audio/sfx';
-import { type Objective } from '@/data/quests';
+import { TUTORIAL_QUEST_REWARD, type Objective } from '@/data/quests';
 import { currentTutorialStep } from '@/sim/facility';
 import { useShell } from '../common/shellStore';
 import { safe, SHORT_LANDSCAPE_QUERY, useIsMobile, useMedia } from '../common/safe';
@@ -327,7 +327,7 @@ export function TutorialCoach() {
   const spotRect = useSpotlightTarget(aimNow?.candidates ?? [], { scrollIntoView: true });
 
   if (touring) return null;
-  if (finale && game) return <GuideFinale game={game} onClose={() => setFinale(false)} />;
+  if (finale && game) return <GuideFinale game={game} mobile={mobile} onClose={() => setFinale(false)} />;
   if (!cur || !hints || !game) return null;
   // Slow feeders (seahorses) are taught target feeding: point at that tool instead of plain Feed.
   const target = cur.step.hintTarget === 'tool-feed' && /target-feed/i.test(cur.step.body) ? 'tool-target-feed' : cur.step.hintTarget;
@@ -462,7 +462,11 @@ export function TutorialCoach() {
                       variant="danger"
                       data-testid="tutorial-skip"
                       onClick={() => {
-                        safe('tutorialSkip', () => void useGame.getState().dispatch({ k: 'tutorialSkip' }), undefined); // lane:ui-shell (B-179): a throw discards the draft
+                        // lane:ui-shell (B-179): a throw discards the draft. Audit 2026-11-17 (A5): a skip used to end in
+                        // silence, with nothing saying where the goals went
+                        safe('tutorialSkip', () => void useGame.getState().dispatch({ k: 'tutorialSkip' }, (r) => {
+                          if (!r || r.ok) useUI.getState().toast('Guide skipped. Your goals are in Research › Quests, and Settings › Play & access has a tour of the game.', 'info');
+                        }), undefined);
                         setConfirmSkip(false);
                       }}
                     >
@@ -647,8 +651,18 @@ export function finaleLines(game: GameState): string[] {
   ].filter(Boolean) as string[];
 }
 
+/**
+ * What comes next, and where: audit 2026-11-17 (A5) — the quest board and the guide's own reward ("First steps") are
+ * in Research › Quests, which the finale never said; (A10) phones have no dock, Shows is under More there.
+ */
+export function finaleNext(game: GameState, mobile: boolean): string {
+  const owed = game.progress.quests.some((q) => q.id === 'tutorial' && q.status === 'complete');
+  const goals = owed ? `Your first goals, and $${TUTORIAL_QUEST_REWARD.money ?? 0} for finishing the guide, are waiting in Research › Quests.` : 'Your first goals are waiting in Research › Quests.';
+  return `Next: breeding, bigger tanks and a shop of your own. Club shows are open too — find Shows ${mobile ? 'under More' : 'in the dock'}. ${goals}`;
+}
+
 /** End of the guide: what the player has learnt (care, beauty, individuals, business) and what unlocks next. */
-function GuideFinale({ game, onClose }: { game: GameState; onClose: () => void }) {
+function GuideFinale({ game, mobile, onClose }: { game: GameState; mobile: boolean; onClose: () => void }) {
   // (no auto-close: the recap is the one place that says what unlocks next, and "Later" is right there)
   useEffect(() => {
     sfx('celebrate');
@@ -681,13 +695,18 @@ function GuideFinale({ game, onClose }: { game: GameState; onClose: () => void }
           </li>
         ))}
       </ul>
-      <p className="ag-coach__body">Next: breeding, bigger tanks and a shop of your own. Club shows are open too — find Shows in the dock. The quest board has your first goals.</p>{/* lane:w2-ui — shows unlock as the guide ends */}
+      <p className="ag-coach__body">{finaleNext(game, mobile)}</p>{/* lane:w2-ui — shows unlock as the guide ends */}
       <div className="ag-coach__foot">
         <span />
         <div className="ag-row ag-wrap" style={{ gap: 6, justifyContent: 'flex-end' }}>
           <Button size="sm" variant="ghost" onClick={() => { sfx('close'); onClose(); }}>Later</Button>
-          <Button size="sm" onClick={() => { openPanel('research'); onClose(); }}>
+          {/* A6: with a target openPanel always opens (the last step ends as Research opens: a bare openPanel closed it) */}
+          <Button size="sm" onClick={() => { openPanel('research', 'tab:unlocks'); onClose(); }}>
             <FlaskConical size={14} /> See what unlocks
+          </Button>
+          {/* A5 — the quest board and the guide's reward */}
+          <Button size="sm" data-testid="coach-quests" onClick={() => { openPanel('research', 'tab:quests'); onClose(); }}>
+            <ScrollText size={14} /> See your quests
           </Button>
           {/* chunk 19 (ADR-0055 decision 7, QOL-008) — the tour of everything else */}
           <Button size="sm" variant="primary" data-testid="guide-tour" onClick={() => { onClose(); startTour(); }}>
