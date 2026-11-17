@@ -221,6 +221,8 @@ function TankTile({ ctx, t }: { ctx: Ctx; t: Tank }) {
   else if (waiting) sub = places ? `Full · ${places.used}/${places.cap}` : 'Full · waits';
   else if (pairWaits) sub = 'Pair waits';
   else if (nextFor) sub = `Next: ${nextFor.name.replace(/ line$/, '')}`;
+  else if (t.cache?.status === 'danger') sub = 'Needs you'; // Audit 2026-11-17 (H25): which tank needs you, at a glance
+  else if (t.cache?.status === 'watch') sub = 'Look soon';
   else if (young) sub = `${young} young`;
   else sub = ctx.early && autoFeed ? `${gallons(t)} gal · Auto-feed on` : `${gallons(t)} gal`;
   const label = `${t.name}: ${WATER_CLASS_LABEL[t.waterClass] ?? t.waterClass}, ${gallons(t)} gal${lines.length ? `, ${lines.join(' and ')} ${lines.length === 1 ? 'line' : 'lines'}` : ''}. ${sub}`;
@@ -262,7 +264,7 @@ function WaterArea({ ctx }: { ctx: Ctx }) {
         <Machine ctx={ctx} id="fresh" name="Fresh reserve" sub={`${Math.floor(room.fresh)} / ${freshCap(room)} gal`}>
           <OpsBar value={room.fresh / freshCap(room)} label="Fresh reserve" />
         </Machine>
-        <Machine ctx={ctx} id="salt" name="Salt reserve" sub={!needed ? 'Not needed' : salt?.state === 'out' && salt.shortDay ? `Runs short Day ${salt.shortDay}` : `${Math.floor(room.salt)} / ${saltCap(room)} gal`} warn={salt?.state === 'out'}>
+        <Machine ctx={ctx} id="salt" name="Salt reserve" sub={!needed ? 'Not needed' : salt?.state === 'out' && salt.shortDay ? `Runs short about Day ${salt.shortDay}` : `${Math.floor(room.salt)} / ${saltCap(room)} gal`} warn={salt?.state === 'out'}>
           <OpsBar value={room.salt / saltCap(room)} kind="salt" label="Salt reserve" />
         </Machine>
       </div>

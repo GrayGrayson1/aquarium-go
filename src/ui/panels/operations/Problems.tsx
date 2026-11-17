@@ -151,13 +151,13 @@ function SaltCard({ g, issue }: { g: GameState; issue: IssueView }) {
     // chunk 6 (DES-013): the days whose morning water changes still go ahead ("Day 39 · 40"), then the short day
     const firstDay = dayOf(now) + (changeAt !== null && hourOfDay(now) < changeAt ? 0 : 1);
     if (p.shortDay !== undefined && p.shortDay > firstDay) rows.push({ t: dayRange(firstDay, p.shortDay - 1), text: 'Morning water changes go ahead as normal.' });
-    if (p.shortDay !== undefined) rows.push({ t: `Day ${p.shortDay}`, tone: 'danger', text: `The salt tanks’ water changes are skipped, not done weak, unless salt arrives (they use about ${Math.round(saltWaterPerDay(g))} gal a day).` }); // ADR-0032
+    if (p.shortDay !== undefined) rows.push({ t: `From about Day ${p.shortDay}`, tone: 'danger', text: `The salt tanks’ water changes are skipped, not done weak, unless salt arrives (they use about ${Math.round(saltWaterPerDay(g))} gal a day).` }); // ADR-0032; a forecast, so "about" (Audit 2026-11-17, H22)
   } else {
     const left = Math.round((p.stock - batchKg) * 10) / 10;
     if (left < 0.05) rows.push({ t: whenText(mix, now), tone: 'watch', text: `The batch uses the last ${Math.round(p.stock * 10) / 10} kg.` });
     else if (p.stock < 2 * batchKg - 1e-6) rows.push({ t: `Day ${dayOf(mix)}`, tone: 'watch', text: `${formatClock(mix)}: the batch uses ${batchKg.toFixed(1)} kg; the ${left} kg left won’t make another.` }); // DES-013
     else rows.push({ t: whenText(mix, now), tone: 'watch', text: `The batch uses ${batchKg.toFixed(1)} kg.` });
-    if (p.shortDay !== undefined) rows.push({ t: `Day ${p.shortDay}`, tone: 'watch', text: `${changeAt !== null ? `${formatClock(changeAt)}: the` : 'The'} salt tanks run short of salt water unless salt arrives.` }); // DES-013
+    if (p.shortDay !== undefined) rows.push({ t: `About Day ${p.shortDay}`, tone: 'watch', text: `${changeAt !== null ? `${formatClock(changeAt)}: the` : 'The'} salt tanks run short of salt water unless salt arrives.` }); // DES-013; "about" (H22)
   }
   const raise =
     p.why === 'no_manager' ? (

@@ -227,7 +227,7 @@ export function decidedLines(state: GameState): { lineId: string; name: string; 
 export function saltOutText(state: GameState, p: SupplyProblem): string {
   const m = stockManager(state); // the name only: no dry run (PERF-004)
   const name = m ? m.name.split(' ')[0] : 'Your stock manager';
-  const lasts = p.shortDay !== undefined ? ` Salt water lasts until Day ${p.shortDay}.` : '';
+  const lasts = p.shortDay !== undefined ? ` At this rate, salt water lasts until about Day ${p.shortDay}.` : ''; // a forecast (Audit 2026-11-17, H22)
   switch (p.why) {
     case 'no_manager':
       return `No one reorders salt mix. Buy it, or hire a stock manager.${lasts}`;

@@ -251,6 +251,7 @@ function systemTiles(g: GameState, snap: OpsSnapshot, tier: OpsTier, nav: OpsNav
   const dosers = tanks.filter((t) => doserOf(t)).length;
   const keeperFed = new Set((g.staff?.roster ?? []).filter((m) => m.role === 'aquarist').flatMap((m) => m.tankIds)).size;
   const fHeld = isHeld(g, 'feeders');
+  const feedersOn = tanks.filter((t) => t.equipment.some((e) => e.on && !e.failed && getEquipmentDef(e.defId)?.kind === 'autofeeder')).length; // Audit 2026-11-17 (H17)
   out.push({
     key: 'feeding',
     node: (
@@ -259,7 +260,7 @@ function systemTiles(g: GameState, snap: OpsSnapshot, tier: OpsTier, nav: OpsNav
         testId="ops-sys-feeding"
         icon={<Utensils size={17} aria-hidden />}
         name="Feeding"
-        status={fHeld ? <Status tone="watch" icon="held">Held</Status> : feeders + dosers ? <Status tone="good" icon="running">Running</Status> : <Status tone="neutral">By hand</Status>}
+        status={fHeld ? <Status tone="watch" icon="held">Held</Status> : feedersOn + dosers ? <Status tone="good" icon="running">Running</Status> : feeders ? <Status tone="watch">Paused</Status> : <Status tone="neutral">By hand</Status>}
         tone={fHeld ? 'watch' : null}
         lines={small ? [`${feeders} ${feeders === 1 ? 'feeder' : 'feeders'} · ${dosers} ${dosers === 1 ? 'doser' : 'dosers'}`] : [`${feeders} ${feeders === 1 ? 'Autofeeder' : 'Autofeeders'} · ${dosers} live-food ${dosers === 1 ? 'doser' : 'dosers'}`, `${keeperFed} ${keeperFed === 1 ? 'tank' : 'tanks'} fed by keepers on rounds`]}
         onOpen={tier.food ? () => nav.tab('feed') : undefined}

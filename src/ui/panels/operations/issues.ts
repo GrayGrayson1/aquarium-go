@@ -77,7 +77,7 @@ function saltOutReason(g: GameState, p: SupplyProblem): string {
     case 'orders_off':
       return `${name}’s orders are switched off, so nobody reorders salt mix.`;
     case 'cash':
-      return `${name} couldn’t reorder salt mix: there isn’t enough cash right now.${p.shortDay !== undefined ? ` Salt water lasts until Day ${p.shortDay}.` : ''}`;
+      return `${name} couldn’t reorder salt mix: there isn’t enough cash right now.${p.shortDay !== undefined ? ` At this rate, salt water lasts until about Day ${p.shortDay}.` : ''}`;
     default: {
       const mixing = (g.facility.water?.mix?.gal ?? 0) > 1e-6 ? ' Salt mixing stops after the batch in the tank.' : '';
       return `${name} couldn’t reorder salt mix — today’s ${money(f?.budget ?? g.staff?.stockBudget ?? 0)} stock budget is spent.${mixing}`;
@@ -235,7 +235,8 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
           tone: 'watch',
           badge: 'Look soon',
           title: 'Salt water runs short',
-          reason: `The salt tanks’ changes use ${Math.round(p.perDay)} gal of salt water a day, and the mixer makes up to ${Math.round(p.capacity ?? 0)}. The changes it can’t cover are skipped, not done weak.`,
+          // Audit 2026-11-17 (H22): a forecast from a dry run, so "at this rate"
+          reason: `The salt tanks’ changes use ${Math.round(p.perDay)} gal of salt water a day, and the mixer makes up to ${Math.round(p.capacity ?? 0)}. At this rate, the changes it can’t cover are skipped, not done weak.`,
           tab: 'water',
           action: more ? { id: 'reservoirs', label: 'Reservoirs in Build', short: 'Build' } : { id: 'water-tab', label: 'Water tab', short: 'Water' },
           problem: p,
