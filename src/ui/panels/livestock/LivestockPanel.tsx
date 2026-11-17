@@ -221,6 +221,12 @@ export function LivestockPanel() {
             <Button size="sm" variant="ghost" onClick={() => setPicked(new Set())}>
               <X size={14} /> Clear
             </Button>
+            {/* Audit 2026-11-17 (D2): a school, colony or brood moves in one go (one species, as List for sale asks) */}
+            {new Set(pickedList.map((c) => c.speciesId)).size === 1 && g.tankOrder.length > 1 && (
+              <Button size="sm" data-testid="move-picked" onClick={() => useShell.getState().set(pickedList.length === 1 ? { moveCreatureId: pickedList[0].id } : { moveCreatureIds: pickedList.map((c) => c.id) })}>
+                <ArrowRightLeft size={14} /> Move
+              </Button>
+            )}
             <Button size="sm" onClick={() => setConfirmSell(true)}>
               <HandCoins size={14} /> Quick sell
             </Button>

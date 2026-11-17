@@ -70,7 +70,7 @@ function canCalm(keyboard: boolean): boolean {
   const shell = useShell.getState();
   if (!usePrefs.getState().calmHud || ui.screen !== 'game' || ui.view !== 'tank') return false;
   if (ui.panel || ui.tool !== 'none' || ui.selectedCreatureId || ui.photoMode || ui.hudHidden || ui.partyMode) return false;
-  if (shell.popover || shell.tankCardOpen || shell.moveCreatureId || shell.photo) return false;
+  if (shell.popover || shell.tankCardOpen || shell.moveCreatureId || shell.moveCreatureIds || shell.photo) return false;
   if (document.querySelector('.ag-modal-backdrop, [data-pn-modal], .ag-tut-ring, .ag-welcome, .ag-spot__ring, .ag-tour, .ag-find-backdrop')) return false;
   // keyboard users keep the HUD while a control has visible focus (a mouse click leaves plain focus behind)
   const a = document.activeElement as HTMLElement | null;

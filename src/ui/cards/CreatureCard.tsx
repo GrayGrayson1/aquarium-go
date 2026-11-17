@@ -92,6 +92,7 @@ import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
 import { lifespanFacts } from '../common/lifespan'; // Audit 2026-11-17 (D20)
 import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isMemoryCard } from './conditionWords'; // Audit 2026-11-17 (D10, D12, D17)
 import { NoteFixButton } from './NoteFixButton'; // Audit 2026-11-17 (D16)
+import { MoveGroupButton } from './MoveGroupButton'; // Audit 2026-11-17 (D2)
 import { AutofeederVerdict, RealLifeTips, openSpeciesGuide } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
 import { Badge, Button, Chip, Meter, Section, StatusBadge, formatMoney, KV, Empty } from '../kit';
 import { setCameraMode } from '../hud/ToolRail';
@@ -598,6 +599,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
         )}
       </div>
       )}
+      {!gone && !readOnly && <MoveGroupButton c={c} game={game} /> /* Audit 2026-11-17 (D2) */}
 
       {/* lane:w2-ui — feed this animal from its card (on phones the card covers the Target feed prompt) */}
       {!readOnly && <FeedRow c={c} game={game} />}

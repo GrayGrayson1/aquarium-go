@@ -17,6 +17,7 @@ import { moveDecor, placeDecor, removeDecor } from '../aquascape';
 import { plantFrag, takeFrag } from '../aquascape/frags';
 import { moveCreature, notePhoto, noteInteraction, registerGlassTap, renameCreature, toggleFavorite } from '../life/actions';
 import { liftOutClutch, moveClutch, separateCreature, startBreeding } from '../life/breeding/actions';
+import { moveCreatures } from '../life/groupMove'; // Audit 2026-11-17 (D2)
 import { addCulture, addReservoir, setStockOrders, upgradePrep, waitForLine } from '../automation';
 import { holdAll, resumeAll, setHold } from '../automation/hold';
 import { assignTank, autoAssignAll, fireStaff, hireStaff, setStockBudget } from '../staff/roster';
@@ -192,6 +193,8 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
       return moveCreature(state, cmd.creature, cmd.to);
     case 'separateCreature':
       return separateCreature(state, cmd.creature, cmd.to);
+    case 'moveCreatures':
+      return moveCreatures(state, cmd.creatures, cmd.to);
     case 'moveClutch':
       return moveClutch(state, cmd.clutch, cmd.to);
     case 'liftOutClutch':

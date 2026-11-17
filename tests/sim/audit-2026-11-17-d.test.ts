@@ -9,6 +9,9 @@ import { createTank } from '@/sim/tanks';
 import { createCreature, addCreature, stepTankCreatures, creatureWellbeing } from '@/sim/life';
 import { makeContext } from '@/sim/context';
 import { lastHurtBy } from '@/sim/life/step';
+import { moveCreatures } from '@/sim/life/groupMove';
+import { applyCommand, validateCommand } from '@/sim/commands';
+import { staleOf } from '@/sim/commands/shared';
 import { simRng, mulberry32 } from '@/sim/rng';
 import { previewAddition, evaluateComposition, simpleMember, neutralContext } from '@/sim/compat';
 import { getSpecies, ALL_SPECIES } from '@/data/species';
@@ -430,5 +433,44 @@ describe('D16: the creature card’s notes link to where each problem is fixed',
     expect(fixForCreatureNote(c, 'Bob is struggling with the water (too warm).')?.link.label).toBe('Water care');
     expect(fixForCreatureNote(c, 'Very hungry — time to feed.')).toBeNull();
     expect(fixForCreatureNote({ tankId: null, speciesId: 'neon_tetra' }, 'Habitat: needs plants.')).toBeNull();
+  });
+});
+
+describe('D2: a school moves in one go', () => {
+  const school = () => {
+    const s = base();
+    const from = createTank(s, 'g20L', 'freshwater_tropical', { cycled: true });
+    const to = createTank(s, 'g29', 'freshwater_tropical', { cycled: true });
+    const neons = Array.from({ length: 8 }, (_, i) => addCreature(s, createCreature(s, mulberry32(100 + i), 'neon_tetra', { ageDays: 60, name: `Neon ${i}` }), from.id));
+    return { s, from, to, neons };
+  };
+
+  it('eight neon tetras move with one command, with one message, and the preview sees the whole school', () => {
+    const { s, from, to, neons } = school();
+    const ids = neons.map((c) => c.id);
+    const preview = previewAddition(s, to.id, { speciesId: 'neon_tetra', creatureIds: ids });
+    expect(texts(preview)).not.toMatch(/needs a group of at least six/);
+    const cmd = { k: 'moveCreatures', creatures: ids, to: to.id, from: ids.map(() => from.id) } as const;
+    expect(validateCommand(JSON.parse(JSON.stringify(cmd)))).toEqual(cmd);
+    const r = applyCommand(s, cmd);
+    expect(r.ok).toBe(true);
+    expect(r.message).toMatch(/^Moved 8 neon tetras to /);
+    expect(neons.every((c) => c.tankId === to.id)).toBe(true);
+  });
+
+  it('a group the water refuses moves no one', () => {
+    const { s, from, neons } = school();
+    const reef = createTank(s, 'g29', 'reef', { cycled: true });
+    const r = moveCreatures(s, neons.map((c) => c.id), reef.id);
+    expect(r.ok).toBe(false);
+    expect(neons.every((c) => c.tankId === from.id)).toBe(true);
+  });
+
+  it('in a shared shop, a group where one animal has moved since is stale (first one wins)', () => {
+    const { s, from, to, neons } = school();
+    neons[3].tankId = to.id;
+    expect(staleOf(s, { k: 'moveCreatures', creatures: neons.map((c) => c.id), to: to.id, from: neons.map(() => from.id) })).toEqual({ key: `c:${neons[3].id}`, noun: 'fish' });
+    expect(validateCommand({ k: 'moveCreatures', creatures: ['cr_1'], to: 't', from: ['', 'tank_1'] })).not.toBeNull();
+    expect(validateCommand({ k: 'moveCreatures', creatures: ['cr_1'], to: 't', from: ['__proto__'] })).toBeNull();
   });
 });

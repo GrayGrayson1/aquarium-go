@@ -62,6 +62,16 @@ export function staleOf(state: GameState, cmd: Command): Stale | null {
     case 'moveCreature':
     case 'separateCreature':
       return cmd.from === undefined ? null : fish(cmd.creature, (c) => !gone(c.status) && (c.tankId ?? '') === cmd.from);
+    case 'moveCreatures': {
+      // Audit 2026-11-17 (D2): each animal as the sender saw it, as one animal's move checks it
+      const from = cmd.from;
+      if (from === undefined) return null;
+      for (let i = 0; i < cmd.creatures.length; i++) {
+        const s = fish(cmd.creatures[i], (c) => !gone(c.status) && (c.tankId ?? '') === (from[i] ?? null));
+        if (s) return s;
+      }
+      return null;
+    }
     case 'moveClutch':
     case 'liftOutClutch': {
       if (cmd.from === undefined) return null;
@@ -143,6 +153,8 @@ function touchesOf(state: GameState, cmd: Command, res: CommandResult): [string,
     case 'moveCreature':
     case 'separateCreature':
       return [[`c:${cmd.creature}`, 'moved']];
+    case 'moveCreatures':
+      return cmd.creatures.map((id) => [`c:${id}`, 'moved']);
     case 'moveClutch':
       return [[`cl:${cmd.clutch}`, 'moved']];
     case 'liftOutClutch':

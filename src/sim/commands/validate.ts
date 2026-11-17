@@ -12,6 +12,7 @@ import { ASK_NOTE_MAX, POOL_AMOUNT_MAX } from '../pool';
 type Field =
   | { t: 'id' }
   | { t: 'from' }
+  | { t: 'froms'; max: number }
   | { t: 'text'; max: number }
   | { t: 'photo' }
   | { t: 'color' }
@@ -101,6 +102,7 @@ const SCHEMA: Schema = {
   notePhoto: { creature: id },
   moveCreature: { creature: id, to: id, from: opt(from) },
   separateCreature: { creature: id, to: id, from: opt(from) },
+  moveCreatures: { creatures: { t: 'ids', max: MAX_LIST }, to: id, from: opt({ t: 'froms', max: MAX_LIST }) },
   moveClutch: { clutch: id, to: id, from: opt(from) },
   liftOutClutch: { clutch: id, from: opt(from) },
   startBreeding: { a: id, b: id, tank: opt(id) },
@@ -209,6 +211,8 @@ function check(f: Field, v: unknown): unknown {
       return isSafeId(v) ? v : BAD;
     case 'from':
       return v === '' || isSafeId(v) ? v : BAD;
+    case 'froms':
+      return Array.isArray(v) && v.length <= f.max && v.every((x) => x === '' || isSafeId(x)) ? [...v] : BAD;
     case 'text':
       return typeof v === 'string' && v.length <= f.max && !HIDDEN.test(v) ? v : BAD;
     case 'photo':
