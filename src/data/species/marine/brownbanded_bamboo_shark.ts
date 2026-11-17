@@ -147,7 +147,7 @@ export const brownbandedBambooShark: SpeciesDefinition = {
     summary: 'A metre-long bottom shark sold as a striking black-and-white banded pup; the bands fade to plain brown as it grows.',
     nativeHabitat: 'Inshore reefs and tide pools from India to Japan and northern Australia, where it lies under ledges by day and digs for crabs and worms at night.',
     socialStructure: 'Lives alone; public aquariums keep groups in huge tanks.',
-    tankNeeds: 'Only the 1,000-gallon tank: an adult needs four feet front to back to turn, and even that is the limit of what any home tank can give it. Fine sand, solid rock set on the glass, a tight lid and big filtration. Never copper.',
+    tankNeeds: 'Only the 1,000-gallon tank: an adult needs about 42 inches (3½ feet) front to back to turn, and even that is the limit of what any home tank can give it. Fine sand, solid rock set on the glass, a tight lid and big filtration. Never copper.',
     compatibilityNotes: 'Eats crabs, shrimp, snails, clams, starfish and small fish. Good with tangs and other large, peaceful fish; never triggerfish or puffers, which nip its fins.',
     breedingOverview: 'Lays pairs of egg cases; only a third to a half develop. Each hatches after about four months as a 15 cm banded pup. A female without a male lays empty cases.',
     conservationNote: 'Near Threatened (IUCN 2023): fished for food and hurt by destructive reef fishing.',

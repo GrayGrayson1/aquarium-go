@@ -264,7 +264,8 @@ function CareFacts({ sp, tankGallons, unit, c, nowHour }: { sp: SpeciesDefinitio
       </KV>
       <KV label={<><Users size={13} aria-hidden /> Social</>} hint={sp.social.note}>
         {sentenceCase(sp.social.kind)}
-        {sp.social.minGroup > 1 ? ` · groups of ${sp.social.idealGroup}+` : ''}
+        {/* Audit 2026-11-17 (J9): the ideal read as a minimum ("groups of 12+" above "Keep at least six") */}
+        {sp.social.minGroup > 1 ? (sp.social.idealGroup > sp.social.minGroup ? ` · at least ${sp.social.minGroup}, ideally ${sp.social.idealGroup}+` : ` · at least ${sp.social.minGroup}`) : ''}
       </KV>
       <KV label={<><Box size={13} aria-hidden /> Tank</>} hint={tankGallons && tankGallons < sp.recommendedMinTankGallons ? `This tank is ${tankGallons} gal — smaller than recommended.` : undefined}>
         {sp.recommendedMinTankGallons}+ gal

@@ -145,7 +145,7 @@ export function socialWord(sp: SpeciesDefinition): string {
     case 'harem':
       return 'Harem';
     case 'group':
-      return `Groups of ${sp.social.idealGroup}+`;
+      return `Groups of ${sp.social.minGroup}+`; // Audit 2026-11-17 (J9): the minimum, as shoals and schools say (the ideal read as one)
     case 'shoal':
       return `Shoal of ${sp.social.minGroup}+`;
     case 'school':

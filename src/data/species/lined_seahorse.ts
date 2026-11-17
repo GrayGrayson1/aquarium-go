@@ -171,7 +171,7 @@ export const linedSeahorse: SpeciesDefinition = {
     summary: 'An upright, slow-swimming fish that anchors itself with a grasping tail — and whose males become pregnant.',
     nativeHabitat: 'Seagrass beds, sponge gardens, mangrove roots and rubble in the western Atlantic, from the shallows to about 30 m.',
     socialStructure: 'Peaceful and social. Mated pairs meet every morning for a greeting dance that renews their bond.',
-    tankNeeds: 'A tall, calm marine tank (30 gallons for a pair) with many hitching posts, gentle flow, cool-tropical water around 22–25 °C and meticulous water quality. Target-feed frozen mysis two or three times a day.',
+    tankNeeds: 'A tall, calm marine tank (29 gallons for a pair) with many hitching posts, gentle flow, cool-tropical water around 22–25 °C and meticulous water quality. Target-feed frozen mysis two or three times a day.',
     compatibilityNotes: 'Only very peaceful, slow tank mates such as small gobies, cardinalfish, dragonets and clean-up crew. Fast or pushy feeders starve seahorses; anemones, fire coral and strongly stinging corals can burn their skin; giant clams can clamp their tails.',
     breedingOverview: 'Courtship dances end with the female depositing her eggs in the male’s brood pouch. About three weeks later he gives birth to hundreds of tiny seahorses.',
     conservationNote: 'Vulnerable on the IUCN Red List and trade-regulated under CITES Appendix II. Captive-bred seahorses are hardier, already eat frozen food and leave wild populations alone.',

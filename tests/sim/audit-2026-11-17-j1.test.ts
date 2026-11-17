@@ -39,6 +39,7 @@ import { useGame } from '@/state/game';
 import { useShell } from '@/ui/common/shellStore';
 import { ARTICLES } from '@/ui/panels/encyclopedia/science';
 import { getWaterReport } from '@/sim/water';
+import { socialWord } from '@/ui/panels/common/Profile';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -243,5 +244,32 @@ describe('J5: the water and genes words point to the pages that explain them', (
     t.water.algae = 40;
     const light = getWaterReport(g, t.id).params.find((p) => p.key === 'light');
     expect(light?.reason ?? '').toMatch(/long days of light feed algae/);
+  });
+});
+
+describe('J9: species pages give advice their own numbers and diets agree with', () => {
+  it('temperatures, tank sizes and group sizes in the prose match the data', () => {
+    const ax = getSpecies('axolotl');
+    expect(ax.encyclopedia.tankNeeds).toMatch(new RegExp(`never above about ${ax.tempC.max} °C`));
+    const sh = getSpecies('lined_seahorse');
+    expect(sh.encyclopedia.tankNeeds).toMatch(new RegExp(`\\(${sh.recommendedMinTankGallons} gallons for a pair\\)`));
+    const shark = getSpecies('brownbanded_bamboo_shark');
+    expect(shark.encyclopedia.tankNeeds).toMatch(new RegExp(`about ${shark.recommendedFootprint!.minWidthIn} inches`));
+    expect(getSpecies('green_chromis').social.note).toMatch(/Keep at least three/);
+    expect(getSpecies('cardinal_tetra').social.note).toMatch(/ideally twelve or more/);
+    // the shop chip: the minimum, as the notes say ("Keep at least three"), not the ideal
+    expect(socialWord(getSpecies('fancy_guppy'))).toBe(`Groups of ${getSpecies('fancy_guppy').social.minGroup}+`);
+  });
+
+  it('a page never tells the player to feed what the animal won’t eat in the game', () => {
+    const arch = getSpecies('banded_archerfish');
+    expect(arch.foods).not.toContain('insect');
+    expect(`${arch.encyclopedia.tankNeeds} ${arch.encyclopedia.keeperTip}`).not.toMatch(/cricket|insects and pellets/);
+    const grouper = getSpecies('miniatus_grouper');
+    expect(grouper.foods).not.toContain('seafood');
+    expect(`${grouper.encyclopedia.feedingNote} ${grouper.encyclopedia.keeperTip}`).not.toMatch(/seafood/);
+    expect(getSpecies('flame_hawkfish').encyclopedia.keeperTip).not.toMatch(/seafood/);
+    expect(getSpecies('dwarf_gourami').encyclopedia.feedingNote).not.toMatch(/floating pellets/);
+    expect(getSpecies('figure_eight_puffer').encyclopedia.funFact).toMatch(/Its old name, biocellatus/);
   });
 });

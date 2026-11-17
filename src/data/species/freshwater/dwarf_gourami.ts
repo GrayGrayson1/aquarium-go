@@ -159,7 +159,7 @@ export const dwarfGourami: SpeciesDefinition = {
     conservationNote: 'Least Concern (IUCN 2010). All trade fish are farm-bred.',
     funFact: 'In old Calcutta they were sold alive in bottles of water — an air-breather can live where other fish can’t.',
     inGameBehavior: 'Drifts slowly near the surface, touching plants and fish with its feelers and gulping air; a male guards the patch around his nest.',
-    feedingNote: 'A slow surface feeder: small flake or floating pellets once or twice a day, with frozen bloodworm, daphnia or brine shrimp a few times a week. An autofeeder with flake suits it.',
+    feedingNote: 'A slow surface feeder: small flakes or micro pellets once or twice a day, with frozen bloodworm, daphnia or brine shrimp a few times a week. An autofeeder with flake suits it.',
     keeperTip: 'Quarantine new dwarf gouramis for a few weeks or buy locally bred ones — carriers of the iridovirus can look perfectly healthy.',
   },
   sourceReferences: [

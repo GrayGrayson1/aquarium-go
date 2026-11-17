@@ -160,7 +160,7 @@ export const figureEightPuffer: SpeciesDefinition = {
     compatibilityNotes: 'Not a community fish. It eats snails and shrimp, nips fins (especially sailfin mollies and other long-finned fish), and competes hard at feeding. A species tank is the safe choice.',
     breedingOverview: 'Not bred in captivity. It is thought to lay eggs on a hard surface that the male guards, but nobody has a reliable method, so breeding is not part of the game.',
     conservationNote: 'Data Deficient: nobody knows how wild populations are faring, and every trade fish is wild-caught. Choose settled, feeding fish, keep them for life, and never release one.',
-    funFact: 'Its “beak” is four fused teeth that never stop growing. Crunching snail shells keeps them trimmed. The name biocellatus means “two eyespots”, after the dark rings on each side.',
+    funFact: 'Its “beak” is four fused teeth that never stop growing. Crunching snail shells keeps them trimmed. Its old name, biocellatus, means “two eyespots”, after the dark rings on each side.',
     inGameBehavior: 'Hovers and scans with swivelling eyes, stalks snails, begs at the glass, and follows your finger along the front of the tank.',
     feedingNote: 'A greedy hunter of meaty food: live snails to wear down its beak, plus thawed bloodworms, mysis, brine shrimp, daphnia and chopped earthworms. It won’t take flakes or pellets, so an autofeeder can’t feed it. Feed small meals daily.',
     keeperTip: 'Puffers beg at the glass whenever you walk past — don’t be fooled. Overfed puffers grow fat and foul the water; a gently rounded belly after a meal is enough.',

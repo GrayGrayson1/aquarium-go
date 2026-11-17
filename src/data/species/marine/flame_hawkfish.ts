@@ -141,7 +141,7 @@ export const flameHawkfish: SpeciesDefinition = {
     funFact: 'Like all hawkfish it has no swim bladder — so it perches rather than hovers.',
     inGameBehavior: 'Sits propped on a rock tip turning its eyes, then swoops down on food and back up to its perch.',
     feedingNote: 'A small predator: thawed mysis and brine shrimp and small meaty pellets once or twice a day. An autofeeder with pellets suits it; vitamin-enriched frozen food keeps it red.',
-    keeperTip: 'Feed it varied, vitamin-enriched seafood — on a plain diet its red fades to orange.',
+    keeperTip: 'Feed it varied, vitamin-enriched frozen mysis and brine shrimp — on a plain diet its red fades to orange.',
   },
   sourceReferences: [
     { id: 'fishbase-neocirrhites-armatus', title: 'FishBase — Neocirrhites armatus (Flame hawkfish)', url: 'https://www.fishbase.se/summary/Neocirrhitus-armatus.html', tier: 1, facts: ['9 cm TL', 'depth 1–10 m', 'lives in branching corals', 'small crustaceans', 'fades in captivity', 'IUCN Least Concern (2015)'] },

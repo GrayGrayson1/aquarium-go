@@ -156,7 +156,7 @@ export const axolotl: SpeciesDefinition = {
     summary: 'A salamander that keeps its larval gills and fins for life (neoteny) and stays fully aquatic.',
     nativeHabitat: 'Cool, high-altitude lake and canal system of Xochimilco near Mexico City.',
     socialStructure: 'Solitary. Adults tolerate one another if well fed and similar in size; juveniles nip siblings.',
-    tankNeeds: 'Cool water (about 15–18 °C, never above about 22 °C), very gentle flow, fine sand or a bare bottom, dim light, hides and a calm surface. Heavy eaters — strong biological filtration and frequent water changes.',
+    tankNeeds: 'Cool water (about 15–18 °C, never above about 21 °C), very gentle flow, fine sand or a bare bottom, dim light, hides and a calm surface. Heavy eaters — strong biological filtration and frequent water changes.',
     compatibilityNotes: 'Best kept alone or with similar-sized axolotls. Small fish and shrimp become food (and can choke it); many fish — goldfish especially — nip the delicate gills. Tropical fish need water far too warm for an axolotl.',
     breedingOverview: 'A courtship "dance", then the male leaves spermatophores for the female to pick up. She lays a few hundred eggs singly on plants; they hatch in about two to three weeks. Eggs and larvae need their own nursery and must be sorted by size.',
     conservationNote: 'Critically Endangered in the wild, surviving only in the remnant canals of Xochimilco. Captive pets are genetically distinct and not a substitute for habitat conservation — never release them.',

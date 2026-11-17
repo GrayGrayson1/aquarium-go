@@ -44,7 +44,7 @@ export const cardinalTetra: SpeciesDefinition = {
   aggression: 0.02,
   finNipper: 0.05,
   hasLongFins: false,
-  social: { kind: 'school', minGroup: 6, idealGroup: 12, note: 'A schooling fish — wild schools number in the thousands. Keep at least six, ideally ten or more.' },
+  social: { kind: 'school', minGroup: 6, idealGroup: 12, note: 'A schooling fish — wild schools number in the thousands. Keep at least six, ideally twelve or more.' },
   sameSpeciesRule: { maleMale: 'ok', femaleFemale: 'ok', mixed: 'ok', juvenile: 'ok' },
 
   predatorTags: ['fry', 'eggs', 'shrimp_fry', 'copepod'],
