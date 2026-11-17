@@ -236,13 +236,21 @@ describe('D6: a rule about water or temperature never becomes an attack', () => 
     expect(ray.incidents.some((i) => /alkaline/.test(i.text ?? ''))).toBe(false);
   });
 
-  it('goldfish with an arowana or an oscar: the eating has its own words, the water its own', () => {
-    for (const [pred, words] of [['silver_arowana', /An arowana swallows goldfish|Medium fish fit/], ['oscar', /An oscar eats goldfish/]] as const) {
-      const ev = pair(pred, 'fancy_goldfish');
-      const eat = ev.incidents.find((i) => i.kind === 'predation' && i.actorSpeciesId === pred && i.targetSpeciesId === 'fancy_goldfish');
-      expect(eat, pred).toBeDefined();
-      expect(eat!.text, pred).toMatch(words);
-      expect(ev.report.reasons.find((r) => r.category === 'predation')?.text, pred).not.toMatch(/cool-water/);
+  it('goldfish with an arowana or an oscar: what happens has its own words, the water its own', () => {
+    // the review: the words must match the incident the engine rolls (an attack is never told as eating)
+    const cases = [
+      ['silver_arowana', 'fancy_goldfish', 'predation', /swallows goldfish|Medium fish fit/],
+      ['silver_arowana', 'comet_goldfish', 'aggression', /attacks comets too big for it to swallow/],
+      ['oscar', 'fancy_goldfish', 'predation', /bullies and bites goldfish/],
+      ['oscar', 'comet_goldfish', 'aggression', /bullies and bites goldfish/],
+    ] as const;
+    for (const [pred, gf, kind, words] of cases) {
+      const ev = pair(pred, gf);
+      const hit = ev.incidents.find((i) => !i.youngOnly && i.actorSpeciesId === pred && i.targetSpeciesId === gf);
+      expect(hit?.kind, `${pred} ${gf}`).toBe(kind);
+      expect(hit!.text, `${pred} ${gf}`).toMatch(words);
+      // a kill is only told as eating when it can happen; an attack never says "eats"
+      if (!hit!.lethal) expect(hit!.text, `${pred} ${gf}`).not.toMatch(/\beats?\b/);
       expect(ev.report.reasons.some((r) => r.category === 'temperature' && /Goldfish are cool-water fish/.test(r.text)), pred).toBe(true);
     }
   });
