@@ -468,11 +468,14 @@ async function leave(o: { closing?: SharedClosing }): Promise<void> {
  * B-230 (audit I1): the closing card's Try again, for a shop that couldn't be reached: open it again from where the
  * player is now (their own aquarium, or the title screen when they came from there or it couldn't load).
  */
-export function tryAgainShared(): void {
+export async function tryAgainShared(): Promise<void> {
   const { club, shopName } = useShared.getState();
   if (!club) return;
+  // the review: the way back to your own aquarium may still be loading; the new visit saves that aquarium first
+  if (leaving) await leaving.catch(() => {});
+  if (useShared.getState().club?.id !== club.id || !useShared.getState().closing) return; // dismissed meanwhile
   patchShared({ ...INITIAL_VISIT });
-  void openSharedShop(club, { from: useUI.getState().screen === 'title' ? 'title' : 'game', ...(shopName ? { shopName } : {}) });
+  await openSharedShop(club, { from: useUI.getState().screen === 'title' ? 'title' : 'game', ...(shopName ? { shopName } : {}) });
 }
 
 /** Your own aquarium again, as it was when you left it (or the title screen). */

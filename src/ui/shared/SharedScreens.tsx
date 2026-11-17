@@ -188,7 +188,7 @@ export function SharedClosingCard() {
               </Button>
             )}
             {!closing.noRetry && (
-              <Button variant="primary" onClick={tryAgainShared} data-testid="shared-closing-retry">
+              <Button variant="primary" onClick={() => void tryAgainShared()} data-testid="shared-closing-retry">
                 {W.tryAgain}
               </Button>
             )}
