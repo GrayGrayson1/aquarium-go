@@ -4,6 +4,7 @@
  */
 import type { GameState } from '@/types';
 import { findSpecies } from '@/data/species';
+import { foodTagNames, joinFoodNames } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3)
 import { moduleFor } from './registry';
 import type { StatusOut } from './types';
 import { incidentRisks } from '@/sim/compat';
@@ -190,7 +191,7 @@ export function clutchStatus(state: GameState, clutchId: string): ClutchStatus |
     const ph = currentPhase(cl, mod);
     const last = mod.plan.phases[mod.plan.phases.length - 1] === ph;
     detail = last ? `Juveniles in ${approxDuration(remaining)}` : `Next stage in ${approxDuration(remaining)}`;
-    if (ph && ph.foods.length && foodRecency(tank, ph.foods, hour, 10, 14) < 0.5 && (cl.fed ?? 1) < 0.6) warnings.push(`Hungry — offer ${ph.foods.slice(0, 2).map((f) => f.replace(/_/g, ' ')).join(' or ')}`);
+    if (ph && ph.foods.length && foodRecency(tank, ph.foods, hour, 10, 14) < 0.5 && (cl.fed ?? 1) < 0.6) warnings.push(`Hungry — offer ${joinFoodNames(foodTagNames(ph.foods, { max: 2, shelfOnly: true })) || 'tiny live foods'}`); // Audit 2026-11-17 (J3)
   }
   // audit E1/E2/E12: who actually eats them here (the sim's own rule: a cichlid pair spares its brood, a parent moved
   // into the nursery doesn't), not the tank's Nursery label or a head count of tank mates

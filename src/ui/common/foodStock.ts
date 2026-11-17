@@ -87,7 +87,7 @@ export function youngFoodNeed(g: GameState, tankId: string): YoungFoodNeed | nul
     .map(([id]) => id);
   // chunk 17: only a food the shop sells now
   const restock = FOODS.filter((f) => eatsIt(f.tags) && isFoodAvailable(g, f)).sort((a, b) => a.price - b.price)[0];
-  const words = foodTagNames([...tags], { max: 2 }); // Audit 2026-11-17 C18 (B-224): shelf words, not raw tags
+  const words = foodTagNames([...tags], { max: 2, shelfOnly: true }); // Audit 2026-11-17 C18 (B-224): shelf words, not raw tags; J3: not "algae film"
   return {
     label: label || 'young',
     tags: [...tags],

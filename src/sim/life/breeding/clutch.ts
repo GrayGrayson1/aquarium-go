@@ -18,6 +18,7 @@ import { findSpecies } from '@/data/species';
 import { createCreature, addCreature, sizeAtAge, assignPrismatic, isPrismatic, prismaticChance, oneInLabel, recordFinds, strainTier } from '@/sim/life';
 import type { MorphStrain } from '@/types';
 import { TIER_WORD } from '@/data/rarity';
+import { foodTagNames, joinFoodNames } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3)
 import { inheritGenome, resolveMorph, resolvePhenotype, rollGenome } from '@/sim/life/genetics';
 import { addWaste, consumeFood } from '@/sim/water';
 import { addMastery, addReputation, bumpCounter } from '@/sim/facility';
@@ -555,8 +556,8 @@ function warnings(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinitio
   }
   if (hz.starvation > 0.004 && (cl.fed ?? 1) < 0.4 && flag(cl, `food_${cl.stage}`)) {
     const ph = currentPhase(cl, mod);
-    const foods = (ph?.foods ?? []).slice(0, 2).map((f) => f.replace(/_/g, ' '));
-    say(state, ctx, { kind: 'warning', text: `${who} ${label} are hungry — offer ${foods.length ? foods.join(' or ') : 'tiny live foods'} several times a day.`, tankId: cl.tankId, toast: toastWorthy(state, sp, 'hungry', 2) });
+    const foods = foodTagNames(ph?.foods ?? [], { max: 2, shelfOnly: true }); // Audit 2026-11-17 (J3): shop words; algae film isn't sold
+    say(state, ctx, { kind: 'warning', text: `${who} ${label} are hungry — offer ${foods.length ? joinFoodNames(foods) : 'tiny live foods'} several times a day.`, tankId: cl.tankId, toast: toastWorthy(state, sp, 'hungry', 2) });
   }
   if (hz.crowding > 0.002 && flag(cl, 'crowd')) {
     const text = mod.plan.cannibalPerGallon

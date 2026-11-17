@@ -21,6 +21,11 @@ import { simRng } from '@/sim/rng';
 import { createCreature, addCreature } from '@/sim/life';
 import { devOpenMarket, devStepEconomy, createListing, previewListing, forceBuyerVisit, counterBid } from '@/sim/economy';
 import { creatureShowReasons } from '@/sim/shows/eligibility';
+import { readinessHint } from '@/sim/life/breeding/check';
+import { youngFoodWords } from '@/sim/staff/work';
+import { handFoodPhrase, FOOD_TAG_WORDS } from '@/sim/care/autofeed';
+import { illnessName } from '@/sim/life/illness';
+import { FOOD_TAG_NAMES } from '@/data/catalog/foods';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -133,5 +138,29 @@ describe('J2: a time read outside the game is real time; a game span beside a re
     const c = Object.values(g.creatures)[0];
     c.acquiredHour = g.clock.hour - 3;
     expect(creatureShowReasons(g, c).join('\n')).toMatch(/Still settling in \(arrived 3 game hours ago\)/);
+  });
+});
+
+describe('J3: food advice names foods the shop sells, in one table’s words', () => {
+  it('conditioning: “live snails”, not “snail live”, joined as a list', () => {
+    const g = base();
+    const c = { ...Object.values(g.creatures)[0], tankId: undefined } as unknown as Parameters<typeof readinessHint>[1];
+    expect(readinessHint(g, c, getSpecies('pea_puffer'), g.clock.hour)).toBe('Condition them with bloodworms, live snails or brine shrimp for a day or two.');
+    const v = { next: { notReady: { tank: { name: 'Breed Tank', water: { tempC: 26 } }, drag: 'conditioning', who: { name: 'Pea' } } }, sp: getSpecies('pea_puffer') } as unknown as LineView;
+    expect(notReadyText(v)).toBe('they need rich food (bloodworms, live snails or brine shrimp) to get into condition');
+  });
+
+  it('the keeper’s young-food words and the hand-food examples come from the same table as the shelf', () => {
+    expect(FOOD_TAG_WORDS).toBe(FOOD_TAG_NAMES);
+    expect(youngFoodWords(['baby_brine', 'infusoria'])).toBe('live baby brine shrimp or infusoria');
+    expect(youngFoodWords(['biofilm', 'algae_wafer', 'vegetable'])).toBe('algae wafers or blanched vegetables');
+    expect(handFoodPhrase(getSpecies('lined_seahorse'))).toMatch(/mysis shrimp/);
+  });
+
+  it('an illness reads by the name the creature card gives it', () => {
+    expect(illnessName('stress_coloration', getSpecies('betta'))).toBe('stress colouring');
+    expect(illnessName('ich', getSpecies('ocellaris_clownfish'))).toBe('marine white spot');
+    expect(illnessName('swim_bladder', getSpecies('betta'))).toBe('swim-bladder trouble');
+    expect(illnessName('mystery_bug', undefined)).toBe('mystery bug');
   });
 });

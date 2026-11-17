@@ -13,6 +13,7 @@ import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
 import { convertTempText } from '@/ui/common/format'; // Audit 2026-11-17 (J1)
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
+import { foodTagNames, joinFoodNames } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3)
 import { fmtTemp, spPlural } from '@/sim/life/breeding/common';
 import { morphDisplayName } from '@/sim/life/genetics';
 import {
@@ -147,8 +148,8 @@ export function notReadyText(v: LineView): string | null {
     case 'comfort':
       return `${n.who.name} isn’t settled in ${t}`;
     case 'conditioning': {
-      const foods = (cond.needsConditioningFood ?? []).map((f) => f.replace(/_/g, ' '));
-      return `they need rich food (${foods.length > 1 ? `${foods.slice(0, -1).join(', ')} or ${foods[foods.length - 1]}` : foods[0] ?? 'live food'}) to get into condition`;
+      const foods = foodTagNames(cond.needsConditioningFood ?? [], { shelfOnly: true }); // Audit 2026-11-17 (J3): shop words
+      return `they need rich food (${joinFoodNames(foods) || 'live food'}) to get into condition`;
     }
   }
   return null;

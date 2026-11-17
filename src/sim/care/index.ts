@@ -25,7 +25,7 @@ import { aOrAn } from '../economy/util'; // lane:w2-ui ("an 800-gallon tank")
 import { photoperiodTooLong } from '../time';
 import { MAX_PER_KIND, KIND_PLURAL, idealBand, defaultSettingFor, fightAdvice } from './tuning'; // lane:fit — shared with the fit verdicts
 import { installedFit, oneOnlyText, type FitVerdict } from './fit'; // lane:fit (Audit 2026-11-17 C17: oneOnlyText)
-import { FOOD_TAG_WORDS, groupEaters, whoPhrase } from './autofeed'; // lane:fit (lane:qa-r3: groupEaters, whoPhrase)
+import { groupEaters, whoPhrase } from './autofeed'; // lane:fit (lane:qa-r3: groupEaters, whoPhrase); Audit 2026-11-17 (J3): FOOD_TAG_WORDS → foodTagNames
 import { noteFoodSpend } from '../production/costs'; // lane:production
 import { noteLiveFoodUsed } from '../automation/reserve'; // lane:automation (chunk 5)
 import * as dmath from '../dmath';
@@ -148,7 +148,7 @@ export function feedTank(
     const inh = residents;
     const sp = inh[0].species;
     const many = inh.filter((i) => i.species.id === sp.id).length > 1;
-    const words = [...new Set(sp.foods.map((t) => FOOD_TAG_WORDS[t]).filter((w): w is string => !!w))].slice(0, 3);
+    const words = foodTagNames(sp.foods, { max: 3, shelfOnly: true }); // Audit 2026-11-17 (J3): the shelf's words, one table
     parts.push(`Nothing in this tank eats it — uneaten ${food.name.toLowerCase()} will rot into ammonia.${words.length ? ` ${cap(many ? pluralName(sp) : `your ${sp.commonName.toLowerCase()}`)} ${many ? 'eat' : 'eats'} ${words.slice(0, -1).join(', ')}${words.length > 1 ? ' and ' : ''}${words[words.length - 1]}.` : ''}`);
   } else if (
     demand > 0 &&

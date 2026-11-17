@@ -7,6 +7,8 @@ import { findSpecies } from '@/data/species';
 import { fitsEnvironment } from '@/sim/compat/salinity';
 import { moduleFor } from './registry';
 import { withArticle } from '../../economy/util'; // lane:w2-ui
+import { foodTagNames, joinFoodNames } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3)
+import { illnessName } from '../illness'; // Audit 2026-11-17 (J3)
 import type { BreedingModule, CheckCtx } from './types';
 import {
   BUSY_STAGES,
@@ -59,7 +61,9 @@ const BUSY_TEXT: Record<string, string> = {
 
 function conditioningHint(sp: SpeciesDefinition): string {
   const tags = sp.breeding.conditions.needsConditioningFood;
-  if (tags?.length) return `Condition them with ${tags.slice(0, 3).map((t) => t.replace(/_/g, ' ')).join(', ')} for a day or two.`;
+  // Audit 2026-11-17 (J3): shop words ("live snails"), not raw tags ("snail live")
+  const names = foodTagNames(tags ?? [], { max: 3, shelfOnly: true });
+  if (names.length) return `Condition them with ${joinFoodNames(names)} for a day or two.`;
   return 'Keep them healthy, well fed and calm — condition builds over a few hours.';
 }
 
@@ -183,7 +187,7 @@ export function evaluatePair(state: GameState, aId: string, bId: string, forStar
   }
   for (const c of [a, b]) {
     if (c.stats.health < 50) hard(`${c.name} needs to recover first (health ${Math.round(c.stats.health)}%).`, 'Sort out water quality and feeding, and let them recover.');
-    else if (c.illness) hard(`${c.name} is ill (${c.illness.kind.replace(/_/g, ' ')}).`, 'Treat the illness before breeding.');
+    else if (c.illness) hard(`${c.name} is ill (${illnessName(c.illness.kind, sp)}).`, 'Treat the illness before breeding.'); // Audit 2026-11-17 (J3): the card's name
     if (c.stats.stress > 70) soft(`${c.name} is too stressed to breed.`, 'Reduce stress: hides, calm tankmates, stable water, no glass tapping.');
     if (c.stats.hunger > 70) soft(`${c.name} is hungry — breeding animals need to be well fed.`, 'Feed them well for a day.');
   }

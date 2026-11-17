@@ -30,7 +30,7 @@ import { buyEggs, buyFood, buySalt, isFoodAvailable, SALT_PRICE_PER_KG } from '.
 import { isOpenAt } from '../facility';
 import { pushReaction } from '../facility/reactions';
 import { findSpecies } from '@/data/species';
-import { FOODS, getFoodDef, eatsFood, madeForOtherSpecies, madeForOtherWater } from '@/data/catalog/foods';
+import { FOODS, getFoodDef, eatsFood, madeForOtherSpecies, madeForOtherWater, foodTagNames, joinFoodNames } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3): foodTagNames, joinFoodNames
 import { STAFF_TRAITS } from '@/data/staff';
 import { isSaltClass } from '../water/constants';
 import { EGGS_SUPPLY, FOOD_ROOM, VEGETABLES } from '@/data/catalog/machines'; // lane:automation (chunk 5)
@@ -401,13 +401,10 @@ export function restockHint(state: GameState, missing: SpeciesDefinition[]): str
 /** Young offered one of their phase's foods this recently (by hand, a doser or the keeper's own meal) aren't fed again. */
 export const YOUNG_FED_RECENTLY_H = 4;
 
-/** Food tags in words, for the keeper's "no {food} in stock". */
-const TAG_WORDS: Record<string, string> = { baby_brine: 'baby brine', infusoria: 'infusoria', copepod_live: 'live copepods', pellet_small: 'small pellets', pellet_sinking: 'sinking pellets', algae_wafer: 'algae wafers', vegetable: 'vegetables', brine_shrimp: 'brine shrimp', bloodworm: 'bloodworms' };
-
 /** "baby brine or infusoria": the first two of a phase's foods that the shop sells. */
 export function youngFoodWords(tags: readonly string[]): string {
   const sold = tags.filter((t) => FOODS.some((f) => f.tags.includes(t as never)));
-  return sold.slice(0, 2).map((t) => TAG_WORDS[t] ?? t.replace(/_/g, ' ')).join(' or ') || 'first foods';
+  return joinFoodNames(foodTagNames(sold, { max: 2 })) || 'first foods'; // Audit 2026-11-17 (J3): the shelf's words, one table
 }
 
 /**
