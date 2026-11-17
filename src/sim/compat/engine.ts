@@ -794,6 +794,13 @@ function applyExceptionRules(A: CompatMember, B: CompatMember, ctx: CompatContex
     // environmental 'sting' incident above, so this pairwise rule would sting a second time, as 'harassment'; it stays
     // for an anemone the tank doesn't count yet (a purchase, a move from another tank, a species check)
     if (rule.other === 'tag:stinging_cnidarian' && (ctx.stinging ?? ctx.anemones) > 0) continue;
+    if (rule.incident === 'none') {
+      // Audit 2026-11-17 (D6): a mismatch of needs: the reason and its floor only (no incident, no attack or predation
+      // flag, so the pair's own predation check still speaks for itself)
+      out.add({ severity: SEV_OF_FLOOR(rule.verdictFloor) ?? 'caution', category: 'temperature', text: rule.reason, speciesIds: [a.id, b.id], key, floor: rule.verdictFloor });
+      out.flag(`rule:${key}`);
+      continue;
+    }
     let kind: IncidentRisk['kind'];
     let actor = A;
     let target = B;

@@ -158,7 +158,7 @@ export const otocinclus: SpeciesDefinition = {
     'requiresMatureDays = 14 game-days is a gameplay abstraction for "established biofilm".',
   ],
   exceptionRules: [
-    { other: 'tag:goldfish', verdictFloor: 'high_risk', reason: 'A goldfish that tries to swallow an otocinclus can choke on its spines — and the two need different temperatures.', incidentRisk: 0.03 },
+    { other: 'tag:goldfish', verdictFloor: 'high_risk', reason: 'A goldfish that tries to swallow an otocinclus can choke on its spines — and the two need different temperatures.', incident: 'none' },
   ],
   special: { requiresMatureDays: 14, needsAlgaeOrBiofilm: true, medicationSensitive: true },
   visualLane: 'fish',

@@ -9,7 +9,7 @@ import { createTank } from '@/sim/tanks';
 import { createCreature, addCreature, stepTankCreatures } from '@/sim/life';
 import { makeContext } from '@/sim/context';
 import { simRng, mulberry32 } from '@/sim/rng';
-import { previewAddition } from '@/sim/compat';
+import { previewAddition, evaluateComposition, simpleMember, neutralContext } from '@/sim/compat';
 import { getSpecies, ALL_SPECIES } from '@/data/species';
 import { composition, generateOffer } from '@/sim/economy/shop';
 import { getFoodDef } from '@/data/catalog/foods';
@@ -202,5 +202,44 @@ describe('D8: compatibility reasons show the player’s temperature unit', () =>
     expect(f).toMatch(/°F/);
     expect(f).not.toMatch(/°\s*C/);
     expect(convertTempText(temp!.mitigation, 'F')).not.toMatch(/°\s*C/);
+  });
+});
+
+describe('D6: a rule about water or temperature never becomes an attack', () => {
+  const pair = (a: string, b: string) => {
+    const A = getSpecies(a);
+    const B = getSpecies(b);
+    return evaluateComposition([simpleMember(A, 1, 'male'), simpleMember(B, 1, 'female')], { ...neutralContext(A, B), neutral: false, flowIndex: 1, lightLevel: 1 });
+  };
+
+  it('koi with an oscar, a black ghost, a bichir or an arowana: incompatible for the water, no attack rolled for it', () => {
+    for (const other of ['oscar', 'black_ghost_knifefish', 'ornate_bichir', 'silver_arowana', 'clown_loach']) {
+      const ev = pair('koi', other);
+      expect(ev.report.verdict, other).toBe('incompatible');
+      const water = ev.report.reasons.find((r) => /Koi are cool-water fish/.test(r.text));
+      expect(water?.category, other).toBe('temperature');
+      expect(ev.incidents.some((i) => /cool-water/.test(i.text ?? '')), other).toBe(false);
+    }
+    const ray = pair('motoro_stingray', 'koi');
+    expect(ray.incidents.some((i) => /alkaline/.test(i.text ?? ''))).toBe(false);
+  });
+
+  it('goldfish with an arowana or an oscar: the eating has its own words, the water its own', () => {
+    for (const [pred, words] of [['silver_arowana', /An arowana swallows goldfish|Medium fish fit/], ['oscar', /An oscar eats goldfish/]] as const) {
+      const ev = pair(pred, 'fancy_goldfish');
+      const eat = ev.incidents.find((i) => i.kind === 'predation' && i.actorSpeciesId === pred && i.targetSpeciesId === 'fancy_goldfish');
+      expect(eat, pred).toBeDefined();
+      expect(eat!.text, pred).toMatch(words);
+      expect(ev.report.reasons.find((r) => r.category === 'predation')?.text, pred).not.toMatch(/cool-water/);
+      expect(ev.report.reasons.some((r) => r.category === 'temperature' && /Goldfish are cool-water fish/.test(r.text)), pred).toBe(true);
+    }
+  });
+
+  it('corydoras or otocinclus with a goldfish: still High risk, but no one is “harassed” for it', () => {
+    for (const small of ['panda_corydoras', 'otocinclus']) {
+      const ev = pair(small, 'comet_goldfish');
+      expect(['high_risk', 'incompatible'], small).toContain(ev.report.verdict);
+      expect(ev.incidents.some((i) => /choke/.test(i.text ?? '')), small).toBe(false);
+    }
   });
 });

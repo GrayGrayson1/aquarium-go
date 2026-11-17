@@ -180,7 +180,7 @@ export const motoroStingray: SpeciesDefinition = {
     // the small bottom fish (the research's row): its natural prey
     ...['panda_corydoras', 'kuhli_loach', 'otocinclus', 'hillstream_loach'].map((other) => ({ other, verdictFloor: 'high_risk' as const, reason: 'Bottom fish are its natural prey.', incidentRisk: 0.2, mitigatedBy: ['hides' as const] })),
     { other: 'tag:snail', verdictFloor: 'incompatible', reason: 'Rays crunch snails: a favourite food.', incidentRisk: 0.3 },
-    { other: 'koi', verdictFloor: 'incompatible', reason: 'Koi need cool, hard, alkaline water; a ray needs warm, soft, acid water.' },
+    { other: 'koi', verdictFloor: 'incompatible', reason: 'Koi need cool, hard, alkaline water; a ray needs warm, soft, acid water.', incident: 'none' },
     { other: 'freshwater_angelfish', verdictFloor: 'conditional', reason: 'A ray can catch a sleeping angelfish on the floor at night.', incidentRisk: 0.03, mitigatedBy: ['tank_size'] },
     { other: 'oscar', verdictFloor: 'conditional', reason: 'A big, boisterous cichlid stresses a ray and steals its food: only in a very large tank.', incidentRisk: 0.03, mitigatedBy: ['tank_size', 'target_feeding'] },
     { other: 'clown_loach', verdictFloor: 'conditional', reason: 'Young loaches are prey, and adults compete for food on the floor.', incidentRisk: 0.03, mitigatedBy: ['hides'] },

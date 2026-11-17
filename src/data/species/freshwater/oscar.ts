@@ -228,8 +228,11 @@ export const oscar: SpeciesDefinition = {
     { other: 'tag:snail', verdictFloor: 'high_risk', reason: 'Oscars crush and eat snails.', incidentRisk: 0.15 },
     { other: 'tag:amphibian', verdictFloor: 'incompatible', reason: 'Oscars eat frogs and salamanders.', incidentRisk: 0.4 },
     { other: 'discus', verdictFloor: 'high_risk', reason: 'Discus need warmer, cleaner and calmer water than an oscar tank gives.', incidentRisk: 0.05 },
-    { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an oscar needs tropical water and eats them while they are small.', incidentRisk: 0.1 },
-    { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an oscar needs tropical water and eats them while they are small.', incidentRisk: 0.1 },
+    // Audit 2026-11-17 (D6): the eating and the water told apart (the water rule rolls no incident)
+    { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'An oscar eats goldfish while they are small.', incidentRisk: 0.1 },
+    { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'An oscar eats goldfish while they are small.', incidentRisk: 0.1 },
+    { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an oscar needs tropical water.', incident: 'none' },
+    { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an oscar needs tropical water.', incident: 'none' },
     { other: 'clown_loach', verdictFloor: 'conditional', reason: 'Adult clown loaches are too big to eat, but young ones fit an oscar’s mouth; loaches also fare poorly beside big, dominant fish.', incidentRisk: 0.04, mitigatedBy: ['tank_size', 'hides'] },
     { other: 'black_ghost_knifefish', verdictFloor: 'conditional', reason: 'A digging, boisterous oscar can damage a knifefish’s skin; only a large knifefish, with sight breaks.', incidentRisk: 0.03, mitigatedBy: ['tank_size', 'sight_breaks'] },
     { other: 'fahaka_puffer', verdictFloor: 'incompatible', reason: 'The fahaka bites chunks out of tankmates and must live alone.', incidentRisk: 0.3 },

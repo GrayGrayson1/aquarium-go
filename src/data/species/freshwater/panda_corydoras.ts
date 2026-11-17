@@ -161,7 +161,7 @@ export const pandaCorydoras: SpeciesDefinition = {
     'Compressed time: 3–5 day hatch ≈ 32 game-hours; ~7 year lifespan ≈ 280 game-days.',
   ],
   exceptionRules: [
-    { other: 'tag:goldfish', verdictFloor: 'high_risk', reason: 'A goldfish that tries to swallow a corydoras can choke on its locking fin spines — and the two need different temperatures.', incidentRisk: 0.03 },
+    { other: 'tag:goldfish', verdictFloor: 'high_risk', reason: 'A goldfish that tries to swallow a corydoras can choke on its locking fin spines — and the two need different temperatures.', incident: 'none' },
   ],
   special: { needsSinkingFood: true, medicationSensitive: true },
   visualLane: 'fish',
