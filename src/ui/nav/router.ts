@@ -34,6 +34,7 @@ import { toastMark, reportLoadFailure } from '../screens/loadFeedback';
 import { useTankCardTab } from '../cards/tankCardTab';
 import { urlFixtureName } from '@/game/useAutosave';
 import { useShopFilters } from '../panels/market/shopFilters';
+import { guardLeave } from '../panels/common/leaveGuard'; // audit B6
 import { urlSandboxName, urlScenarioBoot } from '@/state/devTools'; // chunk 7 (REL-019); chunk 15 (the scenario lab)
 import { socialAvailable } from '../online/mode'; // lane:social (chunk 6; chunk 8, REL-025)
 import {
@@ -360,12 +361,16 @@ function onHashChange(): void {
     else useNav.setState({ pending: parsed });
     return;
   }
+  // audit B6: a sub-view holding the player's work (the listing wizard) asks first; Keep editing puts its address back
+  const keep = () => syncAddress('push');
   if (!parsed) {
-    toast(BROKEN_LINK);
-    applyRoute(HOME);
+    guardLeave(() => {
+      toast(BROKEN_LINK);
+      applyRoute(HOME);
+    }, keep);
     return;
   }
-  applyRoute(parsed.route, parsed.filters);
+  guardLeave(() => applyRoute(parsed.route, parsed.filters), keep);
 }
 
 // ───────────────────────────── boot, reload, leaving ─────────────────────────────

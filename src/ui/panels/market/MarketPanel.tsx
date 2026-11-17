@@ -50,7 +50,8 @@ export function MarketPanel() {
   };
   // lane:ui-shell (chunk 1) — the address follows the section and the open offer / focused food / focused listing
   useNavTab('market', tab);
-  useNavSub('market', wizard ? null : tab === 'shop' && offerId ? `offer:${offerId}` : tab === 'supplies' && focusFood ? `food:${focusFood.id}` : tab === 'listings' && focusListing ? `listing:${focusListing}` : null);
+  // audit B6: the wizard is `sell` (#/market/listings/new), so Back closes it and stays in the Market
+  useNavSub('market', wizard ? 'sell' : tab === 'shop' && offerId ? `offer:${offerId}` : tab === 'supplies' && focusFood ? `food:${focusFood.id}` : tab === 'listings' && focusListing ? `listing:${focusListing}` : null);
 
   useEffect(() => {
     if (!target) return;

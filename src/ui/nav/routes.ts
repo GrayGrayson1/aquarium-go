@@ -4,8 +4,10 @@
  *
  * Grammar (docs/TEST_IDS.md has the table): `#/` · `#/tanks` · `#/tanks/:tankId[/equipment|/life|/value]` ·
  * `#/livestock[/eggs|/past|/production]` · `#/livestock/production/:lineId|new` · `#/livestock/animal/:creatureId` · `#/shop[?prismatic=1&rare=1&env=…]` ·
- * `#/shop/fish/:offerId` · `#/market/supplies[/:foodId]` · `#/market/listings[/:listingId]` · `#/market/history` ·
+ * `#/shop/fish/:offerId` · `#/market/supplies[/:foodId]` · `#/market/listings[/:listingId|/new]` · `#/market/history` ·
  * `#/build[/decor|/equipment|/substrate|/facility]` · `#/visitors[/staff]` · `#/shows[/entries|/results|/trophies]` ·
+ * `#/shows/enter/:showId` (audit B6: the show-entry flow and the listing wizard (`/new`) have addresses, so Back
+ * closes them and stays in the panel) ·
  * `#/research[/unlocks|/quests|/achievements]` · `#/finances` · `#/encyclopedia[/science[/:articleId]|/:speciesId]` ·
  * `#/social[/clubs|/trading|/friends|/leaderboards|/join/:code]` · `#/settings[/play|/saves|/notifications|/about]` ·
  * `#/more` · `#/log` · lane:automation (chunk 5, DESIGN-S3D §6): `#/operations[/water|/feed|/lines|/map|/issues|/manual]`
@@ -170,7 +172,7 @@ export function parseRoute(hash: string): ParsedRoute | null {
       return { route: panel('market', 'shop'), filters: parseFilters(query) };
     case 'market': {
       if (b === 'supplies') return { route: panel('market', 'supplies', c ? `food:${c}` : undefined) };
-      if (b === 'listings') return { route: panel('market', 'listings', c ? `listing:${c}` : undefined) };
+      if (b === 'listings') return { route: panel('market', 'listings', c === 'new' ? 'sell' : c ? `listing:${c}` : undefined) };
       if (b === 'history' || b === 'trends') return { route: panel('market', 'trends') };
       return { route: panel('market', 'shop'), filters: b === undefined || b === 'shop' ? parseFilters(query) : undefined };
     }
@@ -195,8 +197,10 @@ export function parseRoute(hash: string): ParsedRoute | null {
       // lane:automation (chunk 5) — a room's page in Build › Facility
       if (b === 'facility' && c && (ROOMS as readonly string[]).includes(c)) return { route: panel('build', 'facility', `room:${c}`) };
       return { route: panel(a, tabOf(a, b)) };
-    case 'visitors':
     case 'shows':
+      if (b === 'enter' && c) return { route: panel('shows', 'upcoming', `show:${c}`) }; // audit B6
+      return { route: panel(a, tabOf(a, b)) };
+    case 'visitors':
     case 'research':
       return { route: panel(a, tabOf(a, b)) };
     case 'finances':
@@ -239,6 +243,7 @@ export function formatRoute(route: Route, filters?: ShopFilters): string {
     if (food) return `#/market/supplies/${enc(food)}`;
     const listing = after(target, 'listing:');
     if (listing) return `#/market/listings/${enc(listing)}`;
+    if (target === 'sell') return '#/market/listings/new'; // audit B6
     return !spec || spec.id === 'shop' ? `#/shop${formatFilters(filters)}` : `#/market/${spec.word}`;
   }
   if (p === 'encyclopedia') {
@@ -246,6 +251,10 @@ export function formatRoute(route: Route, filters?: ShopFilters): string {
     if (species) return `#/encyclopedia/${enc(species)}`;
     const article = after(target, 'science:');
     if (article) return `#/encyclopedia/science/${enc(article)}`;
+  }
+  if (p === 'shows') {
+    const show = after(target, 'show:'); // audit B6
+    if (show) return `#/shows/enter/${enc(show)}`;
   }
   if (p === 'social') {
     const code = after(target, 'join:');
@@ -295,7 +304,7 @@ export function routeForPanelTarget(p: NavPanel, target: string): Route | null {
       if (after(target, 'offer:')) return panel(p, 'shop', target);
       if (after(target, 'food:')) return panel(p, 'supplies', target);
       if (after(target, 'listing:')) return panel(p, 'listings', target);
-      if (target === 'sell' || target === 'list' || target.startsWith('list:')) return panel(p, 'listings');
+      if (target === 'sell' || target === 'list' || target.startsWith('list:')) return panel(p, 'listings', 'sell'); // the wizard (audit B6)
       return null;
     case 'encyclopedia':
       if (after(target, 'species:')) return panel(p, 'species', target);
@@ -319,7 +328,11 @@ export function routeForPanelTarget(p: NavPanel, target: string): Route | null {
       return target === 'staff' || target === 'visitors' ? panel(p, target) : null;
     case 'shows':
       if (target.startsWith('result:')) return panel(p, 'results');
-      if (target.startsWith('show:') || target.startsWith('enter:')) return panel(p, 'upcoming');
+      // audit B6: the entry flow has its address (a class picked by `enter:` isn't part of it)
+      if (target.startsWith('show:') || target.startsWith('enter:')) {
+        const show = target.split(':')[1];
+        return show ? panel(p, 'upcoming', `show:${show}`) : panel(p, 'upcoming');
+      }
       return null;
     case 'social':
       return after(target, 'join:') ? panel(p, 'clubs', target) : null;
@@ -372,6 +385,8 @@ export function routeLabel(route: Route, names: RouteNames = {}): string | null 
   const species = p === 'encyclopedia' ? after(target, 'species:') : null;
   if (species) return `${title}${SEP}${names.species?.(species) ?? 'Species'}`;
   if (p === 'social' && after(target, 'join:')) return `${title}${SEP}Club invite`;
+  if (p === 'shows' && after(target, 'show:')) return `${title}${SEP}Enter a show`; // audit B6
+  if (p === 'market' && target === 'sell') return `${title}${SEP}New listing`;
   // lane:automation (chunk 5)
   if (p === 'operations' && target === 'view:issues') return `${title}${SEP}Problems`;
   if (p === 'operations' && target === 'view:manual') return `${title}${SEP}Manual mode`;

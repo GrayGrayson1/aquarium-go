@@ -383,3 +383,57 @@ describe('nav-sync: leaving a game (NAV-012)', () => {
     expect(fakeLocation.hash).toBe('#/build');
   });
 });
+
+describe('audit B6: the show-entry flow and the listing wizard have addresses', () => {
+  /** A panel on `tab`, then (one gesture later) its sub-view `sub`. */
+  async function openSub(panel: 'market' | 'shows', tab: string, sub: string) {
+    gesture();
+    useUI.getState().set({ panel, panelTarget: null });
+    R.useNav.setState({ tab: { [panel]: tab } });
+    await flush();
+    gesture();
+    R.useNav.setState({ sub: { [panel]: sub } });
+    await flush();
+  }
+
+  it('Back from the entry flow closes it and stays in Shows › Upcoming', async () => {
+    await openSub('shows', 'upcoming', 'show:s1');
+    expect(fakeLocation.hash).toBe('#/shows/enter/s1');
+    browserBack();
+    await flush();
+    expect(useUI.getState()).toMatchObject({ panel: 'shows', panelTarget: 'tab:upcoming' });
+  });
+
+  it('Back from the listing wizard closes it and stays in My listings', async () => {
+    await openSub('market', 'listings', 'sell');
+    expect(fakeLocation.hash).toBe('#/market/listings/new');
+    browserBack();
+    await flush();
+    expect(useUI.getState()).toMatchObject({ panel: 'market', panelTarget: 'tab:listings' });
+  });
+
+  it('a wizard with the player’s prices asks first: Keep editing puts its address back, Leave goes', async () => {
+    const { setLeaveGuard, answerLeave, useLeave } = await import('@/ui/panels/common/leaveGuard');
+    await openSub('market', 'listings', 'sell');
+    setLeaveGuard({ panel: 'market', title: 'Leave this listing?', detail: 'Your prices and photo won’t be kept.' });
+    try {
+      browserBack();
+      await flush();
+      expect(useLeave.getState().pending).not.toBeNull();
+      expect(useUI.getState().panelTarget).toBeNull(); // nothing applied yet
+      answerLeave(false);
+      await flush();
+      expect(fakeLocation.hash).toBe('#/market/listings/new');
+      expect(entries.slice(-2)).toEqual(['/#/market/listings', '/#/market/listings/new']);
+      browserBack();
+      await flush();
+      answerLeave(true);
+      await flush();
+      expect(useUI.getState()).toMatchObject({ panel: 'market', panelTarget: 'tab:listings' });
+      expect(useLeave.getState().guard).toBeNull();
+      expect(fakeLocation.hash).toBe('#/market/listings');
+    } finally {
+      setLeaveGuard(null);
+    }
+  });
+});
