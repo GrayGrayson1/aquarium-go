@@ -148,7 +148,7 @@ export const hermitCrab: SpeciesDefinition = {
     breedingOverview: 'Females carry eggs inside the shell and release drifting larvae into the sea. Not bred in aquaria.',
     conservationNote: 'Not assessed by the IUCN. Wild-collected in large numbers for clean-up crews, so avoid overstocking a tank that cannot feed them.',
     funFact: 'Hermits are picky homeowners — they test a new shell with their claws, then switch in a split second, exposing their soft abdomen for only an instant.',
-    inGameBehavior: 'Trundles over rock and glass picking at algae, pulls back into its shell when startled, and checks out every empty shell you add.',
+    inGameBehavior: 'Trundles over rock and glass picking at algae and pulls back into its shell when startled.',
     feedingNote: 'Scavenges hair algae, film and leftovers from rock and sand, day and night. If algae runs short, add a little algae wafer, seaweed or a few sinking pellets a few times a week. It rarely needs its own autofeeder.',
     keeperTip: 'Keep two or three empty shells per crab, a size or two larger than its current one. With spare homes on hand, blue-legs fight less and are less likely to attack your snails.',
   },

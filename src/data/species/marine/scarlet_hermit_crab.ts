@@ -148,7 +148,7 @@ export const scarletHermitCrab: SpeciesDefinition = {
     breedingOverview: 'Females carry eggs in the shell and release drifting larvae; not bred in aquaria.',
     conservationNote: 'Not assessed by the IUCN. Wild-collected under Florida’s marine-life rules.',
     funFact: 'It has been on a postage stamp — Barbados, 1985.',
-    inGameBehavior: 'Trundles over rock and sand picking at algae, ducks into its shell when startled, and tries on every empty shell you add.',
+    inGameBehavior: 'Trundles over rock and sand picking at algae and ducks into its shell when startled.',
     feedingNote: 'Grazes hair and film algae, slime and detritus day and night, and takes fish food that reaches the bottom. If algae runs short, add a little dried seaweed or an algae wafer.',
     keeperTip: 'Keep empty shells of several shapes a size larger than the one it wears — it prefers light, oval shells.',
   },

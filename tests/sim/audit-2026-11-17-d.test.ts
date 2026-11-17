@@ -354,3 +354,11 @@ describe('D17: a dead or rehomed animal’s card drops the live animal’s butto
     expect(isMemoryCard('listed')).toBe(false);
   });
 });
+
+describe('D18: “What you’ll see in Aquarium Go” promises only what the game does', () => {
+  it('no upturned snails to help, no shell-swapping hermits', () => {
+    expect(getSpecies('astraea_snail').encyclopedia.inGameBehavior).not.toMatch(/tumbles|until you help/);
+    expect(getSpecies('scarlet_hermit_crab').encyclopedia.inGameBehavior).not.toMatch(/empty shell/);
+    expect(getSpecies('hermit_crab').encyclopedia.inGameBehavior).not.toMatch(/empty shell/);
+  });
+});
