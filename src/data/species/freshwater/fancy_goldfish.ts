@@ -112,8 +112,8 @@ export const fancyGoldfish: SpeciesDefinition = {
         name: 'Colour',
         mode: 'mendelian',
         alleles: [
-          { id: 'R', name: 'Red-orange', dominance: 4, frequency: 0.4 },
-          { id: 'S', name: 'Red & white', dominance: 3, frequency: 0.25 },
+          { id: 'R', name: 'Red-Orange', dominance: 4, frequency: 0.4 },
+          { id: 'S', name: 'Red & White', dominance: 3, frequency: 0.25 },
           { id: 'K', name: 'Black', dominance: 2, frequency: 0.2 },
           { id: 'w', name: 'White', dominance: 1, frequency: 0.15 },
         ],

@@ -187,7 +187,7 @@ export const freshwaterAngelfish: SpeciesDefinition = {
       { id: 'superveil', name: 'Superveil', layer: 'overlay', rarity: 0.25, when: [{ locus: 'veil', allele: 'V', count: 'hom' }], visual: { finType: 'superveil', finLength: 1.75 } },
     ],
     strains: [
-      { id: 'koi', name: 'Koi', requires: ['gold_marble', 'blushing'], note: 'Gold marble blushing: white with black marbling and an orange crown (TAS).' },
+      { id: 'koi', name: 'Koi Angel', requires: ['gold_marble', 'blushing'], note: 'Gold marble blushing: white with black marbling and an orange crown (TAS).' },
       { id: 'zebra_lace', name: 'Zebra Lace', requires: ['black_lace', 'zebra_lace'], note: 'Black lace with the zebra gene (TAS).' },
     ],
     baseVisual: {

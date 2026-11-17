@@ -117,7 +117,7 @@ export const bumblebeeGoby: SpeciesDefinition = {
   genetics: {
     loci: [
       { id: 'bands', name: 'Band width', mode: 'additive', alleles: [{ id: 'narrow', name: 'Narrow bands', dominance: 1, frequency: 0.65 }, { id: 'broad', name: 'Broad bands', dominance: 1, frequency: 0.35 }], note: 'Natural individual variation in how wide the black bands are.' },
-      { id: 'hue', name: 'Yellow tone', mode: 'additive', alleles: [{ id: 'lemon', name: 'Lemon', dominance: 1, frequency: 0.7 }, { id: 'gold', name: 'Deep gold', dominance: 1, frequency: 0.3 }], note: 'Some individuals are a deeper honey-gold; colour also brightens in breeding males.' },
+      { id: 'hue', name: 'Yellow tone', mode: 'additive', alleles: [{ id: 'lemon', name: 'Lemon', dominance: 1, frequency: 0.7 }, { id: 'gold', name: 'Deep Gold', dominance: 1, frequency: 0.3 }], note: 'Some individuals are a deeper honey-gold; colour also brightens in breeding males.' },
     ],
     phenotypes: [
       { id: 'deep_gold', name: 'Deep Gold', layer: 'base', rarity: 0.12, when: [{ locus: 'hue', allele: 'gold', count: 'hom' }], visual: { bodyColor: '#e0a21c', bodyColor2: '#c98a14', bellyColor: '#f0cf7a' }, note: 'Individual variation, not a trade morph.' },

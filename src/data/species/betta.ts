@@ -105,13 +105,13 @@ export const betta: SpeciesDefinition = {
         mode: 'mendelian',
         alleles: [
           { id: 'red', name: 'Red', dominance: 5, frequency: 0.3 },
-          { id: 'royal', name: 'Royal blue', dominance: 4, frequency: 0.18 },
+          { id: 'royal', name: 'Royal Blue', dominance: 4, frequency: 0.18 },
           { id: 'turq', name: 'Turquoise', dominance: 4, frequency: 0.14 },
-          { id: 'steel', name: 'Steel blue', dominance: 4, frequency: 0.1 },
+          { id: 'steel', name: 'Steel Blue', dominance: 4, frequency: 0.1 },
           { id: 'copper', name: 'Copper', dominance: 3, frequency: 0.07 },
-          { id: 'black', name: 'Melano black', dominance: 2, frequency: 0.07 },
+          { id: 'black', name: 'Black Melano', dominance: 2, frequency: 0.07 },
           { id: 'yellow', name: 'Non-red yellow', dominance: 1, frequency: 0.07 },
-          { id: 'white', name: 'Opaque white', dominance: 0, frequency: 0.07, rare: true }, // lane:genetics (B-136) — a two-copy trait sits below yellow, so a carrier reads as hidden
+          { id: 'white', name: 'Opaque White', dominance: 0, frequency: 0.07, rare: true }, // lane:genetics (B-136) — a two-copy trait sits below yellow, so a carrier reads as hidden
         ],
         note: 'Real betta colour genetics involve several interacting loci (iridescence, red, melano, opaque...). Simplified to a single dominance ladder for play.',
       },
@@ -124,7 +124,7 @@ export const betta: SpeciesDefinition = {
           { id: 'butterfly', name: 'Butterfly', dominance: 2, frequency: 0.2 },
           { id: 'bicolor', name: 'Bi-colour', dominance: 2, frequency: 0.12 },
           { id: 'marble', name: 'Marble', dominance: 1, frequency: 0.1, rare: true },
-          { id: 'dragon', name: 'Dragon scale', dominance: 1, frequency: 0.08, rare: true },
+          { id: 'dragon', name: 'Dragon Scale', dominance: 1, frequency: 0.08, rare: true },
         ],
         note: 'Marble is driven by a transposable element in real bettas and can change over the fish’s life; represented as recessive here.',
       },
@@ -137,7 +137,7 @@ export const betta: SpeciesDefinition = {
           { id: 'plakat', name: 'Plakat (short fin)', dominance: 3, frequency: 0.2 },
           { id: 'halfmoon', name: 'Halfmoon', dominance: 2, frequency: 0.28 },
           { id: 'crown', name: 'Crowntail', dominance: 1, frequency: 0.14 },
-          { id: 'double', name: 'Double tail', dominance: 0, frequency: 0.08, rare: true }, // lane:genetics (B-136) — a two-copy trait sits below crowntail
+          { id: 'double', name: 'Double Tail', dominance: 0, frequency: 0.08, rare: true }, // lane:genetics (B-136) — a two-copy trait sits below crowntail
         ],
       },
       // lane:genetics — 0.5 expansion

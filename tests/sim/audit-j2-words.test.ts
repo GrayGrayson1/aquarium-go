@@ -19,6 +19,9 @@ import { whenPhrase, saltBuyLabel } from '@/ui/panels/operations/issues';
 import { money as showMoney } from '@/ui/panels/shows/util';
 import { LOAD_FAILED, onlineLoadError } from '@/ui/online/cloudSync';
 import { SHARED_WORDS } from '@/ui/shared/words';
+import { ALL_SPECIES } from '@/data/species';
+import { morphCatalog } from '@/sim/life/morphCatalog';
+import { hasNoNamedMorphs } from '@/ui/panels/encyclopedia/morphs';
 
 const src = (path: string) => readFileSync(new URL(`../../src/${path}`, import.meta.url), 'utf8');
 
@@ -307,8 +310,28 @@ describe('Audit 2026-11-17 (J37): the species pages read as sentences', () => {
 describe('Audit 2026-11-17 (J38, the part that needs no choice): source titles without research notes', () => {
   it('no “title verified via…”, “(citing …)” or “(summarising …)” in a shown title, and no builder note in a fact', () => {
     for (const id of ['axolotl', 'cleaner_shrimp', 'coral_catshark', 'flame_hawkfish', 'foxface_rabbitfish']) {
-      for (const s of getSpecies(id).sources ?? []) expect(s.title, id).not.toMatch(/verified via|\(citing|\(summarising/);
+      for (const s of getSpecies(id).sourceReferences) expect(s.title, id).not.toMatch(/verified via|\(citing|\(summarising/);
     }
-    expect((getSpecies('freshwater_angelfish').sources ?? []).flatMap((s) => s.facts)).not.toContain('15 cm TL (size field 10.5)');
+    expect(getSpecies('freshwater_angelfish').sourceReferences.flatMap((s) => s.facts)).not.toContain('15 cm TL (size field 10.5)');
+    expect(getSpecies('freshwater_angelfish').sourceReferences.flatMap((s) => s.facts)).toContain('15 cm TL');
+    expect(getSpecies('axolotl').sourceReferences.map((s) => s.title)).toContain('Tyrp1 is the Mendelian determinant of the axolotl copper mutant — Scientific Reports (2024)');
+  });
+});
+
+describe('Audit 2026-11-17 (J39): an allele is named as its morph is', () => {
+  it('allele names take their morph’s casing; the angelfish strain isn’t a third “Koi”; two snails have no locked chip', () => {
+    for (const sp of ALL_SPECIES) {
+      const morphs = morphCatalog(sp).entries.map((e) => e.morphName);
+      for (const l of sp.genetics.loci) for (const a of l.alleles) {
+        if (sp.id === 'freshwater_angelfish' && a.id === 'V') continue; // "Veil" sits inside "Superveil", another allele's word
+        const clash = morphs.find((n) => n.toLowerCase().includes(a.name.toLowerCase()) && !n.includes(a.name));
+        expect(clash, `${sp.id} ${a.id} "${a.name}"`).toBeUndefined();
+      }
+    }
+    const betta = getSpecies('betta').genetics.loci.flatMap((l) => l.alleles);
+    expect(betta.find((a) => a.id === 'royal')?.name).toBe('Royal Blue');
+    expect(betta.find((a) => a.id === 'black')?.name).toBe('Black Melano');
+    expect(JSON.stringify(getSpecies('freshwater_angelfish'))).toContain('"name":"Koi Angel"');
+    for (const id of ['astraea_snail', 'mexican_turbo_snail']) expect(hasNoNamedMorphs(getSpecies(id)), id).toBe(true);
   });
 });

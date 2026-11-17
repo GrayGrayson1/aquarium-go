@@ -103,7 +103,7 @@ export const germanBlueRam: SpeciesDefinition = {
         name: 'Colour form',
         mode: 'mendelian',
         alleles: [
-          { id: 'E', name: 'Electric blue', dominance: 3, frequency: 0.15 },
+          { id: 'E', name: 'Electric Blue', dominance: 3, frequency: 0.15 },
           { id: 'W', name: 'Wild colour', dominance: 2, frequency: 0.7 },
           { id: 'g', name: 'Gold', dominance: 1, frequency: 0.15 },
         ],

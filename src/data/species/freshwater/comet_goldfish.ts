@@ -99,7 +99,7 @@ export const cometGoldfish: SpeciesDefinition = {
         name: 'Colour',
         mode: 'mendelian',
         alleles: [
-          { id: 'R', name: 'Red-orange', dominance: 4, frequency: 0.6 },
+          { id: 'R', name: 'Red-Orange', dominance: 4, frequency: 0.6 },
           { id: 'S', name: 'Sarasa (red & white)', dominance: 3, frequency: 0.2 },
           { id: 'Y', name: 'Yellow', dominance: 2, frequency: 0.08 },
           { id: 'w', name: 'White', dominance: 1, frequency: 0.08 },
