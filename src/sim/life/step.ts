@@ -1117,7 +1117,9 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   const life = Math.max(1, sp.lifecycle.lifespanDays);
   if (age > life * 0.9 && !state.offlineGrace) {
     const pDay = clamp(0.01 * dmath.exp((age / life - 0.9) * 25) * (1.3 - 0.6 * hardy), 0, 0.9);
-    if (ctx.rng.chance(perStep(pDay, h))) {
+    // Audit 2026-11-17 (D20, the owner's decision): old age never takes the first companion. The draw is still made
+    // (and its result ignored for the companion), so every other animal's draws keep their order.
+    if (ctx.rng.chance(perStep(pDay, h)) && !c.isStarter) {
       m.damage.age = (m.damage.age ?? 0) + 1000;
       killCreature(state, c, explainDeath(state, env, c, sp, hour), hour, ctx.emit);
     }

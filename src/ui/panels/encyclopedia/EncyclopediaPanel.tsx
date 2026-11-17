@@ -28,6 +28,8 @@ import { seenMorphChips, discoveredMorphNames, hasNoNamedMorphs, noMorphsNote } 
 import { GeneticsSections } from './MorphCatalog'; // lane:genetics
 import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
+import { lifespanDaysText } from '@/ui/common/lifespan'; // Audit 2026-11-17 (D20)
 
 type Tab = 'species' | 'science';
 type Show = 'all' | 'discovered' | 'freshwater' | 'marine' | 'brackish'; // lane:brackish: + 'brackish'
@@ -304,6 +306,9 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
         </FactRow>
         <FactRow icon={<Ruler size={15} />} label="Adult size">
           About {sp.adultSizeCm} cm · needs {sp.recommendedMinTankGallons}+ gallons ({sp.recommendedFootprint.minLengthIn}″ long or more)
+        </FactRow>
+        <FactRow icon={<Hourglass size={15} />} label="Lifespan">
+          About {lifespanDaysText(sp)} in the game
         </FactRow>
         {/* lane:guide — diet by food TYPE (dry / frozen / live / fresh) + whether an autofeeder can feed it */}
         <FactRow icon={<Utensils size={15} />} label={`Diet · ${titleCase(sp.diet)}`}>

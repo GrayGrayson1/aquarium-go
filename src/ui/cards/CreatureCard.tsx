@@ -88,6 +88,8 @@ import {
   convertTempText, // lane:guide
 } from '../common/format';
 import { dietGuide, feedingLine, temperatureGuide, FLOW_GUIDE } from '@/data/species/guide'; // lane:guide
+import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
+import { lifespanFacts } from '../common/lifespan'; // Audit 2026-11-17 (D20)
 import { AutofeederVerdict, RealLifeTips, openSpeciesGuide } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
 import { Badge, Button, Chip, Meter, Section, StatusBadge, formatMoney, KV, Empty } from '../kit';
 import { setCameraMode } from '../hud/ToolRail';
@@ -232,8 +234,9 @@ function tempRange(lo: number, hi: number, unit: 'C' | 'F'): string {
   return `${f(lo)}–${f(hi)} °C`;
 }
 
-function CareFacts({ sp, tankGallons, unit }: { sp: SpeciesDefinition; tankGallons: number; unit: 'C' | 'F' }) {
+function CareFacts({ sp, tankGallons, unit, c, nowHour }: { sp: SpeciesDefinition; tankGallons: number; unit: 'C' | 'F'; c: Creature; nowHour: number }) {
   const t = sp.tempC;
+  const life = lifespanFacts(c, sp, nowHour); // Audit 2026-11-17 (D20)
   const diff = DIFFICULTY_LABEL[sp.difficulty];
   // lane:guide — diet by food TYPE, the autofeeder verdict, flow, and "In real life" tips (src/data/species/guide.ts)
   const diet = dietGuide(sp);
@@ -265,6 +268,9 @@ function CareFacts({ sp, tankGallons, unit }: { sp: SpeciesDefinition; tankGallo
         {sp.recommendedMinTankGallons}+ gal
       </KV>
       <KV label={<><Gauge size={13} aria-hidden /> Care level</>}>{diff?.label ?? titleCase(sp.difficulty)}</KV>
+      <KV label={<><Hourglass size={13} aria-hidden /> Lifespan</>} hint={life.note ?? undefined}>
+        {life.value}
+      </KV>
       <div className="ag-sg-card">
         <AutofeederVerdict sp={sp} compact />
         <RealLifeTips sp={sp} max={3} />
@@ -749,7 +755,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
 
       {sp && (
         <Section title={<><BookOpen size={12} aria-hidden /> Care facts</>}>
-          <CareFacts sp={sp} tankGallons={tankGallons} unit={unit} />
+          <CareFacts sp={sp} tankGallons={tankGallons} unit={unit} c={c} nowHour={game.clock.hour} />
         </Section>
       )}
 
