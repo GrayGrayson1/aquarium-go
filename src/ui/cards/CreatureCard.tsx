@@ -354,7 +354,8 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
     if (partner && !candidates.find((x) => x.id === partner)) setPartner(null);
   }, [candidates, partner]);
   const check = partner ? safe('breedingCheck', () => breedingCheck(game, c.id, partner), { ok: false, reasons: ['Unable to check right now.'] }) : null;
-  const systemNote = sp.breeding.system === 'not_in_game' ? 'Breeding for this species is not part of this version.' : sp.breeding.notes;
+  // Audit 2026-11-17 (J33): a species the game doesn't breed already says so in its status ("Not bred here" and why)
+  const systemNote = sp.breeding.system === 'not_in_game' ? null : sp.breeding.notes;
   // Exact morph odds for the chosen pairing (mother = the female; otherwise this animal).
   const odds = useMemo(() => {
     const p = partner ? game.creatures[partner] : null;

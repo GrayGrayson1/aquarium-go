@@ -92,7 +92,7 @@ export const SOCIAL_COPY = {
   offerTrade: 'Offer a trade',
   friendCodePlaceholder: 'Friend code, e.g. MYAQUA-7Q2',
   addFriend: 'Add friend',
-  snapshotsNote: 'Visits are read-only snapshots: friends see your tanks as they were when you last went online.',
+  snapshotsNote: 'Friends see your tanks as they were when you last went online.',
 
   // ADR-0034 decision 2
   soonTitle: 'Trades open later',

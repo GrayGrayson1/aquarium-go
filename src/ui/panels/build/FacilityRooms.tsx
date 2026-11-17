@@ -269,7 +269,6 @@ function LockedRoom({ g, room, back }: { g: GameState; room: RoomId; back: React
           <Badge tone="aqua">New</Badge>
         </div>
         <span className="pn-small">{tier.desc}.</span>
-        <span className="pn-small pn-muted">Links to this page keep working; they show this until it opens.</span>
         <ul className="ops-reqs">
           {tier.reqs.map((r, i) => (
             <li key={i} className={r.met ? 'is-met' : undefined}>

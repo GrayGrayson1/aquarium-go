@@ -62,7 +62,7 @@ export function VisitorsPanel() {
             </Button>
           }
         >
-          Upgrade to a specialty shop to welcome paying visitors. Links to this page keep working — they show this until it unlocks.
+          Upgrade to a specialty shop to welcome paying visitors.
         </LockedDestination>
       </PanelLayout>
     );

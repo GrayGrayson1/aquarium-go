@@ -32,13 +32,13 @@ export function UpcomingTab({ g, onEnter }: { g: GameState; onEnter: (showId: st
           </div>
           <div className="sh-note">
             <Info size={13} aria-hidden />
-            <span>Show day is a game abstraction: entries are benched at the hall for the judging and home by evening. They stay in your tank, and come back a little unsettled.</span>
+            <span>Your animal never leaves its tank: it’s judged on show day and may be a little unsettled afterwards.</span>
           </div>
         </div>
       ) : (
         <div className="sh-note">
           <Info size={13} aria-hidden />
-          <span>Only healthy, settled adults travel. Genes and care count, and a calm animal that trusts you shows better.</span>
+          <span>Only healthy, settled adults can enter. Genes and care count, and a calm animal that trusts you shows better.</span>
         </div>
       )}
       {stats && stats.entered > 0 && (

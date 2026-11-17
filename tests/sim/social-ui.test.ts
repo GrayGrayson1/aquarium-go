@@ -83,7 +83,7 @@ describe('DES-010: every Social string as §13 and the owner’s answers write i
     expect([C.noTradesTitle, C.noTradesText, C.noFriendsTitle, C.noFriendsText]).toEqual(['No trades yet', 'Trades you start or accept appear here.', 'No friends yet', 'Friends you add appear here.']);
     expect([C.searchPlaceholder, C.suggested, C.join, C.joined]).toEqual(['Search clubs or paste an invite code', 'Suggested for you', 'Join', 'Joined']);
     expect([C.tradeHeroTitle, C.tradeHeroText, C.offerTrade]).toEqual(['Trade with your circle', 'Offer an animal, ask for one, or both. Trades settle the next time both games are online.', 'Offer a trade']);
-    expect([C.friendCodePlaceholder, C.addFriend, C.snapshotsNote]).toEqual(['Friend code, e.g. MYAQUA-7Q2', 'Add friend', 'Visits are read-only snapshots: friends see your tanks as they were when you last went online.']);
+    expect([C.friendCodePlaceholder, C.addFriend, C.snapshotsNote]).toEqual(['Friend code, e.g. MYAQUA-7Q2', 'Add friend', 'Friends see your tanks as they were when you last went online.']); // Audit 2026-11-17 (J33)
     // chunk 8 (ADR-0040 decision 4) — the trades note changed on purpose: Aquarium Go online exists now, trading doesn't
     expect([C.soonTitle, C.soonText, C.close]).toEqual(['Trades open later', 'Trading isn’t open yet. Nothing was offered, and your animals stay in your aquarium.', 'Close']);
     expect([C.requestSent, C.requestSentDetail, C.errorFriend]).toEqual(['Request sent', 'Their aquarium shows here once they accept.', 'That friend code didn’t match anyone. Check it and try again.']);

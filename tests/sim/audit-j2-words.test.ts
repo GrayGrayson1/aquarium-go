@@ -201,3 +201,26 @@ describe('Audit 2026-11-17 (J32): a machine or a tier has one name on a screen',
     }
   });
 });
+
+describe('Audit 2026-11-17 (J33): no developer talk on player screens', () => {
+  it('the screens and species notes say what happens, not how the game is built', () => {
+    const gone: [string, string][] = [
+      ['ui/panels/operations/Locked.tsx', 'Links to this page'],
+      ['ui/panels/build/FacilityRooms.tsx', 'Links to this page'],
+      ['ui/panels/visitors/VisitorsPanel.tsx', 'Links to this page'],
+      ['ui/panels/encyclopedia/EncyclopediaPanel.tsx', 'in this build'],
+      ['ui/cards/CreatureCard.tsx', 'not part of this version'],
+      ['ui/panels/encyclopedia/MorphCatalog.tsx', 'gene table'],
+      ['ui/panels/shows/Upcoming.tsx', 'game abstraction'],
+      ['ui/panels/shows/Upcoming.tsx', 'adults travel'],
+      ['ui/panels/shows/EnterFlow.tsx', 'game abstraction'],
+      ['ui/panels/social/copy.ts', 'read-only snapshots'],
+    ];
+    for (const [file, words] of gone) expect(src(file), `${file}: ${words}`).not.toContain(words);
+    expect(src('ui/panels/shows/EnterFlow.tsx')).toContain('Only healthy, settled adults can enter. Your animal never leaves its tank: it’s judged on show day, may be a little unsettled afterwards, and rests two days before its next show.');
+    expect(getSpecies('amano_shrimp').breeding.notes).toMatch(/ Larvae that hatch in a freshwater tank die\.$/);
+    expect(getSpecies('nerite_snail').breeding.notes).toMatch(/ In a freshwater tank the capsules never hatch\.$/);
+    expect(getSpecies('ghost_shrimp').breeding.notes).toMatch(/ In your tank, that larval week is part of raising the young\.$/);
+    expect(getSpecies('kuhli_loach').breeding.notes).toContain('hatch time is poorly documented (probably about two days).');
+  });
+});

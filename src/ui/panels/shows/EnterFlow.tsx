@@ -186,7 +186,7 @@ export function EnterFlow({ g, show, initialClass, onBack, onDone }: { g: GameSt
           <span>
             {def?.kind === 'aquascape'
               ? 'The judges visit on show day (or judge from your photos) — the tank stays home.'
-              : 'Only healthy, settled adults travel. Show day is a game abstraction: benched at the hall for the judging and home by evening — the animal stays in your tank, comes back a little unsettled, and rests two days before its next show.'}
+              : 'Only healthy, settled adults can enter. Your animal never leaves its tank: it’s judged on show day, may be a little unsettled afterwards, and rests two days before its next show.'}
           </span>
         </div>
 

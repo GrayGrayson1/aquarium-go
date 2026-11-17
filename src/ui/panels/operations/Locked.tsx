@@ -44,7 +44,6 @@ export function LockedPage({ g, which, nav }: { g: GameState; which: keyof typeo
           <Badge tone="aqua">New</Badge>
         </div>
         <span className="ops-card__body">{tier.desc}.</span>
-        <span className="ops-muted">Links to this page keep working; they show this until it opens.</span>
         <Reqs reqs={tier.reqs} />
       </section>
       {before ? (
