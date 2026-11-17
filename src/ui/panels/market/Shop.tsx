@@ -25,7 +25,7 @@ import { rememberOfferReturn, peekOfferReturn } from './offerReturn'; // lane:qa
 import { useShopFilters, offerMatches, filtersActive, useShopSearch, offerSearchMatches, sortOffers, type ShopSort } from './shopFilters'; // lane:ui-shell (chunk 1); chunk 19 (QOL-003): search and sort
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { matches } from '../common/match'; // audit 2026-11-17 (F9)
-import { wholeMoney } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F11)
+import { wholeMoney, CASH_LINK } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F11; review fix: CASH_LINK)
 import { ALL_SPECIES } from '@/data/species'; // audit 2026-11-17 (F9)
 import { useSeenStock } from './seenStock'; // lane:notify (0.5 §5.2)
 import { CopyLinkButton, OfferLinkRow, useOfferLink } from './OfferLink'; // lane:ui-shell (chunk 1)
@@ -734,7 +734,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             </span>
             {!afford && !locked && (
               // audit 2026-11-17 (F2) — short of the price: where the ways to raise cash are
-              <button type="button" className="pn-link pn-tiny" data-testid="offer-raise-cash" onClick={() => useUI.getState().set({ panel: 'finances', panelTarget: null })}>
+              <button type="button" className="pn-link pn-tiny" data-testid="offer-raise-cash" onClick={() => useUI.getState().set({ ...CASH_LINK })}>
                 Ways to raise cash
               </button>
             )}

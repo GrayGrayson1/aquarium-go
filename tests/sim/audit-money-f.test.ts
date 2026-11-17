@@ -13,7 +13,7 @@ import { newGame } from '@/sim/newGame';
 import { useGame } from '@/state/game';
 import { refreshFoodStatus } from '@/sim/tankStatus';
 import { SuppliesTab } from '@/ui/panels/market/Supplies';
-import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas, wholeMoney } from '@/ui/common/moneyShort';
+import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas, wholeMoney, cheapestFoodPrice, CASH_LINK } from '@/ui/common/moneyShort';
 import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
 import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, RESERVE_BANDS, devOpenMarket, createListing, forceBuyerVisit, acceptBid, restartNeed, tankKitPrice } from '@/sim/economy';
@@ -109,6 +109,43 @@ describe('F1: a greyed "Buy" says why, and how to raise the money', () => {
   });
 });
 
+describe('review fix: every "Ways to raise cash" link lands on the ideas', () => {
+  /** The starter's food is running low (two servings of what it eats), and money is $1 under that pack. */
+  function lowFood(): { g: GameState; price: number } {
+    const g = game(0);
+    for (const k of Object.keys(g.inventory.foods)) g.inventory.foods[k] = 0;
+    refreshFoodStatus(g);
+    const h = hungryAndShort(g)!;
+    g.inventory.foods[h.foodId] = 2;
+    g.finance.money = h.price - 1;
+    refreshFoodStatus(g);
+    return { g, price: h.price };
+  }
+
+  it('Finances opened with the "cash" target shows its ways to raise cash, whatever the balance', () => {
+    const g = game(400);
+    useUI.setState({ panelTarget: 'cash' });
+    const out = renderToStaticMarkup(createElement(FinancesPanel));
+    useUI.setState({ panelTarget: null });
+    expect(out).toContain('data-testid="finance-ideas"');
+    expect(renderToStaticMarkup(createElement(FinancesPanel))).not.toContain('finance-ideas'); // without it, $400 needs none
+    expect(g.finance.money).toBe(400);
+    expect(CASH_LINK).toEqual({ panel: 'finances', panelTarget: 'cash' });
+  });
+
+  it('food running low with less money than its pack: Finances lists the ideas and Supplies explains the greyed Buy', () => {
+    const { g, price } = lowFood();
+    expect(g.tanks[g.tankOrder[0]].cache.foodLevel).toBe('low');
+    expect(g.finance.money).toBeGreaterThanOrEqual(cheapestFoodPrice(g)); // the old rule (cheapest food on sale) missed it
+    expect(needsCashIdeas(g)).toBe(true);
+    expect(renderToStaticMarkup(createElement(FinancesPanel))).toContain('data-testid="finance-ideas"');
+    const t = text(supplies(g));
+    expect(t).toContain('Not enough money for food');
+    expect(t).toContain(`Food for Ember is running low, and ${moneyHeld(price - 1)} won’t buy a pack of`);
+    expect(t).toContain(`(${moneyHeld(price)}).`);
+  });
+});
+
 describe('F2: money trouble leads to Finances', () => {
   const toMidnight = (g: GameState) => 24 - (g.clock.hour % 24) + 0.25;
 
@@ -177,7 +214,7 @@ describe('the club’s food parcel (owner’s choice, F5 / A7): animals never st
     const e = g.log.find((x) => /^The aquarium club dropped off/.test(x.text))!;
     expect(e.text).toBe('The aquarium club dropped off a little food for Ember. Short on cash? Friends tip when your animals are healthy, or sell something in Livestock.');
     expect(e.toast).toBe(true);
-    expect(eventLink(e)).toMatchObject({ panel: 'finances', label: 'Ways to raise cash' });
+    expect(eventLink(e)).toMatchObject({ panel: 'finances', target: 'cash', label: 'Ways to raise cash' });
     expect(g.progress.counters[PARCEL_DAY_KEY]).toBe(3);
   });
 
