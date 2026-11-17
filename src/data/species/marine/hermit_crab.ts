@@ -159,12 +159,12 @@ export const hermitCrab: SpeciesDefinition = {
     { id: 'sealifebase-clibanarius-tricolor', title: 'SeaLifeBase — Clibanarius tricolor', url: 'https://www.sealifebase.se/summary/Clibanarius-tricolor.html', tier: 1, facts: ['western Atlantic/Caribbean', 'depth 0–3 m', 'IUCN Not Evaluated'] },
   ],
   confidenceNotes: [
-    'Snail-killing is documented by LiveAquaria and TFH (two sources) but framed differently: TFH thinks crabs mostly want the shell, LiveAquaria says they may also eat the snail. Modelled as a conditional risk that spare shells reduce.',
+    'Snail-killing is documented by LiveAquaria and TFH (two sources) but framed differently: TFH thinks crabs mostly want the shell, LiveAquaria says they may also eat the snail. Modelled as a conditional risk; spare shells are not modelled yet (audit D7, an owner decision), hunger raises it.',
     'Lifespan: TFH says 1–2 years in aquaria; hobbyists report longer. 100 game-days (~2.5 years) is a middle value.',
     'Breeding is excluded from the game (not_in_game): larval development is undescribed and no aquarium culture exists.',
   ],
   exceptionRules: [
-    { other: 'tag:snail', verdictFloor: 'conditional', reason: 'Blue-leg hermits may kill snails to take their shells, especially when spare empty shells or food run short. Adding spare shells reduces the risk.', incidentRisk: 0.04 },
+    { other: 'tag:snail', verdictFloor: 'conditional', reason: 'Blue-leg hermits may kill snails to take their shells, more often when they are hungry.', incidentRisk: 0.04 }, // ADR-0056 d3 (audit D7): spare shells aren't modelled, so no promise; a hungry predator hunts more (huntingDrive)
     { other: 'peacock_mantis_shrimp', verdictFloor: 'incompatible', reason: 'Hermit crabs are favourite prey for smashing mantis shrimp — shells are no protection.', incidentRisk: 0.5 },
   ],
   special: {

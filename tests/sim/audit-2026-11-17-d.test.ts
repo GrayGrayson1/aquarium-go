@@ -18,6 +18,7 @@ import { previewAddition, evaluateComposition, simpleMember, neutralContext } fr
 import { getSpecies, ALL_SPECIES } from '@/data/species';
 import { composition, generateOffer } from '@/sim/economy/shop';
 import { getFoodDef } from '@/data/catalog/foods';
+import { getDecorDef } from '@/data/catalog/decor';
 import { offerDiet } from '@/ui/panels/market/offerDietText';
 import { capitalPlural } from '@/ui/panels/market/offerWords';
 import { lifespanFacts } from '@/ui/common/lifespan';
@@ -516,5 +517,20 @@ describe('D2: a school moves in one go', () => {
     expect(staleOf(s, { k: 'moveCreatures', creatures: neons.map((c) => c.id), to: to.id, from: neons.map(() => from.id) })).toEqual({ key: `c:${neons[3].id}`, noun: 'fish' });
     expect(validateCommand({ k: 'moveCreatures', creatures: ['cr_1'], to: 't', from: ['', 'tank_1'] })).not.toBeNull();
     expect(validateCommand({ k: 'moveCreatures', creatures: ['cr_1'], to: 't', from: ['__proto__'] })).toBeNull();
+  });
+});
+
+describe('D7 (ADR-0056 decision 3, screens made honest while the owner decides): no promise that spare shells help', () => {
+  it('the hermits’ snail warnings and the Shell Pile promise nothing the game doesn’t do; the risk is unchanged', () => {
+    const blue = getSpecies('hermit_crab').exceptionRules!.find((r) => r.other === 'tag:snail')!;
+    const scarlet = getSpecies('scarlet_hermit_crab').exceptionRules!.find((r) => r.other === 'tag:snail')!;
+    for (const r of [blue, scarlet]) expect(r.reason).not.toMatch(/shells? (on hand|reduces?)|spare (empty )?shells/i);
+    expect([blue.verdictFloor, blue.incidentRisk, scarlet.verdictFloor, scarlet.incidentRisk]).toEqual(['conditional', 0.04, 'usually_compatible', 0.015]);
+    expect(getDecorDef('shell_pile')!.description).not.toMatch(/hermit|fight/i);
+    // what the blue-leg's line does claim holds in the game: its snail risk is predation, which hunger drives
+    const H = getSpecies('hermit_crab');
+    const S = getSpecies('trochus_snail');
+    const ev = evaluateComposition([simpleMember(H, 1, 'male'), simpleMember(S, 1, 'female')], { ...neutralContext(H, S), neutral: false, flowIndex: 1, lightLevel: 1 });
+    expect(ev.incidents.find((i) => i.actorSpeciesId === 'hermit_crab' && i.targetSpeciesId === 'trochus_snail' && !i.youngOnly)?.kind).toBe('predation');
   });
 });

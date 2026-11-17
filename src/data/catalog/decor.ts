@@ -811,7 +811,7 @@ export const DECOR: DecorDef[] = [
     visual: 'ornament_shell_pile',
     anchors: [a('hide', 0.02, 0.015, 0.01, 2), a('graze', -0.02, 0.02, -0.01)],
     palette: ['#efe2cc', '#d8b890', '#b07a5a'],
-    description: 'Empty turban and whelk shells. Growing hermit crabs need spares to move into, or they fight over them.',
+    description: 'Empty turban and whelk shells. Small reef animals hide and forage among them.', // ADR-0056 d3 (audit D7): hermits' shell swapping isn't modelled
   },
   // lane:frags — a grow-out rack for coral frags (plugs sit in its holes; see src/sim/aquascape/frags.ts fragRackSlots).
   {
