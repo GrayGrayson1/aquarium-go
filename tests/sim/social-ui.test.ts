@@ -437,23 +437,29 @@ describe('chunk 8: Settings › Account, server-rendered (REL-031)', () => {
 });
 
 describe('audit 2026-11-17, I13: friends', () => {
-  it('a friend request waiting lights the Social dot until it is answered (opening Social keeps it)', async () => {
+  it('a friend request lights the Social dot until Social has shown it (the review: not until it is accepted)', async () => {
     const { provideSocialService } = await import('@/social');
-    const { refreshSocialNews, markSocialSeen, hasSocialNews } = await import('@/ui/panels/social/socialStore');
+    const { refreshSocialNews, markSocialSeen, hasSocialNews, SEEN_REQUESTS_KEY } = await import('@/ui/panels/social/socialStore');
+    const store = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
     let waiting = [{ id: 'u_b', name: 'Bea' }];
     provideSocialService({ news: async () => ({ trades: 0, clubs: 0 }), friendRequests: async () => waiting, markSeen: async () => {} } as never);
     try {
       await refreshSocialNews();
       expect(useSocial.getState().news).toEqual({ trades: 0, clubs: 0, requests: 1 });
       expect(hasSocialNews(useSocial.getState().news)).toBe(true);
-      await markSocialSeen();
-      expect(hasSocialNews(useSocial.getState().news)).toBe(true);
-      waiting = [];
-      await refreshSocialNews();
+      await markSocialSeen(); // Social opened: shown
       expect(hasSocialNews(useSocial.getState().news)).toBe(false);
+      await refreshSocialNews(); // still waiting (only the owner can decline): no dot again
+      expect(hasSocialNews(useSocial.getState().news)).toBe(false);
+      expect(JSON.parse(store.get(SEEN_REQUESTS_KEY)!)).toEqual(['u_b']); // on this device, outside the save
+      waiting = [...waiting, { id: 'u_c', name: 'Cal' }]; // a new one lights it
+      await refreshSocialNews();
+      expect(useSocial.getState().news.requests).toBe(1);
     } finally {
       provideSocialService(null);
       useSocial.setState({ news: { trades: 0, clubs: 0 } });
+      delete (globalThis as { localStorage?: unknown }).localStorage;
     }
   });
 

@@ -306,9 +306,9 @@ export function FriendsTab() {
         .catch(() => null);
       if (after && before) patchFriends(() => after);
       else reloadFriends();
-      const added = before && after ? after.find((f) => !before.has(f.id)) : undefined;
-      if (added) useUI.getState().toast(added.owner, 'success', { label: C.nowFriends, detail: C.nowFriendsDetail });
-      else useUI.getState().toast(normalizeCode(code), 'success', { label: C.requestSent, detail: C.requestSentDetail });
+      const added = before && after ? after.some((f) => !before.has(f.id)) : false;
+      // named by the code this action added (a tile new meanwhile could be someone else accepting an older request)
+      useUI.getState().toast(normalizeCode(code), 'success', added ? { label: C.nowFriends, detail: C.nowFriendsDetail } : { label: C.requestSent, detail: C.requestSentDetail });
       setCode('');
     } catch (err) {
       setError(isSocialError(err) && err.code === 'network' ? 'network' : 'invalid');
