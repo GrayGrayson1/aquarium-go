@@ -45,8 +45,8 @@ import { beautyScore, decorSellValue } from '@/sim/aquascape';
 import { placedSellValue, hideWords, tankPlaceToast } from '@/ui/panels/build/BuildPanel';
 import { textureFits } from '@/sim/aquascape/beauty';
 import { getDecorDef, DECOR } from '@/data/catalog/decor';
-import { isCave, isNestSite } from '@/ui/panels/build/decorRoles';
-import { hasCave, hasNestSite } from '@/sim/life/breeding/common';
+import { isBroadLeaf, isCave, isNestSite } from '@/ui/panels/build/decorRoles';
+import { hasBroadLeaf, hasCave, hasNestSite } from '@/sim/life/breeding/common';
 import { tankHabitat } from '@/sim/aquascape';
 import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
@@ -118,8 +118,16 @@ describe('G4: a locked research project’s box says how to get the unlocks it n
     const html = renderToStaticMarkup(createElement(UnlockHelpBody, { g, conds: reef.requires, keys: researchLockKeys(reef), onGo: () => {} }));
     expect(html).toContain('data-testid="unlock-help-gear_tier2"'); // its own section…
     expect(html).toContain('data-testid="unlock-help-research-life_support_2"'); // …with the research that grants it
-    expect(html).toContain('50 reputation'); // …and its play route
+    // While the guide holds “Better filters, heaters, lights” for one of its steps (F8, merged with G1), the box
+    // names that step, not a play rule that wouldn't open it; once the guide is over, the play route is back.
+    expect(html).toContain('The guide’s “');
+    expect(html).not.toContain('50 reputation');
     expect(html).not.toContain('data-testid="unlock-help-marine_basics"'); // a clownfish keeper already has marine
+    const after = game('ocellaris_clownfish');
+    after.progress.tutorial.skipped = true;
+    const later = renderToStaticMarkup(createElement(UnlockHelpBody, { g: after, conds: reef.requires, keys: researchLockKeys(reef), onGo: () => {} }));
+    expect(later).toContain('data-testid="unlock-help-research-life_support_2"');
+    expect(later).toContain('50 reputation'); // …and its play route
   });
 });
 
@@ -440,6 +448,7 @@ describe('G16: Build says which pieces the breeding rules take as a nest site or
       const hab = tankHabitat(g, t);
       expect(isNestSite(d), `${d.id} nest site`).toBe(hasNestSite(t, hab));
       expect(isCave(d), `${d.id} cave`).toBe(hasCave(t, hab));
+      expect(isBroadLeaf(d), `${d.id} broad leaf`).toBe(hasBroadLeaf(t)); // E11: where angelfish and rams also lay
     }
   });
 });

@@ -401,6 +401,14 @@ export function restockHint(state: GameState, missing: SpeciesDefinition[]): str
 /** Young offered one of their phase's foods this recently (by hand, a doser or the keeper's own meal) aren't fed again. */
 export const YOUNG_FED_RECENTLY_H = 4;
 
+/**
+ * The most a keeper gives one brood on one round. Young are fed by having their food offered (the brood's food
+ * recency), so more servings feed nobody: they rot. A serving per 20 young, as a doser gives, put 28 servings into a
+ * display tank where two snail broods of about 270 had hatched, and its ammonia reached DANGER for an hour
+ * (`staff2-feeding`, the staffed grand hall, once snail parents stopped eating their young). A keeper feeds a pinch.
+ */
+export const KEEPER_YOUNG_MAX_SERVINGS = 2;
+
 /** Food tags in words, for the keeper's "no {food} in stock". */
 const TAG_WORDS: Record<string, string> = { baby_brine: 'baby brine', infusoria: 'infusoria', copepod_live: 'live copepods', pellet_small: 'small pellets', pellet_sinking: 'sinking pellets', algae_wafer: 'algae wafers', vegetable: 'vegetables', brine_shrimp: 'brine shrimp', bloodworm: 'bloodworms' };
 
@@ -414,13 +422,14 @@ export function youngFoodWords(tags: readonly string[]): string {
  * A keeper's round feeds the young in the tank their first foods from stock, as a live-food doser does (the same
  * `feedTank`, so the brood's food recency is what feeds them; one way young get fed): each brood past its yolk, in a
  * phase that eats fed food, gets the first of its phase's foods in stock (in the phase's order, made for this water and
- * species), about a serving per 20 young. Nothing when a working doser feeds the tank, or the young were offered their
+ * species), about a serving per 20 young and never more than `KEEPER_YOUNG_MAX_SERVINGS`. Nothing when a working doser feeds the tank, or the young were offered their
  * food in the last few hours. Returns the foods given and the broods with none of theirs in stock. Draws nothing.
  */
 export function keeperFeedYoung(state: GameState, m: StaffMember, tank: Tank, hour: number): { fed: number; short: { label: string; tags: readonly string[] }[] } {
   const short: { label: string; tags: readonly string[] }[] = [];
   if (doserOf(tank) && !isHeld(state, 'food')) return { fed: 0, short };
   const plan = new Map<string, number>();
+  const lightly = nitrogenWatch(state, tank);
   for (const cl of Object.values(state.clutches)) {
     if (cl.tankId !== tank.id || !(cl.count > 0) || cl.stage === 'eggs' || cl.stage === 'in_pouch' || isCarried(cl)) continue;
     const sp = findSpecies(cl.speciesId);
@@ -440,7 +449,9 @@ export function keeperFeedYoung(state: GameState, m: StaffMember, tank: Tank, ho
       continue;
     }
     const left = inStock(state, pick.id) - (plan.get(pick.id) ?? 0);
-    plan.set(pick.id, (plan.get(pick.id) ?? 0) + Math.min(left, Math.max(1, Math.ceil(cl.count / DOSER.youngPerServing))));
+    // a pinch per brood, and only one while ammonia or nitrite is at WATCH (the adults' "feed lightly until it clears")
+    const want = Math.min(lightly ? 1 : KEEPER_YOUNG_MAX_SERVINGS, Math.max(1, Math.ceil(cl.count / DOSER.youngPerServing)));
+    plan.set(pick.id, (plan.get(pick.id) ?? 0) + Math.min(left, want));
   }
   let fed = 0;
   for (const [foodId, servings] of plan) {

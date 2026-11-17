@@ -23,7 +23,7 @@ import type { CommandOf } from '@/sim/commands';
 import { tankKitPrice, kitEquipmentFor, kitSwapNote, fragStoreOffer, type KitEquipment } from '@/sim/economy'; // audit 2026-11-17 (F15): fragStoreOffer
 import { findFreeSpot, waterClassLock, guideHoldLine } from '@/sim/facility';
 import { decorWaterNote } from './decorWater'; // Audit 2026-11-17 (G7)
-import { isCave, isNestSite } from './decorRoles'; // Audit 2026-11-17 (G16)
+import { isBroadLeaf, isCave, isNestSite } from './decorRoles'; // Audit 2026-11-17 (G16, E11)
 import { STRUGGLING_HEALTH } from '@/ui/common/notify'; // Audit 2026-11-17 (G8)
 import { usePlacementStore } from '@/render/facility/placementStore'; // Audit 2026-11-17 (G24)
 import { SellStoredEquipment } from './SellBack'; // Audit 2026-11-17 (G22)
@@ -462,7 +462,7 @@ type DecorSort = 'price' | 'beauty' | 'name';
 /** chunk 19 (QOL-003) — the words a decor piece is found by: its name, category and what it does for the animals. */
 function decorWords(d: DecorDef): string {
   const h = d.habitat;
-  return [d.name, CAT_META[d.category]?.label, h.hides >= 0.25 ? 'hiding spot shelter cave' : '', h.cover > 0.05 ? 'cover' : '', h.hitching > 0 ? 'hitching' : '', h.grazing > 0.05 ? 'grazing' : '', h.nitrateUptake > 0 ? 'eats nitrate' : '', h.enrichment > 0.1 ? 'enrichment' : '', d.anchors.some((a) => a.kind === 'host') ? 'host' : '', isNestSite(d) ? 'nest site spawn spawning flat eggs' : '', isCave(d) ? 'cave spawning tube' : ''].join(' '); // Audit 2026-11-17 (G16): nest and cave words
+  return [d.name, CAT_META[d.category]?.label, h.hides >= 0.25 ? 'hiding spot shelter cave' : '', h.cover > 0.05 ? 'cover' : '', h.hitching > 0 ? 'hitching' : '', h.grazing > 0.05 ? 'grazing' : '', h.nitrateUptake > 0 ? 'eats nitrate' : '', h.enrichment > 0.1 ? 'enrichment' : '', d.anchors.some((a) => a.kind === 'host') ? 'host' : '', isNestSite(d) ? 'nest site spawn spawning flat eggs' : '', isBroadLeaf(d) ? 'broad leaf spawn spawning eggs angelfish' : '', isCave(d) ? 'cave spawning tube' : ''].join(' '); // Audit 2026-11-17 (G16): nest and cave words
 }
 
 function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; tankId: string; cat: DecorCategory | 'all'; setCat: (c: DecorCategory | 'all') => void; q: string; setQ: (v: string) => void }) {
@@ -776,6 +776,7 @@ function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameSta
         {d.anchors.some((a) => a.kind === 'host') && <Chip tone="coral">Host</Chip>}
         {/* Audit 2026-11-17 (G16): what the breeding rules accept as somewhere to lay eggs, or as a cave to claim */}
         {isCave(d) ? <Chip title="A cave a breeding pair can claim, and a place to lay eggs">Cave</Chip> : isNestSite(d) && <Chip title="Pairs that lay eggs on a surface can spawn on it">Nest site</Chip>}
+        {isBroadLeaf(d) && <Chip title="Angelfish and rams lay their eggs on a broad leaf like this">Broad leaf</Chip> /* E11's rule */}
         {isLiving(d) && (d.lightNeed ?? 0) >= 0.5 && <Chip tone="watch">Needs bright light</Chip> /* Audit 2026-11-17 (G8) */}
         {d.hazards?.sharp && <Chip tone={longFins ? 'danger' : 'watch'} icon={<TriangleAlert size={10} />}>{longFins ? 'Tears long fins' : 'Sharp edges'}</Chip>}
         {d.hazards?.ingestible && <Chip tone="watch" icon={<TriangleAlert size={10} />}>Swallowable</Chip>}
