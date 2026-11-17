@@ -121,6 +121,9 @@ describe('D20: old age never takes the first companion (the owner’s decision);
     expect(lifespanFacts(old, sp, s.clock.hour).note).toBe('Ash is in her last stretch: about 12 days left.');
     old.status = 'dead';
     expect(lifespanFacts(old, sp, s.clock.hour).note).toBeNull();
+    // the review: a first companion that has died shows the plain lifespan, never an empty row
+    ember.status = 'dead';
+    expect(lifespanFacts(ember, sp, s.clock.hour)).toEqual({ value: `About ${sp.lifecycle.lifespanDays} days`, note: null });
   });
 });
 
@@ -433,6 +436,11 @@ describe('D16: the creature card’s notes link to where each problem is fixed',
     expect(fixForCreatureNote(c, 'Healing from injuries — Rex the tiger barb has been nipping her.')?.link.to).toEqual({ kind: 'card', tankId: 't1', tab: 'life', fix: 'compat' });
     expect(fixForCreatureNote(c, 'Bob is struggling with the water (too warm).')?.link.label).toBe('Water care');
     expect(fixForCreatureNote(c, 'Very hungry — time to feed.')).toBeNull();
+    // the review: substrate, light and sharp decor go to what fixes them, not "Add decor"
+    expect(fixForCreatureNote(c, 'Habitat: the gravel substrate is unsuitable.')?.link).toEqual({ label: 'Change substrate', to: { kind: 'panel', panel: 'build', target: 'tab:substrate' } });
+    expect(fixForCreatureNote(c, 'Habitat: the light is brighter than it likes.')?.link).toEqual({ label: 'Lighting', to: { kind: 'card', tankId: 't1', tab: 'gear', fix: 'lighting' } });
+    expect(fixForCreatureNote(c, 'Habitat: the light is dimmer than it likes.')?.link.label).toBe('Lighting');
+    expect(fixForCreatureNote(c, 'Habitat: sharp decor can tear long fins.')?.link.label).toBe('See decor');
     expect(fixForCreatureNote({ tankId: null, speciesId: 'neon_tetra' }, 'Habitat: needs plants.')).toBeNull();
   });
 });

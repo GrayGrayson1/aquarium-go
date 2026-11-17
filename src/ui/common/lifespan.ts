@@ -7,7 +7,7 @@ import type { Creature, SpeciesDefinition } from '@/types';
 import { ageDaysOf } from '@/sim/life/growth';
 
 export interface LifespanFacts {
-  /** "About 160 days" — null for the first companion, whom old age never takes. */
+  /** "About 160 days" — null for the living first companion, whom old age never takes (its row is the note alone). */
   value: string | null;
   /** The companion's line, or an elder's "last stretch" heads-up. */
   note: string | null;
@@ -25,7 +25,8 @@ export function lifespanDaysText(sp: Pick<SpeciesDefinition, 'lifecycle'>): stri
 
 export function lifespanFacts(c: Creature, sp: SpeciesDefinition, nowHour: number): LifespanFacts {
   const living = c.status === 'alive' || c.status === 'listed';
-  if (c.isStarter) return { value: null, note: living ? `${c.name} is your first companion and will stay with you as long as you look after ${pronouns(c).obj}.` : null };
+  // review of D20: the companion's row is its sentence alone (no empty value); once it is gone, the plain lifespan
+  if (c.isStarter && living) return { value: null, note: `${c.name} is your first companion and will stay with you as long as you look after ${pronouns(c).obj}.` };
   let note: string | null = null;
   if (living && c.lifeStage === 'elder') {
     const left = Math.max(1, Math.round(sp.lifecycle.lifespanDays - ageDaysOf(c, nowHour)));

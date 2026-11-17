@@ -267,7 +267,7 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
   if ((c.life?.injury ?? 0) > 20) {
     // Audit 2026-11-17 (D11): name the tank mate when its History says who it was
     const by = lastHurtBy(c);
-    const obj = c.sex === 'female' ? 'her' : c.sex === 'male' ? 'him' : 'it';
+    const obj = c.sex === 'female' ? 'her' : c.sex === 'male' ? 'him' : 'them'; // the death line's word too
     notes.push(by ? `Healing from injuries — ${by.label} has been ${by.verb} ${obj}.` : 'Healing from injuries — check for aggressive or nipping tank mates.');
     watch = true;
   }

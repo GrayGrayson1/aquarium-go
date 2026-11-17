@@ -270,9 +270,17 @@ function CareFacts({ sp, tankGallons, unit, c, nowHour }: { sp: SpeciesDefinitio
         {sp.recommendedMinTankGallons}+ gal
       </KV>
       <KV label={<><Gauge size={13} aria-hidden /> Care level</>}>{diff?.label ?? titleCase(sp.difficulty)}</KV>
-      <KV label={<><Hourglass size={13} aria-hidden /> Lifespan</>} hint={life.note ?? undefined}>
-        {life.value}
-      </KV>
+      {life.value ? (
+        <KV label={<><Hourglass size={13} aria-hidden /> Lifespan</>} hint={life.note ?? undefined}>
+          {life.value}
+        </KV>
+      ) : life.note ? (
+        // review of D20: the first companion's row is its sentence, with no empty value beside the label
+        <div className="ag-kv">
+          <span className="ag-kv__label"><Hourglass size={13} aria-hidden /> Lifespan</span>
+          <span className="ag-kv__hint">{life.note}</span>
+        </div>
+      ) : null}
       <div className="ag-sg-card">
         <AutofeederVerdict sp={sp} compact />
         <RealLifeTips sp={sp} max={3} />
