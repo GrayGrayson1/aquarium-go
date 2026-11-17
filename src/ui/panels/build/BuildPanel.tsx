@@ -35,6 +35,7 @@ import { orderedTanks, gallonsOf, unlocked, livingInTank } from '../common/deriv
 import { substrateCost } from '../common/tankOps';
 import { FragTake, FragTag, FragStorage } from './FragAction'; // lane:frags
 import { equipmentFit, tankGearIssues } from '@/sim/care/fit'; // lane:fit
+import { removeEquipmentWarning } from '@/sim/care'; // Audit 2026-11-17 C12
 import { FitBadge, FitLine } from '@/ui/common/FitNote'; // lane:fit
 import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format';
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
@@ -801,6 +802,37 @@ export function storedEquipmentList(g: GameState, tank: Pick<Tank, 'environment'
   return [...rows.filter((r) => !r.needs), ...rows.filter((r) => r.needs)];
 }
 
+/**
+ * Audit 2026-11-17 C12 — "To storage" (as decor's button says). Taking a filter's bacteria or the only heater out of
+ * a tank with animals asks first (the sim's removeEquipmentWarning): the first press shows the cost, the second acts.
+ */
+function RemoveGearButton({ g, tankId, equipmentId }: { g: GameState; tankId: string; equipmentId: string }) {
+  const [armed, setArmed] = useState(false);
+  const warning = safe(() => removeEquipmentWarning(g, tankId, equipmentId), null);
+  useEffect(() => {
+    if (!armed) return;
+    const t = window.setTimeout(() => setArmed(false), 6000);
+    return () => window.clearTimeout(t);
+  }, [armed]);
+  return (
+    <>
+      <Button
+        size="sm"
+        variant={armed ? 'coral' : 'ghost'}
+        data-testid={`build-equip-remove-${equipmentId}`}
+        title={warning ?? undefined}
+        onClick={() => {
+          if (warning && !armed) return setArmed(true);
+          act({ k: 'removeEquipment', tank: tankId, equip: equipmentId }, { sound: 'place' });
+        }}
+      >
+        <Trash2 size={14} /> {armed ? 'Remove anyway' : 'To storage'}
+      </Button>
+      {armed && warning && <div className="pn-tiny pn-tone-watch" style={{ flexBasis: '100%' }} role="status">{warning}</div>}
+    </>
+  );
+}
+
 function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tankId: string; q: string; setQ: (v: string) => void; kind: EquipmentKind | 'all'; setKind: (k: EquipmentKind | 'all') => void }) {
   const { unit: tempUnit } = useTempText();
   const tank = g.tanks[tankId];
@@ -876,9 +908,7 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
                         <Wrench size={14} /> Repair · {formatMoney(Math.max(5, Math.round(def.price * 0.35)))}
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost" onClick={() => act({ k: 'removeEquipment', tank: tankId, equip: inst.id }, { sound: 'place' })}>
-                      <Trash2 size={14} /> Remove
-                    </Button>
+                    <RemoveGearButton g={g} tankId={tankId} equipmentId={inst.id} />
                   </div>
                 </div>
               );

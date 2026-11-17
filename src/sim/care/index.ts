@@ -12,7 +12,7 @@ import { bumpCounter } from '../facility';
 import { emitEvent } from '../context';
 import { nextId } from '../ids';
 import { addFood, recommendedServings, ensureLab, scaleFood, foodDemandUnits, availableFood } from '../water/food';
-import { CLASS_DEFAULTS, SALT_KG_PER_LITRE, LITRES_PER_GALLON, DETOX_FREE_FRACTION, DETOX_HOURS, isSaltClass, isMarineClass } from '../water/constants';
+import { CLASS_DEFAULTS, SALT_KG_PER_LITRE, LITRES_PER_GALLON, DETOX_FREE_FRACTION, DETOX_HOURS, ROOM_TEMP_C, isSaltClass, isMarineClass } from '../water/constants';
 import { equipmentSummary, expectedTempC, safeGallons, inhabitantsOf, safeHabitat } from '../water/env';
 import { tuneTankForSpecies } from '../water/kits';
 import { sanitizeWater } from '../water/step';
@@ -562,6 +562,37 @@ function poorFit(state: GameState, tank: Tank, equipmentId: string): FitVerdict 
   }
 }
 
+/** The share of the tank's bacteria a filter takes with it, as removeEquipment works it out: cycle before → after. */
+function filterRemovalCycle(tank: Tank, def: { stats: { bioCapacity?: number } }): { from: number; to: number } {
+  const s = equipmentSummary(tank);
+  const share = (def.stats.bioCapacity ?? 0) / Math.max(1, s.bioCapUnits);
+  const from = tank.water.bioMaturity;
+  return { from, to: clamp(from * (1 - 0.85 * clamp(share, 0, 1)), 0, 1) };
+}
+
+/**
+ * Audit 2026-11-17 C12 — what taking this unit out would cost the animals here, asked before the Remove button acts:
+ * a filter takes its bacteria (and the cycle drops), the only working heater leaves the water to cool toward the room.
+ * Null when the tank is empty or nothing much changes.
+ */
+export function removeEquipmentWarning(state: GameState, tankId: string, equipmentId: string): string | null {
+  const tank = state.tanks[tankId];
+  const inst = tank?.equipment.find((e) => e.id === equipmentId);
+  const def = inst ? getEquipmentDef(inst.defId) : undefined;
+  if (!tank || !inst || !def || inhabitantsOf(state, tank.id).length === 0) return null;
+  if (def.kind === 'filter') {
+    const c = filterRemovalCycle(tank, def);
+    if (c.from - c.to <= 0.05) return null;
+    return `Removing the ${def.name} takes its bacteria with it (cycle ${Math.round(c.from * 100)}% → ${Math.round(c.to * 100)}%), so ammonia will rise. Remove it anyway?`;
+  }
+  if (def.kind === 'heater' && inst.on && !inst.failed) {
+    const others = tank.equipment.some((e) => e !== inst && e.on && !e.failed && getEquipmentDef(e.defId)?.kind === 'heater');
+    if (others || idealBand(state, tank, 'tempC').min <= ROOM_TEMP_C + 0.5) return null;
+    return `Without the ${def.name}, the water cools toward the room’s ${ROOM_TEMP_C} °C — too cool for the animals here. Remove it anyway?`;
+  }
+  return null;
+}
+
 export function removeEquipment(state: GameState, tankId: string, equipmentId: string): ActionResult {
   const tank = getTank(state, tankId);
   if (!tank) return fail('That tank no longer exists.');
@@ -571,11 +602,9 @@ export function removeEquipment(state: GameState, tankId: string, equipmentId: s
   const def = getEquipmentDef(inst.defId);
   const notes: string[] = [];
   if (def?.kind === 'filter') {
-    const s = equipmentSummary(tank);
-    const share = (def.stats.bioCapacity ?? 0) / Math.max(1, s.bioCapUnits);
     const m0 = tank.water.bioMaturity;
     inst.bio = { maturity: m0, sinceHour: state.clock.hour };
-    tank.water.bioMaturity = clamp(m0 * (1 - 0.85 * clamp(share, 0, 1)), 0, 1);
+    tank.water.bioMaturity = filterRemovalCycle(tank, def).to; // the same sum the warning quotes (Audit 2026-11-17 C12)
     if (m0 - tank.water.bioMaturity > 0.05)
       notes.push(`Its bacteria left with it (cycle ${Math.round(m0 * 100)}% → ${Math.round(tank.water.bioMaturity * 100)}%). Install it in another tank within a day or two to seed that tank.`);
   }

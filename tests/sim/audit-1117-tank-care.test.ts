@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { getWaterReport, tankDailyCost } from '@/sim/water';
-import { waterChange, waterChangeCost, dose, installEquipment, feedTank } from '@/sim/care';
+import { waterChange, waterChangeCost, dose, installEquipment, feedTank, removeEquipment, removeEquipmentWarning } from '@/sim/care';
 import { storedEquipmentList } from '@/ui/panels/build/BuildPanel';
 import { convertWaterClass, convertWaterClassCost } from '@/sim/tankOps';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -413,5 +413,28 @@ describe('C11: stored gear shows from any tank, saying what tank it needs', () =
     expect(rows.map((r) => r.inst.id)).toEqual(['st_air', 'st_reef']);
     expect(rows[0].needs).toBeNull();
     expect(rows[1].needs).toMatch(/^Needs a (salt|marine) tank$/);
+  });
+});
+
+describe('C12: taking a filter’s bacteria or the only heater out of a stocked tank asks first', () => {
+  it('the warning quotes the same cycle drop the removal then makes', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    t.water.bioMaturity = 0.88;
+    const filter = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'filter')!;
+    const warn = removeEquipmentWarning(s, t.id, filter.id)!;
+    const m = /cycle (\d+)% → (\d+)%/.exec(warn)!;
+    expect(warn).toMatch(/takes its bacteria with it .* so ammonia will rise\. Remove it anyway\?$/);
+    const r = removeEquipment(s, t.id, filter.id);
+    expect(r.message).toContain(`cycle ${m[1]}% → ${m[2]}%`);
+  });
+
+  it('the betta’s only heater asks; an empty tank does not', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    const heater = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'heater')!;
+    expect(removeEquipmentWarning(s, t.id, heater.id)).toMatch(/cools toward the room’s 22 °C — too cool for the animals here/);
+    for (const id of Object.keys(s.creatures)) delete s.creatures[id];
+    expect(removeEquipmentWarning(s, t.id, heater.id)).toBeNull();
   });
 });
