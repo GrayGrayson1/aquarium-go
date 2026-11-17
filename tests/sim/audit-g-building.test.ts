@@ -22,6 +22,7 @@ import { ResearchPanel } from '@/ui/panels/research/ResearchPanel';
 import { decorWaterNote } from '@/ui/panels/build/decorWater';
 import { WATER_CLASS_BLURB } from '@/ui/panels/common/format';
 import { tankAttention, tankAttentionLevel } from '@/ui/common/notify';
+import { tierLadder } from '@/ui/common/ops';
 import { RESEARCH_BY_ID } from '@/data/research';
 import { applyCommand } from '@/sim/commands';
 import { removeEquipment } from '@/sim/care';
@@ -467,5 +468,14 @@ describe('G20: every unlock’s toast says where it lives', () => {
     expect(unlockLink('water_room')).toMatchObject({ panel: 'build', target: 'room:water', label: 'Open Build' });
     expect(unlockLink('operations_desk')).toMatchObject({ panel: 'operations', label: 'Open Operations' });
     expect(unlockWhere('party_mode')).toBe('Tap Party in the tank tools: the lights dance to music.');
+  });
+});
+
+describe('G21: a project learned through play isn’t listed as missing for the Live food room', () => {
+  it('the nursery earned by raising a clutch ticks the Breeding Programme row', () => {
+    const g = game('betta');
+    g.progress.unlocked.push('nursery');
+    const food = tierLadder(g).find((t) => t.key === 'food')!;
+    expect(food.reqs.find((r) => /Breeding Programme/.test(r.text))).toEqual({ met: true, text: 'Breeding Programme: learned through play' });
   });
 });
