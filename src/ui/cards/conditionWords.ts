@@ -27,3 +27,8 @@ export function healthWord(h: number): string {
 export function healthTone(h: number): 'good' | 'watch' | 'danger' {
   return h < 40 ? 'danger' : h < 75 ? 'watch' : 'good';
 }
+
+/** D17: a lost or rehomed animal's card is a memory (no live actions, meters, value or breeding). Listed animals are still here. */
+export function isMemoryCard(status: string): boolean {
+  return status === 'dead' || status === 'sold';
+}

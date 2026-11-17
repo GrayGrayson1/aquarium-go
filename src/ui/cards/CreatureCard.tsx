@@ -90,7 +90,7 @@ import {
 import { dietGuide, feedingLine, temperatureGuide, FLOW_GUIDE } from '@/data/species/guide'; // lane:guide
 import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
 import { lifespanFacts } from '../common/lifespan'; // Audit 2026-11-17 (D20)
-import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone } from './conditionWords'; // Audit 2026-11-17 (D10, D12)
+import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isMemoryCard } from './conditionWords'; // Audit 2026-11-17 (D10, D12, D17)
 import { AutofeederVerdict, RealLifeTips, openSpeciesGuide } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
 import { Badge, Button, Chip, Meter, Section, StatusBadge, formatMoney, KV, Empty } from '../kit';
 import { setCameraMode } from '../hud/ToolRail';
@@ -561,9 +561,12 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
   // lane:guide — where Sell leads (see the action row)
   const canList = safe('isUnlocked', () => isUnlocked(game, 'market_listings'), true);
   const listingId = c.status === 'listed' ? game.market.listings.find((l) => l.status === 'active' && l.creatureIds.includes(c.id))?.id : undefined;
+  // Audit 2026-11-17 (D17): a lost or rehomed animal's card is a memory: no live actions, meters, value or breeding
+  const gone = isMemoryCard(c.status);
 
   return (
     <div className="ag-cbody">
+      {!gone && (
       <div className="ag-cactions">
         <ActionBtn icon={<ScanEye size={17} />} label={following ? 'Following' : 'Follow'} active={following} onClick={() => {
           if (following) setCameraMode('front');
@@ -593,13 +596,14 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           />
         )}
       </div>
+      )}
 
       {/* lane:w2-ui — feed this animal from its card (on phones the card covers the Target feed prompt) */}
       {!readOnly && <FeedRow c={c} game={game} />}
 
-      <BehaviourLine id={c.id} />
+      {!gone && <BehaviourLine id={c.id} />}
 
-      {c.illness && (
+      {c.illness && !gone && (
         // lane:guide — the illness's own name, symptom and cure for this species (it used to say "check the water and
         // keep stress low" for everything, even impaction, where the fix is the substrate)
         <div className="ag-callout ag-callout--danger">
@@ -619,6 +623,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
         </div>
       )}
 
+      {c.status !== 'sold' && (
       <Section title={<><Activity size={12} aria-hidden /> Condition</>}>
         {wellbeing && (
           <div className={clsx('ag-wellbeing', `is-${wellbeing.status}`)}>
@@ -635,6 +640,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
             </div>
           </div>
         )}
+        {!gone && (
         <div className="ag-meters">
           <Meter label="Health" value={c.stats.health} tone={healthTone(c.stats.health)} display={healthWord(c.stats.health)} /* Audit 2026-11-17 (D10): the Condition box's bands */ />
           <Meter label="Hunger" value={c.stats.hunger} tone={hungerTone(c.stats.hunger)} display={hungerWord(c.stats.hunger)} />
@@ -645,7 +651,8 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
               "Good · Thriving" with an orange "Enrichment: Low" underneath */}
           <Meter label="Enrichment" value={c.stats.enrichment} tone={c.stats.enrichment > 55 ? 'good' : 'auto'} display={c.stats.enrichment < 30 ? 'Bored' : levelWord(c.stats.enrichment > 55 ? Math.max(60, c.stats.enrichment) : c.stats.enrichment)} />
         </div>
-        {comfort && comfort.stressors.length > 0 && (
+        )}
+        {!gone && comfort && comfort.stressors.length > 0 && (
           <ul className="ag-stressors">
             {comfort.stressors.slice(0, 3).map((s, i) => (
               <li key={i}>{convertTempText(s, unit)}</li>
@@ -653,6 +660,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           </ul>
         )}
       </Section>
+      )}
 
       <Section title={<><Sparkles size={12} aria-hidden /> Personality</>}>
         {c.personality.length === 0 ? (
@@ -721,6 +729,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
         <Lineage c={c} game={game} />
       </Section>
 
+      {!gone && (
       <Section title={<><Coins size={12} aria-hidden /> Value</>}>
         {value ? (
           <div className="ag-value">
@@ -741,8 +750,9 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           <div className="ag-muted ag-small">Valuation unavailable.</div>
         )}
       </Section>
+      )}
 
-      {sp && (
+      {sp && !gone && (
         <Section title={<><Egg size={12} aria-hidden /> Breeding</>}>
           <Breeding c={c} game={game} sp={sp} />
           {!readOnly && tank && (

@@ -17,7 +17,7 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { offerDiet } from '@/ui/panels/market/offerDietText';
 import { lifespanFacts } from '@/ui/common/lifespan';
 import { convertTempText } from '@/ui/common/format';
-import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone } from '@/ui/cards/conditionWords';
+import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isMemoryCard } from '@/ui/cards/conditionWords';
 import { moveButton, moveNeedsAck } from '@/ui/cards/moveRisk';
 
 const texts = (r: CompatReport) => r.reasons.map((x) => x.text).join('\n');
@@ -343,5 +343,14 @@ describe('D15: a risky move asks for the same tick as a risky purchase', () => {
     expect(moveButton({ tankName: 'Community', gateOk: true, verdict: 'usually_compatible', acknowledged: false })).toEqual({ label: 'Move to Community', enabled: true });
     expect(moveButton({ tankName: 'Reef', gateOk: false, verdict: undefined, acknowledged: false }).enabled).toBe(false);
     expect(moveButton({ tankName: null, gateOk: false, verdict: undefined, acknowledged: false })).toEqual({ label: 'Choose a tank', enabled: false });
+  });
+});
+
+describe('D17: a dead or rehomed animal’s card drops the live animal’s buttons', () => {
+  it('dead and sold are memories; alive and listed keep their actions', () => {
+    expect(isMemoryCard('dead')).toBe(true);
+    expect(isMemoryCard('sold')).toBe(true);
+    expect(isMemoryCard('alive')).toBe(false);
+    expect(isMemoryCard('listed')).toBe(false);
   });
 });
