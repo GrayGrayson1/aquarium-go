@@ -35,7 +35,7 @@ import { lineFarm } from './support/production';
 import { UNLOCK_RULES, type Cond } from '@/data/unlocks';
 import { FacilityUpgradeCard } from '@/ui/panels/common/FacilityUpgrade';
 import { beautyScore, decorSellValue } from '@/sim/aquascape';
-import { placedSellValue } from '@/ui/panels/build/BuildPanel';
+import { placedSellValue, hideWords } from '@/ui/panels/build/BuildPanel';
 import { textureFits } from '@/sim/aquascape/beauty';
 import { getDecorDef, DECOR } from '@/data/catalog/decor';
 import { isCave, isNestSite } from '@/ui/panels/build/decorRoles';
@@ -434,5 +434,14 @@ describe('G16: Build says which pieces the breeding rules take as a nest site or
       expect(isNestSite(d), `${d.id} nest site`).toBe(hasNestSite(t, hab));
       expect(isCave(d), `${d.id} cave`).toBe(hasCave(t, hab));
     }
+  });
+});
+
+describe('G17: a decor card never shows more hiding spots than the sim counts', () => {
+  it('rounds down: a Stone Cave (1.5) is one big hiding spot, not two', () => {
+    expect(hideWords(1)).toBe('Hiding spot');
+    expect(hideWords(1.2)).toBe('Hiding spot');
+    expect(hideWords(1.5)).toBe('Big hiding spot');
+    expect(hideWords(2.4)).toBe('2 hiding spots');
   });
 });

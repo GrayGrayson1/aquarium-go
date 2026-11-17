@@ -707,6 +707,12 @@ function DecorSwatch({ d, size = 56 }: { d?: DecorDef; size?: number }) {
   );
 }
 
+/** Audit 2026-11-17 (G17): a piece's hiding places as the sim counts them, rounded down ("1.5" is one big one). */
+export function hideWords(hides: number): string {
+  const n = Math.floor(hides);
+  return n >= 2 ? `${n} hiding spots` : hides >= 1.5 ? 'Big hiding spot' : 'Hiding spot';
+}
+
 function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameState; d: DecorDef; onChoose: () => void; longFins: boolean; suggested?: boolean }) {
   const isUnlocked = unlocked(g, d.unlock);
   const afford = g.finance.money >= d.price;
@@ -727,7 +733,8 @@ function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameSta
         <span className="pn-tiny pn-muted">· beauty {d.beauty}</span>
       </span>
       <span className="pn-chips pn-decor__chips">
-        {h.hides >= 1 ? <Chip>{Math.round(h.hides) > 1 ? `${Math.round(h.hides)} hiding spots` : 'Hiding spot'}</Chip> : h.hides >= 0.25 ? <Chip>Shelter</Chip> : null}
+        {/* Audit 2026-11-17 (G17): never more spots than the sim counts (a Stone Cave counts 1.5, it showed "2 hiding spots") */}
+        {h.hides >= 1 ? <Chip>{hideWords(h.hides)}</Chip> : h.hides >= 0.25 ? <Chip>Shelter</Chip> : null}
         {h.cover > 0.05 && <Chip>Cover</Chip>}
         {h.hitching > 0 && <Chip tone="aqua">Hitching</Chip>}
         {h.grazing > 0.05 && <Chip>Grazing</Chip>}
