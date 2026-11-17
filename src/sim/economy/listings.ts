@@ -1216,7 +1216,7 @@ export function quickSell(state: GameState, creatureIds: string[]): ActionResult
   bumpCounter(state, 'animalsSold', sold.length);
   bumpCounter(state, 'salesRevenue', Math.round(q.total));
   addMastery(state, 'business', 2);
-  if (sick > 0) addReputation(state, -2 * sick, 'Sold unwell animals to the local store');
+  if (sick > 0) addReputation(state, -2 * sick, 'Sold unwell animals to the local fish store');
   emitEvent(state, { kind: 'info', text: `${LOCAL_FISH_STORE} bought ${names} for ${fmtMoney(q.total)}.${sick ? ' They noted the animals were unwell.' : ''}` });
   // lane:guide — say what the sale cost in reputation (it used to happen without a word)
   return { ok: true, message: `Sold ${names} to ${LOCAL_FISH_STORE} for ${fmtMoney(q.total)}.${sick ? ` Selling ${sick === 1 ? 'an unwell animal' : `${sick} unwell animals`} cost ${2 * sick} reputation.` : ''}` };

@@ -48,3 +48,13 @@ describe('Audit 2026-11-17 (J22): jargon gets plain words where it appears', () 
     }
   });
 });
+
+describe('Audit 2026-11-17 (J24, the part that needs no choice): one name for the quick-sale buyer inside one box', () => {
+  it('the quick-sell box and the reputation line say "the local fish store", as the box’s own price line does', () => {
+    const box = src('ui/panels/livestock/LivestockPanel.tsx');
+    expect(box).not.toContain('Quick sell to the local shop?');
+    expect(box).toContain('title="Quick sell to the local fish store?"');
+    expect(box).toContain('The local fish store offers');
+    expect(src('sim/economy/listings.ts')).toContain("'Sold unwell animals to the local fish store'");
+  });
+});

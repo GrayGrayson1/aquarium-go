@@ -269,7 +269,7 @@ export function LivestockPanel() {
       <Modal
         open={confirmSell}
         onClose={() => setConfirmSell(false)}
-        title="Quick sell to the local shop?"
+        title="Quick sell to the local fish store?"
         subtitle="Instant cash, no auction"
         actions={
           <>
