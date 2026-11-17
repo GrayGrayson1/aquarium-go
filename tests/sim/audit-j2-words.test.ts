@@ -22,6 +22,10 @@ import { SHARED_WORDS } from '@/ui/shared/words';
 import { ALL_SPECIES } from '@/data/species';
 import { morphCatalog } from '@/sim/life/morphCatalog';
 import { hasNoNamedMorphs } from '@/ui/panels/encyclopedia/morphs';
+import { createTank } from '@/sim/tanks';
+import { createCreature, addCreature } from '@/sim/life';
+import { simRng } from '@/sim/rng';
+import { exhibitInfo } from '@/sim/facility/exhibit';
 
 const src = (path: string) => readFileSync(new URL(`../../src/${path}`, import.meta.url), 'utf8');
 
@@ -333,5 +337,24 @@ describe('Audit 2026-11-17 (J39): an allele is named as its morph is', () => {
     expect(betta.find((a) => a.id === 'black')?.name).toBe('Black Melano');
     expect(JSON.stringify(getSpecies('freshwater_angelfish'))).toContain('"name":"Koi Angel"');
     for (const id of ['astraea_snail', 'mexican_turbo_snail']) expect(hasNoNamedMorphs(getSpecies(id)), id).toBe(true);
+  });
+});
+
+describe('Audit 2026-11-17 (J40): a cherry shrimp exhibit isn’t scored as a threatened species', () => {
+  function exhibit(speciesId: string) {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 7 });
+    const t = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true, placement: { x: 6, z: 2, rotY: 0 }, name: 'Show tank' });
+    const rng = simRng(g);
+    for (let i = 0; i < 3; i++) addCreature(g, createCreature(g, rng, speciesId, { ageDays: 60 }), t.id);
+    return exhibitInfo(g, t).conservation;
+  }
+
+  it('its status is “Not evaluated (IUCN)” and the invasion risk is in the note; its exhibit scores as an unthreatened species', () => {
+    const cs = getSpecies('cherry_shrimp').conservation!;
+    expect(cs.status).toBe('Not evaluated (IUCN)');
+    expect(cs.note).toMatch(/^Rated a high invasion risk in the US\. /);
+    expect(exhibit('cherry_shrimp')).toBe(0.35);
+    expect(exhibit('pea_puffer')).toBe(0.8); // a Vulnerable species still counts
+    expect(src('sim/facility/exhibit.ts')).toContain('least concern|not evaluated|not assessed|domesticated');
   });
 });

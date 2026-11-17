@@ -88,8 +88,8 @@ export const cherryShrimp: SpeciesDefinition = {
   unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: true,
   conservation: {
-    status: 'Not assessed by IUCN; rated High invasion risk by USFWS',
-    note: 'Aquarium Neocaridina are entirely captive-bred. Released shrimp have established invasive populations in Hawaii, Florida, Germany, Poland, Hungary, Japan and Canada, where they displace native shrimp and can carry crayfish plague — never release them or pour tank water into waterways.',
+    status: 'Not evaluated (IUCN)',
+    note: 'Rated a high invasion risk in the US. Aquarium Neocaridina are entirely captive-bred. Released shrimp have established invasive populations in Hawaii, Florida, Germany, Poland, Hungary, Japan and Canada, where they displace native shrimp and can carry crayfish plague — never release them or pour tank water into waterways.',
   },
 
   genetics: {
