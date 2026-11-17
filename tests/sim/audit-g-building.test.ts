@@ -19,6 +19,8 @@ import { useGame } from '@/state/game';
 import { TopBar } from '@/ui/hud/TopBar';
 import { MoreSheetBody } from '@/ui/hud/MoreSheet';
 import { ResearchPanel } from '@/ui/panels/research/ResearchPanel';
+import { decorWaterNote } from '@/ui/panels/build/decorWater';
+import { WATER_CLASS_BLURB } from '@/ui/panels/common/format';
 import { RESEARCH_BY_ID } from '@/data/research';
 
 const game = (starterId: StarterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
@@ -121,5 +123,25 @@ describe('G6: reputation is reachable on every screen and explained', () => {
     expect(research).toContain('How reputation grows');
     expect(research).toContain('It drops when an animal dies');
     expect(research).toContain('data-testid="research-reputation-next"');
+  });
+});
+
+describe('G7: corals after Reef Systems: the link finds a tank that takes them, and Decor says why they are hidden', () => {
+  it('the coral and anemone unlocks go through Find (a tank that can take them, else Build › Tanks on that water)', () => {
+    expect(unlockLink('decor_corals_soft')).toMatchObject({ panel: 'build', target: 'find:decor:zoanthids', where: 'Corals need a reef tank. Find them in Build › Decor.' });
+    expect(unlockLink('decor_corals_lps')?.target).toBe('find:decor:hammer_coral');
+    expect(unlockLink('decor_anemones')?.target).toBe('find:decor:bubble_tip_anemone');
+  });
+  it('Decor names what the tank’s water hides', () => {
+    const g = game('ocellaris_clownfish');
+    g.progress.unlocked.push('reef', 'decor_corals_soft');
+    expect(decorWaterNote(g, { environment: 'marine', waterClass: 'marine_fowlr' })).toBe('The Photosynthetic Gorgonian needs a live-rock or reef tank, and corals need a reef tank. Set one up in Build › Tanks, or convert an empty marine tank in Tanks.');
+    expect(decorWaterNote(g, { environment: 'marine', waterClass: 'marine_live_rock' })).toBe('Corals need a reef tank. Set one up in Build › Tanks, or convert an empty marine tank in Tanks.');
+    expect(decorWaterNote(g, { environment: 'marine', waterClass: 'reef' })).toBeNull();
+    expect(decorWaterNote(g, { environment: 'freshwater', waterClass: 'freshwater_tropical' })).toBeNull();
+  });
+  it('the water types say which take corals', () => {
+    expect(WATER_CLASS_BLURB.marine_fowlr).toMatch(/No corals or anemones\.$/);
+    expect(WATER_CLASS_BLURB.marine_live_rock).toMatch(/Takes gorgonians and anemones, not reef corals\.$/);
   });
 });

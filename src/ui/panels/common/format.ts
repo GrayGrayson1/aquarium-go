@@ -117,8 +117,8 @@ export const WATER_CLASS_BLURB: Record<WaterClass, string> = {
   freshwater_cool: 'Unheated, clear and gentle. Axolotls, goldfish and white clouds.',
   freshwater_tropical: 'Warm community water for tetras, livebearers and bettas.',
   freshwater_planted: 'Warm water with rich soil and bright light for lush plants.',
-  marine_fowlr: 'Saltwater for hardy fish. Simple and robust.',
-  marine_live_rock: 'Saltwater with living rock — natural filtration and grazing.',
+  marine_fowlr: 'Saltwater for hardy fish. Simple and robust. No corals or anemones.', // Audit 2026-11-17 (G7)
+  marine_live_rock: 'Saltwater with living rock — natural filtration and grazing. Takes gorgonians and anemones, not reef corals.',
   reef: 'Stable saltwater and strong light for corals and anemones.',
   brackish: 'Part-salt estuary water (SG about 1.004–1.012) for puffers, gobies, mollies and archerfish.', // lane:brackish
 };

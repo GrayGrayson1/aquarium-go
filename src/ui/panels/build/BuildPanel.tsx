@@ -22,6 +22,7 @@ import { getFacilityLevel } from '@/data/facilities';
 import type { CommandOf } from '@/sim/commands';
 import { tankKitPrice, kitEquipmentFor, kitSwapNote, type KitEquipment } from '@/sim/economy';
 import { findFreeSpot, waterClassLock, guideHoldLine } from '@/sim/facility';
+import { decorWaterNote } from './decorWater'; // Audit 2026-11-17 (G7)
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { formatTemp } from '@/ui/common/format';
 import { usePanelGame, safe, useIsPhone, useTempText } from '../common/hooks';
@@ -472,6 +473,7 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
     return def && def.environments.includes(tank.environment);
   });
   const residents = livingInTank(g, tankId);
+  const waterNote = safe(() => decorWaterNote(g, tank), null); // Audit 2026-11-17 (G7)
 
   const choose = (def: DecorDef) => {
     // the tool hint above the dock explains placement (click/tap the floor · R rotates · Esc cancels); chunk 19
@@ -549,6 +551,7 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
             </Chip>
           ))}
         </div>
+        {waterNote && <p className="pn-small pn-muted" style={{ marginTop: 0 }} data-testid="decor-water-note">{waterNote}</p> /* Audit 2026-11-17 (G7) */}
         {list.length === 0 && narrowed ? (
           <EmptyState icon={<Mountain size={24} />} title="Nothing matches" action={<Button onClick={() => { setQ(''); setBuyable(false); }} data-testid="decor-clear">Clear filters</Button>}>
             Try other words, or another category.

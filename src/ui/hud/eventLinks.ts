@@ -6,6 +6,10 @@
 import type { GameEvent } from '@/types';
 import type { PanelId } from '@/state/ui';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
+import { DECOR } from '@/data/catalog/decor'; // Audit 2026-11-17 (G7)
+
+/** Audit 2026-11-17 (G7): Find's way to a piece: a tank whose water takes it, else Build › Tanks on that water. */
+const findDecor = (key: string): string => `find:decor:${DECOR.find((d) => d.unlock === key)?.id ?? ''}`;
 
 export interface EventLink {
   panel: PanelId;
@@ -31,6 +35,10 @@ const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
   market_listings: { panel: 'market', target: 'tab:listings', where: 'List animals in Market › My listings.' },
   tank_auctions: { panel: 'market', target: 'tab:listings', where: 'List a whole aquarium in Market › My listings.' },
   nursery: { panel: 'tanks', target: null, where: 'Set a tank’s purpose in Tanks.' },
+  // Audit 2026-11-17 (G7): corals and anemones live only in some marine water, so their unlock goes through Find
+  decor_corals_soft: { panel: 'build', target: findDecor('decor_corals_soft'), where: 'Corals need a reef tank. Find them in Build › Decor.' },
+  decor_corals_lps: { panel: 'build', target: findDecor('decor_corals_lps'), where: 'Corals need a reef tank. Find them in Build › Decor.' },
+  decor_anemones: { panel: 'build', target: findDecor('decor_anemones'), where: 'Anemones need a reef or live-rock tank. Find them in Build › Decor.' },
   // Audit 2026-11-17 (G5): the shop also waits for a tank big enough for these animals (ADR-0053 decision 4)
   fw_large: { panel: 'market', target: 'tab:shop', where: 'They come into Market › Shop once you have a tank big enough for them.' },
   elasmobranchs: { panel: 'market', target: 'tab:shop', where: 'They come into Market › Shop once you have a tank big enough for them.' },
