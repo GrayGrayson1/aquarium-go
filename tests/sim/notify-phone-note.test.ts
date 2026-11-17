@@ -49,6 +49,6 @@ describe('B14: system notifications on a phone', () => {
       expect(render(createElement(NotificationsTab), true)).toContain(PHONE_NOTE);
       expect(render(createElement(NotificationsTab), false)).not.toContain(PHONE_NOTE);
     }
-    expect(PHONE_NOTE).toBe('On a phone, the game pauses when you switch apps, so alerts show in the game.');
+    expect(PHONE_NOTE).toBe('On a phone or tablet, the game pauses when you switch apps, so alerts show in the game.');
   });
 });

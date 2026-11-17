@@ -15,6 +15,7 @@ import { useSocialAvailable } from '../online/mode';
 import { useShell } from '../common/shellStore';
 import { isTextEntry } from '../common/safe';
 import { go } from '../nav/router';
+import { guardLeave } from '../panels/common/leaveGuard'; // audit B6 review
 import { startTour } from '../tutorial/tourStore';
 import { findAnything, orderResults, type FindGo, type FindResult } from './searchIndex';
 
@@ -31,8 +32,12 @@ export function closeFind(): void {
   if (useFind.getState().open) useFind.setState({ open: false });
 }
 
-/** Go where a result points. */
+/** Go where a result points (audit B6 review: a listing with typed prices asks first, and Leave completes the move). */
 export function goFind(to: FindGo): void {
+  guardLeave(() => goFindNow(to));
+}
+
+function goFindNow(to: FindGo): void {
   const ui = useUI.getState();
   switch (to.kind) {
     case 'route':

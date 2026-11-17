@@ -75,4 +75,15 @@ describe('B1: the Alerts drawer with many rows', () => {
     expect(hud).toMatch(/\.ag-alerts-pop__body \{[^}]*min-height: 0;[^}]*overflow-y: auto; overscroll-behavior: contain; \}/);
     expect(hud).toMatch(/\.ag-alerts-pop__body > \* \{ flex-shrink: 0; \}/);
   });
+
+  it('on a phone (upright or sideways) the drawer ends above the tab bar, so its last rows aren’t under it', () => {
+    const hud = readFileSync(new URL('../../src/ui/styles/hud.css', import.meta.url), 'utf8');
+    const clear = 'calc(100dvh - var(--edge-t) - var(--topbar-h) - var(--dock-h) - var(--edge) - var(--safe-b) - 16px)';
+    // (the phone rule, and the sideways block's, which comes later and wins there)
+    const phone = hud.indexOf(`.ag-alerts-pop { position: fixed;`);
+    const sideways = hud.indexOf(`.ag-alerts-pop { max-height: ${clear}; }`);
+    expect(hud.slice(phone, hud.indexOf('\n', phone))).toContain(`max-height: min(72vh, 640px, ${clear})`);
+    expect(sideways).toBeGreaterThan(phone);
+    expect(hud.lastIndexOf('@media (max-height: 500px) and (orientation: landscape) {', sideways)).toBeGreaterThan(phone);
+  });
 });

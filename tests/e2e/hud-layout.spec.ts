@@ -110,14 +110,18 @@ test.describe('desktop 1440×900', () => {
     await crowdedBell(page);
   });
 
-  test('audit B20: with a panel just opened, Space is the panel’s (it scrolls) and doesn’t pause the game', async ({ page }) => {
+  test('audit B20: with a panel just opened, Space scrolls its list and doesn’t pause the game', async ({ page }) => {
     await plainGame(page);
+    for (let i = 0; i < 10; i++) await aq(page, 'dev.addShopOffer', 'mystery_snail'); // a list long enough to scroll
     const speed = () => page.evaluate(() => (window as unknown as { __AQ: { game(): { clock: { speed: number } } } }).__AQ.game().clock.speed);
     expect(await speed()).toBeGreaterThan(0);
     await tid(page, 'dock-market').click();
+    // focus lands on the panel's title, in its header (outside the scrolling body)
     await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('[data-testid="panel-market"]'))).toBe(true);
+    const body = tid(page, 'panel-market').locator('.pn-body');
+    expect(await body.evaluate((el) => el.scrollHeight > el.clientHeight + 50)).toBe(true);
     await page.keyboard.press('Space');
-    await page.waitForTimeout(300);
+    await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(50);
     expect(await speed()).toBeGreaterThan(0);
   });
 
@@ -203,21 +207,29 @@ test.describe('phone 390×844 (touch)', () => {
     await reset.tap();
   });
 
-  test('audit B19: over an open sheet a toast’s text only pins it; its button goes there', async ({ page }) => {
+  test('audit B19: over an open sheet a tapped toast gets out of the way; its own button still goes', async ({ page }) => {
     await plainGame(page);
     await aq(page, 'setUI', { panel: 'market' });
     await page.waitForTimeout(1200);
-    type Api = { __AQ: { game(): { tankOrder: string[] }; ui(): { toast(t: string, k: string, parts?: { tankId?: string }): void } } };
-    await page.evaluate(() => {
-      const A = (window as unknown as Api).__AQ;
-      A.ui().toast('Ember is settling into the Starter tank', 'success', { tankId: A.game().tankOrder[0] });
-    });
+    type Api = { __AQ: { game(): { tankOrder: string[] }; ui(): { toast(t: string, k: string, parts?: { tankId?: string; actionLabel?: string }): void } } };
+    const raise = (text: string, button: boolean) =>
+      page.evaluate(
+        ([t, b]) => {
+          const A = (window as unknown as Api).__AQ;
+          A.ui().toast(t as string, 'success', { tankId: A.game().tankOrder[0], ...(b ? { actionLabel: 'See them' } : {}) });
+        },
+        [text, button] as const,
+      );
+    await raise('Ember is settling into the Starter tank', false);
     const toast = tid(page, 'toast').filter({ hasText: 'Ember is settling' });
     await expect(toast).toBeVisible();
     await toast.locator('.ag-toast__text').tap();
-    await expect(toast).toHaveClass(/is-expanded/);
+    await expect(toast).toHaveCount(0);
     expect(await panel(page)).toBe('market');
-    await toast.getByTestId('toast-action').tap();
+    await raise('Mochi is settling into the Starter tank', true);
+    const second = tid(page, 'toast').filter({ hasText: 'Mochi is settling' });
+    await expect(second.getByTestId('toast-action')).toHaveText('See them');
+    await second.getByTestId('toast-action').tap();
     await expect.poll(() => panel(page)).toBeNull();
   });
 

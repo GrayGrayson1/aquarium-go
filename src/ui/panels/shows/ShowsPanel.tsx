@@ -74,13 +74,14 @@ export function ShowsPanel() {
   // audit B6: the entry flow has an address (#/shows/enter/<id>), so Back closes it and stays in Shows; a show that
   // stops taking entries meanwhile closes it and says so (the calendar used to come back without a word)
   const flowOpen = !!flow && !!g?.shows?.shows.some((x) => x.id === flow.showId && x.status === 'open');
-  useNavSub('shows', flow && flowOpen ? `show:${flow.showId}` : null);
+  const locked = useDestinationLocked(g, 'shows');
+  // (review: not over the locked page, which shows no entry flow)
+  useNavSub('shows', flow && flowOpen && !locked ? `show:${flow.showId}` : null);
   useEffect(() => {
     if (!flow || flowOpen || !g) return;
     setFlow(null);
     useUI.getState().toast('Entries for that show have closed.', 'info');
   }, [flow, flowOpen]); // eslint-disable-line react-hooks/exhaustive-deps
-  const locked = useDestinationLocked(g, 'shows');
   if (!g) return null;
   // lane:ui-shell (chunk 1, §5.7) — before the guide is done (or 20 reputation) the panel says what opens it
   if (locked)

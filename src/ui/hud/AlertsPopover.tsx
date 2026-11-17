@@ -26,6 +26,7 @@ import { attentionSummary, autofeedPaused, autofeedPausedText, drawerEvents, eve
 import { mark } from '../common/marks';
 import { Button } from '../kit';
 import { go } from '../nav/router'; // lane:notify (chunk 3)
+import { guardLeave } from '../panels/common/leaveGuard'; // audit B6 review
 import { useNotifyPermission } from '../notify/deliver'; // lane:notify (chunk 3)
 import { eventLink } from './eventLinks'; // lane:notify
 import { AutomationSection } from './AlertsAutomation'; // lane:automation (chunk 5)
@@ -89,9 +90,16 @@ const FILTERS: { id: Filter; label: string; kinds: GameEvent['kind'][] | null }[
 /** audit B8: an event's animal, if it is still here (alive or listed): a dead or sold one's card would only flash. */
 export const liveAnimal = (g: GameState, id: string | undefined): boolean => !!id && (g.creatures[id]?.status === 'alive' || g.creatures[id]?.status === 'listed');
 
-export function focusTank(tankId: string, openCard = true) {
-  useUI.getState().set({ focusedTankId: tankId, view: 'tank', panel: null });
-  if (openCard) useShell.getState().set({ tankCardOpen: true });
+/**
+ * The tank view on `tankId`, with its card (on `tab` when given). Audit B6 review: it closes the open panel, so a
+ * listing with typed prices asks first, and Leave finishes the whole move (Keep editing changes nothing).
+ */
+export function focusTank(tankId: string, openCard = true, tab?: 'gear') {
+  guardLeave(() => {
+    if (tab) useTankCardTab.setState({ want: tab });
+    useUI.getState().set({ focusedTankId: tankId, view: 'tank', panel: null });
+    if (openCard) useShell.getState().set({ tankCardOpen: true });
+  });
 }
 
 function TankAlerts({ game }: { game: GameState }) {
@@ -175,8 +183,7 @@ function TankAlerts({ game }: { game: GameState }) {
   const gearRow = ({ t, names, worn }: (typeof gear)[number]) => {
     const open = () => {
       sfx('open');
-      useTankCardTab.setState({ want: 'gear' });
-      focusTank(t.id);
+      focusTank(t.id, true, 'gear');
       useShell.getState().set({ popover: null });
     };
     return (
@@ -239,8 +246,7 @@ function TankAlerts({ game }: { game: GameState }) {
       title="Open the tank card's equipment"
       onClick={() => {
         sfx('open');
-        useTankCardTab.setState({ want: 'gear' });
-        focusTank(t.id);
+        focusTank(t.id, true, 'gear');
         useShell.getState().set({ popover: null });
       }}
     >
@@ -269,8 +275,7 @@ function TankAlerts({ game }: { game: GameState }) {
           onClick={() => {
             sfx('open');
             // a line about broken gear opens the card on its Equipment tab, where the repair is
-            if (t.equipment?.some((e) => e.failed) && /\bfailed\b|stuck on/.test(reason)) useTankCardTab.setState({ want: 'gear' });
-            focusTank(t.id);
+            focusTank(t.id, true, t.equipment?.some((e) => e.failed) && /\bfailed\b|stuck on/.test(reason) ? 'gear' : undefined);
             useShell.getState().set({ popover: null });
           }}
         >
@@ -424,7 +429,7 @@ export function AlertsPopover() {
                     <div className="ag-event__meta">
                       {agoText(e.hour, game.clock.hour)}
                       {e.tankId && game.tanks[e.tankId] && (
-                        <button type="button" className="ag-linkbtn" onClick={() => { focusTank(e.tankId!, false); if (liveAnimal(game, e.creatureId)) useUI.getState().set({ selectedCreatureId: e.creatureId }); useShell.getState().set({ popover: null }); }}>
+                        <button type="button" className="ag-linkbtn" onClick={() => { useShell.getState().set({ popover: null }); guardLeave(() => { focusTank(e.tankId!, false); if (liveAnimal(game, e.creatureId)) useUI.getState().set({ selectedCreatureId: e.creatureId }); }); }}>
                           {game.tanks[e.tankId].name}
                         </button>
                       )}

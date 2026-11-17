@@ -29,3 +29,22 @@ describe('B21: an older listing asked for by a link', () => {
     expect(NOT_FOUND.listing).toMatchObject({ title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' });
   });
 });
+
+describe('review: links into the Market', () => {
+  it('before listings open, a link to the wizard is told so (My listings and the unlock words instead)', async () => {
+    const { listingsOpen } = await import('@/ui/panels/market/MarketPanel');
+    const { useGame } = await import('@/state/game');
+    const { marketAccess } = await import('@/sim/economy');
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 3 });
+    g.progress.unlocked = g.progress.unlocked.filter((k) => k !== 'market_listings');
+    useGame.setState({ game: g });
+    try {
+      expect(listingsOpen()).toBe(false);
+      expect(marketAccess(g).hint).toMatch(/^Listings open /);
+      g.progress.unlocked.push('market_listings');
+      expect(listingsOpen()).toBe(true);
+    } finally {
+      useGame.setState({ game: null });
+    }
+  });
+});

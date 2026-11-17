@@ -11,7 +11,7 @@ import { useUI } from '@/state/ui';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { RESEARCH } from '@/data/research';
 import { ACHIEVEMENTS } from '@/data/achievements';
-import type { Reward } from '@/data/quests';
+import { QUEST_BOARD_SIZE, type Reward } from '@/data/quests';
 import { researchList, activeQuests, unlockProgress, masteryLevel, unlockLabel, evalCond, currentTutorialStep, type ResearchView, type QuestView, type UnlockProgressView } from '@/sim/facility';
 import { PanelLayout } from '../common/PanelLayout';
 import { usePanelGame, safe, useIsPhone, useMedia } from '../common/hooks';
@@ -498,6 +498,12 @@ function RewardChips({ r }: { r: Reward }) {
   );
 }
 
+/**
+ * Audit B2 (the part that needs no decision) — finished quests keep their board slot until claimed, so a board full of
+ * them draws no new quest: say so where the rewards are. (exported for tests)
+ */
+export const boardFullOfRewards = (quests: readonly QuestView[]): boolean => quests.filter((q) => q.status === 'complete' && !q.isTutorial).length >= QUEST_BOARD_SIZE;
+
 function QuestsTab({ g, quests }: { g: GameState; quests: QuestView[] }) {
   const tut = safe(() => currentTutorialStep(g), null);
   // audit 2026-11-17 (A13) — the step in the guide card's own words: the player's temperature unit, "Click" for a mouse
@@ -520,6 +526,11 @@ function QuestsTab({ g, quests }: { g: GameState; quests: QuestView[] }) {
             <Bar value={(tut.index / Math.max(1, tut.total)) * 100} tone="aqua" label="Guide progress" thin />
           </div>
         </div>
+      )}
+      {boardFullOfRewards(quests) && (
+        <Callout tone="gold" icon={<Gift size={15} />}>
+          <span data-testid="quests-board-full">Claim a reward to get new quests.</span>
+        </Callout>
       )}
       {sorted.length === 0 ? (
         <EmptyState icon={<ScrollText size={24} />} title="The quest board is quiet">

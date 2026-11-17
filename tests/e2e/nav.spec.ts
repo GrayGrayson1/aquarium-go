@@ -65,15 +65,21 @@ test.describe('hash routes (desktop 1440×900)', () => {
     await expect(tid(page, 'panel-market')).toBeVisible();
 
     // prices typed: Back asks; Keep editing stays (and its address comes back); Leave goes to My listings
-    await tid(page, 'listing-create').click();
-    await tid(page, 'listing-kind-creature').click();
-    const row = page.locator('.pn-pickrow').filter({ hasNotText: 'Starter' }).first();
-    if (!(await row.evaluate((el) => el.classList.contains('is-on')))) await row.click();
-    await page.getByRole('button', { name: /^Next\b/ }).last().click();
-    await page.getByRole('button', { name: 'Increase Reserve price' }).click();
+    /** New listing → an animal → its price, with the reserve nudged up (the wizard's kind, items and price steps). */
+    const typePrice = async () => {
+      await tid(page, 'listing-create').click();
+      await tid(page, 'listing-kind-creature').click();
+      await page.getByRole('button', { name: /^Next\b/ }).last().click(); // kind → animals
+      const row = page.locator('.pn-pickrow').filter({ hasNotText: 'Starter' }).first();
+      await expect(row).toBeVisible();
+      if (!(await row.evaluate((el) => el.classList.contains('is-on')))) await row.click();
+      await page.getByRole('button', { name: /^Next\b/ }).last().click(); // animals → price
+      await page.getByRole('button', { name: 'Increase Reserve price' }).click();
+    };
+    await typePrice();
     await page.goBack();
     await expect(tid(page, 'leave-confirm')).toContainText('Leave this listing?');
-    await expect(tid(page, 'leave-confirm')).toContainText('Your prices and photo won’t be kept.');
+    await expect(tid(page, 'leave-confirm')).toContainText('Your prices won’t be kept.'); // (no photo taken)
     await tid(page, 'leave-keep').click();
     await expect(tid(page, 'leave-confirm')).toBeHidden();
     await expect(page.getByRole('button', { name: 'Increase Reserve price' })).toBeVisible();
@@ -83,11 +89,7 @@ test.describe('hash routes (desktop 1440×900)', () => {
     await expect(tid(page, 'listing-create')).toBeVisible();
     await expect.poll(() => hash(page)).toBe('#/market/listings');
     // and the panel's close asks too
-    await tid(page, 'listing-create').click();
-    await tid(page, 'listing-kind-creature').click();
-    if (!(await row.evaluate((el) => el.classList.contains('is-on')))) await row.click();
-    await page.getByRole('button', { name: /^Next\b/ }).last().click();
-    await page.getByRole('button', { name: 'Increase Reserve price' }).click();
+    await typePrice();
     await page.keyboard.press('Escape');
     await expect(tid(page, 'leave-confirm')).toBeVisible();
     await page.keyboard.press('Escape'); // Escape on the question keeps editing
