@@ -17,7 +17,7 @@ import { PanelLayout } from '../common/PanelLayout';
 import { usePanelGame, safe, useIsPhone } from '../common/hooks';
 import { act } from '../common/act';
 import { Chip, Seg, EmptyState, SectionHead, Bar, Callout } from '../common/parts';
-import { Requirements } from '../common/Requirements';
+import { Requirements, RuleRequirements, ruleParts } from '../common/Requirements';
 import { NamedIcon } from '../common/icons';
 import { formatSpan, plural } from '../common/format';
 import './research.css'; // lane:w2-ui
@@ -446,6 +446,10 @@ export function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: 
             <div className="pn-col pn-gap-2">
               {closed.map((k) => {
                 const u = byKey.get(k);
+                // Audit 2026-11-17 (G11): "any of" rows split, each alternative with its progress, as the lock box does;
+                // a project offered as a route isn't also listed as a requirement
+                const routes = (u?.viaResearch ?? []).map((r) => r.id);
+                const parts = UNLOCK_RULE_BY_KEY[k] ? safe(() => ruleParts(g, UNLOCK_RULE_BY_KEY[k].when, routes), null) : null;
                 return (
                   <details key={k} className="pn-unlock">
                     <summary>
@@ -456,10 +460,10 @@ export function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: 
                     <div className="pn-unlock__body">
                       <div className="pn-small pn-dim">{u?.hint}</div>
                       {u?.guide && <div className="pn-small pn-dim">{u.guide}</div> /* Audit 2026-11-17 (G1) */}
-                      {u && u.requirements.length > 0 && <Requirements items={u.requirements} />}
+                      {parts ? <RuleRequirements g={g} conds={UNLOCK_RULE_BY_KEY[k].when} routes={routes} /> : u && u.requirements.length > 0 && <Requirements items={u.requirements} />}
                       {u && u.viaResearch.length > 0 && (
                         <div className="pn-small pn-muted">
-                          <FlaskConical size={12} style={{ verticalAlign: '-2px' }} /> Or research: {u.viaResearch.map((r) => r.name).join(', ')}
+                          <FlaskConical size={12} style={{ verticalAlign: '-2px' }} /> {parts && !parts.requirements.length && !parts.either.length ? 'Research' : 'Or research'}: {u.viaResearch.map((r) => r.name).join(', ')}
                         </div>
                       )}
                     </div>

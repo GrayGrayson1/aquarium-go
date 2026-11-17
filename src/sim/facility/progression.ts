@@ -456,9 +456,10 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
       return { met: done, current: done ? 1 : 0, target: 1, label: `Research: ${RESEARCH_BY_ID[cond.id]?.name ?? cond.id}` };
     }
     case 'facility': {
-      const cur = levelIdx(state.facility.level);
-      const need = levelIdx(cond.level);
-      return { met: cur >= need, current: cur, target: need, label: getFacilityLevel(cond.level).name };
+      // Audit 2026-11-17 (G11): done or not ("Aquarium Store 1/2" showed positions in the venue list)
+      const met = levelIdx(state.facility.level) >= levelIdx(cond.level);
+      const name = getFacilityLevel(cond.level).name;
+      return { met, current: met ? 1 : 0, target: 1, label: met ? name : `Move into the ${name}` };
     }
     case 'unlocked': {
       const has = p.unlocked.includes(cond.key);
@@ -483,6 +484,8 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
         n++;
       }
       const what = cond.minGallons ? `${cond.minGallons}+ gal tank` : cond.reef ? 'reef tank' : cond.env ? `${cond.env} tank` : 'tank';
+      // Audit 2026-11-17 (G11): "1 500+ gal tank" read as 1,500 gallons
+      if (cond.minGallons && cond.min === 1) return { met: n >= 1, current: n, target: 1, label: `a ${cond.minGallons}+ gallon tank` };
       return { met: n >= cond.min, current: n, target: cond.min, label: `${cond.min} ${what}${cond.min === 1 ? '' : 's'}` };
     }
     case 'visitors': {

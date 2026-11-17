@@ -33,6 +33,7 @@ import { advanceWorld } from '@/sim/world';
 import { findNonFinite } from '@/dev/fixtures/core-testkit';
 import { lineFarm } from './support/production';
 import { UNLOCK_RULES, type Cond } from '@/data/unlocks';
+import { FacilityUpgradeCard } from '@/ui/panels/common/FacilityUpgrade';
 
 const game =(starterId: StarterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
 
@@ -328,5 +329,36 @@ describe('G10: mastery is shown in the points requirements ask for, with what ea
     expect(html).toContain('Lv 2 · 220 points');
     expect(html).toContain('Visitors, friends’ visits and shows.');
     expect(evalCond(g, { type: 'mastery', track: 'exhibition', min: 300 })).toMatchObject({ label: '300 exhibition mastery points', current: 220, target: 300 });
+  });
+});
+
+describe('G11: requirement rows read plainly', () => {
+  it('a venue is done or not, and one big tank is “a 500+ gallon tank”', () => {
+    const g = game('betta');
+    expect(evalCond(g, { type: 'facility', level: 'aquarium_store' })).toMatchObject({ met: false, current: 0, target: 1, label: 'Move into the Aquarium Store' });
+    expect(evalCond(g, { type: 'facility', level: 'hobby_room' })).toMatchObject({ met: true, current: 1, target: 1, label: 'Hobby Room' });
+    expect(evalCond(g, { type: 'tanks', min: 1, minGallons: 500 }).label).toBe('a 500+ gallon tank');
+    expect(evalCond(g, { type: 'tanks', min: 4 }).label).toBe('4 tanks');
+  });
+  it('a research-only unlock says “Research …” once, not as a requirement and again as “Or research”', () => {
+    const g = game('ocellaris_clownfish');
+    const [reef] = lockViews(g, ['reef']);
+    expect(reef.requirements).toEqual([]);
+    expect(reef.research.map((r) => r.id)).toEqual(['reef_systems']);
+    const html = renderToStaticMarkup(createElement(UnlockHelpBody, { g, keys: ['reef'], onGo: () => {} }));
+    expect(html).not.toContain('Research: Reef Systems');
+    expect(html).not.toContain('Or research');
+    // an "any of" whose other route is research: the play route is the checklist, the project its own route
+    const [big] = lockViews(g, ['tank_500']);
+    expect(big.either).toEqual([]);
+    expect(big.requirements.map((r) => r.label)).toEqual(['560 reputation + Move into the Destination Aquarium']);
+  });
+  it('the Facility card splits “1 sale or Host 4 friend visits” into its alternatives, each with progress', () => {
+    const g = game('betta');
+    g.progress.counters.friend_visits = 2;
+    const html = renderToStaticMarkup(createElement(FacilityUpgradeCard, { g }));
+    expect(html).toContain('And one of these:');
+    expect(html).toContain('Host 4 friend visits');
+    expect(html).toContain('2/4');
   });
 });

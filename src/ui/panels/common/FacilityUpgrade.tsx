@@ -10,7 +10,8 @@ import { facilityUpgradeInfo, type FacilityUpgradeInfo } from '@/sim/facility';
 import { act } from './act';
 import { useUI } from '@/state/ui'; // lane:qa-play
 import { Chip } from './parts';
-import { Requirements } from './Requirements';
+import { Requirements, RuleRequirements } from './Requirements';
+import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks'; // Audit 2026-11-17 (G11)
 import { safe } from './hooks';
 
 export function FacilityUpgradeCard({ g }: { g: GameState }) {
@@ -71,7 +72,8 @@ export function FacilityUpgradeCard({ g }: { g: GameState }) {
           <div className="pn-tiny pn-muted" style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 650 }}>
             Requirements
           </div>
-          <Requirements items={reqs} />
+          {/* Audit 2026-11-17 (G11): an "any of" row split into its alternatives, each with its progress */}
+          {next.unlockKey && UNLOCK_RULE_BY_KEY[next.unlockKey] && !g.progress.unlocked.includes(next.unlockKey) ? <RuleRequirements g={g} conds={UNLOCK_RULE_BY_KEY[next.unlockKey].when} /> : <Requirements items={reqs} />}
         </div>
       )}
       <div className="pn-row pn-gap-3 pn-upgrade__foot pn-row--wrap">

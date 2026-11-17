@@ -16,7 +16,7 @@ import { useUI } from '@/state/ui';
 import { UNLOCK_RULE_BY_KEY, type Cond } from '@/data/unlocks';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { unlockProgress, researchList, unlockLabel, type UnlockProgressView, type ResearchView } from '@/sim/facility';
-import { Requirements, reqsFor } from './Requirements';
+import { Requirements, reqsFor, ruleParts } from './Requirements';
 import { safe } from './hooks';
 import { sfx } from '@/audio/sfx';
 
@@ -54,16 +54,15 @@ export function lockViews(g: GameState, keys: readonly (string | null | undefine
     const u = views.get(key);
     const rule = UNLOCK_RULE_BY_KEY[key];
     // an "any of" condition shows its alternatives, each with its own progress (one line "25 reputation or Raise a
-    // clutch" said nothing about how far along the player is)
-    const conds = rule?.when ?? [];
-    const flat = conds.filter((c) => c.type !== 'any');
-    const either = conds.filter((c): c is Extract<Cond, { type: 'any' }> => c.type === 'any').map((c) => reqsFor(g, c.of));
+    // clutch" said nothing about how far along the player is); Audit 2026-11-17 (G11): a project offered as a research
+    // route isn't also a requirement
+    const parts = ruleParts(g, rule?.when ?? [], (u?.viaResearch ?? []).map((r) => r.id));
     return {
       key,
       label: u?.label ?? safe(() => unlockLabel(key), (UNLOCK_KEYS as Record<string, string>)[key] ?? key),
       hint: u?.hint ?? rule?.hint ?? '',
-      requirements: rule ? reqsFor(g, flat) : u?.requirements ?? [],
-      either,
+      requirements: rule ? parts.requirements : u?.requirements ?? [],
+      either: parts.either,
       research: (u?.viaResearch ?? []).map((r) => ({ id: r.id, name: r.name, status: research.get(r.id) ?? 'unknown' })),
       venue: (rule?.when ?? []).some(asksVenue),
       ...(u?.guide ? { guide: u.guide } : {}),
