@@ -38,6 +38,7 @@ import { simRng } from '@/sim/rng';
 import { offerLeavesText } from '@/ui/panels/market/Shop';
 import { PARCEL_DAY_KEY, PARCEL_MEALS, clubFoodParcel } from '@/sim/economy/finance';
 import { portionForDemand, TYPICAL_MEAL_HUNGER } from '@/sim/water/food';
+import { fmtMoney } from '@/sim/economy/util';
 import { effectiveBioload } from '@/sim/water/env';
 import { FOODS, eatsFood } from '@/data/catalog/foods';
 import { findSpecies } from '@/data/species';
@@ -576,6 +577,11 @@ describe('F11: money is never shown as more than the player has', () => {
   it('$199.60 reads "$199"; a $200 offer says "You need $1 more", not "$0"', () => {
     expect(wholeMoney(199.6)).toBe('$199');
     expect(wholeMoney(200)).toBe('$200');
+    // review note: a debt is written one way everywhere, as the sim's own lines write it
+    expect(wholeMoney(-12.4)).toBe(fmtMoney(-12.4));
+    expect(moneyHeld(-12.4)).toBe(fmtMoney(12.4));
+    expect(moneyHeld(-1234.6)).toBe(fmtMoney(1234.6));
+    expect(cantAffordTitle(-12.4, 6)).toBe('You’re $12.40 in debt, so purchases are paused');
     const g = game(199.6);
     g.market.stock = [];
     const o: ShopOffer = { id: 'offer_f11', kind: 'creature', speciesId: 'mystery_snail', creatures: [createCreature(g, simRng(g), 'mystery_snail')], price: 200, seller: 'Test Breeder', expiresHour: g.clock.hour + 48 };

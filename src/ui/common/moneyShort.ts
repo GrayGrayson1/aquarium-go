@@ -20,12 +20,13 @@ export const CASH_LINK = { panel: 'finances', panelTarget: 'cash' } as const;
 
 /**
  * Money as the player holds it, never more than they have (F11): exact cents under $100 ("$4.50"), whole dollars
- * rounded down above that. A debt is shown as its size ("$12").
+ * rounded down above that. A debt is shown as its size ("$12.40"), the way the sim's own lines write it (fmtMoney),
+ * so the top bar, Finances, Supplies and the midnight toast all say the same (review note).
  */
 export function moneyHeld(money: number): string {
   const v = Math.abs(Number.isFinite(money) ? money : 0);
   if (v < 100 && Math.abs(v - Math.round(v)) > 0.004) return formatMoney(v, { cents: true });
-  return formatMoney(money < 0 ? Math.ceil(v) : Math.floor(v));
+  return formatMoney(Math.floor(v + 1e-6));
 }
 
 /**
@@ -33,7 +34,10 @@ export function moneyHeld(money: number): string {
  * enough for a $200 price (bills leave cents, and every check compares to the cent).
  */
 export function wholeMoney(money: number): string {
-  return formatMoney(Math.floor((Number.isFinite(money) ? money : 0) + 1e-6));
+  const v = Number.isFinite(money) ? money : 0;
+  // a debt as the sim writes it ("−$12.40"), not rounded to a bigger one
+  if (v < 0) return `−${moneyHeld(v)}`;
+  return formatMoney(Math.floor(v + 1e-6));
 }
 
 /** A disabled "Buy" button's reason (its `title`), or undefined when `price` is affordable. */
