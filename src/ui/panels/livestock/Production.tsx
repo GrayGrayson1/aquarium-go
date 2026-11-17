@@ -11,7 +11,7 @@ import type { GameState, ProductionLine } from '@/types';
 import { Badge, Button, Modal, Toggle, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
-import { spPlural } from '@/sim/life/breeding/common';
+import { fmtTemp, spPlural } from '@/sim/life/breeding/common';
 import { morphDisplayName } from '@/sim/life/genetics';
 import {
   facilityLevelName,
@@ -109,6 +109,46 @@ function raiseFeeding(g: GameState, v: LineView): string {
   const keeper = v.raise ? (g.staff?.roster ?? []).find((m) => m.role === 'aquarist' && m.tankIds.includes(v.raise!.id)) : undefined;
   if (keeper) return brood ? `first foods on ${keeper.name.split(' ')[0]}’s rounds` : `fed on ${keeper.name.split(' ')[0]}’s rounds`;
   return brood ? 'first foods by hand, or from a keeper or a live-food doser' : 'fed by hand';
+}
+
+/**
+ * Audit 2026-11-17 (H4): why a due pair isn't spawning, from the biggest drag on its readiness ("Breed Tank is too warm
+ * for spawning (28 °C; they spawn below 26 °C)"); null when nothing holds it back. The tile and Operations › Lines say it.
+ */
+export function notReadyText(v: LineView): string | null {
+  const n = v.next.notReady;
+  if (!n) return null;
+  const t = n.tank.name;
+  const cond = v.sp.breeding.conditions;
+  const temp = fmtTemp(n.tank.water.tempC);
+  switch (n.drag) {
+    case 'too_warm':
+      return `${t} is too warm for spawning (${temp}; they spawn below ${cond.maxTempC} °C)`;
+    case 'too_cool':
+      return `${t} is too cool for spawning (${temp}; they spawn above ${cond.minTempC} °C)`;
+    case 'temp_range':
+      return `${t} is ${temp}, outside their safe range (${v.sp.tempC.min}–${v.sp.tempC.max} °C)`;
+    case 'crowded':
+      return `${t} is crowded`;
+    case 'small_tank':
+      return `${t} is too small for spawning (they need ${cond.minTankGallons} gal)`;
+    case 'water':
+      return `${t}’s water isn’t quite right for them`;
+    case 'hunger':
+      return `${n.who.name} is hungry`;
+    case 'stress':
+      return `${n.who.name} is stressed`;
+    case 'health':
+    case 'illness':
+      return `${n.who.name} is unwell`;
+    case 'comfort':
+      return `${n.who.name} isn’t settled in ${t}`;
+    case 'conditioning': {
+      const foods = (cond.needsConditioningFood ?? []).map((f) => f.replace(/_/g, ' '));
+      return `they need rich food (${foods.length > 1 ? `${foods.slice(0, -1).join(', ')} or ${foods[foods.length - 1]}` : foods[0] ?? 'live food'}) to get into condition`;
+    }
+  }
+  return null;
 }
 
 /** The line's status word (Running, Paused by you, Paused); Operations › Lines shows it too. */
@@ -226,6 +266,8 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
     if (v.status === 'paused_by_you') return { value: '—', hint: 'Paused by you' };
     if (v.status === 'paused') return { value: '—', hint: 'Paused' };
     if (v.status === 'waiting') return v.next.fullTank ? { value: '—', hint: `Waits until ${v.next.fullTank.name} has room` } : { value: v.next.restartDay ? `Day ${v.next.restartDay}` : '—', hint: `${raiseName} is full` };
+    const why = notReadyText(v);
+    if (why) return { value: 'Not ready', hint: why.charAt(0).toUpperCase() + why.slice(1) }; // Audit 2026-11-17 (H4)
     if (v.next.days === undefined) return { value: '—', hint: 'Pair conditioning' };
     return { value: `~${v.next.days} ${v.next.days === 1 ? 'day' : 'days'}`, hint: `${v.breed?.name ?? 'Breed tank'} · day ${v.next.dayOf} of ${v.next.cycle}` };
   })();

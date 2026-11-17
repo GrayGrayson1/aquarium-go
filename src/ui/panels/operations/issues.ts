@@ -15,8 +15,8 @@ import { opsSnapshot } from '@/ui/common/ops';
 import { findLine } from '@/sim/production';
 import { lineView } from '@/sim/production/view';
 
-export type IssueKind = 'salt' | 'eggs' | 'veg' | 'live' | 'fresh' | 'salt_rate' | 'fresh_rate' | 'line';
-export type IssueAction = 'buy-salt' | 'buy-eggs' | 'buy-veg' | 'raise-budget' | 'hire' | 'staff' | 'add-qt' | 'wait' | 'faster-prep' | 'reservoirs' | 'water-tab' | 'why' | 'feed';
+export type IssueKind = 'salt' | 'eggs' | 'veg' | 'live' | 'fresh' | 'salt_rate' | 'fresh_rate' | 'line' | 'line_broken';
+export type IssueAction = 'buy-salt' | 'buy-eggs' | 'buy-veg' | 'raise-budget' | 'hire' | 'staff' | 'add-qt' | 'wait' | 'faster-prep' | 'reservoirs' | 'water-tab' | 'why' | 'feed' | 'fix-line';
 
 export interface IssueView {
   key: string;
@@ -138,6 +138,11 @@ function saltIssue(g: GameState, p: SupplyProblem): IssueView {
 export function issueViews(g: GameState, problems: readonly Problem[]): IssueView[] {
   const out: IssueView[] = [];
   for (const p of problems) {
+    if (p.kind === 'line_broken') {
+      // Audit 2026-11-17 (H3): a line missing a parent or tank, with its own notice and the way to its fix
+      out.push({ key: `line_broken:${p.lineId}`, kind: 'line_broken', tone: 'watch', badge: 'Look soon', title: `${p.name} paused`, reason: p.text, tab: 'lines', action: { id: 'fix-line', label: 'Fix', short: 'Fix' }, problem: p });
+      continue;
+    }
     if (p.kind === 'line') {
       const line = findLine(g, p.lineId);
       const v = line ? lineView(g, line) : null;

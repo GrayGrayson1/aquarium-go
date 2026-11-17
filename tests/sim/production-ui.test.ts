@@ -90,7 +90,11 @@ describe('PROD-003, DES-008: the Production tab', () => {
     expect(attr(m, 'production-toggle', 'aria-checked')).toBe('true');
     expect(attr(m, 'production-toggle', 'aria-label')).toBe('Betta line running');
     for (const label of ['Next clutch', 'Growing out', 'Quarantine', 'This week']) expect(t).toContain(label);
-    expect(t).toContain('Pair conditioning');
+    // Audit 2026-11-17 (H4): this pair has had no rich food, so it can't get into condition: the tile says so (it said
+    // "Pair conditioning" for ever); once conditioned, it's the pair conditioning
+    expect(t).toContain('Next clutch Not ready They need rich food (bloodworm, brine shrimp or daphnia) to get into condition');
+    for (const c of [s.cinder, s.blaze]) (c.life ??= {} as NonNullable<typeof c.life>).conditioning = 100;
+    expect(text(render(s.g))).toContain('Next clutch — Pair conditioning');
     expect(t).toContain('$0 0 sold $0 after food and power');
     for (const s2 of ['breed', 'raise', 'sort', 'quarantine', 'sell']) expect(m).toContain(`data-testid="production-stage-${s2}"`);
     expect(t).toContain('Cinder × Blaze · spawns about every 10 days');

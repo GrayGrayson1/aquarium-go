@@ -58,6 +58,9 @@ export function IssueAction({ g, issue, nav, short, testId }: { g: GameState; is
       case 'reservoirs':
         go({ kind: 'panel', panel: 'build', tab: 'facility', target: 'room:water' });
         return;
+      case 'fix-line': // Audit 2026-11-17 (H3): the line in Livestock › Production, where its fix is
+        go({ kind: 'panel', panel: 'livestock', tab: 'production', target: `line:${issue.problem.kind === 'line_broken' ? issue.problem.lineId : ''}` });
+        return;
       default:
         staff();
     }
@@ -71,8 +74,8 @@ export function IssueAction({ g, issue, nav, short, testId }: { g: GameState; is
 
 export function ProblemsView({ g, snap, nav }: { g: GameState; snap: OpsSnapshot; nav: OpsNav }) {
   const issues = issueViews(g, snap.problems);
-  const supplies = issues.filter((i) => i.kind !== 'line');
-  const lines = issues.filter((i) => i.kind === 'line');
+  const supplies = issues.filter((i) => i.kind !== 'line' && i.kind !== 'line_broken');
+  const lines = issues.filter((i) => i.kind === 'line' || i.kind === 'line_broken');
   return (
     <>
       <button type="button" className="ops-link" onClick={() => nav.view(null)} data-testid="ops-issues-back">
@@ -92,9 +95,7 @@ export function ProblemsView({ g, snap, nav }: { g: GameState; snap: OpsSnapshot
             {supplies.map((i) => (i.kind === 'salt' ? <SaltCard key={i.key} g={g} issue={i} /> : <SupplyCard key={i.key} g={g} issue={i} nav={nav} />))}
           </div>
           <div className="ops-col">
-            {lines.map((i) => (
-              <LineCard key={i.key} g={g} issue={i} />
-            ))}
+            {lines.map((i) => (i.kind === 'line_broken' ? <SupplyCard key={i.key} g={g} issue={i} nav={nav} /> : <LineCard key={i.key} g={g} issue={i} />))}
             {snap.decided.map((d) => (
               <section key={d.lineId} className="ops-card" data-testid="issues-line-decided">
                 <div className="ops-card__head">

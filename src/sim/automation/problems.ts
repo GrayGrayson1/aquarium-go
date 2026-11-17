@@ -16,7 +16,7 @@ import { BRINE, INFUSORIA, VEGETABLES } from '@/data/catalog/machines';
 import { emitEvent } from '../context';
 import { dayOf } from '../time';
 import { nextStockCheck, stockManager, type StockForecast } from '../staff/work';
-import { lineStatus, restartDay } from '../production';
+import { lineNoticeText, lineStatus, restartDay } from '../production';
 import { batchGal, freshCap, prepRate } from './reserve';
 import { isHeld } from './hold';
 import { waterRoomRun } from './forecast';
@@ -67,7 +67,17 @@ export interface LineProblem {
   restartDay: number | null;
 }
 
-export type Problem = SupplyProblem | LineProblem;
+/** Audit 2026-11-17 (H3): a line stopped by a missing parent or tank (it never restarts by itself). */
+export interface BrokenLineProblem {
+  kind: 'line_broken';
+  tone: ProblemTone;
+  lineId: string;
+  name: string;
+  /** The line's notice: what's missing and what to do. */
+  text: string;
+}
+
+export type Problem = SupplyProblem | LineProblem | BrokenLineProblem;
 
 const stockOf = (state: GameState, id: string) => Math.max(0, Math.floor(state.inventory.foods[id] ?? 0));
 
@@ -159,6 +169,10 @@ export function automationProblems(state: GameState, hour = state.clock.hour, kn
   }
 
   for (const line of state.production?.lines ?? []) {
+    if (lineStatus(line) === 'paused') {
+      out.push({ kind: 'line_broken', tone: 'watch', lineId: line.id, name: line.name, text: lineNoticeText(state, line) }); // Audit 2026-11-17 (H3)
+      continue;
+    }
     if (lineStatus(line) !== 'waiting') continue;
     const day = restartDay(state, line);
     // a decided wait is a plain status, unless a full quarantine tank means it never ends by itself (Audit 2026-11-17, H1)

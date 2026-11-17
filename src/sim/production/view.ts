@@ -9,7 +9,7 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { dayOf } from '../time';
 import { moduleFor } from '../life/breeding/registry';
 import { youngLabel } from '../life/breeding/clutch';
-import { spPlural } from '../life/breeding/common';
+import { makeTankInfo, readinessDrag, readinessTarget, READY, spPlural, type ReadinessDrag } from '../life/breeding/common';
 import { planAutofeed } from '../care/autofeed';
 import { bestOpenBid } from '../economy/listings';
 import { isLineYoung } from './costs';
@@ -28,7 +28,7 @@ export interface LineView {
   quarantine?: Tank;
   keep?: Tank;
   /** Next clutch: days until the pair is due again (rounded up), the cycle and how far through it they are. */
-  next: { days?: number; dayOf?: number; cycle: number; restartDay?: number; conditioning: boolean; /** Audit 2026-11-17 (H1): the full quarantine tank a waiting line needs room in (no restart day then). */ fullTank?: Tank };
+  next: { days?: number; dayOf?: number; cycle: number; restartDay?: number; conditioning: boolean; /** Audit 2026-11-17 (H1): the full quarantine tank a waiting line needs room in (no restart day then). */ fullTank?: Tank; /** Audit 2026-11-17 (H4): due (or never spawned), but a parent can't get into condition: who, where, and the biggest drag. */ notReady?: { who: Creature; tank: Tank; drag: ReadinessDrag } };
   /** Growing out: the brood in the raise tank (or the young waiting there), its word, and its days. */
   raising: { count: number; word: string; dayOf?: number; ofDays?: number; full: boolean; waiting: number; feeding?: { food: string; meals: number }; places?: { used: number; cap: number }; /** Hours until the brood's next stage (chunk 6, DES-013: "next stage in 6 h"). */ nextStageIn?: number; /** The day the brood is raised and sorted (DES-013: "sorting on Day 42"). */ sortDay?: number };
   /** Quarantine: the batch in its hold (its word: "juveniles", or the species' plural once grown), days left, the day
@@ -64,6 +64,20 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     const since = Math.max(0, (now - last) / 24);
     next.dayOf = Math.min(cycle, Math.floor(since));
     next.days = Math.max(1, Math.ceil(cycle - since));
+  }
+  // Audit 2026-11-17 (H4): due (or never spawned) and running, but a parent's readiness can't reach READY where it is
+  if (status === 'running' && (!Number.isFinite(last) || (next.days ?? 0) <= 1)) {
+    let worst: { c: Creature; tank: Tank; target: number } | null = null;
+    for (const c of [mother, father]) {
+      const tank = c?.tankId ? state.tanks[c.tankId] : undefined;
+      if (!c || !tank || c.stats.breedingReadiness >= READY) continue;
+      const target = readinessTarget(tank, c, sp, now, makeTankInfo(state, tank, now, () => []));
+      if (target < READY && (!worst || target < worst.target)) worst = { c, tank, target };
+    }
+    if (worst) {
+      const d = readinessDrag(worst.tank, worst.c, sp, now, makeTankInfo(state, worst.tank, now, () => []));
+      if (d) next.notReady = { who: worst.c, tank: worst.tank, drag: d.drag };
+    }
   }
   if (status === 'waiting') {
     const day = restartDay(state, line);

@@ -10,12 +10,12 @@ import { Button, Toggle, formatMoney, Badge } from '@/ui/kit';
 import { go } from '@/ui/nav/router';
 import { findSpecies } from '@/data/species';
 import { FACILITY_LEVELS, PRODUCTION_LINE_SLOTS } from '@/data/facilities';
-import { lineSlots, productionLines, youngPlaces, youngSizeCm } from '@/sim/production';
+import { lineNoticeText, lineSlots, productionLines, youngPlaces, youngSizeCm } from '@/sim/production';
 import { lineView, type LineView, type StageId } from '@/sim/production/view';
 import { isHeld } from '@/sim/automation';
 import { CreaturePortrait } from '../common/Portrait';
 import { EmptyState } from '../common/parts';
-import { RouteStrip, StatusWord } from '../livestock/Production';
+import { RouteStrip, StatusWord, notReadyText } from '../livestock/Production';
 import { Status, Kicker } from './parts';
 import { doLineSwitch } from './actions';
 import { eventLine } from '@/ui/common/notify'; // chunk 13: the member's name in a shared shop
@@ -42,6 +42,8 @@ function doing(g: GameState, line: ProductionLine, v: LineView): string {
     return `${v.raising.count} ${v.raising.word} in ${v.raise?.name ?? 'the raise tank'}${days}${h !== undefined && h <= NEXT_STAGE_SHOWN_H ? ` · next stage in ${h} h` : ''}`;
   }
   if (v.quarantined.count > 0) return `${v.quarantined.count} ${v.quarantined.word} in ${v.quarantine?.name ?? 'quarantine'}${v.quarantined.listsDay ? ` · lists Day ${v.quarantined.listsDay}` : ''}`;
+  const why = notReadyText(v); // Audit 2026-11-17 (H4): a due pair that can't get into condition says why
+  if (why) return `Not ready yet: ${why}`;
   if (v.next.days !== undefined) return `Next clutch in ${v.next.days} ${v.next.days === 1 ? 'day' : 'days'}`;
   return `${v.mother?.name ?? 'The pair'} and ${v.father?.name ?? 'its partner'} are getting ready`;
 }
@@ -137,7 +139,7 @@ function LineRow({ g, line, held, small, early }: { g: GameState; line: Producti
           {sp.commonName} · {v.mother?.name ?? '?'} × {v.father?.name ?? '?'}
         </span>
         {!small && <Track v={v} held={stuck} />}
-        <span className={stuck ? 'ops-amber' : 'ops-row__sub'}>{v.status === 'paused_by_you' ? 'Paused by you · animals stay where they are' : doing(g, line, v)}</span>
+        <span className={stuck ? 'ops-amber' : 'ops-row__sub'}>{v.status === 'paused_by_you' ? 'Paused by you · animals stay where they are' : v.status === 'paused' ? lineNoticeText(g, line) /* Audit 2026-11-17 (H3): why, not "Next clutch in 3 days" */ : doing(g, line, v)}</span>
         {early && v.selling.listed > 0 && (
           <span className="ops-row__sub ops-num" data-testid={`line-listed-${line.id}`}>
             Listed now {v.selling.listed}
