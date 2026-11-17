@@ -6,7 +6,8 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { getWaterReport, tankDailyCost } from '@/sim/water';
-import { waterChange, waterChangeCost, dose } from '@/sim/care';
+import { waterChange, waterChangeCost, dose, installEquipment } from '@/sim/care';
+import { convertWaterClass, convertWaterClassCost } from '@/sim/tankOps';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { fixForWaterIssue } from '@/ui/common/fixLinks';
 import { buyTank } from '@/sim/economy';
@@ -234,5 +235,52 @@ describe('C2 (the owner’s choice): salt is paid for when bought, not in the ni
     const kg = s.inventory.salt;
     expect(waterChange(s, t.id, 0.1).ok).toBe(true);
     expect(s.inventory.salt).toBeLessThan(kg);
+  });
+});
+
+describe('C7: converting between cool, tropical and planted water resets the heater and chiller, and says so', () => {
+  /** An empty cool tank with a chiller at 17 °C and no heater. */
+  const coolTank = () => {
+    const s = base('betta');
+    s.finance.money = 1e5;
+    const id = buyTank(s, 'g29', 'freshwater_cool').tankId!;
+    const t = s.tanks[id];
+    t.equipment = t.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'heater');
+    if (!t.equipment.some((e) => getEquipmentDef(e.defId)?.kind === 'chiller'))
+      t.equipment.push({ id: 'test_chiller', defId: 'chiller_mini', installedHour: 0, condition: 1, on: true, setting: 17 });
+    for (const e of t.equipment) if (getEquipmentDef(e.defId)?.kind === 'chiller') e.setting = 17;
+    return { s, t };
+  };
+
+  it('cool → tropical: the preview and the result name the chiller’s new setting and the missing heater', () => {
+    const { s, t } = coolTank();
+    const chiller = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'chiller')!;
+    const name = getEquipmentDef(chiller.defId)!.name;
+    const cost = convertWaterClassCost(s, t.id, 'freshwater_tropical');
+    expect(cost.gearNotes.join(' ')).toMatch(new RegExp(`The ${name} is reset to \\d+\\.\\d °C for the new water\\.`));
+    expect(cost.gearNotes.join(' ')).toMatch(/This tank has no heater yet — the room keeps it near 22 °C, too cool for tropical freshwater animals\./);
+    expect(chiller.setting).toBe(17); // the preview changes nothing
+    const r = convertWaterClass(s, t.id, 'freshwater_tropical');
+    expect(r.ok).toBe(true);
+    expect(r.message).toContain(cost.gearNotes[0]);
+    expect(chiller.setting!).toBeGreaterThan(27);
+  });
+
+  it('a heater bought next does not fight the kept chiller', () => {
+    const { s, t } = coolTank();
+    convertWaterClass(s, t.id, 'freshwater_tropical');
+    const r = installEquipment(s, t.id, 'heater_100w', { purchased: true });
+    expect(r.ok).toBe(true);
+    expect(r.message).not.toMatch(/fight/);
+  });
+
+  it('a heater still fighting a chiller set below what the animals need says to raise the chiller', () => {
+    const { s, t } = coolTank();
+    t.waterClass = 'freshwater_tropical'; // the old way: converted with the chiller left at 17 °C
+    installEquipment(s, t.id, 'heater_100w', { purchased: true });
+    const fight = getWaterReport(s, t.id).issues.find((i) => /fight each other/.test(i.text))!;
+    expect(fight.advice).toMatch(/^Raise the chiller setting to at least \d+\.\d °C, or switch the chiller off\.$/);
+    const chiller = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'chiller')!;
+    expect(fixForWaterIssue(t, fight)).toEqual({ label: 'Open Equipment', to: { kind: 'card', tankId: t.id, tab: 'gear', fix: `equip-${chiller.id}` } });
   });
 });

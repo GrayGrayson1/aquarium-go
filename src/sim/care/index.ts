@@ -23,7 +23,7 @@ import { plural as pluralName, cap } from '../compat/text';
 import { refreshFoodStatus, tankFoodOutlook } from '../tankStatus';
 import { aOrAn } from '../economy/util'; // lane:w2-ui ("an 800-gallon tank")
 import { photoperiodTooLong } from '../time';
-import { MAX_PER_KIND, KIND_PLURAL, idealBand, defaultSettingFor } from './tuning'; // lane:fit — shared with the fit verdicts
+import { MAX_PER_KIND, KIND_PLURAL, idealBand, defaultSettingFor, fightAdvice } from './tuning'; // lane:fit — shared with the fit verdicts
 import { installedFit, type FitVerdict } from './fit'; // lane:fit
 import { FOOD_TAG_WORDS, groupEaters, whoPhrase } from './autofeed'; // lane:fit (lane:qa-r3: groupEaters, whoPhrase)
 import { noteFoodSpend } from '../production/costs'; // lane:production
@@ -619,7 +619,7 @@ export function setEquipment(state: GameState, tankId: string, equipmentId: stri
   let caution = false;
   if (s.conflict) {
     caution = true;
-    notes.push(`Warning: heater ${s.heaterSet?.toFixed(1)} °C vs chiller ${s.chillerSet?.toFixed(1)} °C — they'll fight each other. Keep the heater at least 1 °C below the chiller.`);
+    notes.push(`Warning: heater ${s.heaterSet?.toFixed(1)} °C vs chiller ${s.chillerSet?.toFixed(1)} °C — they'll fight each other. ${fightAdvice(state, tank, s.heaterSet ?? 0, s.chillerSet ?? 0)}`); // Audit 2026-11-17 C7
   }
   // lane:qa-r3 — a thermostat set outside what these animals need says so, with the setting to aim for
   if ((def.kind === 'heater' || def.kind === 'chiller') && patch.setting !== undefined && inst.on && !inst.failed) {

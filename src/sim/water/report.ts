@@ -8,7 +8,7 @@ import { clamp, fmt, ammoniaToxicityWeight, nitrateThresholds, nitrifierTempFact
 import { CLASS_DEFAULTS, ROOM_TEMP_C, TEMP_TOLERANCE_C } from './constants';
 import { computeTankEnv, flowInfo, flowMismatch, FLOW_LABEL, type Inhabitant, type TankEnv, expectedTempC, type EqEntry, type EquipmentSummary } from './env';
 import { tankDailyCostImpl } from './kits';
-import { idealBand } from '../care/tuning';
+import { fightAdvice, idealBand } from '../care/tuning';
 import { lightsPastClose, photoperiodTooLong } from '../time';
 import * as dmath from '../dmath';
 
@@ -914,7 +914,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
       status: 'watch',
       param: 'temp',
       text: `The heater is set to ${fmt(s.heaterSet ?? 0, 1)} °C but the chiller to ${fmt(s.chillerSet ?? 0, 1)} °C, so they fight each other — wasting power and making the temperature swing.`,
-      advice: 'Set the heater at least 1 °C below the chiller setting.',
+      advice: fightAdvice(state, tank, s.heaterSet ?? 0, s.chillerSet ?? 0), // Audit 2026-11-17 C7
       headline: 'Heater and chiller are fighting',
       weight: 150,
     });

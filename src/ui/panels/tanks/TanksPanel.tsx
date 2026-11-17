@@ -272,7 +272,7 @@ function wcLockHint(g: GameState, w: WaterClass): string {
 /** lane:fix-integrate-ui — what a conversion takes (new bed, salt, gear to storage) before the click (S14-06). */
 function ConvertPreview({ g, tank, wc }: { g: GameState; tank: Tank; wc: WaterClass }) {
   const cost = safe(() => convertWaterClassCost(g, tank.id, wc), null);
-  if (!cost || (cost.total <= 0 && cost.saltKg <= 0 && cost.equipmentOut.length === 0)) return null;
+  if (!cost || (cost.total <= 0 && cost.saltKg <= 0 && cost.equipmentOut.length === 0 && !cost.gearNotes?.length)) return null;
   const parts: string[] = [];
   if (cost.substrate > 0) parts.push(`New ${getSubstrateDef(cost.substrateKind!)?.name.toLowerCase() ?? 'substrate'} bed ${formatMoney(cost.substrate)}`);
   if (cost.saltKg > 0) {
@@ -281,9 +281,11 @@ function ConvertPreview({ g, tank, wc }: { g: GameState; tank: Tank; wc: WaterCl
   }
   const short = cost.total > g.finance.money;
   return (
-    <Callout tone={short ? 'danger' : 'info'} icon={<Coins size={16} />} title={cost.total > 0 ? `Converting costs ${formatMoney(cost.total, { cents: cost.total < 20 })}` : 'Converting uses stored salt'}>
+    <Callout tone={short ? 'danger' : 'info'} icon={<Coins size={16} />} title={cost.total > 0 ? `Converting costs ${formatMoney(cost.total, { cents: cost.total < 20 })}` : cost.saltKg > 0 ? 'Converting uses stored salt' : 'Converting resets your gear'}>
       {parts.length > 0 && <>{parts.join(' · ')}. </>}
       {cost.equipmentOut.length > 0 && <>Moves to storage (can’t run in the new water): {cost.equipmentOut.join(', ')}. </>}
+      {/* Audit 2026-11-17 C7 — heaters and chillers that stay are reset for the new water; a missing heater is named */}
+      {(cost.gearNotes?.length ?? 0) > 0 && <>{cost.gearNotes.join(' ')} </>}
       {short && <>You have {formatMoney(Math.max(0, g.finance.money))}.</>}
     </Callout>
   );

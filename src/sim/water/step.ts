@@ -43,6 +43,7 @@ import {
 import { computeTankEnv, roomTempAt, type TankEnv, type EqEntry } from './env';
 import { ensureLab, scaleFood, addFood, recommendedServings } from './food';
 import { planAutofeed, autofeedMessage, groupEaters, autofeedPause, type AutofeedPlan } from '../care/autofeed'; // lane:fit (lane:automation: autofeedPause)
+import { fightAdvice } from '../care/tuning'; // Audit 2026-11-17 C7
 import { applyWaterChange, changeSaltNeed, clampChangeFraction, scrapeGlass } from './change'; // lane:automation
 import { keeperOf } from '../staff/common'; // lane:fit — a keeper's hand-feeding covers what the autofeeder can't
 import { noteFoodSpend } from '../production/costs'; // lane:production
@@ -634,7 +635,7 @@ function emitWaterWarnings(state: GameState, tank: Tank, env: TankEnv, ctx: SimC
   if (s.conflict && warnKey(lab, 'conflict', hour, 12)) {
     ctx.emit({
       kind: 'warning',
-      text: `The heater (${(s.heaterSet ?? 0).toFixed(1)} °C) and chiller (${(s.chillerSet ?? 0).toFixed(1)} °C) in ${tank.name} are fighting each other — wasting power and making the temperature swing. Set the heater at least 1 °C below the chiller.`,
+      text: `The heater (${(s.heaterSet ?? 0).toFixed(1)} °C) and chiller (${(s.chillerSet ?? 0).toFixed(1)} °C) in ${tank.name} are fighting each other — wasting power and making the temperature swing. ${fightAdvice(state, tank, s.heaterSet ?? 0, s.chillerSet ?? 0)}`, // Audit 2026-11-17 C7
       tankId: tank.id,
       toast: true,
     });

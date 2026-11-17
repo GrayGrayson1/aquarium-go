@@ -4,12 +4,13 @@
  * them) and moved here unchanged in chunk 6 (B-169, the review's M69): they spend money, use stored salt and reset
  * chemistry, so they belong with the rest of the simulation. OWNER: lane "ui-panels".
  */
-import type { BackdropKind, GameState, SubstrateKind, TankPurpose, WaterClass } from '@/types';
+import type { BackdropKind, GameState, SubstrateKind, Tank, TankPurpose, WaterClass } from '@/types';
 import { environmentOf, defaultLightPreset, defaultSubstrate } from './tanks';
 import { initialWater } from './water';
 import { creaturesInTank, clutchesInTank } from './life';
 import { spend, SALT_PRICE_PER_KG } from './economy';
-import { saltKgFor, LITRES_PER_GALLON, isSaltClass } from './water/constants'; // the shared salt formula (B-169)
+import { saltKgFor, LITRES_PER_GALLON, isSaltClass, CLASS_DEFAULTS, ROOM_TEMP_C } from './water/constants'; // the shared salt formula (B-169)
+import { defaultSettingFor } from './care/tuning'; // Audit 2026-11-17 C7
 import { getEquipmentDef } from '@/data/catalog/equipment'; // lane:staff
 import { waterClassLock } from './facility'; // lane:brackish; chunk 7 (B-160)
 import { reseatDecor } from './aquascape'; // lane:staff
@@ -61,10 +62,35 @@ export interface ConvertCost {
   total: number;
   /** Installed equipment that cannot run in the new water (goes to storage). */
   equipmentOut: string[];
+  /** Audit 2026-11-17 C7 — heaters and chillers that stay, reset for the new water, and a missing heater (sentences). */
+  gearNotes: string[];
+}
+
+/**
+ * Audit 2026-11-17 C7 — set the heaters (first) and chillers that stay in the tank for its new water class, as a new
+ * install would be (`defaultSettingFor`; the tank is empty, so the class's own range), and say what changed. A cool
+ * tank's chiller at 17 °C kept for tropical water used to stay at 17 °C and fight the heater bought next.
+ */
+function retuneForClass(state: GameState, t: Tank): string[] {
+  const notes: string[] = [];
+  for (const kind of ['heater', 'chiller'] as const) {
+    for (const e of t.equipment) {
+      const def = getEquipmentDef(e.defId);
+      if (def?.kind !== kind) continue;
+      const set = defaultSettingFor(state, t, kind, def.stats.defaultSetting);
+      if (set === undefined || (e.setting !== undefined && Math.abs(e.setting - set) < 0.05)) continue;
+      e.setting = set;
+      notes.push(`The ${def.name} is reset to ${set.toFixed(1)} °C for the new water.`);
+    }
+  }
+  const needsHeat = CLASS_DEFAULTS[t.waterClass].temp.idealMin > ROOM_TEMP_C + 1;
+  if (needsHeat && !t.equipment.some((e) => getEquipmentDef(e.defId)?.kind === 'heater'))
+    notes.push(`This tank has no heater yet — the room keeps it near ${ROOM_TEMP_C} °C, too cool for ${WATER_CLASS_LABEL[t.waterClass].toLowerCase()} animals.`);
+  return notes;
 }
 
 export function convertWaterClassCost(state: GameState, tankId: string, wc: WaterClass): ConvertCost {
-  const none: ConvertCost = { substrate: 0, saltKg: 0, saltFromStore: 0, saltCost: 0, total: 0, equipmentOut: [] };
+  const none: ConvertCost = { substrate: 0, saltKg: 0, saltFromStore: 0, saltCost: 0, total: 0, equipmentOut: [], gearNotes: [] };
   const t = state.tanks[tankId];
   if (!t || t.waterClass === wc) return none;
   const env = environmentOf(wc);
@@ -90,6 +116,9 @@ export function convertWaterClassCost(state: GameState, tankId: string, wc: Wate
       if (def && !def.environments.includes(env)) out.equipmentOut.push(def.name);
     }
   }
+  // Audit 2026-11-17 C7 — the gear that stays, as it will be set (worked out on a copy: nothing changes yet)
+  const stays = t.equipment.filter((e) => getEquipmentDef(e.defId)?.environments.includes(env) ?? true).map((e) => ({ ...e }));
+  out.gearNotes = retuneForClass(state, { ...t, waterClass: wc, environment: env, equipment: stays });
   out.total = Math.round((out.substrate + out.saltCost) * 100) / 100;
   return out;
 }
@@ -149,6 +178,7 @@ export function convertWaterClass(state: GameState, tankId: string, wc: WaterCla
     t.equipment = stays;
   }
   t.lighting.preset = defaultLightPreset(wc);
+  const retuned = retuneForClass(state, t); // Audit 2026-11-17 C7
   // Return decor that does not belong in this water to storage.
   const keep: typeof t.decor = [];
   let stored = 0;
@@ -176,7 +206,7 @@ export function convertWaterClass(state: GameState, tankId: string, wc: WaterCla
   }
   const paid = bill.length ? ` ${bill.map((b) => b.charAt(0).toUpperCase() + b.slice(1)).join(', ')}.` : '';
   const gear = gearOut.length ? ` Moved to storage — it can’t run in this water: ${gearOut.join(', ')}.` : '';
-  return { ok: true, message: `Converted to ${WATER_CLASS_LABEL[wc].toLowerCase()}.${paid}${stored ? ` ${stored} decor item${stored === 1 ? '' : 's'} moved to storage.` : ''}${gear}${extra}` };
+  return { ok: true, message: `Converted to ${WATER_CLASS_LABEL[wc].toLowerCase()}.${paid}${stored ? ` ${stored} decor item${stored === 1 ? '' : 's'} moved to storage.` : ''}${gear}${extra}${retuned.length ? ` ${retuned.join(' ')}` : ''}` };
 }
 
 export function setBackdrop(state: GameState, tankId: string, backdrop: BackdropKind): OpResult {
