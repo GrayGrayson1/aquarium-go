@@ -69,7 +69,7 @@ describe('G1: an unlock the guide holds back says so', () => {
   it('names the guide step that hands out the 40 gallon, and never shows it 100% done', () => {
     const g = game('axolotl');
     g.progress.reputation = 30; // the rule (25 reputation) is met, but the guide holds the 40 gallon for "Room to grow"
-    expect(guideHoldLine(g, 'tank_40')).toBe('Your guide gives you this at its “Room to grow” step (see Research › Quests).');
+    expect(guideHoldLine(g, 'tank_40')).toBe('Your guide gives you this at its “Room to grow” step. Research › Quests shows where your guide is now.');
     const [v] = lockViews(g, ['tank_40']);
     expect(v.guide).toContain('“Room to grow”');
     const row = unlockProgress(g).find((u) => u.key === 'tank_40')!;
