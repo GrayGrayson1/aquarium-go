@@ -68,6 +68,9 @@ export function useFocusedTankGuard() {
     });
     const unsubUI = useUI.subscribe((s, p) => {
       if (s.focusedTankId !== p.focusedTankId || s.screen !== p.screen) ensureFocusedTank();
+      // audit B8: a card opened on an animal that has died or been sold closes at once, paused or not (it waited for
+      // the next tick's creatures, so it flashed open, or stayed open on a dead fish while paused)
+      if (s.selectedCreatureId !== p.selectedCreatureId || s.followCreatureId !== p.followCreatureId) ensureSelectedCreature();
     });
     return () => {
       unsubGame();

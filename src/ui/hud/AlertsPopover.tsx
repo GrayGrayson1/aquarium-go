@@ -85,6 +85,9 @@ const FILTERS: { id: Filter; label: string; kinds: GameEvent['kind'][] | null }[
   { id: 'market', label: 'Market', kinds: ['market'] },
 ];
 
+/** audit B8: an event's animal, if it is still here (alive or listed): a dead or sold one's card would only flash. */
+export const liveAnimal = (g: GameState, id: string | undefined): boolean => !!id && (g.creatures[id]?.status === 'alive' || g.creatures[id]?.status === 'listed');
+
 export function focusTank(tankId: string, openCard = true) {
   useUI.getState().set({ focusedTankId: tankId, view: 'tank', panel: null });
   if (openCard) useShell.getState().set({ tankCardOpen: true });
@@ -417,7 +420,7 @@ export function AlertsPopover() {
                     <div className="ag-event__meta">
                       {agoText(e.hour, game.clock.hour)}
                       {e.tankId && game.tanks[e.tankId] && (
-                        <button type="button" className="ag-linkbtn" onClick={() => { focusTank(e.tankId!, false); if (e.creatureId) useUI.getState().set({ selectedCreatureId: e.creatureId }); useShell.getState().set({ popover: null }); }}>
+                        <button type="button" className="ag-linkbtn" onClick={() => { focusTank(e.tankId!, false); if (liveAnimal(game, e.creatureId)) useUI.getState().set({ selectedCreatureId: e.creatureId }); useShell.getState().set({ popover: null }); }}>
                           {game.tanks[e.tankId].name}
                         </button>
                       )}

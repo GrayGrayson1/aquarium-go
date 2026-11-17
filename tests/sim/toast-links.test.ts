@@ -41,7 +41,20 @@ describe('B4: tank warnings open the tank card', () => {
     expect(toastGo({ kind: 'warning', texts: ['Water in Ember’s Tank is getting warm.'], tankId: 'T1' }, v)).toEqual({ to: 'tank', tankId: 'T1', card: true, gear: false, creatureId: null });
     expect(toastGo({ kind: 'danger', texts: ['Ammonia is rising in Ember’s Tank.'], tankId: 'T1' }, v)).toMatchObject({ card: true });
     expect(toastGo({ kind: 'breeding', texts: ['Ember laid eggs.'], tankId: 'T1' }, v)).toMatchObject({ card: false });
-    expect(toastGo({ kind: 'warning', texts: ['Ember is hungry.'], tankId: 'T1', creatureId: 'C1' }, v)).toEqual({ to: 'tank', tankId: 'T1', card: false, gear: false, creatureId: 'C1' });
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 4 });
+    const ember = Object.values(g.creatures)[0];
+    expect(toastGo({ kind: 'warning', texts: ['Ember is hungry.'], tankId: 'T1', creatureId: ember.id }, v, g)).toEqual({ to: 'tank', tankId: 'T1', card: false, gear: false, creatureId: ember.id });
+  });
+
+  it('audit B8: an animal that has died or been sold gets no card (its tank opens instead)', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 4 });
+    const ember = Object.values(g.creatures)[0];
+    for (const status of ['dead', 'sold'] as const) {
+      ember.status = status;
+      expect(toastGo({ kind: 'death', texts: ['Ember has passed away.'], tankId: 'T1', creatureId: ember.id }, v, g)).toEqual({ to: 'tank', tankId: 'T1', card: false, gear: false, creatureId: null });
+    }
+    ember.status = 'listed';
+    expect(toastGo({ kind: 'market', texts: ['x'], tankId: 'T1', creatureId: ember.id }, v, g)).toMatchObject({ creatureId: ember.id });
   });
 
   it('a keeper’s “Repair it in the tank card › Equipment.” opens the card on Equipment', () => {

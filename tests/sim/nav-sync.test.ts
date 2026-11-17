@@ -181,6 +181,16 @@ describe('nav-sync: address → stores (NAV-010)', () => {
     R.applyRoute({ kind: 'panel', panel: 'encyclopedia', tab: 'species', target: 'species:dragon' });
     expect(useUI.getState()).toMatchObject({ panel: 'encyclopedia', panelTarget: 'tab:species' });
     expect(toastTitle()).toMatchObject({ text: 'There’s no page for that species', detail: 'Showing every species instead.' });
+    // audit B8: an animal that has died or been sold is a past resident (its card would only flash open)
+    const gone = Object.values(g.creatures)[0];
+    for (const status of ['dead', 'sold'] as const) {
+      gone.status = status;
+      useUI.getState().set({ panel: null, panelTarget: null, selectedCreatureId: null });
+      R.applyRoute({ kind: 'creature', creatureId: gone.id });
+      expect(useUI.getState()).toMatchObject({ panel: 'livestock', panelTarget: 'tab:past', selectedCreatureId: null });
+      expect(toastTitle()).toMatchObject({ text: 'That animal isn’t in your aquarium', detail: 'Showing past residents instead.' });
+    }
+    gone.status = 'alive';
     // chunk 4 review: a gone production line (DESIGN-S3D §6; the owner's words, ADR-0026 decision 9)
     R.applyRoute({ kind: 'panel', panel: 'livestock', tab: 'production', target: 'line:gone' });
     expect(useUI.getState()).toMatchObject({ panel: 'livestock', panelTarget: 'tab:production' });

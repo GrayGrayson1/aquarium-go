@@ -102,6 +102,8 @@ export const BROKEN_LINK = { title: 'That link doesn’t go anywhere', detail: '
 export const NOT_FOUND = {
   tank: { panel: 'tanks', target: null, title: 'That tank isn’t in your aquarium', detail: 'Showing your tanks instead.' },
   creature: { panel: 'livestock', target: 'tab:animals', title: 'That animal isn’t in your aquarium', detail: 'Showing your livestock instead.' },
+  // audit B8: an animal that has died or been sold (its record stays in the save)
+  pastCreature: { panel: 'livestock', target: 'tab:past', title: 'That animal isn’t in your aquarium', detail: 'Showing past residents instead.' },
   listing: { panel: 'market', target: 'tab:listings', title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' },
   species: { panel: 'encyclopedia', target: 'tab:species', title: 'There’s no page for that species', detail: 'Showing every species instead.' },
   // DESIGN-S3D §6 (unknown id → not found), with the owner's words (ADR-0026 decision 9, INTAKE C-48)
@@ -293,6 +295,8 @@ function applyInner(route: Route, filters: ShopFilters | undefined): void {
     case 'creature': {
       const c = g?.creatures[route.creatureId];
       if (!c) return notFound('creature');
+      // audit B8: its card would only flash open (or stay open on it while paused): Past residents instead
+      if (c.status === 'dead' || c.status === 'sold') return notFound('pastCreature');
       const inTank = c.status === 'alive' && !!c.tankId && !!g?.tanks[c.tankId];
       useShell.getState().set({ tankCardOpen: false, popover: null });
       useUI.getState().set({ panel: null, panelTarget: null, selectedCreatureId: c.id, ...(inTank ? { focusedTankId: c.tankId, view: 'tank' as const } : {}) });

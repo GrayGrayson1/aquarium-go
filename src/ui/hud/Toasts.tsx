@@ -17,7 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion, useIsPresent } from 'motion/react';
 import { X } from 'lucide-react';
-import type { GameEvent } from '@/types';
+import type { GameEvent, GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI, type Toast } from '@/state/ui';
 import { useSettings } from '@/state/settings';
@@ -458,12 +458,14 @@ export type ToastGo =
   | { to: 'panel'; panel: EventLink['panel']; target: string | null }
   | { to: 'tank'; tankId: string; card: boolean; gear: boolean; creatureId: string | null };
 
-/** (pure; exported for tests) */
-export function toastGo(e: Pick<Entry, 'kind' | 'texts' | 'tankId' | 'creatureId'>, v: View): ToastGo | null {
+/** (pure; exported for tests) `g`: the game, to leave out an animal that has died or been sold (audit B8). */
+export function toastGo(e: Pick<Entry, 'kind' | 'texts' | 'tankId' | 'creatureId'>, v: View, g?: GameState | null): ToastGo | null {
   if (v.opensLog) return { to: 'log' };
   if (v.link) return { to: 'panel', panel: v.link.panel, target: v.link.target };
   if (!e.tankId) return null;
-  const creatureId = e.creatureId ?? null;
+  // audit B8: only an animal still here gets its card ("… has passed away" opens the tank, not a card that flashes shut)
+  const c = e.creatureId ? g?.creatures[e.creatureId] : undefined;
+  const creatureId = c && (c.status === 'alive' || c.status === 'listed') ? c.id : null;
   // audit B4: a warning or danger about a tank opens its card, whose header names the problem and its fix (a line
   // pointing at "tank card › Equipment" opens that tab); one about an animal opens the animal's card
   const card = (e.kind === 'warning' || e.kind === 'danger') && !creatureId;
@@ -492,7 +494,7 @@ function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
   const celebrate = e.kind === 'celebrate' || e.kind === 'unlock';
   const actionable = !!e.tankId || !!v.opensLog || !!v.link;
   const onAct = () => {
-    const to = toastGo(e, v);
+    const to = toastGo(e, v, useGame.getState().game);
     if (to?.to === 'log') {
       sfx('open');
       useShell.getState().set({ popover: 'alerts' });
