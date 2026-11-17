@@ -12,6 +12,7 @@ import { lastHurtBy } from '@/sim/life/step';
 import { moveCreatures } from '@/sim/life/groupMove';
 import { applyCommand, validateCommand } from '@/sim/commands';
 import { staleOf } from '@/sim/commands/shared';
+import { deepClone } from '@/sim/clone';
 import { simRng, mulberry32 } from '@/sim/rng';
 import { previewAddition, evaluateComposition, simpleMember, neutralContext } from '@/sim/compat';
 import { getSpecies, ALL_SPECIES } from '@/data/species';
@@ -454,8 +455,37 @@ describe('D2: a school moves in one go', () => {
     expect(validateCommand(JSON.parse(JSON.stringify(cmd)))).toEqual(cmd);
     const r = applyCommand(s, cmd);
     expect(r.ok).toBe(true);
-    expect(r.message).toMatch(/^Moved 8 neon tetras to /);
+    // one line for the whole school, not one per animal (the review's blocker 1)
+    expect(r.message).toBe(`Moved 8 neon tetras to ${to.name}. Give them a little while to settle in.`);
     expect(neons.every((c) => c.tankId === to.id)).toBe(true);
+  });
+
+  it('a courting pair moved with its group gives the warning a single move gives (the review’s case: five rams)', () => {
+    const s = base();
+    const from = createTank(s, 'g29', 'freshwater_tropical', { cycled: true });
+    const to = createTank(s, 'g40B', 'freshwater_tropical', { cycled: true });
+    const sexes = ['female', 'female', 'female', 'male', 'female'] as const;
+    const rams = sexes.map((sex, i) => addCreature(s, createCreature(s, mulberry32(300 + i), 'german_blue_ram', { sex, ageDays: 200, name: `Ram ${i}` }), from.id));
+    const [m, f] = [rams[3], rams[4]];
+    m.repro = { ...m.repro, stage: 'courting', partnerId: f.id };
+    f.repro = { ...f.repro, stage: 'courting', partnerId: m.id };
+    const single = deepClone(s);
+    const one = applyCommand(single, { k: 'separateCreature', creature: m.id, to: to.id, from: from.id });
+    expect(one.message).toMatch(/^Courtship interrupted — Ram 3 moved to /);
+    const r = applyCommand(s, { k: 'moveCreatures', creatures: rams.map((c) => c.id), to: to.id, from: rams.map(() => from.id) });
+    expect(r.ok).toBe(true);
+    expect(r.message.startsWith(`Moved 5 german blue rams to ${to.name}. Give them a little while to settle in.`)).toBe(true);
+    expect(r.message).toContain(one.message);
+    expect(r.message).not.toMatch(/Ram 0 moved|Moved Ram 0/);
+  });
+
+  it('one animal lost since the group was picked stays out; the rest still move', () => {
+    const { s, to, neons } = school();
+    neons[2].status = 'dead';
+    const r = moveCreatures(s, neons.map((c) => c.id), to.id);
+    expect(r.ok).toBe(true);
+    expect(r.message).toBe(`Moved 7 neon tetras to ${to.name}. Give them a little while to settle in. One of them is no longer in your care.`);
+    expect(neons.filter((c) => c.status !== 'dead').every((c) => c.tankId === to.id)).toBe(true);
   });
 
   it('a group the water refuses moves no one', () => {
