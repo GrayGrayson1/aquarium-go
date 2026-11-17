@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  * Audit 2026-11-17 (area B) — the phone's clock pill: the amber manual-mode pill keeps its Hand and its time at 390 px
- * (B3, AUTO-042); phones show the day above the time (B9).
+ * (B3, AUTO-042); phones show the day above the time (B9), and "Paused" there while the game is paused (B15).
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -73,5 +73,24 @@ describe('B9: the day on a phone', () => {
     const out = pill(bar(g, true));
     expect(out).toContain('data-testid="hud-manual-mode"');
     expect(text(out)).toBe('Day 12 2:30 PM');
+  });
+});
+
+describe('B15: “Paused” on a phone', () => {
+  it('takes the day’s line while the game is paused, and gives it back at 1×', () => {
+    const g = shop();
+    g.clock.speed = 0;
+    expect(pill(bar(g, true))).toContain('<span class="ag-clock-pill__day is-paused" data-testid="hud-day">Paused</span>');
+    expect(timeRow(pill(bar(g, true)))).toBe('2:30 PM');
+    g.clock.speed = 1;
+    expect(pill(bar(g, true))).toContain('data-testid="hud-day">Day 12</span>');
+  });
+
+  it('the desktop pill is unchanged (its speed control says “Paused”)', () => {
+    const g = shop();
+    g.clock.speed = 0;
+    const out = bar(g, false);
+    expect(pill(out)).not.toContain('Paused');
+    expect(out).toMatch(/<span class="ag-speed__label" aria-hidden="true">Paused<\/span>/);
   });
 });

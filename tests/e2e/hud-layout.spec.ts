@@ -169,6 +169,15 @@ test.describe('phone 390×844 (touch)', () => {
     expect(b.clockH).toBeLessThanOrEqual(48);
   });
 
+  test('audit B15: the pause segment puts “Paused” in the clock pill; 1× brings the day back', async ({ page }) => {
+    await plainGame(page);
+    await tid(page, 'hud-speed-0').tap();
+    await expect(tid(page, 'hud-day')).toHaveText('Paused');
+    await expect(tid(page, 'hud-day')).toBeVisible();
+    await tid(page, 'hud-speed-1').tap();
+    await expect(tid(page, 'hud-day')).toHaveText(/^Day \d+$/);
+  });
+
   test('a calm HUD: the first tap on the hidden dock only wakes it, the quick retry lands, the drawn bell acts at once', async ({ page }) => {
     await plainGame(page);
     const m = (await tid(page, 'dock-market').boundingBox())!;

@@ -140,10 +140,12 @@ function ClockPill({ compact }: { compact?: boolean }) {
   const manual = useManual();
   const h = hourOfDay(hour);
   const night = h < 6.5 || h >= 20;
-  // audit B9: phones have no room for the shop's name, so the day sits above the time (Operations and notices count in days)
+  const paused = useGameSelector((g) => g.clock.speed === 0, false);
+  // audit B9: phones have no room for the shop's name, so the day sits above the time (Operations and notices count in
+  // days); B15: while the game is paused that line says so (phones hide the speed's "Paused", and the fish swim on)
   const dayLine = compact ? (
-    <span className="ag-clock-pill__day" data-testid="hud-day">
-      Day {dayOf(hour)}
+    <span className={clsx('ag-clock-pill__day', paused && 'is-paused')} data-testid="hud-day">
+      {paused ? 'Paused' : `Day ${dayOf(hour)}`}
     </span>
   ) : null;
   // lane:automation (chunk 5, AUTO-042) — phones turn the time pill amber with the Hand icon; it opens Manual mode

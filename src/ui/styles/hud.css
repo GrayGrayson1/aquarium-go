@@ -42,6 +42,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-clock-pill__sep { color: var(--c-ink-4); }
 /* audit B9: phones (TopBar `compact`) put the day where the shop's name goes, over the time */
 .ag-clock-pill__day { display: block; font-size: calc(10.5px * var(--text-scale)); font-weight: 650; line-height: 1.15; color: var(--c-ink-2); white-space: nowrap; }
+.ag-clock-pill__day.is-paused { color: var(--c-watch); } /* audit B15: "Paused" in its place while the game is paused */
 .ag-clock-pill.is-manual .ag-clock-pill__day { color: inherit; }
 
 .ag-speed { padding: 0 12px 0 4px; gap: 10px; min-height: 48px; }
