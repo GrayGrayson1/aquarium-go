@@ -510,6 +510,16 @@ function predationText(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
     const target = own ? `${pron === 'her' ? 'her' : 'his'} own ${label}` : `${whose} ${label}`;
     return `${names(pred.conspecific)} ${one ? 'is' : 'are'} eating ${target}! Move ${pron} out and let ${guardian.name} tend the brood alone.`;
   }
+  // audit E1: in a nursery the young are already where the advice sends them; the eater is an adult moved in with them
+  // (a seahorse father or a guppy mother brought there to give birth): name it and move it out, not the young
+  if (pred.conspecific.length && isNurseryFor(state, tank, hour)) {
+    const one = pred.conspecific.length === 1;
+    const eater = pred.conspecific[0];
+    const parent = (c: Creature) => c.id === cl.motherId || c.id === cl.fatherId;
+    const pron = one ? (eater.id === cl.fatherId ? 'him' : eater.id === cl.motherId ? 'her' : eater.reproRole === 'female' || eater.sex === 'female' ? 'her' : 'him') : 'them';
+    const target = pred.conspecific.every(parent) ? `${one ? (pron === 'her' ? 'her' : 'his') : 'their'} own ${label}` : `${whose} ${label}`;
+    return `${names(pred.conspecific)} ${one ? 'is' : 'are'} eating ${target}! Move ${pron} out of ${tank.name} now.`;
+  }
   if (pred.conspecific.length) return `The adult ${spPlural(sp)} are eating ${whose} ${label}! Move the clutch to a nursery tank.`;
   const other = [...pred.others.keys()].map((id) => findSpecies(id)).filter((x): x is SpeciesDefinition => !!x);
   if (other.length) return `${other.map((o) => spPlural(o)).join(' and ').replace(/^./, (ch) => ch.toUpperCase())} ${other.length === 1 && pred.others.get(other[0].id)!.length === 1 ? 'is' : 'are'} hunting ${whose} ${label}! Move the clutch to a nursery tank.`;
@@ -572,7 +582,14 @@ function hatch(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, 
   addMastery(state, 'breeding', 3);
   if (mod.onPhase?.(state, cl, tank, sp, hour, ctx)) return;
   const nursery = isNurseryFor(state, tank, hour);
-  const hint = !nursery && sp.breeding.nurseryRequired ? ' Adults and filters are a danger — a nursery tank gives them their best chance.' : '';
+  const mother = cl.motherId ? state.creatures[cl.motherId] : undefined;
+  const hint =
+    !nursery && sp.breeding.nurseryRequired
+      ? ' Adults and filters are a danger — a nursery tank gives them their best chance.'
+      : // audit E1: a berried mother moved to a nursery to hatch her eggs eats the young there
+        nursery && wasBerried && sp.breeding.predationWithoutNursery > 0 && isAlive(mother) && mother.tankId === tank.id
+        ? ` Move ${mother.name} back out — adults eat the young.`
+        : '';
   // lane:notify — berried shrimp release young rather than hatching eggs in view: a birth (ADR-0023)
   const loud = toastWorthy(state, sp, 'hatch');
   const notice = loud ? breedNotice(wasBerried ? 'birth' : 'hatch', clutchParentName(state, cl), cl.count, tank) : undefined;

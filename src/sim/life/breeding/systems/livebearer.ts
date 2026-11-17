@@ -86,7 +86,8 @@ export const livebearerModule: BreedingModule = {
           const seen = state.progress.counters[key] ?? 0;
           bumpCounter(state, key);
           const cover = habitatOf(state, tank).cover;
-          const tip = tank.purpose === 'nursery' ? '' : cover >= 0.5 ? ' The dense plants give them places to hide.' : ' Adults eat fry — dense plants or a nursery tank will save more of them.';
+          // audit E1: a mother moved to a nursery to drop her fry eats them there: say to move her back out
+          const tip = tank.purpose === 'nursery' ? (b.predationWithoutNursery > 0 ? ` Move ${f.name} back out — adults eat fry.` : '') : cover >= 0.5 ? ' The dense plants give them places to hide.' : ' Adults eat fry — dense plants or a nursery tank will save more of them.';
           say(state, ctx, { kind: 'breeding', text: `${f.name} dropped ${plural(n, 'fry', 'fry')}!${tip}`, tankId: tank.id, creatureId: f.id, toast: seen < 3, ...(seen < 3 ? { notice: breedNotice('birth', f.name, n, tank) } : {}) });
         }
         continue;

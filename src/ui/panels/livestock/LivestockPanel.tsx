@@ -525,6 +525,8 @@ function YoungView({ g }: { g: GameState }) {
               // lane:fix-panels — a brood in a pouch or under a berried tail travels with its parent: the sim refuses
               // to move the clutch on its own, so offer to move the carrier instead of a button that always fails
               const carried = isCarried(cl);
+              const carrierEats = (sp?.breeding.predationWithoutNursery ?? 0) > 0;
+              const carrierPron = guard?.sex === 'female' || guard?.reproRole === 'female' ? 'her' : 'him';
               return (
                 <div key={cl.id} className="pn-card pn-clutch">
                   <div className="pn-row pn-gap-3 pn-row--top">
@@ -587,7 +589,12 @@ function YoungView({ g }: { g: GameState }) {
                       <>
                         <span className="pn-small pn-muted">
                           {guard ? `Safe with ${guard.name} until they’re released` : 'Carried by the parent until they’re released'}
-                          {guard && !inNursery && nurseries.length > 0 ? ` — move ${guard.name} to a nursery so the young hatch somewhere safe.` : '.'}
+                          {/* audit E1: the carrier eats the young once they are out, in the nursery too: say to move it back */}
+                          {guard && !inNursery && nurseries.length > 0
+                            ? ` — move ${guard.name} to a nursery so the young hatch somewhere safe${carrierEats ? `, then move ${carrierPron} back out as soon as the young are out — adults eat them` : ''}.`
+                            : guard && inNursery && carrierEats
+                              ? `. Move ${guard.name} back out as soon as the young are out — adults eat them.`
+                              : '.'}
                         </span>
                         {guard && !inNursery && nurseries.length > 0 && (
                           <Button

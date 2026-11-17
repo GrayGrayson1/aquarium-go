@@ -25,6 +25,7 @@ import {
   hasNestSite,
   inSpawnWindow,
   isMature,
+  isNurseryFor,
   isReady,
   pairUp,
   pickSite,
@@ -89,7 +90,8 @@ export interface PairSpawnerConfig {
     spawn(m: Creature, f: Creature, sp: SpeciesDefinition, n: number, tank: Tank, guardian: Creature | null, duds?: number): string;
     /** chunk 17 — the card's line for a clutch of nothing but duds. Absent: the spawn line. */
     dudNotes?(f: Creature, sp: SpeciesDefinition, n: number): string;
-    release?(g: Creature, n: number, sp: SpeciesDefinition): string;
+    /** audit E1: `inNursery` — released in a nursery, where the father (moved in to release them) eats the young. */
+    release?(g: Creature, n: number, sp: SpeciesDefinition, inNursery: boolean): string;
   };
   status?(state: GameState, c: Creature, sp: SpeciesDefinition, hour: number): StatusOut | null;
 }
@@ -191,7 +193,9 @@ function stepPairs(env: StepEnv, cfg: PairSpawnerConfig, mod: BreedingModule): v
         releaseCarried(cl, tank, sp, mod, hour);
         startResting(g, hour, b.cooldownDays * 24 * cfg.maleRestFrac);
         addHistory(g, 'bred', `Released ${plural(cl.count, 'youngster')} from his mouth.`, hour);
-        say(state, ctx, { kind: 'breeding', text: cfg.text.release?.(g, cl.count, sp) ?? `${g.name} released ${plural(cl.count, 'tiny youngster')}!`, tankId: tank.id, creatureId: g.id, toast: true, notice: breedNotice('hatch', clutchParentName(state, cl), cl.count, tank) });
+        const inNursery = isNurseryFor(state, tank, hour);
+        const moveOut = inNursery && b.predationWithoutNursery > 0 ? ` Move ${g.name} back out now — adults eat the young.` : '';
+        say(state, ctx, { kind: 'breeding', text: cfg.text.release?.(g, cl.count, sp, inNursery) ?? `${g.name} released ${plural(cl.count, 'tiny youngster')}!${moveOut}`, tankId: tank.id, creatureId: g.id, toast: true, notice: breedNotice('hatch', clutchParentName(state, cl), cl.count, tank) });
       }
       continue;
     }

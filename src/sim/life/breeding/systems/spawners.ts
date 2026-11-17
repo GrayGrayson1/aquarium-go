@@ -127,7 +127,9 @@ export const mouthbrooderModule = makePairSpawner({
   text: {
     court: (m, f) => `${f.name} is courting ${m.name}, circling him with fins held wide.`,
     spawn: (m, f, sp, n) => `${f.name} released a ball of ${plural(n, 'egg')} and ${m.name} scooped them into his mouth. He won’t eat until they hatch.`,
-    release: (g, n) => `${g.name} spat out ${plural(n, 'perfect miniature cardinal')} — they’ll shelter among spines and branches. A nursery gives them the best start.`,
+    // audit E1: released in a nursery, the father (moved in to release them there) eats the young
+    release: (g, n, sp, inNursery) =>
+      `${g.name} spat out ${plural(n, 'perfect miniature cardinal')} — they’ll shelter among spines and branches.${inNursery ? ` Move ${g.name} back out now — adults eat the young.` : ' A nursery gives them the best start.'}`,
   },
 });
 
