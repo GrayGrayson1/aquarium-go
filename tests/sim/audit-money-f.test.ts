@@ -25,6 +25,10 @@ import { unlockProgress } from '@/sim/facility';
 import { lockViews } from '@/ui/panels/common/UnlockHelp';
 import { useShopFilters, useShopSearch } from '@/ui/panels/market/shopFilters';
 import { ListingsTab } from '@/ui/panels/market/Listings';
+import { decorSellOffer } from '@/ui/panels/build/BuildPanel';
+import { DECOR } from '@/data/catalog/decor';
+import { decorSellValue } from '@/sim/aquascape';
+import type { DecorInstance } from '@/types';
 import { TANK_TIERS } from '@/data/catalog/tanks';
 import { reserveHint } from '@/ui/panels/market/CreateListing';
 import { addCreature, createCreature } from '@/sim/life';
@@ -510,6 +514,18 @@ describe('F13: the ways to raise cash are ones the player can take', () => {
     expect(tips).toContain('Sell decor you can spare in Build › Decor: the shop pays half its price.');
     g.finance.money = 50;
     expect(cashSuggestions(g).join(' ')).toContain('restock it, or switch off its gear');
+  });
+});
+
+describe('F15: Build’s decor "Sell" says what it pays, and a grown-in piece asks first', () => {
+  it('half its price, as the sim pays; a living piece that cost over $50 asks', () => {
+    const g = game();
+    const piece = (defId: string): DecorInstance => ({ id: `d_${defId}`, defId, x: 0, y: 0, z: 0, rotY: 0, scale: 1, seed: 1, growth: 1, health: 100 });
+    const coral = DECOR.find((d) => (d.category === 'coral' || d.category === 'plant') && d.price > 50)!;
+    const rock = DECOR.find((d) => d.category === 'hardscape' && d.price > 50) ?? DECOR.find((d) => d.category === 'hardscape')!;
+    expect(decorSellOffer(g, piece(coral.id), coral)).toEqual({ pays: decorSellValue(coral, piece(coral.id)), ask: true });
+    expect(decorSellOffer(g, piece(rock.id), rock).ask).toBe(false);
+    expect(decorSellOffer(g, piece(rock.id), rock).pays).toBe(Math.round(rock.price * 0.5));
   });
 });
 

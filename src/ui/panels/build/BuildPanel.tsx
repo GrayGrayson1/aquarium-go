@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Hammer, Layers, Mountain, Wrench, Palette, Building2, Lock, Move, MapPin, Sprout, Flower2, Shell, Gem, Puzzle, Waves, Check, Power, Trash2, Package, TriangleAlert, Info, Zap, Sparkles, Thermometer, Snowflake, Fan, Lightbulb, Wind, Droplets, Droplet, Utensils, Sun, Leaf, Box } from 'lucide-react';
-import type { BackdropKind, DecorCategory, DecorDef, Environment, EquipmentKind, GameState, SubstrateKind, TankTier, WaterClass } from '@/types';
+import type { BackdropKind, DecorCategory, DecorDef, DecorInstance, Environment, EquipmentKind, GameState, SubstrateKind, TankTier, WaterClass } from '@/types';
 import { Button, Money, formatMoney, Toggle, Slider, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { TANK_TIERS } from '@/data/catalog/tanks';
@@ -20,7 +20,8 @@ import { tutorialChain, habitatPicks } from '@/data/quests';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { getFacilityLevel } from '@/data/facilities';
 import type { CommandOf } from '@/sim/commands';
-import { tankKitPrice, kitEquipmentFor, kitSwapNote, type KitEquipment } from '@/sim/economy';
+import { tankKitPrice, kitEquipmentFor, kitSwapNote, fragStoreOffer, type KitEquipment } from '@/sim/economy'; // audit 2026-11-17 (F15): fragStoreOffer
+import { decorSellValue } from '@/sim/aquascape'; // audit 2026-11-17 (F15)
 import { findFreeSpot, waterClassLock } from '@/sim/facility';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { formatTemp } from '@/ui/common/format';
@@ -454,6 +455,7 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
   // chunk 19 (ADR-0055 decision 3, QOL-003) — search, "Can buy now" and a sort beside the category chips
   const [buyable, setBuyable] = useState(false);
   const [sort, setSort] = useState<DecorSort>('price');
+  const [sellAsk, setSellAsk] = useState<string | null>(null); // audit 2026-11-17 (F15): a grown-in piece asks first
   const fits = useMemo(() => DECOR.filter((d) => d.environments.includes(tank.environment) && (!d.waterClasses?.length || d.waterClasses.includes(tank.waterClass))), [tank.environment, tank.waterClass]);
   const cats = useMemo(() => (Object.keys(CAT_META) as DecorCategory[]).filter((c) => fits.some((d) => d.category === c)), [fits]);
   // a guide deep link may ask for a category this tank has no items in
@@ -572,6 +574,7 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
           <ul className="pn-placed">
             {tank.decor.map((inst) => {
               const def = DECOR.find((x) => x.id === inst.defId);
+              const { pays, ask } = decorSellOffer(g, inst, def); // audit 2026-11-17 (F15)
               return (
                 <li key={inst.id} className="pn-placed__row">
                   <DecorSwatch d={def} size={34} />
@@ -590,8 +593,18 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
                   <Button size="sm" variant="ghost" onClick={() => act({ k: 'removeDecor', tank: tankId, decor: inst.id, sell: false }, { sound: 'place' })}>
                     To storage
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => act({ k: 'removeDecor', tank: tankId, decor: inst.id, sell: true }, { sound: 'coin' })}>
-                    Sell
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    data-testid={`decor-sell-${inst.id}`}
+                    title={sellAsk === inst.id ? 'A grown-in piece sells for more with its tank' : undefined}
+                    onClick={() => {
+                      if (ask && sellAsk !== inst.id) return setSellAsk(inst.id);
+                      setSellAsk(null);
+                      act({ k: 'removeDecor', tank: tankId, decor: inst.id, sell: true }, { sound: 'coin' });
+                    }}
+                  >
+                    {sellAsk === inst.id ? `Sell for ${formatMoney(pays)}?` : pays > 0 ? `Sell · ${formatMoney(pays)}` : 'Sell'}
                   </Button>
                 </li>
               );
@@ -601,6 +614,18 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
       )}
     </div>
   );
+}
+
+/**
+ * Audit 2026-11-17 (F15) — what Sell pays for a placed piece (the sim's own rule, decorSellValue; a frag still growing
+ * out goes to the store at its own price), and whether it asks first: a living piece that cost more than $50 sells
+ * for more with its tank (a whole-aquarium sale values grown-in plants and corals higher).
+ */
+export function decorSellOffer(g: GameState, inst: DecorInstance, def: DecorDef | undefined): { pays: number; ask: boolean } {
+  const growing = !!inst.frag && inst.frag.grownHour === undefined;
+  const pays = growing ? safe(() => fragStoreOffer(g, inst), 0) : decorSellValue(def, inst);
+  const living = def?.category === 'plant' || def?.category === 'coral' || def?.category === 'anemone';
+  return { pays, ask: living && (def?.price ?? 0) > 50 };
 }
 
 function DecorSwatch({ d, size = 56 }: { d?: DecorDef; size?: number }) {
