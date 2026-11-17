@@ -445,6 +445,9 @@ function sellWarningIcon(w: string) {
   return <HeartPulse size={16} />;
 }
 
+/** audit E25: how a clutch's losses read ("12 eaten, 3 to poor water"). */
+const LOSS_WORDS: Record<string, string> = { predation: 'eaten', starvation: 'starved', water: 'to poor water', crowding: 'to crowding', fungus: 'to fungus' };
+
 /** Only surface breeding states worth attention (hide idle / too young / not bred here). */
 function activeBreeding<T extends { label: string; detail?: string } | null>(s: T): T | null {
   if (!s) return null;
@@ -540,7 +543,8 @@ function YoungView({ g }: { g: GameState }) {
                     </span>
                     <div className="pn-grow">
                       <div className="pn-card__title" style={{ fontSize: 16 }}>
-                        {sp?.commonName ?? cl.speciesId} · {CLUTCH_STAGE_LABEL[cl.stage]}
+                        {/* audit E25: a Banggai father holds them in his mouth, not a pouch */}
+                        {sp?.commonName ?? cl.speciesId} · {cl.stage === 'in_pouch' && sp?.parentalCare === 'male_mouth' ? 'In his mouth' : CLUTCH_STAGE_LABEL[cl.stage]}
                       </div>
                       <div className="pn-card__sub">
                         {cl.visual === 'egg_case' ? plural(cl.count, 'egg case') : plural(cl.count, cl.stage === 'eggs' ? 'egg' : 'young', cl.stage === 'eggs' ? 'eggs' : 'young')} in {tank?.name ?? 'a tank'}
@@ -569,7 +573,8 @@ function YoungView({ g }: { g: GameState }) {
                   )}
                   {losses.length > 0 && (
                     <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>
-                      Lost so far: {losses.map(([k, n]) => `${Math.round(n)} to ${k}`).join(', ')}
+                      {/* audit E25: plain causes ("12 eaten, 3 to poor water"), not the sim's keys */}
+                      Lost so far: {losses.map(([k, n]) => `${Math.round(n)} ${LOSS_WORDS[k] ?? `to ${k}`}`).join(', ')}
                       {cl.initialCount ? ` (from ${cl.initialCount})` : ''}
                     </div>
                   )}

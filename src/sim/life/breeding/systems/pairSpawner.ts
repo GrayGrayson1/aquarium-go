@@ -45,7 +45,6 @@ import {
   type SiteKind,
   type SpawnWindow,
   breedNotice,
-  clutchParentName,
 } from '../common';
 import { bumpCounter } from '@/sim/facility';
 import { getSpecies } from '@/data/species';
@@ -207,7 +206,7 @@ function stepPairs(env: StepEnv, cfg: PairSpawnerConfig, mod: BreedingModule): v
         addHistory(g, 'bred', `Released ${plural(cl.count, 'youngster')} from his mouth.`, hour);
         const inNursery = isNurseryFor(state, tank, hour);
         const moveOut = inNursery && b.predationWithoutNursery > 0 ? ` Move ${g.name} back out now — adults eat the young.` : '';
-        say(state, ctx, { kind: 'breeding', text: cfg.text.release?.(g, cl.count, sp, inNursery) ?? `${g.name} released ${plural(cl.count, 'tiny youngster')}!${moveOut}`, tankId: tank.id, creatureId: g.id, toast: true, notice: breedNotice('hatch', clutchParentName(state, cl), cl.count, tank) });
+        say(state, ctx, { kind: 'breeding', text: cfg.text.release?.(g, cl.count, sp, inNursery) ?? `${g.name} released ${plural(cl.count, 'tiny youngster')}!${moveOut}`, tankId: tank.id, creatureId: g.id, toast: true, notice: breedNotice('hatch', g.name, cl.count, tank, 'young') }); // audit E25: the father who released them, not the mother
       }
       continue;
     }

@@ -25,6 +25,7 @@ import {
   plural,
   spPlural,
   stageProgress,
+  youngSingular,
   surfaceAgitation,
 } from './common';
 
@@ -83,7 +84,11 @@ export function creatureBreedingStatus(state: GameState, creatureId: string): St
     case 'guarding': {
       if (!cl) return { label: 'Guarding' };
       if (cl.stage === 'eggs') return { label: `Guarding ${plural(cl.count, 'egg')}`, detail: `Hatching in ${approxDuration(cl.nextStageHour - hour)}`, progress: clutchProgress(state, cl.id) };
-      if (cl.stage === 'larvae') return { label: `Tending ${plural(cl.count, 'larva', 'larvae')}`, detail: 'Returning strays to the nest', progress: clutchProgress(state, cl.id) };
+      // audit E25: a betta's larvae hang in a bubble nest; a cichlid's or pleco's wriggling fry lie on a stone or in a cave
+      if (cl.stage === 'larvae') {
+        const yl = youngLabel(cl, mod);
+        return { label: `Tending ${plural(cl.count, youngSingular(yl), yl)}`, detail: cl.visual === 'bubble_nest' || mod.id === 'bubble_nest' ? 'Returning strays to the nest' : 'Keeping them together and safe', progress: clutchProgress(state, cl.id) };
+      }
       // audit E12: a cichlid pair herds its free-swimming fry and never eats them: no need to move either parent
       if (moduleFor(sp).plan.pairGuards) return { label: 'Fry are free-swimming', detail: 'The pair herd them and keep them safe', progress: 1 };
       return { label: 'Fry are free-swimming', detail: `Move ${c.name} out — his job is done`, progress: 1 };
@@ -229,7 +234,7 @@ export function clutchStatus(state: GameState, clutchId: string): ClutchStatus |
   const keepNote = !cl.infertile && cl.count > max ? `You can keep up to ${max} young from this clutch; the rest go to local hobbyists.` : undefined;
   const waitsForDark = remaining <= 0 && ((cl.stage === 'eggs' && !!mod.plan.hatchAtNight) || (cl.stage === 'in_pouch' && mod.id === 'seahorse_pouch'));
   return {
-    label: `${plural(cl.count, label.replace(/s$/, ''), label)}`,
+    label: `${plural(cl.count, youngSingular(label), label)}`,
     detail,
     progress: clutchProgress(state, cl.id),
     warnings,

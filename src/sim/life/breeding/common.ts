@@ -291,8 +291,16 @@ export function toastWorthy(state: GameState, sp: SpeciesDefinition, kind: strin
  * milestones that toast, so a busy colony tank notifies as rarely as it toasts, and to an axolotl's finished clutch
  * (laying takes hours, so that line carries the count; one per clutch).
  */
-export function breedNotice(topic: 'eggs' | 'hatch' | 'birth', name: string | undefined, n: number, tank: Tank): EventNotice {
-  return { topic, vars: { ...(name ? { name } : {}), n, tank: tank.name } };
+export function breedNotice(topic: 'eggs' | 'hatch' | 'birth', name: string | undefined, n: number, tank: Tank, young?: string): EventNotice {
+  // audit E25: `young` names what hatched ("larvae", "wriggling fry"): not every hatch is free-swimming fry
+  return { topic, vars: { ...(name ? { name } : {}), n, tank: tank.name, ...(young ? { young } : {}) } };
+}
+
+/** audit E25: the singular of a young-stage label ("1 larva", not "1 larvae"; fry and young stay as they are). */
+export function youngSingular(label: string): string {
+  if (label === 'larvae') return 'larva';
+  if (/fry$|young$/.test(label)) return label;
+  return label.replace(/s$/, '');
 }
 
 /** The first name a clutch's notification uses: the mother, else the father, else whoever guards it. */

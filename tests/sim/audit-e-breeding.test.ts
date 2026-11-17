@@ -330,3 +330,25 @@ describe('E22: an anemone that isn’t splitting says why', () => {
     expect(breedingSystemInfo('bubbletip_anemone')?.breedable).toBe(true);
   });
 });
+
+describe('E23/E25: clutch words match what the young are and what can be done', () => {
+  it('singulars, hatch notices and a cichlid’s wriggling fry', async () => {
+    const { youngSingular, breedNotice } = await import('@/sim/life/breeding/common');
+    expect(youngSingular('larvae')).toBe('larva');
+    expect(youngSingular('wriggling fry')).toBe('wriggling fry');
+    expect(youngSingular('shrimplets')).toBe('shrimplet');
+    const { planNotification } = await import('@/ui/notify/rules');
+    const ev = { id: 'ev_1', hour: 100, kind: 'breeding' as const, text: 'x', notice: { topic: 'hatch' as const, vars: { name: 'Sol', n: 90, tank: 'Discus', young: 'wriggling fry' } } };
+    expect(planNotification(ev, { hour: 100, tankName: () => null })).toMatchObject({ title: 'Sol’s eggs hatched', body: '90 wriggling fry hatched in Discus.' });
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 71 });
+    const home = createTank(state, 'g55', 'freshwater_tropical', { cycled: true, name: 'Discus' });
+    expect(breedNotice('hatch', 'Sol', 120, home, 'wriggling fry')).toEqual({ topic: 'hatch', vars: { name: 'Sol', n: 120, tank: 'Discus', young: 'wriggling fry' } });
+    const rng = simRng(state);
+    const m = addCreature(state, createCreature(state, rng, 'discus', { sex: 'male', ageDays: 400, name: 'Rio' }), home.id);
+    const f = addCreature(state, createCreature(state, rng, 'discus', { sex: 'female', ageDays: 400, name: 'Sol' }), home.id);
+    const cl = createClutch(state, { sp: getSpecies('discus'), tank: home, mother: f, father: m, hour: state.clock.hour, stage: 'larvae', count: 90, visual: 'eggs_adhesive', nextStageHour: state.clock.hour + 40, guardedById: m.id });
+    m.repro.stage = 'guarding';
+    m.repro.clutchId = cl.id;
+    expect(breedingStatus(state, m.id)).toMatchObject({ label: 'Tending 90 wriggling fry', detail: 'Keeping them together and safe' });
+  });
+});

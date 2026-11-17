@@ -49,6 +49,7 @@ import {
   stockingOf,
   toastWorthy,
   unitsPerJuvenile,
+  youngSingular,
   youngWaterCause,
   youngWaterSeverity,
   type Vec,
@@ -546,7 +547,8 @@ function warnings(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinitio
   }
   if (hz.crowding > 0.002 && flag(cl, 'crowd')) {
     const text = mod.plan.cannibalPerGallon
-      ? `${who} ${label} are crowded and starting to nip each other — split them between tanks or use a bigger nursery.`
+      ? // audit E23: a clutch can only move whole, so 'split them between tanks' was impossible advice
+        `${who} ${label} are crowded and starting to nip each other — move them to a bigger tank (about ${mod.plan.cannibalPerGallon} ${label} per gallon).`
       : `${who} ${label} are crowded — a bigger nursery would raise more of them.`;
     say(state, ctx, { kind: 'warning', text, tankId: cl.tankId });
   }
@@ -599,8 +601,8 @@ function hatch(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, 
         : '';
   // lane:notify — berried shrimp release young rather than hatching eggs in view: a birth (ADR-0023)
   const loud = toastWorthy(state, sp, 'hatch');
-  const notice = loud ? breedNotice(wasBerried ? 'birth' : 'hatch', clutchParentName(state, cl), cl.count, tank) : undefined;
-  say(state, ctx, { kind: 'breeding', text: `${parentName(state, cl)} eggs hatched — ${plural(cl.count, ph.label.replace(/s$/, ''), ph.label)}!${hint}`, tankId: cl.tankId, creatureId: cl.motherId ?? undefined, toast: loud, ...(notice ? { notice } : {}) });
+  const notice = loud ? breedNotice(wasBerried ? 'birth' : 'hatch', clutchParentName(state, cl), cl.count, tank, wasBerried ? undefined : ph.label) : undefined;
+  say(state, ctx, { kind: 'breeding', text: `${parentName(state, cl)} eggs hatched — ${plural(cl.count, youngSingular(ph.label), ph.label)}!${hint}`, tankId: cl.tankId, creatureId: cl.motherId ?? undefined, toast: loud, ...(notice ? { notice } : {}) });
 }
 
 function setPhase(cl: Clutch, ph: RearingPhase, sp: SpeciesDefinition, hour: number): void {
@@ -617,7 +619,7 @@ function advancePhase(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefin
     setPhase(cl, next, sp, hour);
     if (next.visual === 'fry_cloud' && !cl.anchor) cl.anchor = pickSite(tank, 'midwater', `${cl.id}:fry`).anchor;
     if (!mod.onPhase?.(state, cl, tank, sp, hour, ctx)) {
-      say(state, ctx, { kind: 'breeding', text: `${parentName(state, cl)} ${plural(cl.count, next.label.replace(/s$/, ''), next.label)} are growing well.`, tankId: cl.tankId });
+      say(state, ctx, { kind: 'breeding', text: `${parentName(state, cl)} ${plural(cl.count, youngSingular(next.label), next.label)} ${cl.count === 1 ? 'is' : 'are'} growing well.`, tankId: cl.tankId });
     }
     return;
   }
