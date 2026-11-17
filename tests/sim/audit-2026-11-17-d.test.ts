@@ -18,6 +18,7 @@ import { offerDiet } from '@/ui/panels/market/offerDietText';
 import { lifespanFacts } from '@/ui/common/lifespan';
 import { convertTempText } from '@/ui/common/format';
 import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone } from '@/ui/cards/conditionWords';
+import { moveButton, moveNeedsAck } from '@/ui/cards/moveRisk';
 
 const texts = (r: CompatReport) => r.reasons.map((x) => x.text).join('\n');
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Test', seed: 777 });
@@ -329,5 +330,18 @@ describe('D13: a tank a little past a temperature limit is Conditional, and the 
     const min = getSpecies('discus').tempC.min;
     const temp = at(min - 2).reasons.find((x) => x.category === 'temperature' && /too cold/.test(x.text))!;
     expect(temp.severity).toBe('warning');
+  });
+});
+
+describe('D15: a risky move asks for the same tick as a risky purchase', () => {
+  it('High risk and Incompatible need the tick; the button says so until it is given', () => {
+    expect(moveNeedsAck('high_risk')).toBe(true);
+    expect(moveNeedsAck('incompatible')).toBe(true);
+    expect(moveNeedsAck('conditional')).toBe(false);
+    expect(moveButton({ tankName: 'Oscar tank', gateOk: true, verdict: 'incompatible', acknowledged: false })).toEqual({ label: 'Confirm the risk first', enabled: false });
+    expect(moveButton({ tankName: 'Oscar tank', gateOk: true, verdict: 'incompatible', acknowledged: true })).toEqual({ label: 'Move to Oscar tank', enabled: true });
+    expect(moveButton({ tankName: 'Community', gateOk: true, verdict: 'usually_compatible', acknowledged: false })).toEqual({ label: 'Move to Community', enabled: true });
+    expect(moveButton({ tankName: 'Reef', gateOk: false, verdict: undefined, acknowledged: false }).enabled).toBe(false);
+    expect(moveButton({ tankName: null, gateOk: false, verdict: undefined, acknowledged: false })).toEqual({ label: 'Choose a tank', enabled: false });
   });
 });

@@ -238,6 +238,9 @@
 .ag-moverow__name { display: block; font-family: var(--font-display); font-size: calc(16px * var(--text-scale)); font-weight: 520; }
 .ag-moverow__meta { display: block; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); }
 .ag-movepreview { min-width: 0; }
+/* Audit 2026-11-17 (D15): the risk tick before a High risk or Incompatible move, as the shop asks */
+.ag-moveack { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: calc(13px * var(--text-scale)); color: var(--c-ink); cursor: pointer; }
+.ag-moveack input { width: 18px; height: 18px; margin: 0; accent-color: var(--c-coral); }
 
 /* ───────── Settings ───────── */
 .ag-quality { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
