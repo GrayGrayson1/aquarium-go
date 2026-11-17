@@ -649,7 +649,9 @@ function relativeKey(obj: Objective): string | null {
 // ───────────────────────────── tutorial ─────────────────────────────
 
 export function interpolate(state: GameState, text: string): string {
-  const starter = Object.values(state.creatures).find((c) => c.isStarter && (c.status === 'alive' || c.status === 'listed'));
+  // audit 2026-11-17 (A1): a starter that died or was sold isn't named; the animal the guide shows instead is
+  const here = (c: GameState['creatures'][string]) => c.status === 'alive' || c.status === 'listed';
+  const starter = Object.values(state.creatures).find((c) => c.isStarter && here(c)) ?? Object.values(state.creatures).find((c) => here(c) && !!c.tankId);
   const sp = findSpecies(state.progress.tutorial.starterId || state.starterId);
   // Ideal bands are formatted exactly like the tank card's water report ("24.5–28.0 °C", "1.023–1.026").
   const temp = sp ? `${sp.tempC.idealMin.toFixed(1)}–${sp.tempC.idealMax.toFixed(1)} °C` : 'the right temperature';

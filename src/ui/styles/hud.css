@@ -265,6 +265,8 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-coach__body { margin: 0 0 12px; font-size: calc(13.5px * var(--text-scale)); line-height: 1.5; color: var(--c-ink-2); }
 .ag-coach__done { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 5px 9px; border-radius: 9px; background: rgba(74, 222, 128, 0.09); border: 1px solid rgba(74, 222, 128, 0.22); color: var(--c-good); font-size: calc(12px * var(--text-scale)); font-weight: 600; overflow: hidden; }
 .ag-coach__progress { display: grid; gap: 5px; margin: -4px 0 12px; }
+/* audit 2026-11-17 (A1, A17) — what a waiting step is waiting for ("Friends visit between 9 am and 9 pm.") */
+.ag-coach__wait { margin: -4px 0 12px; padding: 6px 9px; border-radius: 9px; background: color-mix(in srgb, var(--c-watch) 9%, transparent); border: 1px solid color-mix(in srgb, var(--c-watch) 28%, transparent); color: var(--c-ink); font-size: calc(12px * var(--text-scale)); line-height: 1.4; }
 .ag-coach__progress-row { display: flex; justify-content: space-between; font-size: calc(11.5px * var(--text-scale)); color: var(--c-ink-3); font-weight: 600; }
 .ag-coach__progress-row span:last-child { color: var(--c-ink); }
 .ag-coach__bar { height: 4px; border-radius: 99px; background: var(--c-fill-2); overflow: hidden; }
