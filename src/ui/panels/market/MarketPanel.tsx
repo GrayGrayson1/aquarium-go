@@ -22,6 +22,7 @@ import { ListingsTab } from './Listings';
 import { CreateListing, type WizardSeed } from './CreateListing';
 import { TrendsTab } from './Trends';
 import { NOT_FOUND, useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1); audit B21: NOT_FOUND
+import { wholeMoney } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F11)
 
 export type MarketTab = 'shop' | 'supplies' | 'listings' | 'trends';
 const MARKET_TABS: readonly MarketTab[] = ['shop', 'supplies', 'listings', 'trends'];
@@ -97,7 +98,7 @@ export function MarketPanel() {
   const openBids = active.reduce((a, l) => a + l.bids.filter((b) => b.status === 'open').length, 0);
   const stock = g.market.stock.length;
 
-  const subtitle = wizard ? 'Create a listing' : `${formatMoney(g.finance.money)} available · ${stock} offer${stock === 1 ? '' : 's'} in stock${active.length ? ` · ${active.length} active listing${active.length === 1 ? '' : 's'}` : ''}`;
+  const subtitle = wizard ? 'Create a listing' : `${wholeMoney(g.finance.money) /* audit 2026-11-17 (F11) */} available · ${stock} offer${stock === 1 ? '' : 's'} in stock${active.length ? ` · ${active.length} active listing${active.length === 1 ? '' : 's'}` : ''}`;
 
   return (
     <PanelLayout

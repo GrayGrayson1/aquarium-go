@@ -10,7 +10,7 @@ import type { Creature, GameState, ListingKind, Tank } from '@/types';
 import { Button, Money, formatMoney, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import type { CommandOf } from '@/sim/commands';
-import { suggestPricing, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
+import { suggestPricing, typicalOpening, quickSellQuote, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
 import { capturePhoto } from '@/render/camera/photo';
 import { inSharedShop } from '@/state/sharedMode'; // chunk 13
 import { captureSharedPhoto } from '@/ui/shared/photos';
@@ -18,6 +18,7 @@ import { isPrismatic } from '@/sim/life'; // lane:genetics
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { safe } from '../common/hooks';
+import { LockedButton } from '../common/UnlockHelp'; // audit 2026-11-17 (F8)
 import { act, toast } from '../common/act';
 import { Chip, EmptyState, Callout, SectionHead, NumberField, Checkbox, KV, Bar, LoadMore, usePaged } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
@@ -131,6 +132,8 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, ids.join(','), tankId, g.market.demand, preview?.expected, fragIds.join(',')]);
 
+  const opening = useMemo(() => safe(() => typicalOpening(pricing.expected), { low: 0, high: 0 }), [pricing.expected]); // F3
+
   useEffect(() => {
     if (priceTouched) return;
     setReserve(nicePrice(pricing.reserve));
@@ -239,7 +242,16 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
         <section className="pn-col pn-gap-3">
           <h3 className="pn-wizard__h">What would you like to sell?</h3>
           {access.hint && (
-            <Callout tone={access.listings ? 'info' : 'watch'} icon={<Info size={15} />}>
+            <Callout
+              tone={access.listings ? 'info' : 'watch'}
+              icon={<Info size={15} />}
+              action={
+                // audit 2026-11-17 (F8) — the whole route, with progress (chunk 19's unlock help)
+                <LockedButton title={access.listings ? 'Whole-aquarium auctions' : 'Listings'} keys={[access.listings ? 'tank_auctions' : 'market_listings']} testId="listing-unlock-help">
+                  How to unlock
+                </LockedButton>
+              }
+            >
               {access.hint}
             </Callout>
           )}
@@ -288,19 +300,20 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
             <span className="pn-pricehero__v">
               <Money value={pricing.expected} />
             </span>
-            {pricing.low > 0 && pricing.high > 0 && (
-              <span className="pn-small pn-dim">
-                Buyers typically offer {formatMoney(pricing.low)} – {formatMoney(pricing.high)}
+            {/* audit 2026-11-17 (F3) — where buyers' first offers really land (the bid model), not the valuation's range */}
+            {opening.low > 0 && opening.high > 0 && (
+              <span className="pn-small pn-dim" data-testid="listing-opening">
+                Buyers usually open at {formatMoney(opening.low)} – {formatMoney(opening.high)}; a counter can bring them up.
               </span>
             )}
             <span className="pn-small pn-muted">{kind === 'frag' ? 'Based on the coral or plant, how far it has grown out, healing, condition and recent frag sales.' : 'Based on species, condition, looks, lineage and today’s demand.'}</span>
           </div>
-          <PriceScale expected={pricing.expected} reserve={reserve} buyNow={buyNowOn ? buyNow : 0} />
+          <PriceScale expected={pricing.expected} reserve={reserve} buyNow={buyNowOn ? buyNow : 0} opening={opening} />
           <div className="pn-grid pn-grid--2">
             <div className="pn-field">
               <span className="pn-field__label">Reserve (lowest you’ll take)</span>
               <NumberField value={reserve} onChange={(v) => { setReserve(v); setPriceTouched(true); }} min={1} max={1e6} step={1} bigStep={reserve < 200 ? 5 : 25} prefix="$" label="Reserve price" />
-              <span className="pn-field__hint">{reserve > pricing.expected * 1.15 ? 'Above fair value — expect fewer bids.' : reserve < pricing.expected * 0.7 ? 'Low reserve — you may sell below value.' : 'A reserve near fair value attracts steady bidding.'}</span>
+              <span className="pn-field__hint" data-testid="listing-reserve-hint">{reserveHint(reserve, opening)}</span>
             </div>
             <div className="pn-field">
               <span className="pn-field__label pn-row pn-gap-2">
@@ -315,6 +328,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
               <span className="pn-field__hint">{buyNowOn ? (buyNow <= reserve ? 'Buy-now must be above your reserve.' : 'A keen buyer can end the auction instantly at this price.') : 'Turn on to let a buyer purchase immediately.'}</span>
             </div>
           </div>
+          {kind !== 'tank' && kind !== 'frag' && <QuickSellLine g={g} ids={ids} /> /* audit 2026-11-17 (F21) */}
           {kind === 'frag' ? <FragValueDetails g={g} ids={fragIds} /> : <ValueDetails g={g} kind={kind} chosen={chosen} tankId={tankId} />}
           <div className="pn-row pn-gap-2">
             <Button size="sm" variant="ghost" onClick={() => { setPriceTouched(false); }}>
@@ -652,14 +666,44 @@ function warningIcon(w: string) {
   return <TriangleAlert size={16} />;
 }
 
-function PriceScale({ expected, reserve, buyNow }: { expected: number; reserve: number; buyNow: number }) {
+/**
+ * Audit 2026-11-17 (F21) — the instant alternative to an auction: what the local fish store pays today for these
+ * animals, and a way to Livestock's quick-sell dialog for them (a child in debt tapping Sell met only a six-step auction).
+ */
+export function QuickSellLine({ g, ids }: { g: GameState; ids: string[] }) {
+  const quote = safe(() => (ids.length ? quickSellQuote(g, ids) : null), null);
+  if (!quote?.ok || !(quote.total > 0)) return null;
+  return (
+    <div className="pn-row pn-gap-2 pn-row--wrap" style={{ alignItems: 'center' }} data-testid="listing-quick-sell">
+      <span className="pn-small pn-muted pn-grow">Or sell now to the local fish store for about {formatMoney(quote.total)}.</span>
+      <Button size="sm" data-testid="listing-quick-sell-go" onClick={() => useUI.getState().set({ panel: 'livestock', panelTarget: `sell:${ids.join(',')}` })}>
+        Quick sell
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Audit 2026-11-17 (F3) — what a reserve does to first offers: a bid under the reserve is turned down automatically
+ * (the sim's rule), so the advice is measured against where first offers land, not against fair value.
+ */
+export function reserveHint(reserve: number, opening: { low: number; high: number }): string {
+  if (!(opening.high > 0)) return 'Bids under your reserve are turned down automatically.';
+  if (reserve > opening.high) return 'Above most first offers: many will be turned down automatically.';
+  if (reserve >= ((opening.low + opening.high) / 2) * 0.95) return 'About half of first offers will be below this and turned down automatically.';
+  if (reserve > opening.low) return 'Some first offers will be below this and turned down automatically.';
+  return 'Most first offers will reach this. You still choose which one to accept.';
+}
+
+function PriceScale({ expected, reserve, buyNow, opening }: { expected: number; reserve: number; buyNow: number; opening: { low: number; high: number } }) {
   const lo = Math.max(0, Math.min(reserve, expected) * 0.6);
   const hi = Math.max(expected * 1.8, buyNow * 1.1, reserve * 1.2, 10);
   const pos = (v: number) => `${Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100))}%`;
   return (
     <div className="pn-pricescale" aria-hidden>
       <div className="pn-pricescale__track">
-        <div className="pn-pricescale__fair" style={{ left: pos(expected * 0.9), width: `calc(${pos(expected * 1.1)} - ${pos(expected * 0.9)})` }} />
+        {/* F3: the band is where first offers usually land */}
+        <div className="pn-pricescale__fair" style={{ left: pos(opening.low || expected * 0.75), width: `calc(${pos(opening.high || expected)} - ${pos(opening.low || expected * 0.75)})` }} />
         <span className="pn-pricescale__mark pn-pricescale__mark--exp" style={{ left: pos(expected) }}>
           <i />
           <em>Fair {formatMoney(expected)}</em>

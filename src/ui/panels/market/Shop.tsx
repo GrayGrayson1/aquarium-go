@@ -20,10 +20,13 @@ import { fitsEnvironment } from '@/sim/compat/salinity'; // lane:brackish
 import { useNav } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { SubView } from '../common/PanelLayout';
 import { safe, useIsPhone } from '../common/hooks';
-import { act } from '../common/act';
-import { rememberOfferReturn } from './offerReturn'; // lane:qa-play
+import { act, edit } from '../common/act';
+import { rememberOfferReturn, peekOfferReturn } from './offerReturn'; // lane:qa-play; audit 2026-11-17 (F6): peek
 import { useShopFilters, offerMatches, filtersActive, useShopSearch, offerSearchMatches, sortOffers, type ShopSort } from './shopFilters'; // lane:ui-shell (chunk 1); chunk 19 (QOL-003): search and sort
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
+import { matches } from '../common/match'; // audit 2026-11-17 (F9)
+import { wholeMoney } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F11)
+import { ALL_SPECIES } from '@/data/species'; // audit 2026-11-17 (F9)
 import { useSeenStock } from './seenStock'; // lane:notify (0.5 §5.2)
 import { CopyLinkButton, OfferLinkRow, useOfferLink } from './OfferLink'; // lane:ui-shell (chunk 1)
 import { expressedNewGenes, labPartners, rareCarried, speciesPlural, strainOrMorphTier } from './offerGenetics';
@@ -78,7 +81,7 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
             </Button>
           }
         >
-          Another shop snapped it up, or it expired. New stock arrives regularly.
+          It has left the shop: bought, or its time ran out. New stock arrives every morning at 8.
         </EmptyState>
       </SubView>
     );
@@ -151,6 +154,10 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
             <EmptyState icon={<Sparkles size={26} className="ag-violet" />} title="No Prismatic animals right now" action={<ClearFilters onClick={clear} />}>
               About {oneInLabel(PRISMATIC.shopChance)} stocked animals shimmers. New stock arrives through the day.
             </EmptyState>
+          ) : q.trim() && !inStock.some((o) => offerSearchMatches(o, q)) && notStocked(q).length > 0 ? (
+            // audit 2026-11-17 (F9) — a search for an animal that isn't on the shelf: locked (and how to unlock it), or
+            // just not stocked today
+            <NotStocked g={g} q={q} />
           ) : (
             <EmptyState icon={<Store size={26} />} title="Nothing matches that filter" action={narrowed ? <ClearFilters onClick={clear} /> : undefined}>
               Try another filter to see more animals.
@@ -169,6 +176,44 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
       <p className="pn-small pn-muted" style={{ textAlign: 'center' }}>
         <Leaf size={12} style={{ verticalAlign: '-2px' }} aria-hidden /> Captive-bred animals are hardier and kinder to wild reefs and rivers.
       </p>
+    </div>
+  );
+}
+
+/** Audit 2026-11-17 (F9) — species whose name (common or scientific) matches a shop search, at most three. */
+function notStocked(q: string): SpeciesDefinition[] {
+  return ALL_SPECIES.filter((sp) => matches(q, sp.commonName, sp.scientificName)).slice(0, 3);
+}
+
+/** One row per matching species: why it isn't in the shop, and a way on (the Encyclopedia, the unlock help). */
+function NotStocked({ g, q }: { g: GameState; q: string }) {
+  return (
+    <div className="pn-col pn-gap-2" data-testid="shop-not-stocked">
+      {notStocked(q).map((sp) => {
+        const open = speciesUnlocked(g, sp);
+        return (
+          <Callout
+            key={sp.id}
+            tone="info"
+            icon={open ? <Clock size={15} /> : <Lock size={15} />}
+            title={sp.commonName}
+            action={
+              <span className="pn-row pn-gap-2 pn-row--wrap">
+                {!open && (
+                  <LockedButton title={speciesPlural(sp)} keys={safe(() => requiredUnlocks(sp), [] as string[])} testId={`shop-not-stocked-unlock-${sp.id}`}>
+                    How to unlock
+                  </LockedButton>
+                )}
+                <button type="button" className="pn-link" data-testid={`shop-not-stocked-open-${sp.id}`} onClick={() => useUI.getState().set({ panel: 'encyclopedia', panelTarget: `species:${sp.id}` })}>
+                  Encyclopedia
+                </button>
+              </span>
+            }
+          >
+            {open ? `No ${speciesPlural(sp).toLowerCase()} in the shop today. New stock arrives every morning at 8.` : lockHintOf(g, sp) || `You can’t buy ${speciesPlural(sp).toLowerCase()} yet.`}
+          </Callout>
+        );
+      })}
     </div>
   );
 }
@@ -234,6 +279,9 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
   const fits = tanks.some((t) => !!sp && fitsEnvironment(sp, t.environment)); // lane:brackish
   const expSoon = offer.expiresHour - g.clock.hour < 6;
   const affordable = g.finance.money >= offer.price;
+  // audit 2026-11-17 (F20) — a group (not a Prismatic lot) whose whole price is too much may still sell a smaller pick
+  const pickFewer = !affordable && offer.kind === 'group' && offer.creatures.length > 1 && !isLotOffer(offer) && g.finance.money >= offerPickPrice(offer, 1).price;
+  const short = pickFewer ? `Can’t afford all ${offer.creatures.length}: pick fewer` : 'Can’t afford yet';
   const locked = sp ? !speciesUnlocked(g, sp) : false;
   // lane:genetics — a Prismatic in the offer (any member of a group) is the face of the card
   const shimmer = offer.creatures.find((c) => isPrismatic(c));
@@ -244,7 +292,7 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
   // after the Genetics Lab: hidden carriers of rare alleles ("Carries Cambodian")
   const carries = sp && lead && geneticsRevealLevel(g, lead) >= 1 ? safe(() => rareCarried(sp, lead.genome), []) : [];
   // the notes under the price, as they read on the card (B-178: status in the card's name)
-  const status = [!fits && sp ? `Needs a ${ENV_LABEL[sp.environment].toLowerCase()} tank` : '', fits && !affordable ? 'Can’t afford yet' : '', locked ? 'Locked' : ''].filter(Boolean).join(', ');
+  const status = [!fits && sp ? `Needs a ${ENV_LABEL[sp.environment].toLowerCase()} tank` : '', fits && !affordable ? short : '', locked ? 'Locked' : ''].filter(Boolean).join(', ');
   return (
     <Card className={clsx('pn-offer', 'ag-offercard', shimmer && 'ag-prismatic-card')} onClick={onOpen} testId={`shop-offer-${index}`} label={`${shimmer ? 'Prismatic ' : ''}${title}, ${formatMoney(offer.price)}${status ? `, ${status}` : ''}`}>
       <div className="pn-offer__top">
@@ -283,7 +331,7 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
         <div className="pn-offer__price">
           <Money value={offer.price} />
           {!fits && <span className="pn-tiny pn-tone-watch">Needs a {sp ? ENV_LABEL[sp.environment].toLowerCase() : ''} tank</span>}
-          {fits && !affordable && <span className="pn-tiny pn-tone-watch">Can’t afford yet</span>}
+          {fits && !affordable && <span className="pn-tiny pn-tone-watch">{short}</span>}
           {locked && (
             // chunk 19 (QOL-006) — the card says what it waits for (its detail has the whole route)
             <span className="pn-tiny pn-muted ag-offercard__lock" title={sp ? lockHintOf(g, sp) : undefined}>
@@ -295,6 +343,14 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
     </Card>
   );
 }
+
+/** Audit 2026-11-17 (F4) — the water report's cycle lines: cycled from 75 % established, DANGER under 40 % with animals in. */
+const CYCLED = 0.75;
+const UNCYCLED = 0.4;
+const cycleOf = (t: Tank): number => {
+  const m = t.water?.bioMaturity;
+  return typeof m === 'number' && Number.isFinite(m) ? m : 1;
+};
 
 /** A destination tile's fit, from the same preview the selected tank's CompatPreview uses. */
 interface TileFit {
@@ -345,6 +401,21 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   const alive = useRef(true);
   useEffect(() => () => void (alive.current = false), []);
   const tilesRef = useRef<HTMLDivElement>(null);
+  // audit 2026-11-17 (F6, the owner's choice) — the offer stays while you look: held now, renewed every 15 s and on a
+  // speed change (the hold is game hours scaled by the speed, like a bid's counter hold), released on close; a detour
+  // to Build for a tank for it (Quick buy) keeps it (offerReturn renews it there)
+  const speed = g.clock.speed;
+  useEffect(() => {
+    edit({ k: 'holdOffer', offer: offer.id });
+    const t = window.setInterval(() => edit({ k: 'holdOffer', offer: offer.id }), 15_000);
+    return () => window.clearInterval(t);
+  }, [offer.id, speed]);
+  useEffect(
+    () => () => {
+      if (peekOfferReturn()?.offerId !== offer.id) edit({ k: 'holdOffer', offer: offer.id, release: true });
+    },
+    [offer.id],
+  );
   const tank = tankId ? g.tanks[tankId] : undefined;
   const chosen = offer.creatures.filter((_, i) => picked.has(i));
   // The same quote buyOffer charges (lane:fix-econ, S13-11): a partial pick is never priced above the whole group.
@@ -383,7 +454,10 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   }, [g, candidate, tankId, report]);
 
   if (!sp) return null;
-  const risky = !!report && VERDICT_RANK[report.verdict] >= VERDICT_RANK.high_risk;
+  // audit 2026-11-17 (F4) — a tank still cycling: watch under 75 % established (the water report's "cycling"), and
+  // under 40 % (its DANGER with animals in) the risk tick is needed, like any high-risk move
+  const cycle = tank ? cycleOf(tank) : 1;
+  const risky = (!!report && VERDICT_RANK[report.verdict] >= VERDICT_RANK.high_risk) || (gate.ok && cycle < UNCYCLED);
   const locked = !speciesUnlocked(g, sp);
   const afford = g.finance.money >= price;
   const tooSmall = tank ? gallonsOf(tank) < sp.recommendedMinTankGallons * SLIGHTLY_SMALL_TANK : false; // Audit 2026-11-17 (D4): a little small is the preview's note
@@ -585,6 +659,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
                   ) : (
                     <>
                       <span className="pn-tiny pn-muted">{plural(n, 'resident')}</span>
+                      {cycleOf(t) < CYCLED && <span className={clsx('pn-tiny', cycleOf(t) < UNCYCLED ? 'pn-tone-danger' : 'pn-tone-watch')}>Cycling {Math.round(cycleOf(t) * 100)}%</span> /* F4 */}
                       {fit && (
                         <span className="ag-tilefit" data-verdict={fit.verdict}>
                           <StatusBadge status={verdictStatus(fit.verdict)} label={`${VERDICT_LABEL[fit.verdict]}${fit.reason ? ` — ${fit.reason}` : ''}`} />
@@ -611,6 +686,13 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
       {tank && (
         <section className="pn-col pn-gap-2">
           <CompatPreview report={report} gate={gate} title={`Compatibility with ${tank.name}`} focusSpeciesId={sp?.id} /* lane:qa-play */ labels={VERDICT_LABEL /* ADR-0020: long labels in the offer detail */} />
+          {gate.ok && cycle < CYCLED && (
+            <div data-testid="offer-cycling">
+              <Callout tone={cycle < UNCYCLED ? 'danger' : 'watch'} icon={<TriangleAlert size={15} />}>
+                {tank.name} is still cycling ({Math.round(cycle * 100)}% established). New animals here face ammonia spikes: add bottled bacteria, or pick a cycled tank.
+              </Callout>
+            </div>
+          )}
           {gate.ok && tooSmall && (
             <Callout tone="watch" icon={<TriangleAlert size={15} />}>
               {capitalPlural(sp)} need at least {sp.recommendedMinTankGallons} gallons as adults; {tank.name} is {gallonsOf(tank)} gallons.
@@ -647,8 +729,15 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             </span>
             <span className={clsx('pn-tiny', afford ? 'pn-muted' : 'pn-tone-danger')}>
               {offer.kind === 'group' ? `${groupPriceNote(chosen.length, offer.creatures.length, unitPrice, price)} · ` : ''}
-              {afford ? `${formatMoney(g.finance.money - price)} left after` : `You need ${formatMoney(price - g.finance.money)} more`}
+              {/* audit 2026-11-17 (F11) — never "You need $0 more": what's left rounds down, a shortfall up */}
+              {afford ? `${wholeMoney(g.finance.money - price)} left after` : `You need ${formatMoney(Math.ceil(price - g.finance.money - 1e-6))} more`}
             </span>
+            {!afford && !locked && (
+              // audit 2026-11-17 (F2) — short of the price: where the ways to raise cash are
+              <button type="button" className="pn-link pn-tiny" data-testid="offer-raise-cash" onClick={() => useUI.getState().set({ panel: 'finances', panelTarget: null })}>
+                Ways to raise cash
+              </button>
+            )}
           </div>
           {!phone && fitBadge}
           {state.action === 'build' ? (
@@ -661,6 +750,10 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             </Button>
           )}
         </div>
+        {/* audit 2026-11-17 (F6) — when it leaves, and that it waits while you look */}
+        <span className="pn-tiny pn-muted" data-testid="offer-leaves">
+          <Clock size={11} style={{ verticalAlign: '-1px' }} aria-hidden /> {offerLeavesText(offer.expiresHour, g.clock.hour)}
+        </span>
         {locked && (
           <span className="pn-row pn-gap-2 pn-row--wrap" style={{ alignItems: 'center' }}>
             <span className="pn-tiny pn-muted pn-grow">{lockHintOf(g, sp)}</span>
@@ -673,6 +766,18 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
       </div>
     </SubView>
   );
+}
+
+/**
+ * Audit 2026-11-17 (F6, the owner's pattern): "Leaves the shop this morning. It stays while you’re looking." — the part
+ * of the day its time runs out (today, tomorrow, or in n days), and that an open offer waits.
+ */
+export function offerLeavesText(expiresHour: number, now: number): string {
+  const day = Math.floor(expiresHour / 24) - Math.floor(now / 24);
+  const h = ((expiresHour % 24) + 24) % 24;
+  const part = h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
+  const when = expiresHour <= now && day < 0 ? 'now' : day <= 0 ? (part === 'night' ? 'tonight' : `this ${part}`) : day === 1 ? (part === 'night' ? 'tomorrow night' : `tomorrow ${part}`) : `in ${day} days`;
+  return `Leaves the shop ${when}. It stays while you’re looking.`;
 }
 
 /** "{Tier} morph · about 1 in {n} market {species plural}" (0.5 §7.4 item 7), from the catalog. */

@@ -21,9 +21,10 @@ import { hourOfDay, GAME_HOURS_PER_REAL_SECOND } from '../time';
 import { deleteTank } from '../tanks';
 import { creaturesInTank, isPrismatic } from '../life';
 import { environmentGate, previewAddition } from '../compat';
-import { isUnlocked, addReputation, addMastery, bumpCounter, guideHoldLine } from '../facility';
+import { isUnlocked, addReputation, addMastery, bumpCounter } from '../facility';
+import { counterValue, heldByGuideStep } from '../facility/progression'; // audit 2026-11-17 (F8)
 import { findSpecies } from '@/data/species';
-import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
+import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { BUYER_ARCHETYPES, LOCAL_FISH_STORE, archetypeLabel } from '@/data/buyers';
 import { earn } from './finance';
 import { tankValuation, bundleValue, careDifficultyLabel, lineageSummary, livestockSummary, tankSignature, compatRank, quickSellQuote } from './valuation';
@@ -31,13 +32,14 @@ import { buildProfile, buyerFit, buyerInterestWeight, maybeDelegation, buildFrag
 import { fragBundleValue, fragValue, fragStoreOffer, FRAG_HEALED_HOURS } from './valuation'; // lane:frags
 import { fragLabel, isCoralDef } from '@/data/catalog/propagation'; // lane:frags
 import { composeBidMessage, counterReply, buyNowMessage, withdrawMessage, saleFeedback, type MsgVars, type CounterOutcome } from './messages';
-import { clamp, clamp01, clonePlain, finite, fmtMoney, nicePrice, pushCapped, speciesPlural, roundCents, morphTitle } from './util';
+import { clamp, clamp01, clonePlain, finite, fmtMoney, nicePrice, pushCapped, speciesPlural, roundCents, morphTitle, aOrAn } from './util';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { touchResidents } from '../residents'; // lane:perf2
 import { computeTankEnv, effectiveBioload } from '../water'; // B-174
 import { settleTanks } from '../settle'; // B-127
 import { saleWarnings } from './warnings'; // lane:fix-econ
+import { cheapestKit } from './purchases'; // audit 2026-11-17 (F7)
 import * as dmath from '../dmath';
 
 export interface ListingSpec {
@@ -145,9 +147,15 @@ export function marketAccess(state: GameState): { listings: boolean; tankAuction
   const tankAuctions = isUnlocked(state, 'tank_auctions');
   let hint: string | undefined;
   // lane:guide — the real rule (src/data/unlocks.ts market_listings): the first visit to the Market, finishing the guide, or 10 reputation
-  // Audit 2026-11-17 (G1): while the guide holds them back for its “The market” step, say that instead of the rule
-  if (!listings) hint = `${guideHoldLine(state, 'market_listings') ? 'Listings open at the guide’s “The market” step: open the Market while that step is on.' : 'Listings open after your first visit to the Market (or at 10 reputation).'} Until then, the local fish store buys animals for quick cash in Livestock › Quick sell.`;
-  else if (!tankAuctions) hint = 'Whole-aquarium auctions unlock a little later. You can already list individual animals, pairs and groups.';
+  // audit 2026-11-17 (F8) — while the guide runs it holds listings for its own step: say that, not a rule already met
+  const held = !listings ? heldByGuideStep(state, 'market_listings') : null;
+  if (held) hint = `Listings open at the guide’s “${held}” step, or when you finish or skip the guide. Until then the local fish store buys animals for quick cash: tick them in Livestock and press Quick sell.`;
+  else if (!listings) hint = 'Listings open after your first visit to the Market (or at 10 reputation). Until then, the local fish store buys animals for quick cash in Livestock › Quick sell.';
+  else if (!tankAuctions) {
+    // F8: the rule, with progress (src/data/unlocks.ts tank_auctions: 3 sales, business mastery or the Specialty Shop)
+    const sales = counterValue(state, 'sales');
+    hint = `Whole-aquarium auctions open after 3 sales (you’ve made ${sales}), or when you move into the Specialty Shop. You can already list individual animals, pairs and groups.`;
+  }
   return { listings, tankAuctions, hint };
 }
 
@@ -458,6 +466,28 @@ export interface ListingPreview {
   warnings: string[];
 }
 
+/**
+ * The buyers who bid are mostly the ones a listing suits: their fit lifts a private value about 10 % above fair value
+ * on average (measured on the bid model, audit 2026-11-17: first offers' median ≈ 0.96× fair value).
+ */
+const TYPICAL_BIDDER_FIT = 1.1;
+
+/**
+ * Audit 2026-11-17 (F3) — where buyers' FIRST offers usually land for a listing worth `expected`, from the bid model
+ * itself (arrivals): a bidder's private value is fair value × fit × noise (±11 %), and they open at their archetype's
+ * `opening` share of it (bargain hunters lower). The archetypes' average opening range, at the typical bidder's fit,
+ * one spread either side: about 0.8×–1.15× fair value, where most first offers land. The listing screen's advice and
+ * the "Listed …" line quote this; a bid under the reserve is turned down automatically, so the reserve advice is
+ * measured against it.
+ */
+export function typicalOpening(expected: number): { low: number; high: number } {
+  const arch = Object.values(BUYER_ARCHETYPES);
+  if (!(expected > 0) || !arch.length) return { low: 0, high: 0 };
+  const lo = arch.reduce((a, d) => a + d.opening[0], 0) / arch.length;
+  const hi = arch.reduce((a, d) => a + d.opening[1], 0) / arch.length;
+  return { low: nicePrice(expected * lo * TYPICAL_BIDDER_FIT * dmath.exp(-0.11)), high: nicePrice(expected * hi * TYPICAL_BIDDER_FIT * dmath.exp(0.11)) };
+}
+
 /** Everything the listing dialog needs before the player commits. */
 export function previewListing(state: GameState, spec: Omit<ListingSpec, 'reserve' | 'durationHours'>): ListingPreview {
   const empty: ListingPreview = { ok: false, message: '', title: '', expected: 0, low: 0, high: 0, suggestedReserve: 0, suggestedBuyNow: 0, warnings: [] };
@@ -566,7 +596,7 @@ export function createListing(state: GameState, spec: ListingSpec): ActionResult
   bumpCounter(state, 'listingsCreated');
   emitEvent(state, {
     kind: 'market',
-    text: `Listed "${title}" — expected ${fmtMoney(built.snapshot.low ?? built.snapshot.valuation)}–${fmtMoney(built.snapshot.high ?? built.snapshot.valuation)}. Buyers will start looking soon.`,
+    text: `Listed "${title}". Buyers usually open at ${fmtMoney(typicalOpening(built.snapshot.valuation).low)}–${fmtMoney(typicalOpening(built.snapshot.valuation).high)}, and they will start looking soon.`, // F3
     listingId: id,
     tankId: contents.tank?.id,
   });
@@ -960,11 +990,11 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
     });
   }
   if (check.tank && state.tankOrder.length === 0) {
-    const tiers = TANK_TIERS.filter((t) => isUnlocked(state, t.unlock));
-    const cheap = tiers.sort((a, b) => a.price - b.price)[0];
+    // audit 2026-11-17 (F7) — the whole kit's price (glass, gear, substrate), not the glass alone
+    const cheap = cheapestKit(state);
     emitEvent(state, {
       kind: 'info',
-      text: `${soldTankName ?? 'Your last aquarium'} has gone to its new home. You have ${fmtMoney(state.finance.money)} and an empty room — ${cheap ? `a ${cheap.name} kit starts at about ${fmtMoney(cheap.price)}. ` : ''}Tip: start the next tank early, because new tanks need time to cycle before animals move in.`,
+      text: `${soldTankName ?? 'Your last aquarium'} has gone to its new home. You have ${fmtMoney(state.finance.money)} and an empty room — ${cheap ? `the cheapest kit, ${aOrAn(cheap.name)} ${cheap.name}, costs about ${fmtMoney(cheap.total)}. ` : ''}Tip: start the next tank early, because new tanks need time to cycle before animals move in.`,
       toast: true,
     });
   }
@@ -1621,7 +1651,11 @@ function expireListing(state: GameState, l: Listing): void {
   const sid = l.snapshot.speciesIds?.[0];
   let advice: string;
   if (received === 0) {
-    const tips = [l.reserve > 0 ? 'a lower reserve' : '', 'a longer listing', l.snapshot.photo ? '' : 'a listing photo', demand < 0.95 && sid ? `waiting until demand for ${speciesPlural(sid)} recovers (now ${demand.toFixed(2)}×)` : '', l.snapshot.beautyScore < 50 && l.kind === 'tank' ? 'improving the aquascape first' : '']
+    // audit 2026-11-17 (F18) — advice that fits this listing: a lower reserve only when it was well above fair value, a
+    // longer listing only when a longer one exists, and demand in plain words (not "0.83×")
+    const ran = l.endsHour - l.createdHour;
+    const longest = Math.max(...LISTING_DURATION_PRESETS.map((p) => p.hours));
+    const tips = [l.reserve > l.snapshot.valuation * 1.1 ? 'a lower reserve' : '', ran < longest - 1e-6 ? 'a longer listing' : '', l.snapshot.photo ? '' : 'a listing photo', demand < 0.95 && sid ? `waiting until prices for ${speciesPlural(sid)} recover (they are ${Math.round((1 - demand) * 100)}% below normal)` : '', l.snapshot.beautyScore < 50 && l.kind === 'tank' ? 'improving the aquascape first' : '']
       .filter(Boolean)
       .join(', ');
     advice = `No bids arrived. Try ${tips || 'listing again when buyers are more active'}.`;

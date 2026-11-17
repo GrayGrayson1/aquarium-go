@@ -112,6 +112,7 @@ const SCHEMA: Schema = {
   setFavorite: { creature: id, on: bool },
   quickSell: { creatures: { t: 'ids', max: MAX_LIST } },
   buyOffer: { offer: id, tank: id, picks: opt({ t: 'ints', max: MAX_LIST, lo: 0, hi: 10_000 }), saw: opt({ t: 'ids', max: MAX_LIST }) },
+  holdOffer: { offer: id, release: opt(bool) },
   buyFood: { food: id, packs: { t: 'int', min: 1, max: 1000 } },
   buySalt: { kg: { t: 'num', min: 0, max: 10_000 } },
   buyEggs: { tins: { t: 'int', min: 1, max: 1000 } },

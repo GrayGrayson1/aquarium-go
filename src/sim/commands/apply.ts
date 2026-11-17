@@ -8,7 +8,7 @@ import type { GameState } from '@/types';
 import type { ActionResult } from '../care';
 import { cleanTank, dose, feedTank, installEquipment, removeEquipment, repairEquipment, setEquipment, setLighting, topOff, waterChange } from '../care';
 import { autoFeedPatch } from '../care/autofeed';
-import { buyEggs, buyEquipment, buyFood, buyOffer, buySalt, buyTank } from '../economy/purchases';
+import { buyEggs, buyEquipment, buyFood, buyOffer, buySalt, buyTank, holdOffer } from '../economy/purchases';
 import { acceptBid, counterBid, createListing, declineBid, holdBidForCounter, quickSell, quickSellFrags, withdrawListing, type ListingSpec } from '../economy/listings';
 import { placeTank, setAdmission, setOpenToPublic, toggleSignage, upgradeFacility } from '../facility/actions';
 import { cancelResearch, claimQuest, startResearch, tutorialAdvance, tutorialSkip } from '../facility/progression';
@@ -227,6 +227,8 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
       }
       return buyOffer(state, cmd.offer, cmd.tank, picks);
     }
+    case 'holdOffer':
+      return holdOffer(state, cmd.offer, !!cmd.release);
     case 'buyFood':
       return buyFood(state, cmd.food, cmd.packs);
     case 'buySalt':

@@ -632,6 +632,14 @@ export interface ShopOffer {
   label?: string;
   /** lane:market — price per animal when buying only part of a group (creatureIndexes). */
   unitPrice?: number;
+  /**
+   * Audit 2026-11-17 (F6, the owner's choice): the player has this offer open, so it stays in the shop past its
+   * `expiresHour` (and the morning restock) until this game hour. Renewed while the offer is open, like a bid's
+   * counter hold; released on close. Optional: absent, nothing is held.
+   */
+  holdUntilHour?: number;
+  /** When the current look began; the whole hold is capped from here (the bid hold's MAX_NEGOTIATION_HOLD_HOURS). */
+  holdStartHour?: number;
 }
 
 /** lane:market — a temporary demand swing for one species (shown in the market UI). */

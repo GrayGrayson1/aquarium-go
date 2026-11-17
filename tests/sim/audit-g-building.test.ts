@@ -87,7 +87,7 @@ describe('G1: an unlock the guide holds back says so', () => {
     const g = game('betta');
     g.progress.reputation = 12;
     g.progress.tutorial.flags.opened_market = true;
-    expect(marketAccess(g).hint).toMatch(/^Listings open at the guide’s “The market” step: open the Market while that step is on\./);
+    expect(marketAccess(g).hint).toMatch(/^Listings open at the guide’s “The market” step, or when you finish or skip the guide\./); // the words are area F's (F8), merged with G1
     g.progress.tutorial.skipped = true;
     g.progress.tutorial.done = true;
     expect(marketAccess(g).hint).toMatch(/^Listings open after your first visit to the Market/);

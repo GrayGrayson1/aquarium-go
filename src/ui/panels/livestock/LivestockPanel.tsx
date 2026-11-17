@@ -65,8 +65,9 @@ export function LivestockPanel() {
     else if (target.startsWith('creature:')) useUI.getState().set({ selectedCreatureId: target.slice(9) });
     else if (target.startsWith('sell:')) {
       // lane:guide — "Sell" on a creature card before the marketplace opens: this animal, ready for the shop's quick sale
+      // (audit 2026-11-17, F21: or several, comma-separated, from the listing wizard's "Quick sell")
       setTab('animals');
-      setPicked(new Set([target.slice(5)]));
+      setPicked(new Set(target.slice(5).split(',').filter(Boolean)));
       setConfirmSell(true);
     }
     useUI.getState().set({ panelTarget: null });

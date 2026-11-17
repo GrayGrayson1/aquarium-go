@@ -12,6 +12,7 @@ import { incomeCue, sfx } from '@/audio/sfx';
 import { formatClock, dayOf, hourOfDay } from '@/sim/time';
 import { formatMoney, Segmented } from '../kit';
 import { formatRep } from '../common/format';
+import { wholeMoney } from '../common/moneyShort'; // audit 2026-11-17 (F11)
 import { useShell } from '../common/shellStore';
 import { AlertsPopover, useAlertCount } from './AlertsPopover';
 import { AttnDot } from './AttnDot'; // lane:notify
@@ -69,7 +70,9 @@ function AnimatedMoney({ value, short }: { value: number; short?: boolean }) {
       from.current = value;
     };
   }, [value, reduced]);
-  return <>{short ? formatMoneyShort(Math.round(shown)) : formatMoney(Math.round(shown))}</>;
+  // audit 2026-11-17 (F11) — rounded down: never more than the player has (a $200 price is affordable at "$200")
+  const whole = Math.floor(shown + 1e-6);
+  return <>{short ? formatMoneyShort(whole) : formatMoney(whole)}</>;
 }
 
 /** Phones: "$54.4k" so the top bar never overlaps itself (the full amount stays in the label and tooltip). */
@@ -107,7 +110,19 @@ function MoneyPill({ compact }: { compact?: boolean }) {
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
   const debt = money < 0;
   return (
-    <div className={clsx('ag-hudpill ag-money-pill', debt && 'is-debt')} data-testid="hud-money" aria-label={`Money ${formatMoney(money)}`} title={formatMoney(money)} data-tutorial-id="hud-money">
+    // audit 2026-11-17 (F2) — the money pill opens Finances (in the red, it is where the ways to raise cash are)
+    <button
+      type="button"
+      className={clsx('ag-hudpill ag-money-pill', debt && 'is-debt')}
+      data-testid="hud-money"
+      aria-label={`Money ${wholeMoney(money)}. Open Finances`}
+      title={formatMoney(money, { cents: true }) /* F11: the exact balance */}
+      data-tutorial-id="hud-money"
+      onClick={() => {
+        sfx('open');
+        useUI.getState().set({ panel: 'finances', panelTarget: null });
+      }}
+    >
       <span className="ag-money-pill__coin" aria-hidden>$</span>
       <span className="ag-money-pill__val">
         <AnimatedMoney value={money} short={compact} />
@@ -126,7 +141,7 @@ function MoneyPill({ compact }: { compact?: boolean }) {
           </motion.span>
         ))}
       </AnimatePresence>
-    </div>
+    </button>
   );
 }
 

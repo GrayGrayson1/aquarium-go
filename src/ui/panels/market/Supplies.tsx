@@ -4,7 +4,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Utensils, Wrench, Mountain, Lock, Check, Package } from 'lucide-react';
+import { Utensils, Wrench, Mountain, Lock, Check, Package, Wallet } from 'lucide-react';
 import type { GameState, FoodDef, EquipmentDef } from '@/types';
 import { Button, Money, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
@@ -12,7 +12,7 @@ import { FOODS, eatsFood, madeForSpecies } from '@/data/catalog/foods';
 import { EQUIPMENT } from '@/data/catalog/equipment';
 import { isFoodAvailable, soldWithWords } from '@/sim/economy';
 import { act } from '../common/act';
-import { Chip, SectionHead, EmptyState, Select, Card } from '../common/parts';
+import { Chip, SectionHead, EmptyState, Select, Card, Callout } from '../common/parts';
 import { orderedTanks, ownedCreatures, speciesOf, gallonsOf, unlocked } from '../common/derive';
 import { titleCase } from '../common/format';
 import { safe } from '../common/hooks';
@@ -24,6 +24,7 @@ import { CulturesSection, DryFoodSection, LiveFoodSection, SaltRow, foodsShownAb
 import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { matches, queryWords } from '../common/match'; // chunk 19 (QOL-003)
+import { cantAffordTitle, cheapestFoodPrice, suppliesMoneyNote } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F1)
 
 /** How many foods show before "Show all" — foods you own (or have owned) and foods made for your animals always show. */
 const FOOD_PREVIEW = 8;
@@ -112,8 +113,29 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
     return [...m.entries()];
   }, [equipment]);
 
+  // audit 2026-11-17 (F1) — greyed "Buy" buttons say why, and how to raise the money (in debt, short of the cheapest
+  // food on sale, or animals with no food and not enough for a pack)
+  const cheapestFood = useMemo(() => cheapestFoodPrice(g), [g]);
+  const short = useMemo(() => suppliesMoneyNote(g, cheapestFood), [g, cheapestFood]);
+
   return (
     <div className="pn-stack pn-stack--lg">
+      {short && (
+        <div data-testid="supplies-money-short">
+          <Callout
+            tone={g.finance.money < 0 ? 'danger' : 'watch'}
+            icon={<Wallet size={16} />}
+            title={short.title}
+            action={
+              <Button size="sm" data-testid="supplies-raise-cash" onClick={() => useUI.getState().set({ panel: 'finances', panelTarget: null })}>
+                Ways to raise cash
+              </Button>
+            }
+          >
+            {short.text} {short.tip}
+          </Callout>
+        </div>
+      )}
       <div className="pn-findbar">
         <SearchField value={q} onChange={setQ} placeholder="Search food and equipment" label="Search food and equipment" testId="supplies-search" />
         {searching && <span className="pn-findbar__count" data-testid="supplies-count">{foods.length + equipment.length} found</span>}
@@ -166,7 +188,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
                         </span>
                       )
                     ) : (
-                      <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: f.id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>
+                      <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: f.id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price} title={cantAffordTitle(g.finance.money, f.price)}>
                         Buy · {formatMoney(f.price)}
                       </Button>
                     )}
@@ -283,7 +305,7 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
             variant={installed || poor ? 'default' : 'primary'}
             silent
             disabled={g.finance.money < e.price || !!fit?.blocked}
-            title={fit?.blocked ? fit.text : poor ? `${fit?.label}: ${fit?.text}` : undefined}
+            title={fit?.blocked ? fit.text : cantAffordTitle(g.finance.money, e.price) ?? (poor ? `${fit?.label}: ${fit?.text}` : undefined)}
             onClick={buy}
           >
             {fit?.blocked ? fit.label : poor ? 'Buy anyway' : installed ? 'Buy another' : 'Buy & install'}

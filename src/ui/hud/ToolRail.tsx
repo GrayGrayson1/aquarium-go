@@ -142,6 +142,9 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
   const youngOut = !alert && youngNeed?.text ? youngNeed : null;
   const money = game?.finance.money ?? 0;
   const shopFor = alert?.restockId ?? youngOut?.restockId ?? opts.find((f) => f.count <= 0)?.id ?? null;
+  // audit 2026-11-17 (F1, A7) — food is short and so is the money: say so, and where the ways to raise cash are
+  const restockPrice = alert?.restockId ? (getFoodDef(alert.restockId)?.price ?? 0) : 0;
+  const broke = !!alert?.restockId && money < restockPrice;
   return (
     <motion.div className="ag-popover ag-toolpop" role="dialog" aria-label={mode === 'feed' ? 'Choose a food' : 'Choose a food for target feeding'} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.16 }}>
       <div className="ag-popover__title">{mode === 'feed' ? 'Feed the tank' : 'Target feed'}</div>
@@ -151,7 +154,23 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
       {alert && (
         <div className={clsx('ag-foodalert', `is-${alert.level}`)} role="status" data-testid="food-alert">
           <TriangleAlert size={14} aria-hidden />
-          <span className="ag-grow">{alert.text}.</span>
+          <span className="ag-grow">
+            {alert.text}.{broke ? (money < 0 ? ' Purchases are paused while you’re in debt.' : ` Not enough money for a pack (${formatMoney(restockPrice)}).`) : ''}
+          </span>
+          {broke && (
+            <button
+              type="button"
+              className="ag-linkbtn"
+              data-testid="food-raise-cash"
+              onClick={() => {
+                sfx('open');
+                useShell.getState().set({ popover: null });
+                useUI.getState().set({ panel: 'finances', panelTarget: null });
+              }}
+            >
+              Ways to raise cash
+            </button>
+          )}
         </div>
       )}
       {youngOut && (

@@ -66,7 +66,7 @@ import { PrismaticBadge, MorphTierBadge, StrainBadge } from '../common/Prismatic
 import { illnessDef } from '@/sim/life/illness'; // lane:guide
 import { moduleFor } from '@/sim/life/breeding/registry'; // audit E21, E24
 import { effectiveRole } from '@/sim/life/breeding/common'; // audit E24
-import { creatureValue } from '@/sim/economy';
+import { creatureValue, marketAccess } from '@/sim/economy';
 import { speciesWaterComfort } from '@/sim/water';
 import { isUnlocked } from '@/sim/facility';
 import { getTankTier } from '@/data/catalog/tanks';
@@ -601,7 +601,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
             icon={<Tag size={17} />}
             label="Sell"
             disabled={readOnly || c.status !== 'alive'}
-            title={c.status !== 'alive' ? `${c.name} is no longer in your care.` : canList ? undefined : 'The marketplace opens the first time you visit the Market. Until then the local fish store buys animals for quick cash.'}
+            title={c.status !== 'alive' ? `${c.name} is no longer in your care.` : canList ? undefined : safe('marketAccess', () => marketAccess(game).hint, undefined) /* audit 2026-11-17 (F8): the guide's step, when it holds listings */}
             onClick={() => {
               sfx('open');
               if (canList) useUI.getState().set({ panel: 'market', panelTarget: `list:creature:${c.id}` });

@@ -5,7 +5,8 @@
  * share. OWNER: lane "ui-panels".
  */
 import { create } from 'zustand';
-import type { GameState, ShopOffer, SpeciesDefinition } from '@/types';
+import type { GameState, ShopOffer, SpeciesDefinition, Tank } from '@/types';
+import { TANK_TIER_BY_ID } from '@/data/catalog/tanks'; // audit 2026-11-17 (F17)
 import { useGame } from '@/state/game';
 import { findSpecies } from '@/data/species';
 import { fitsEnvironment } from '@/sim/compat/salinity';
@@ -73,9 +74,21 @@ export function sortOffers(list: ShopOffer[], sort: ShopSort): ShopOffer[] {
 
 // ───────────────────────────── matching (0.5 spec §7.2) ─────────────────────────────
 
+/**
+ * Audit 2026-11-17 (F17) — a tank this animal could live in, by cheap checks (no compatibility preview): its water type,
+ * the tank's temperature inside the species' range, and at least half the species' recommended size. "Fits my tanks"
+ * used to test the water type only, so an axolotl "fit" a 26 °C betta tank.
+ */
+export function tankFits(sp: SpeciesDefinition, t: Tank): boolean {
+  if (!fitsEnvironment(sp, t.environment)) return false;
+  const temp = t.water?.tempC;
+  if (typeof temp === 'number' && Number.isFinite(temp) && (temp < sp.tempC.min || temp > sp.tempC.max)) return false;
+  return (TANK_TIER_BY_ID[t.tierId]?.gallons ?? 0) >= sp.recommendedMinTankGallons * 0.5;
+}
+
 /** The environment chips: every offer, the ones some tank can hold, or one water type (lane:brackish: mollies fit fresh tanks too). */
 export function envMatches(g: GameState, sp: SpeciesDefinition, env: EnvFilter): boolean {
-  if (env === 'fits') return g.tankOrder.some((id) => !!g.tanks[id] && fitsEnvironment(sp, g.tanks[id].environment));
+  if (env === 'fits') return g.tankOrder.some((id) => !!g.tanks[id] && tankFits(sp, g.tanks[id]));
   if (env !== 'all') return sp.environment === env;
   return true;
 }

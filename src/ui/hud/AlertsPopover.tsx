@@ -32,6 +32,7 @@ import { AutomationSection } from './AlertsAutomation'; // lane:automation (chun
 import { FixButton } from '../cards/FixButton'; // chunk 19 (QOL-002)
 import { fixForAttention, type FixLink } from '../common/fixLinks'; // chunk 19 (QOL-002)
 import { getWaterReport } from '@/sim/water'; // chunk 19 (QOL-002)
+import { cantAffordTitle } from '../common/moneyShort'; // audit 2026-11-17 (F1)
 
 /**
  * Failed equipment in a tank, listed under the bell until it is repaired or replaced (its log line scrolls away in a
@@ -148,7 +149,9 @@ function TankAlerts({ game }: { game: GameState }) {
           <span className="ag-grow">
             <span className="ag-alert-row__title">{t.name}</span>
             <span className="ag-alert-row__text">
-              <strong>{a.level === 'out' ? 'No food' : 'Low food'}</strong> — {a.text}.{a.restockId ? ` Buy ${foodName(a.restockId)}.` : ''}
+              <strong>{a.level === 'out' ? 'No food' : 'Low food'}</strong> — {a.text}.
+              {/* audit 2026-11-17 (F1) — the greyed quick-buy says why in words, not only in a hover tooltip */}
+              {poor && def ? (game.finance.money < 0 ? ' Not enough money: purchases are paused while you’re in debt.' : ` Not enough money for ${foodName(def.id)} (${formatMoney(def.price)} a pack).`) : a.restockId ? ` Buy ${foodName(a.restockId)}.` : ''}
             </span>
           </span>
           <ChevronRight size={16} aria-hidden />
@@ -160,7 +163,7 @@ function TankAlerts({ game }: { game: GameState }) {
             data-testid="alert-food-buy"
             disabled={poor}
             aria-label={`Buy a pack of ${def.name} (${def.servingsPerPack} servings) for ${formatMoney(def.price)}`}
-            title={poor ? `Not enough money (${formatMoney(def.price)} a pack)` : `Buy a pack: ${def.servingsPerPack} servings for ${formatMoney(def.price)}`}
+            title={poor ? `${cantAffordTitle(game.finance.money, def.price)} (${formatMoney(def.price)} a pack)` : `Buy a pack: ${def.servingsPerPack} servings for ${formatMoney(def.price)}`}
             onClick={() => buyFoodPack(def.id)}
           >
             <ShoppingCart size={13} aria-hidden /> {formatMoney(def.price)}

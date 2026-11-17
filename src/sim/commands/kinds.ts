@@ -67,6 +67,7 @@ type Kinds =
   // ── the shop and supplies ──
   // `saw`: the ids of the animals bought, as the sender saw the offer (a partial sale reorders what's left)
   | { k: 'buyOffer'; offer: string; tank: string; picks?: number[]; saw?: string[] }
+  | { k: 'holdOffer'; offer: string; release?: boolean } // audit 2026-11-17 (F6): an open offer stays while you look
   | { k: 'buyFood'; food: string; packs: number }
   | { k: 'buySalt'; kg: number }
   | { k: 'buyEggs'; tins: number }

@@ -28,6 +28,7 @@ and the game time (offline catch-up is computed on the device today: a server wo
 | Action (src/sim) | What it changes | A server would check |
 |---|---|---|
 | `buyOffer` (economy/purchases) | money −, a creature into a tank | the offer exists and is unsold, its price, room in the tank |
+| `holdOffer` (economy/purchases; the audit of 2026-11-17, ADR-0056 answer 9) | an open shop offer's hold (it stays past its leave time while the player looks) | the offer exists; the hold's cap (`MAX_NEGOTIATION_HOLD_HOURS` from its start) |
 | `buyTank`, `placeTank` | money −, a tank | price, the facility's tank limit, placement |
 | `buyEquipment`, `installEquipment`, `repairEquipment`, `removeEquipment`, `setEquipment` | money −, a tank's gear | price (or the piece is in the player's stock), the tank is the player's |
 | `sellStoredEquipment` (the audit of 2026-11-17, ADR-0056 answer 7) | money +, a unit leaves the stock | the unit is in the player's stock; the price is half the catalogue price by its condition (half again when broken) |

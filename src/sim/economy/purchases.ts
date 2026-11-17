@@ -17,7 +17,7 @@ import { isUnlocked, findFreeSpot, bumpCounter, waterClassLock } from '../facili
 import { emitEvent } from '../context';
 import { settleTanks } from '../settle'; // ADR-0026 decision 5 (chunk 5)
 import { findSpecies } from '@/data/species';
-import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
+import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
 import { getEquipmentDef, equipmentOfKind } from '@/data/catalog/equipment';
 import { nextId } from '../ids';
 import { getFoodDef } from '@/data/catalog/foods';
@@ -25,7 +25,8 @@ import { EGGS_SUPPLY } from '@/data/catalog/machines'; // lane:automation (chunk
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { spend, canAfford } from './finance';
-import { isFoodAvailable, soldWithWords } from './shop';
+import { isFoodAvailable, soldWithWords, offerHeld } from './shop';
+import { marketTimeScale, NEGOTIATION_HOLD_HOURS, MAX_NEGOTIATION_HOLD_HOURS } from './listings'; // F6: the bid hold's windows
 import { clonePlain, fmtMoney, finite, nicePrice, pushCapped, speciesPlural, roundCents, aOrAn } from './util'; // lane:w2-ui: aOrAn ("an 800 Gallon Exhibit")
 
 /** Marine salt mix price per kg. */
@@ -66,7 +67,7 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
   const offer = m.stock.find((o) => o.id === offerId);
   if (!offer) return fail('That offer is no longer available.');
   const now = state.clock.hour;
-  if (offer.expiresHour <= now) {
+  if (offer.expiresHour <= now && !offerHeld(offer, now)) {
     m.stock = m.stock.filter((o) => o.id !== offerId);
     return fail('That offer has expired.');
   }
@@ -136,6 +137,9 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
     offer.creatures = keep;
     offer.kind = keep.length > 1 ? 'group' : 'creature';
     if (keep.length > 1 && /^(Group|Colony) of \d+/.test(offer.label ?? '')) offer.label = offer.label!.replace(/of \d+/, `of ${keep.length}`);
+    // F6: buying releases the hold; the rest of the group leaves at its own time
+    delete offer.holdUntilHour;
+    delete offer.holdStartHour;
   }
   bumpCounter(state, 'purchases');
   bumpCounter(state, 'animalsBought', bought.length);
@@ -148,8 +152,35 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
     text: `${who} arrived in ${tank.name}.${uncycled ? ' This tank is not cycled yet — feed lightly and watch ammonia closely.' : ' Give them a little time to settle in.'}`,
     tankId,
     creatureId: bought[0]?.id,
+    ...(uncycled ? { toast: true } : {}), // audit 2026-11-17 (F4): said where the player sees it, not only in the log
   });
   return { ok: true, message: `${who} added to ${tank.name} for ${fmtMoney(price)}.` };
+}
+
+/**
+ * Audit 2026-11-17 (F6, the owner's choice: "Hold it while I'm looking") — an offer the player has open stays until
+ * they buy it or close it, the way a bid waits while they write a counter-offer (holdBidForCounter): each call holds it
+ * for NEGOTIATION_HOLD_HOURS (≈ 2 real minutes at any speed) past now, so the screen renews it while it is open;
+ * `release` (close) ends it. A screen left open can't keep an offer forever: the whole hold is capped at
+ * MAX_NEGOTIATION_HOLD_HOURS from its start (≈ 6 real minutes), after which the offer leaves at the next check if its
+ * time is up. The shop restocks around a held offer as usual (refreshStock).
+ */
+export function holdOffer(state: GameState, offerId: string, release = false): ActionResult {
+  const offer = state.market.stock.find((o) => o.id === offerId);
+  if (!offer) return fail('That offer is no longer available.');
+  if (release) {
+    delete offer.holdUntilHour;
+    delete offer.holdStartHour;
+    return { ok: true, message: '' };
+  }
+  const now = state.clock.hour;
+  if (offer.expiresHour <= now && !offerHeld(offer, now)) return fail('That offer has left the shop.');
+  const k = marketTimeScale(state);
+  // a new look starts only after the offer ran unheld for a full window (a hold kept open can't chain past its cap)
+  if (offer.holdStartHour === undefined || now - (offer.holdUntilHour ?? -Infinity) >= NEGOTIATION_HOLD_HOURS * k) offer.holdStartHour = now;
+  const until = Math.min(offer.holdStartHour + MAX_NEGOTIATION_HOLD_HOURS * k, now + NEGOTIATION_HOLD_HOURS * k);
+  offer.holdUntilHour = Math.max(offer.holdUntilHour ?? 0, until);
+  return { ok: true, message: '' };
 }
 
 // ───────────────────────────── tanks ─────────────────────────────
@@ -244,6 +275,27 @@ export function tankKitPrice(tierId: string, waterClass: WaterClass, seeded = fa
   const substrate = subDef ? Math.round(subDef.price * (tier.gallons / 10)) : 0;
   const seed = seeded ? seededMediaPrice(tierId) : 0;
   return { total: tier.price + equipment + substrate + seed, tank: tier.price, equipment, substrate, seeded: seed };
+}
+
+/** Every water type a kit can be set up for (each open once its research is done: waterClassLock). */
+const KIT_WATER: WaterClass[] = ['freshwater_cool', 'freshwater_tropical', 'freshwater_planted', 'brackish', 'marine_fowlr', 'marine_live_rock', 'reef'];
+
+/**
+ * Audit 2026-11-17 (F7) — the cheapest whole kit this player can buy now (the glass, the gear it ships with and the
+ * substrate, as Build prices it), over the tank sizes and water types open to them; null when none is. The empty-room
+ * message and the restart loan quote this, not the glass alone.
+ */
+export function cheapestKit(state: GameState): { tierId: string; name: string; waterClass: WaterClass; total: number } | null {
+  let best: { tierId: string; name: string; waterClass: WaterClass; total: number } | null = null;
+  for (const tier of TANK_TIERS) {
+    if (!isUnlocked(state, tier.unlock)) continue;
+    for (const wc of KIT_WATER) {
+      if (waterClassLock(state, wc)) continue;
+      const total = tankKitPrice(tier.id, wc, false, state).total;
+      if (total > 0 && (!best || total < best.total)) best = { tierId: tier.id, name: tier.name, waterClass: wc, total };
+    }
+  }
+  return best;
 }
 
 export interface BuyTankOptions {

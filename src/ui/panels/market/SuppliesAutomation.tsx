@@ -25,6 +25,7 @@ import { opsSnapshot } from '@/ui/common/ops';
 import { act } from '../common/act';
 import { SectionHead, Chip } from '../common/parts';
 import { buyEggTin, buySaltBag } from '../operations/actions';
+import { cantAffordTitle } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F1)
 
 /** The Autofeeder foods in use: food id → how many tanks' feeders drop it. */
 export function autofeederFoods(g: GameState): Map<string, number> {
@@ -81,7 +82,7 @@ export function LiveFoodSection({ g, flash }: { g: GameState; flash: string | nu
                 Hatchery <ChevronRight size={12} aria-hidden />
               </button>
             )}
-            <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: foodId, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>
+            <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: foodId, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price} title={cantAffordTitle(g.finance.money, f.price)}>
               Buy · {formatMoney(f.price)}
             </Button>
           </>
@@ -134,7 +135,7 @@ export function CulturesSection({ g, flash }: { g: GameState; flash: string | nu
           id={EGGS_SUPPLY.id}
           flash={flash}
           side={
-            <Button size="sm" silent data-testid="supplies-buy-eggs" onClick={() => buyEggTin()} disabled={g.finance.money < EGGS_SUPPLY.price}>
+            <Button size="sm" silent data-testid="supplies-buy-eggs" onClick={() => buyEggTin()} disabled={g.finance.money < EGGS_SUPPLY.price} title={cantAffordTitle(g.finance.money, EGGS_SUPPLY.price)}>
               Buy · {formatMoney(EGGS_SUPPLY.price)}
             </Button>
           }
@@ -151,7 +152,7 @@ export function CulturesSection({ g, flash }: { g: GameState; flash: string | nu
           id={VEGETABLES}
           flash={flash}
           side={
-            <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: VEGETABLES, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < veg.price}>
+            <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: VEGETABLES, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < veg.price} title={cantAffordTitle(g.finance.money, veg.price)}>
               Buy · {formatMoney(veg.price)}
             </Button>
           }
@@ -183,7 +184,7 @@ export function DryFoodSection({ g, flash }: { g: GameState; flash: string | nul
               side={
                 <>
                   <span className="pn-tiny pn-muted pn-num-t">{have} servings</span>
-                  <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>
+                  <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price} title={cantAffordTitle(g.finance.money, f.price)}>
                     Buy · {formatMoney(f.price)}
                   </Button>
                 </>
@@ -267,7 +268,7 @@ export function SaltRow({ g, flash }: { g: GameState; flash: string | null }) {
         </div>
         <div className="pn-row pn-gap-1" role="group" aria-label="Buy marine salt mix" style={{ flexBasis: '100%', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           {SALT_BAGS.map((size) => (
-            <Button key={size} size="sm" silent className={size === 40 ? 'ops-buy' : undefined} data-testid={`supplies-salt-buy-${size}`} disabled={g.finance.money < size * SALT_PRICE_PER_KG} onClick={() => buySaltBag(size)}>
+            <Button key={size} size="sm" silent className={size === 40 ? 'ops-buy' : undefined} data-testid={`supplies-salt-buy-${size}`} disabled={g.finance.money < size * SALT_PRICE_PER_KG} title={cantAffordTitle(g.finance.money, size * SALT_PRICE_PER_KG)} onClick={() => buySaltBag(size)}>
               {size} kg · {formatMoney(size * SALT_PRICE_PER_KG)}
             </Button>
           ))}

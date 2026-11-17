@@ -7,21 +7,29 @@
  * - Only operating bills (allowDebt) may create debt. Animals are never repossessed.
  * - The game never dead-ends on money: debt brings the club loan after LOAN_AFTER_DEBT_HOURS, and an empty room the
  *   player can't restock brings a restart loan after a day (lane:fix-econ, P5-08).
+ * - Animals never starve just because the till is empty: a very hungry animal with no food it eats in stock, and less
+ *   money than the cheapest pack it eats, gets the club's food parcel, at most once a game day (the owner's choice,
+ *   audit 2026-11-17; clubFoodParcel).
  */
 import type { GameState, LedgerEntry, DailySummary } from '@/types';
 import type { SimContext } from '../context';
 import { emitEvent } from '../context';
 import { tankDailyCost } from '../water';
 import { isUnlocked } from '../facility';
+import { heldByGuideStep } from '../facility/progression'; // audit 2026-11-17 (F8)
 import { getFacilityLevel } from '@/data/facilities';
 import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
 import { AQUARIUM_CLUB, LOCAL_FISH_STORE } from '@/data/buyers';
 import { findSpecies } from '@/data/species';
-import { dayIndex, finite, fmtMoney, roundCents, pushCapped, nicePrice } from './util';
+import { dayIndex, finite, fmtMoney, roundCents, pushCapped, nicePrice, capitalise } from './util';
 import { quickSellQuote } from './valuation';
 import { isLotOffer } from '../life/rareVariants'; // lane:genetics
 import { payStaff, staffLeavingTonight, staffWagesPerDay } from '../staff'; // lane:staff
 import { roomsUpkeep } from '../automation/reserve'; // lane:automation (chunk 5)
+import { FOODS, eatsFood } from '@/data/catalog/foods'; // audit 2026-11-17: the club's food parcel
+import { ANIMAL_THRESHOLDS, needsFedFood, refreshFoodStatus } from '../tankStatus';
+import { isFoodAvailable } from './shop';
+import { cheapestKit } from './purchases'; // F7: the restart loan counts a whole kit
 
 const LEDGER_CAP = 400;
 const DAILY_CAP = 120;
@@ -103,37 +111,65 @@ export function dailyOperatingCost(state: GameState): OperatingCosts {
 
 // ───────────────────────────── suggestions when cash is short ─────────────────────────────
 
-/** Concrete, currently-possible ways to raise cash (used in debt warnings and by the UI). */
-export function cashSuggestions(state: GameState): string[] {
-  const out: string[] = [];
+/**
+ * What a way to raise cash is about, so a screen can link it to the place it happens (audit 2026-11-17, F1/F2): sell an
+ * animal to the local store, list one, auction a tank, open to visitors, an empty tank's bill, trimming the bills, the
+ * Market's first visit, holding steady, or the starter as a last resort.
+ */
+export type CashIdeaKind = 'quick_sell' | 'list_tank' | 'list_animal' | 'visitors' | 'empty_tank' | 'trim' | 'decor' | 'open_market' | 'hold' | 'starter';
+export interface CashIdea {
+  kind: CashIdeaKind;
+  text: string;
+  /** The animal a quick sale is about. */
+  creatureId?: string;
+}
+
+/** Concrete, currently-possible ways to raise cash, each with its kind (cashSuggestions gives the words alone). */
+export function cashIdeas(state: GameState): CashIdea[] {
+  const out: CashIdea[] = [];
   const candidates = Object.values(state.creatures).filter((c) => c.status === 'alive' && !c.isStarter && !c.favorite);
-  let best: { name: string; value: number } | null = null;
+  let best: { id: string; name: string; value: number } | null = null;
   for (const c of candidates) {
     const q = quickSellQuote(state, [c.id]);
-    if (q.ok && (!best || q.total > best.value)) best = { name: c.name, value: q.total };
+    if (q.ok && (!best || q.total > best.value)) best = { id: c.id, name: c.name, value: q.total };
   }
-  if (best && best.value >= 1) out.push(`Quick-sell ${best.name} to ${LOCAL_FISH_STORE} (about ${fmtMoney(best.value)} today).`);
+  if (best && best.value >= 1) out.push({ kind: 'quick_sell', creatureId: best.id, text: `Quick-sell ${best.name} to ${LOCAL_FISH_STORE} (about ${fmtMoney(best.value)} today).` });
   const listable = state.tankOrder.filter((id) => state.tanks[id] && !state.tanks[id].listingId);
   if (isUnlocked(state, 'tank_auctions') && listable.length > 0) {
-    out.push('List a whole aquarium at auction — finished displays attract the biggest bids.');
-  } else if (isUnlocked(state, 'market_listings')) {
-    out.push('List a spare animal on the marketplace and let buyers bid.');
+    out.push({ kind: 'list_tank', text: 'List a whole aquarium at auction — finished displays attract the biggest bids.' });
+  } else if (isUnlocked(state, 'market_listings') && Object.values(state.creatures).some((c) => c.status === 'alive' && !c.isStarter)) {
+    // audit 2026-11-17 (F13) — only with an animal to list (a listed one is already on the market)
+    out.push({ kind: 'list_animal', text: 'List a spare animal on the marketplace and let buyers bid.' });
   }
-  if (isUnlocked(state, 'visitors') && !state.facility.openToPublic) out.push('Open your doors to visitors for admission and tips.');
+  if (isUnlocked(state, 'visitors') && !state.facility.openToPublic) out.push({ kind: 'visitors', text: 'Open your doors to visitors for admission and tips.' });
   const empty = state.tankOrder.filter((id) => state.tanks[id] && !Object.values(state.creatures).some((c) => c.tankId === id && (c.status === 'alive' || c.status === 'listed')));
   // lane:guide — a tank can only leave through a whole-aquarium auction, so only suggest selling one once that is open
   const it = empty.length === 1 ? 'it' : 'them';
-  const fix = isUnlocked(state, 'tank_auctions') ? `restock ${it}, or auction ${it} as a whole aquarium` : `restock ${it}, or switch off ${empty.length === 1 ? 'its' : 'their'} gear to cut the bill`;
-  if (empty.length > 0) out.push(`${empty.length === 1 ? 'An empty tank still costs' : `${empty.length} empty tanks still cost`} money to run — ${fix}.`);
-  if (state.tankOrder.some((id) => (state.tanks[id]?.equipment.length ?? 0) > 1)) out.push('Trim running costs: a shorter light schedule and switching off gear you do not need lowers the daily bill.');
-  if (!isUnlocked(state, 'market_listings')) out.push('Visit the Market once to open listings, where buyers bid — healthy offspring sell well.');
+  // audit 2026-11-17 (F13) — "restock" only while purchases are possible (in debt they are paused)
+  const restock = state.finance.money >= 0 ? `restock ${it}, or ` : '';
+  const fix = isUnlocked(state, 'tank_auctions') ? `${restock}auction ${it} as a whole aquarium` : `${restock}switch off ${empty.length === 1 ? 'its' : 'their'} gear to cut the bill`;
+  if (empty.length > 0) out.push({ kind: 'empty_tank', text: `${empty.length === 1 ? 'An empty tank still costs' : `${empty.length} empty tanks still cost`} money to run — ${fix}.` });
+  // audit 2026-11-17 (F13) — Build buys placed decor back at half its price (SELL_BACK_FRACTION)
+  if (state.tankOrder.some((id) => (state.tanks[id]?.decor?.length ?? 0) > 0)) out.push({ kind: 'decor', text: 'Sell decor you can spare in Build › Decor: the shop pays half its price.' });
+  if (state.tankOrder.some((id) => (state.tanks[id]?.equipment.length ?? 0) > 1)) out.push({ kind: 'trim', text: 'Trim running costs: a shorter light schedule and switching off gear you do not need lowers the daily bill.' });
+  if (!isUnlocked(state, 'market_listings')) {
+    // audit 2026-11-17 (F8) — while the guide holds listings for its own step, visiting the Market won't open them
+    const held = heldByGuideStep(state, 'market_listings');
+    out.push({ kind: 'open_market', text: held ? `Listings, where buyers bid, open at the guide’s “${held}” step — healthy offspring sell well.` : 'Visit the Market once to open listings, where buyers bid — healthy offspring sell well.' });
+  }
   if (out.length === 0) {
     const starter = Object.values(state.creatures).find((c) => c.status === 'alive' && (c.isStarter || c.favorite));
     const q = starter ? quickSellQuote(state, [starter.id]) : null;
-    out.push('Hold steady: bills keep running, but nothing is taken from you, and help is available if debt lasts a few days.');
-    if (starter && q?.ok) out.push(`As a last resort, ${LOCAL_FISH_STORE} would pay about ${fmtMoney(q.total)} for ${starter.name}.`);
+    // audit 2026-11-17 (F5) — the debt loan comes once; after it, the club's food parcel is the help that's left
+    out.push({ kind: 'hold', text: state.finance.loan ? 'Hold steady: bills keep running, but nothing is taken from you, and the club drops off food if your animals run out.' : 'Hold steady: bills keep running, but nothing is taken from you, and help is available if debt lasts a few days.' });
+    if (starter && q?.ok) out.push({ kind: 'starter', creatureId: starter.id, text: `As a last resort, ${LOCAL_FISH_STORE} would pay about ${fmtMoney(q.total)} for ${starter.name}.` });
   }
   return out;
+}
+
+/** Concrete, currently-possible ways to raise cash (used in debt warnings and by the UI). */
+export function cashSuggestions(state: GameState): string[] {
+  return cashIdeas(state).map((i) => i.text);
 }
 
 // ───────────────────────────── stranded: empty room, no way back ─────────────────────────────
@@ -163,9 +199,11 @@ export function restartNeed(state: GameState): number | null {
   }
   let need = Math.max(RESTART_FLOOR, Number.isFinite(cheapest) ? cheapest : 0);
   if (!tanks.length) {
-    // No tank either: the cheapest kit the player can buy (tank + bundled gear, roughly 1.5× the glass).
+    // No tank either: the cheapest whole kit the player can buy (glass, gear and substrate, as Build prices it;
+    // audit 2026-11-17, F7: it used to count 1.5× the glass, and the loan fell short of the kit's real price)
+    const kit = cheapestKit(state);
     const tier = TANK_TIERS.filter((t) => isUnlocked(state, t.unlock)).sort((a, b) => a.price - b.price)[0];
-    need += Math.round((tier?.price ?? 60) * 1.5);
+    need += kit ? kit.total : Math.round((tier?.price ?? 60) * 1.5);
   }
   need += dailyOperatingCost(state).total * 2;
   return state.finance.money < need ? Math.ceil(need) : null;
@@ -258,7 +296,10 @@ function runMidnight(state: GameState, endedDay0: number, end: number): void {
   // 5. Warnings with concrete suggestions — honest ones: purchases (food included) stop in debt, so say so.
   if (f.money < 0) {
     const tips = cashSuggestions(state);
-    const loanNote = f.loan ? '' : ` If it lasts ${Math.round(LOAN_AFTER_DEBT_HOURS / 24)} days, ${AQUARIUM_CLUB} may be able to help.`;
+    // audit 2026-11-17 (F5) — after the one-time loan, say plainly that no loan is coming, and what still helps
+    const loanNote = f.loan
+      ? " The club's one-time loan has been used, so selling is the way back above zero. If the food runs out, the club drops off a little."
+      : ` If it lasts ${Math.round(LOAN_AFTER_DEBT_HOURS / 24)} days, ${AQUARIUM_CLUB} may be able to help.`;
     const alive = Object.values(state.creatures).some((c) => c.status === 'alive' || c.status === 'listed');
     const shelf = state.tankOrder.map((id) => state.tanks[id]?.cache?.foodLevel).filter(Boolean);
     const food = shelf.includes('out') ? 'bare' : shelf.includes('low') ? 'running low' : null;
@@ -278,6 +319,7 @@ function runMidnight(state: GameState, endedDay0: number, end: number): void {
     emitEvent(state, {
       kind: 'tip',
       text: `Cash is getting low: ${fmtMoney(f.money)} covers about ${days} day${days === 1 ? '' : 's'} of running costs (${fmtMoney(ahead.total)}/day).`,
+      toast: true, // audit 2026-11-17 (F2): the first word of money trouble, before the red, not only in the log
     });
     f.lastWarnHour = state.clock.hour;
   }
@@ -313,10 +355,63 @@ function grantLoan(state: GameState, restart?: number): void {
   emitEvent(state, {
     kind: 'celebrate',
     text: restart
-      ? `${AQUARIUM_CLUB} would rather see your room full than quiet: they've lent you ${again ? 'another ' : ''}${fmtMoney(amount)}, interest-free, to start again — enough for ${state.tankOrder.length ? 'a new animal' : 'a tank kit and a new animal'} and a few days of bills. It is repaid automatically from a quarter of your future daily income.`
+      ? `${capitalise(AQUARIUM_CLUB)} would rather see your room full than quiet: they've lent you ${again ? 'another ' : ''}${fmtMoney(amount)}, interest-free, to start again — enough for ${state.tankOrder.length ? 'a new animal' : 'a tank kit and a new animal'} and a few days of bills. It is repaid automatically from a quarter of your future daily income.`
       : `Good news: ${AQUARIUM_CLUB} heard you were struggling and lent you ${fmtMoney(amount)}, interest-free. It is repaid automatically from a quarter of your future daily income. This is a one-time lifeline, so plan your running costs carefully.`,
     toast: true,
   });
+}
+
+// ───────────────────────────── the club's food parcel ─────────────────────────────
+
+/** progress.counters key: the game day (dayIndex) of the last food parcel. Absent until the first one (no save field). */
+export const PARCEL_DAY_KEY = '_clubParcelDay';
+
+/**
+ * The owner's choice (audit 2026-11-17, F5 and A7): when animals are very hungry (ANIMAL_THRESHOLDS.hungryHunger, the
+ * card's "Very hungry"), there is no food in stock they eat, and the money (a debt counts) is below the cheapest pack
+ * they eat on sale, the aquarium club drops off one pack of that cheapest food, free, at most once a game day, with a
+ * tip on how to earn money. Hungriest first; one pack per missing diet (a pack already dropped that an animal eats
+ * covers it too). Deterministic: no random draws, the day from the clock. Nothing for a player who can buy the pack.
+ */
+export function clubFoodParcel(state: GameState, hour: number): boolean {
+  const c = state.progress.counters;
+  const today = dayIndex(hour);
+  if (c[PARCEL_DAY_KEY] === today) return false;
+  const money = finite(state.finance.money, 0);
+  const inv = state.inventory.foods;
+  const hungry = Object.values(state.creatures)
+    .filter((x) => (x.status === 'alive' || x.status === 'listed') && !!x.tankId && !!state.tanks[x.tankId] && finite(x.stats?.hunger, 0) >= ANIMAL_THRESHOLDS.hungryHunger)
+    .sort((a, b) => b.stats.hunger - a.stats.hunger || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  if (!hungry.length) return false;
+  const stocked = FOODS.filter((f) => (inv[f.id] ?? 0) > 0);
+  const parcels: { foodId: string; names: string[]; tankId: string; creatureId: string }[] = [];
+  for (const x of hungry) {
+    const sp = findSpecies(x.speciesId);
+    if (!sp || !needsFedFood(sp) || stocked.some((f) => eatsFood(sp, f))) continue;
+    const given = parcels.find((p) => FOODS.some((f) => f.id === p.foodId && eatsFood(sp, f)));
+    if (given) {
+      if (!given.names.includes(x.name)) given.names.push(x.name);
+      continue;
+    }
+    let cheapest: (typeof FOODS)[number] | null = null;
+    for (const f of FOODS) if (eatsFood(sp, f) && isFoodAvailable(state, f) && (!cheapest || f.price < cheapest.price)) cheapest = f;
+    if (!cheapest || money >= cheapest.price) continue;
+    inv[cheapest.id] = (inv[cheapest.id] ?? 0) + Math.max(1, Math.round(cheapest.servingsPerPack));
+    parcels.push({ foodId: cheapest.id, names: [x.name], tankId: x.tankId!, creatureId: x.id });
+  }
+  if (!parcels.length) return false;
+  c[PARCEL_DAY_KEY] = today;
+  refreshFoodStatus(state);
+  const names = parcels.flatMap((p) => p.names);
+  const who = names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
+  emitEvent(state, {
+    kind: 'info',
+    text: `The aquarium club dropped off a little food for ${who}. Short on cash? Friends tip when your animals are healthy, or sell something in Livestock.`,
+    tankId: parcels[0].tankId,
+    creatureId: parcels[0].creatureId,
+    toast: true,
+  });
+  return true;
 }
 
 /** Daily operating costs (equipment upkeep, electricity, rent), summaries, debt handling and the emergency loan. */
@@ -343,4 +438,6 @@ export function stepFinance(state: GameState, dt: number, ctx: SimContext): void
   }
 
   if (f.debtSinceHour !== undefined && !f.loan && end - f.debtSinceHour >= LOAN_AFTER_DEBT_HOURS) grantLoan(state);
+  // the club's food parcel: looked at once a game hour (hunger moves slowly; a big save has many creatures to scan)
+  if (Math.floor(end) > Math.floor(start)) clubFoodParcel(state, end);
 }
