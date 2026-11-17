@@ -9,7 +9,8 @@ import type { GameState } from '@/types';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { newGame } from '@/sim/newGame';
 import type { StarterId } from '@/data/species';
-import { unlockProgress, guideHoldLine, evalCond } from '@/sim/facility';
+import { unlockProgress, guideHoldLine, evalCond, upgradeFacility } from '@/sim/facility';
+import { createTank } from '@/sim/tanks';
 import { marketAccess } from '@/sim/economy';
 import { lockViews, UnlockHelpBody } from '@/ui/panels/common/UnlockHelp';
 import { GROUPS, UnlocksTab, researchLockKeys, researchTankLine } from '@/ui/panels/research/ResearchPanel';
@@ -477,5 +478,17 @@ describe('G21: a project learned through play isn’t listed as missing for the 
     g.progress.unlocked.push('nursery');
     const food = tierLadder(g).find((t) => t.key === 'food')!;
     expect(food.reqs.find((r) => /Breeding Programme/.test(r.text))).toEqual({ met: true, text: 'Breeding Programme: learned through play' });
+  });
+});
+
+describe('G23: after a venue move, tanks without a spot are pointed at Move tank', () => {
+  it('names the tank card’s Move tank, not Build', () => {
+    const g = game('betta');
+    g.finance.money = 1e7;
+    g.progress.unlocked.push('facility_specialty_shop');
+    for (let i = 0; i < 40; i++) createTank(g, 'g125', 'freshwater_tropical', { placement: { x: 0, z: 0, rotY: 0 } });
+    expect(upgradeFacility(g).ok).toBe(true);
+    const note = g.log.find((e) => /could not find a good spot/.test(e.text));
+    expect(note?.text).toMatch(/^\d+ tanks could not find a good spot\. Move them with Move tank on each tank’s card\.$/);
   });
 });
