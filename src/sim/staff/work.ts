@@ -42,7 +42,7 @@ import { currentPhase, isCarried, youngLabel } from '../life/breeding/clutch';
 import { moduleFor } from '../life/breeding/registry';
 import { foodRecency } from '../life/breeding/common';
 import { DOSER } from '@/data/catalog/machines';
-import { asStaff, clamp, dayRecord, displayTankIds, ensureStaff, firstName, fmt$, noteIssue, totals, FEED_RING, TALK_RING } from './common';
+import { asStaff, clamp, dayRecord, displayTankIds, ensureStaff, firstName, fmt$, isExhibit, noteIssue, totals, FEED_RING, TALK_RING } from './common';
 import { dayOf } from '../time';
 import * as dmath from '../dmath';
 
@@ -1101,7 +1101,7 @@ function talkTopic(state: GameState, tankId: string): string {
 /** A docent gives a talk at one of their exhibits (rotating). */
 export function giveTalk(state: GameState, m: StaffMember, hour: number): void {
   const st = ensureStaff(state);
-  const exhibits = m.tankIds.filter((id) => state.tanks[id]);
+  const exhibits = m.tankIds.filter((id) => isExhibit(state, id)); // display tanks only (Audit 2026-11-17, H8)
   if (!exhibits.length) return;
   const day = dayRecord(state, m);
   const tankId = exhibits[(totals(m).talks + m.skill) % exhibits.length];
@@ -1169,7 +1169,7 @@ export function docentEffect(state: GameState, hour: number): DocentEffect | nul
   let story = false;
   for (const m of docents) {
     // only the exhibits they actually present (lane:staff, S05-05: a docent with nothing assigned covers nothing)
-    reach += m.tankIds.filter((id) => state.tanks[id]).length;
+    reach += m.tankIds.filter((id) => isExhibit(state, id)).length;
     quality += 0.55 + 0.1 * clamp(m.skill, 1, 5);
     if (m.trait === 'great_with_kids') kids = true;
     if (m.trait === 'storyteller') story = true;
