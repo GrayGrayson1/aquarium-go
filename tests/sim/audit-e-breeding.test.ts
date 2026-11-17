@@ -244,3 +244,18 @@ describe('E14: the seasonal cue names the button and says it takes two', () => {
     expect(chk.nextStep).toBe('Press Cool 25% twice in a row (tank card › Care) — the water needs to drop about 2 °C to feel like the first cool rains.');
   });
 });
+
+describe('E15: plain words for breeding, and a short page that explains them', () => {
+  it('statuses use words a child knows, and Aquarium science has “How breeding works”', async () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 91 });
+    const tank = createTank(state, 'g29', 'freshwater_planted', { cycled: true });
+    const bella = addCreature(state, createCreature(state, simRng(state), 'fancy_guppy', { sex: 'female', ageDays: 90, name: 'Bella' }), tank.id);
+    bella.repro.stage = 'gravid';
+    bella.repro.carryingUntilHour = state.clock.hour + 72;
+    expect(breedingStatus(state, bella.id)?.label).toBe('Pregnant — fry due in ~3 days');
+    bella.repro.stage = 'conditioning';
+    expect(breedingStatus(state, bella.id)?.label).toBe('Getting into breeding shape');
+    const { ARTICLES } = await import('@/ui/panels/encyclopedia/science');
+    expect(ARTICLES.find((a) => a.id === 'how_breeding_works')).toMatchObject({ title: 'How breeding works', isNew: true });
+  });
+});

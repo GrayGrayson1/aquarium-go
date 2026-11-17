@@ -43,11 +43,11 @@ export interface PairEvaluation {
 
 const BUSY_TEXT: Record<string, string> = {
   guarding: 'is guarding a clutch',
-  brooding: 'is mouthbrooding',
+  brooding: 'is holding eggs in his mouth',
   pregnant: 'is pregnant',
   berried: 'is carrying eggs',
   laying: 'is laying eggs',
-  spent: 'is recovering from spawning',
+  spent: 'is worn out after spawning — move her to her own tank to recover', // audit E16: time alone doesn't fix it
   transitioning_female: 'is changing sex',
   transitioning_male: 'is changing sex',
   depositing: 'is mid-courtship',

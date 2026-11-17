@@ -143,7 +143,8 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
       if (c.repro.stage !== 'berried') return null;
       const cl = c.repro.clutchId ? state.clutches[c.repro.clutchId] : undefined;
       const due = (c.repro.carryingUntilHour ?? hour) - hour;
-      return { label: cl ? `Berried — ${plural(cl.count, 'egg')}` : 'Berried', detail: `Hatching in ${approxDuration(due)}`, progress: c.repro.progress };
+      // audit E15: plain words ('berried' is a keepers' term)
+      return { label: cl ? `Carrying ${plural(cl.count, 'egg')} under her tail` : 'Carrying eggs under her tail', detail: `Hatching in ${approxDuration(due)}`, progress: c.repro.progress };
     },
   };
 }

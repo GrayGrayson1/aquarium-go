@@ -142,7 +142,8 @@ export const livebearerModule: BreedingModule = {
     const r = c.repro;
     if (r.stage === 'gravid') {
       const due = (r.carryingUntilHour ?? hour) - hour;
-      return { label: due > 0 ? `Gravid — fry due in ${approxDuration(due)}` : 'Gravid — fry due any moment', detail: (r.storedBroods ?? 0) > 0 ? `Stored sperm for ${plural(r.storedBroods ?? 0, 'more brood')}` : undefined, progress: r.progress };
+      // audit E15: 'pregnant', the word a child knows ('gravid' is a keepers' term)
+      return { label: due > 0 ? `Pregnant — fry due in ${approxDuration(due)}` : 'Pregnant — fry due any moment', detail: (r.storedBroods ?? 0) > 0 ? `Stored sperm for ${plural(r.storedBroods ?? 0, 'more brood')}` : undefined, progress: r.progress };
     }
     return null;
   },

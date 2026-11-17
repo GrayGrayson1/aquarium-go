@@ -354,7 +354,7 @@ function statusFor(state: GameState, c: Creature, sp: SpeciesDefinition, hour: n
   }
   const cl = c.repro.clutchId ? state.clutches[c.repro.clutchId] : undefined;
   if (c.repro.stage === cfg.guardStage && cfg.carried && cl) {
-    return { label: `Mouthbrooding ${plural(cl.count, 'egg')}`, detail: `He won’t eat until they’re released (${approxDuration(cl.nextStageHour - hour)})`, progress: c.repro.progress };
+    return { label: `Holding ${plural(cl.count, 'egg')} in his mouth`, detail: `He won’t eat until they’re released (${approxDuration(cl.nextStageHour - hour)})`, progress: c.repro.progress };
   }
   if (c.repro.stage === cfg.spawnStage && cfg.spawnStage !== 'spawning') {
     const p = c.repro.partnerId ? state.creatures[c.repro.partnerId] : undefined;

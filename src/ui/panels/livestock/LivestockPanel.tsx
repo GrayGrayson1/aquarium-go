@@ -448,7 +448,7 @@ function sellWarningIcon(w: string) {
 /** Only surface breeding states worth attention (hide idle / too young / not bred here). */
 function activeBreeding<T extends { label: string } | null>(s: T): T | null {
   if (!s) return null;
-  return /^(not breeding|not bred here|too young|conditioning)/i.test(s.label) ? null : s;
+  return /^(not breeding|not bred here|too young|conditioning|getting into breeding shape)/i.test(s.label) ? null : s;
 }
 
 function SexIcon({ sex }: { sex: Creature['sex'] }) {

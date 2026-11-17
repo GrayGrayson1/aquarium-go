@@ -53,7 +53,8 @@ export function creatureBreedingStatus(state: GameState, creatureId: string): St
 
   switch (r.stage) {
     case 'conditioning':
-      return { label: 'Conditioning', detail: readiness >= READY ? 'In breeding condition' : `Breeding readiness ${readiness}%`, progress: clamp01(c.stats.breedingReadiness / 100) };
+      // audit E15: plain words a child knows, not keepers' terms (conditioning, spermatophore, berried, spent…)
+      return { label: 'Getting into breeding shape', detail: readiness >= READY ? 'In breeding condition' : `Breeding readiness ${readiness}%`, progress: clamp01(c.stats.breedingReadiness / 100) };
     case 'nest_building': {
       const calm = tank ? surfaceAgitation(tank, habitatOf(state, tank).cover) <= SURFACE_CALM_MAX : true;
       return { label: 'Building a bubble nest', detail: calm ? 'Blowing bubbles beneath the leaves' : 'The surface is too choppy — the nest keeps breaking up', progress: clamp01(r.nestProgress ?? 0) };
@@ -67,9 +68,9 @@ export function creatureBreedingStatus(state: GameState, creatureId: string): St
     case 'spawning':
       return { label: `Spawning with ${pn}`, progress: prog };
     case 'depositing':
-      return { label: 'Depositing spermatophores', detail: `${pn} is following`, progress: prog };
+      return { label: 'Leaving sperm packets for her', detail: `${pn} is following`, progress: prog };
     case 'following':
-      return { label: 'Picking up a spermatophore', progress: prog };
+      return { label: 'Picking up a sperm packet', progress: prog };
     case 'laying':
       return { label: 'Laying eggs', detail: cl ? `${plural(cl.count, 'egg')} so far` : undefined, progress: prog };
     case 'guarding': {
@@ -81,15 +82,15 @@ export function creatureBreedingStatus(state: GameState, creatureId: string): St
       return { label: 'Fry are free-swimming', detail: `Move ${c.name} out — his job is done`, progress: 1 };
     }
     case 'brooding':
-      return { label: cl ? `Mouthbrooding ${plural(cl.count, 'egg')}` : 'Mouthbrooding', detail: 'Won’t eat until the young are released', progress: prog };
+      return { label: cl ? `Holding ${plural(cl.count, 'egg')} in his mouth` : 'Holding eggs in his mouth', detail: 'Won’t eat until the young are released', progress: prog };
     case 'pregnant': {
       const due = (r.carryingUntilHour ?? hour) - hour;
       return { label: due > 0 ? `Pregnant — due in ${approxDuration(due)}` : 'Pregnant — birth is imminent', detail: cl ? `Carrying about ${plural(cl.count, 'young', 'young')}` : undefined, progress: prog };
     }
     case 'berried':
-      return { label: cl ? `Berried — ${plural(cl.count, 'egg')}` : 'Berried', detail: `Hatching in ${approxDuration((r.carryingUntilHour ?? hour) - hour)}`, progress: prog };
+      return { label: cl ? `Carrying ${plural(cl.count, 'egg')} under her tail` : 'Carrying eggs under her tail', detail: `Hatching in ${approxDuration((r.carryingUntilHour ?? hour) - hour)}`, progress: prog };
     case 'spent':
-      return { label: 'Spent after spawning', detail: 'Move her to her own tank to recover' };
+      return { label: 'Worn out after spawning', detail: 'Move her to her own tank to recover' };
     case 'resting':
       return { label: `Resting — ready again in ${approxDuration((r.stageEndsHour ?? hour) - hour)}`, progress: prog };
     case 'bonding':

@@ -80,7 +80,7 @@ export const caveSpawnerModule = makePairSpawner({
   id: 'cave_spawner',
   plan: basePlan({
     phases: [
-      { stage: 'larvae', frac: 0.3, foods: [], natural: [], visual: 'keep', label: 'wrigglers' },
+      { stage: 'larvae', frac: 0.3, foods: [], natural: [], visual: 'keep', label: 'wriggling fry' },
       { stage: 'fry', frac: 0.7, foods: ['algae_wafer', 'biofilm', 'pellet_sinking', 'vegetable', 'baby_brine'], natural: ['biofilm', 'algae'], visual: 'fry_cloud', label: 'fry' },
     ],
     guardEggs: true,
@@ -210,7 +210,7 @@ export const cichlidSubstrateModule = makePairSpawner({
   id: 'cichlid_substrate',
   plan: basePlan({
     phases: [
-      { stage: 'larvae', frac: 0.3, foods: [], natural: [], visual: 'keep', label: 'wrigglers' },
+      { stage: 'larvae', frac: 0.3, foods: [], natural: [], visual: 'keep', label: 'wriggling fry' },
       { stage: 'fry', frac: 0.7, foods: ['baby_brine', 'flake', 'pellet_small', 'daphnia'], natural: ['infusoria'], visual: 'fry_cloud', label: 'fry' },
     ],
     parentsEatEggs: false,
