@@ -590,6 +590,18 @@ describe('G28 (B-231 e): the first tank bought after selling every tank doesn’
     use(g);
     const html = renderToStaticMarkup(createElement(TankBar));
     expect(html).toMatch(/data-testid="tank-buy-first"[^>]*>No tank · Buy one</);
+    // review: not while a tank is being placed (the placement focuses it as it lands)
+    const tool0 = useUI.getState().tool;
+    useUI.setState({ tool: 'tank_place' });
+    Object.assign(useUI.getInitialState(), { tool: 'tank_place' });
+    try {
+      const placing = renderToStaticMarkup(createElement(TankBar));
+      expect(placing).not.toContain('tank-buy-first');
+      expect(placing).toContain('No tank');
+    } finally {
+      useUI.setState({ tool: tool0 });
+      Object.assign(useUI.getInitialState(), { tool: tool0 });
+    }
   });
 });
 
