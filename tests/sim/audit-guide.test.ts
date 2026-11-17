@@ -18,7 +18,7 @@ import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { tutorialChain } from '@/data/quests';
 import { currentCoachStep, friendWait, guideOnForNewGame } from '@/ui/tutorial/guideText';
-import { finaleLines, finaleNext } from '@/ui/tutorial/TutorialCoach';
+import { finaleLines, finaleNext, guideFold } from '@/ui/tutorial/TutorialCoach';
 import { guideAim, type GuideScreen } from '@/ui/tutorial/guideTargets';
 import { tourStops } from '@/ui/tutorial/tourStops';
 import { guideMentions } from '@/ui/hud/ToolRail';
@@ -200,6 +200,16 @@ describe('A11: the water step waits for the reading, not the card opening', () =
     expect(tutorialStepId(g)).toBe('water');
     tutorialAdvance(g, 'read_water');
     expect(tutorialStepId(g)).toBe('habitat');
+  });
+});
+
+describe('P1: on a phone the animal’s card folds the guide into its pill, as the tank card does', () => {
+  it('the fold rule', () => {
+    expect(guideFold('creature', true)).toBe('creature');
+    expect(guideFold('creature', false)).toBeNull(); // desktop: the card is on the right, clear of the guide
+    expect(guideFold('tank', true)).toBe('tank');
+    expect(guideFold('tank', false)).toBe('tank');
+    expect(guideFold(null, true)).toBeNull();
   });
 });
 

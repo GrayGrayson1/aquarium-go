@@ -622,6 +622,10 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 @media (max-width: 720px), (max-width: 1000px) and (orientation: portrait), (max-height: 500px) and (orientation: landscape) {
   :root:has(.ag-tcard.ag-sheet--bottom) .ag-hud__coach { bottom: calc(min(54dvh, 640px) + 10px); }
   :root:has(.ag-tcard.ag-sheet--bottom.is-expanded) .ag-hud__coach { opacity: 0; visibility: hidden; }
+  /* audit 2026-11-17 (P1) — and above the animal's card, whose sheet covered the guide's next step after "Meet them".
+     Its sheet is as tall as its content (up to 54dvh): the guide measures it (--coach-ccard-h, TutorialCoach). */
+  :root:has(.ag-ccard.ag-sheet--bottom) .ag-hud__coach { bottom: calc(var(--coach-ccard-h, min(54dvh, 640px)) - var(--safe-b) + 10px); }
+  :root:has(.ag-ccard.ag-sheet--bottom.is-expanded) .ag-hud__coach { opacity: 0; visibility: hidden; }
 }
 
 /* fix:HUD — a phone held sideways (844×390) used to get the desktop chrome: a 418 px vertical rail with Feed above and
@@ -650,6 +654,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-alerts-pop { max-height: calc(100dvh - var(--edge) * 2 - var(--topbar-h) - 8px); }
   .ag-hud::before { height: calc(var(--edge) + var(--topbar-h) + 60px); }
   :root:has(.ag-tcard.ag-sheet--bottom) .ag-hud__coach { opacity: 0; visibility: hidden; }
+  :root:has(.ag-ccard.ag-sheet--bottom) .ag-hud__coach { opacity: 0; visibility: hidden; } /* (P1: nearly full height here too) */
   /* every bottom sheet reaches the top bar here: Toasts.tsx shows one compact toast in the sheet's header row, left
      of its close button (in the bottom band it still hid a 155 px list's rows). Until it has measured: the bottom
      band, above a panel's switcher row, in its right-hand corner. */

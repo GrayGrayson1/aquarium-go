@@ -26,7 +26,7 @@ import { ProgressDots, Button } from '../kit';
 import { guideTarget, openPanel } from '../hud/Dock';
 import { MORE_ITEMS } from '../hud/TabBar'; // lane:ui-shell (chunk 1)
 import { toggleTankCard } from '../hud/TankBar';
-import { useDockedCard } from '../hud/cardDock';
+import { useDockedCard, type DockedCard } from '../hud/cardDock';
 import { setCameraMode } from '../hud/ToolRail';
 import { setSpeed } from '../hud/TopBar';
 import { personalityLabel } from '../common/format';
@@ -38,6 +38,17 @@ import { FINE_POINTER, currentCoachStep, friendWait, guideAnimal } from './guide
 
 // (the step's words moved to ./guideText, shared with Research › Quests)
 export { currentCoachStep, type CoachStep } from './guideText';
+
+/**
+ * Audit 2026-11-17 (P1) — the side card that folds the guide into its pill: the left tank card that shares its column
+ * on desktop, or either card's bottom sheet on a phone (the animal's card covered the guide's next step, "Have a look
+ * around", right after "Meet them" opened it). The creature card's desktop sheet is on the right, clear of the guide.
+ */
+export function guideFold(card: DockedCard, bottomSheets: boolean): 'tank' | 'creature' | null {
+  if (card === 'tank') return 'tank';
+  if (card === 'creature' && bottomSheets) return 'creature';
+  return null;
+}
 
 /**
  * A11 — the water step counts the reading as read once the tank card has been on screen this long (the guide opens
@@ -212,6 +223,11 @@ function useCoachLayout(active: boolean) {
       return;
     }
     const tick = () => {
+      // audit 2026-11-17 (P1) — the animal's bottom sheet is as tall as its content: hud.css lifts the folded guide
+      // above its real top (its layout height: the slide-in transform doesn't count)
+      const ccard = document.querySelector<HTMLElement>('.ag-ccard.ag-sheet--bottom');
+      if (ccard && ccard.offsetHeight > 0) root.style.setProperty('--coach-ccard-h', `${ccard.offsetHeight}px`);
+      else root.style.removeProperty('--coach-ccard-h');
       const wrap = document.querySelector<HTMLElement>('.ag-hud__coach');
       const card = wrap?.querySelector<HTMLElement>('.ag-coach, .ag-coach-pill') ?? null;
       const dock = document.querySelector<HTMLElement>('.ag-dock');
@@ -251,6 +267,7 @@ function useCoachLayout(active: boolean) {
       window.clearInterval(id);
       window.removeEventListener('resize', tick);
       root.style.removeProperty('--coach-clear');
+      root.style.removeProperty('--coach-ccard-h');
       document.querySelector('.ag-hud__coach')?.classList.remove('is-raised');
       if (useShell.getState().coachSide) useShell.getState().set({ coachSide: null });
     };
@@ -269,12 +286,12 @@ export function TutorialCoach() {
   // The left tank card shares the guide's column on desktop: the guide folds into its pill meanwhile.
   const bottomSheets = useMedia(BOTTOM_SHEET_QUERY);
   const dockedCard = useDockedCard();
-  const leftSheet = dockedCard === 'tank' && !bottomSheets;
   // lane:qa-final — on phones the tank card is a bottom sheet that hid the expanded guide (after the water step the
-  // next step sat unseen under it). It folds into the pill too, which hud.css lifts just above the sheet.
-  const phoneSheet = dockedCard === 'tank' && bottomSheets;
+  // next step sat unseen under it). It folds into the pill too, which hud.css lifts just above the sheet; and so does
+  // the animal's card (audit 2026-11-17, P1), whose sheet the guide measures (useCoachLayout).
+  const fold = guideFold(dockedCard, bottomSheets);
   const mobile = useIsMobile(); // lane:ui-shell (chunk 1) — the tab bar's layout, where some destinations live in More
-  const collapsed = userCollapsed || leftSheet || phoneSheet;
+  const collapsed = userCollapsed || fold !== null;
   const [confirmSkip, setConfirmSkip] = useState(false);
   const cur = currentCoachStep(game, fine);
   const lastIdx = useRef<number | null>(null);
@@ -405,7 +422,8 @@ export function TutorialCoach() {
             onClick={() => {
               sfx('open');
               setCollapsed(false);
-              if (leftSheet || phoneSheet) useShell.getState().set({ tankCardOpen: false });
+              if (fold === 'tank') useShell.getState().set({ tankCardOpen: false });
+              else if (fold === 'creature') useUI.getState().set({ selectedCreatureId: null });
             }}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
