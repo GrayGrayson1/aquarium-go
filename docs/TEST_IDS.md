@@ -287,10 +287,12 @@ gone state (ADR-0019 decision 4). Shared links (`shareUrl`) never carry `?dev=1`
 | `#/shop/fish/:offerId` | Offer detail ("This offer has gone" when it has) | `offer:<id>` |
 | `#/market/supplies` *`/:foodId`* | Market › Supplies (scrolled to a food) | `tab:supplies` / `food:<id>` |
 | `#/market/listings` *`/:listingId`* | Market › My listings (focused on a listing) | `tab:listings` / `listing:<id>` |
+| `#/market/listings/new` | Market › My listings with the New listing form open (audit 2026-11-17, B6: Back closes the form and stays in the panel) | `tab:listings` / `sell` |
 | `#/market/history` (alias `#/market/trends`) | Market › History & demand | `tab:trends` |
 | `#/build` *`/decor\|equipment\|substrate\|facility`* | Build tabs | `tab:<id>` |
 | `#/visitors` *`/staff`* | Visitors / Staff (locked panel until the Specialty Shop) | `tab:visitors\|staff` |
 | `#/shows` *`/entries\|results\|trophies`* | Shows tabs (locked panel until the guide is done) | `tab:upcoming\|entries\|results\|trophies` |
+| `#/shows/enter/:showId` | Shows › Upcoming with that show's entry flow open (audit 2026-11-17, B6: Back closes the flow and stays in the panel) | `tab:upcoming` / `show:<showId>` |
 | `#/research` *`/unlocks\|quests\|achievements`* | Research tabs | `tab:research\|unlocks\|quests\|achievements` |
 | `#/finances` | Finances | `panel: 'finances'` |
 | `#/encyclopedia` | Species list | `tab:species` |
@@ -439,7 +441,7 @@ link.
 
 | test id | element |
 |---|---|
-| `dock-social` · `dock-badge-social` | Dock item (Globe, between Shows and Build; tutorial id `dock-social`) and its dot: "New" until first opened, "New trades and club news" after |
+| `dock-social` · `dock-badge-social` | Dock item (Globe, between Shows and Build; tutorial id `dock-social`) and its dot: "New" until first opened, "New friend requests, trades or club news" after |
 | `more-social` · `more-new-social` | Phone More tile (after Shows) and its "New" tag until Social is first opened |
 | `panel-social` · `social-body` | The panel (PanelHost's sheet) and its body |
 | `social-tab-<overview\|clubs\|trading\|friends\|leaderboards>` | Tabs (signed in only; `role="tab"`) |
@@ -522,3 +524,38 @@ link.
 | `shared-strip` · `shared-here-count` · `shared-menu` · `shared-strip-text` · `shared-back` | QOL-007: the shared shop's pill (it kept the strip's id), its "n here", the dropdown, the dropdown's line about the shop and Back to my aquarium |
 | `guide-spotlight` · `guide-spotlight-ring` (`is-gold` on the way to More) · `tour-spotlight` · `tour-spotlight-ring` | QOL-008: the guide's and the tour's dim with a window round the target, and its ring (`data-target` `on\|none`) |
 | `tour-card` (`data-stop`) · `tour-next` · `tour-back` · `tour-skip` · `guide-tour` · `settings-tour` | The tour's card and its buttons; the guide finale's Show me around; Settings › Play & access's Take the tour |
+
+## Audit fixes (2026-11-17)
+
+| test id | element |
+|---|---|
+| `hud-day` · `hud-reputation` · `more-reputation` | The phone clock pill's day line (says when paused); the top bar's reputation pill and the phone More sheet's reputation row (both open Research's standing card) |
+| `research-reputation-help` · `research-reputation-next` | Research's standing card: what reputation opens and how it grows; its See what's next (to Unlocks) |
+| `unlocks-clear` | Research › Unlocks' search box's clear button |
+| `research-tankwait-<researchId>` · `unlock-guide-<key>` | A research card's line about the tank size it also waits for; the How to unlock box's guide hint for a lock |
+| `alerts-body` | The bell popover's scrolling body (rows, Full event log, Turn on) |
+| `coach-wait` · `coach-wait-market` · `coach-play` · `coach-quests` | The guide card's "waiting for" line, its Shop button when no animal is on show, its Play button while paused; the finale's quest board button |
+| `title-invited` | The title screen's New game line when an invite link opened the game |
+| `welcome-stat-<key>` | A Welcome back stat that opens what it counts |
+| `error-boundary-save-failed` | The error screen's line when its save attempt failed |
+| `save-loss-confirm` · `save-loss-delete` · `save-loss-cancel` | The box that asks before a kept save would be deleted (every slot full) and its two buttons |
+| `leave-confirm` · `leave-go` · `leave-keep` | The box that asks before leaving a half-filled form, its Leave and Keep editing buttons |
+| `cloud-further` | The online-save box's further note (`data-further` `online\|device`) |
+| `net-retry` · `social-my-code` · `social-copy-code` | Social's Try again after a network error; your friend code strip and its Copy button |
+| `notify-phone-note` | Settings › Notifications' note that on a phone the game pauses when you switch apps |
+| `tank-buy-first` | The tank bar's Buy a tank when every tank is gone |
+| `tank-more-issues` · `water-change-salt-need` · `tank-light-dimmed-<equipmentId>` · `tank-doser-short` · `creature-note-fix` | The tank card header's "and n more in the tabs"; the Water tab's salt a 25% change takes; a light dimmed on purpose; the doser's no-food warning; a creature note's fix link |
+| `move-group` · `move-picked` · `move-risk-ack` · `brood-move-warning` | Move the whole group (creature card); Move for the animals picked in Livestock; the move box's risk checkbox and its brood warning |
+| `food-raise-cash` · `offer-raise-cash` · `supplies-raise-cash` · `supplies-money-short` | Links to Finances' ways to raise cash when food, an offer or supplies cost more than you have; Supplies' money-short note |
+| `offer-diet` · `offer-diet-buy` · `offer-cycling` · `offer-leaves` | The offer detail's diet row and its buy-a-pack button, its "the tank is still cycling" note and when the offer leaves |
+| `shop-not-stocked` · `shop-not-stocked-open-<speciesId>` · `shop-not-stocked-unlock-<speciesId>` | A Shop search for a species nobody stocks right now, its encyclopedia link and How to unlock |
+| `listing-opening` · `listing-reserve-hint` · `listing-quick-sell` · `listing-quick-sell-go` · `listing-unlock-help` | The listing form's buyers' first offers, the reserve's hint, the sell-now alternative and its button; the locked form's How to unlock |
+| `bid-counter-binding` | A counter's line that the sale goes through if the buyer agrees |
+| `decor-water-note` · `decor-sell-<instanceId>` | Build › Decor's note on pieces that need other water (live rock, reef); selling a stored piece |
+| `build-equip-remove-<equipmentId>` · `sellback-equip-<instanceId>` · `sellback-equip-confirm` | Build › Equipment's Remove on an installed unit; Sell on a stored unit and its confirm box |
+| `tank-takedown` · `tank-takedown-confirm` · `tank-takedown-yes` · `tank-takedown-why` | Take down an empty tank, its confirm box and button, and why it can't be taken down |
+| `rooms-to-operations` | Build › Facility's link to Operations |
+| `finance-rooms` · `finance-idea-<kind>` · `finance-idea-go-<kind>` | Finances' row for the rooms' machines; a way to raise cash and its button |
+| `production-new-nofit-<stage>` | Setting up a line: why no tank fits a stage |
+| `staff-cancover-<staffId>` | A candidate's capacity line ("Can look after about n tanks like yours") |
+| `shared-ask-limit` · `shared-closing-back` · `shared-closing-retry` | A shared shop member's line that their asks are at the limit; the closing screen's Back and Try again |
