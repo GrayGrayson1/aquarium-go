@@ -75,6 +75,7 @@ describe('E1: a parent moved into the nursery with its young', () => {
     const st = clutchStatus(state, cl.id)!;
     expect(st.safe).toBe(false);
     expect(st.warnings).toContain('Atlas eats the young here — move him out');
+    expect(st.moveOut).toEqual({ id: atlas.id, name: 'Atlas' }); // the review: the card offers his Move dialog
   });
 
   it('a guppy mother who drops her fry in the nursery is told to leave', () => {
@@ -138,7 +139,7 @@ describe('E4: the pairing check names what holds breeding condition down', () =>
     for (let i = 0; i < 30; i++) addCreature(state, createCreature(state, rng, 'fancy_guppy', { sex: i % 2 ? 'male' : 'female', ageDays: 90 }), tank.id);
     keeper(state, 25);
     bella.stats.breedingReadiness = 10;
-    expect(readinessHint(state, bella, getSpecies('fancy_guppy'), state.clock.hour)).toMatch(/^Community is crowded \(\d+% stocked\) — animals breed less in a full tank\. Sell or move some animals\.$/);
+    expect(readinessHint(state, bella, getSpecies('fancy_guppy'), state.clock.hour)).toBe('Community is too full for them to breed (young count as nearly grown) — sell or move some animals.');
   });
 
   it('low comfort is named; with everything fine the old advice stays', () => {
@@ -241,7 +242,7 @@ describe('E14: the seasonal cue names the button and says it takes two', () => {
     const f = addCreature(state, createCreature(state, rng, 'panda_corydoras', { sex: 'female', ageDays: 300, name: 'Da' }), tank.id);
     const chk = breedingCheck(state, m.id, f.id);
     expect(chk.reasons).toContain('They are waiting for a seasonal cue.');
-    expect(chk.nextStep).toBe('Press Cool 25% twice in a row (tank card › Care) — the water needs to drop about 2 °C to feel like the first cool rains.');
+    expect(chk.nextStep).toBe('Press Cool 25% twice in a row (tank card › Water › Care) — the water needs to drop about 2 °C to feel like the first cool rains.');
   });
 });
 
@@ -271,6 +272,18 @@ describe('E17: hermaphrodites and snails that can’t be sexed by eye', () => {
     const snail = addCreature(state, createCreature(state, simRng(state), 'mystery_snail', { ageDays: 40 }), fresh.id);
     snail.sex = 'unknown';
     expect(sexRoleText(snail, getSpecies('mystery_snail'), state.clock.hour)).toEqual({ label: 'Can’t be told by eye', detail: 'Keep a few together and they pair up on their own.' });
+    // the review: the pairing advice only where the game pairs them; a tang, a puffer and an anemone get the plain fact
+    const trochus = addCreature(state, createCreature(state, simRng(state), 'trochus_snail', { ageDays: 40 }), reef.id);
+    trochus.sex = 'unknown';
+    expect(sexRoleText(trochus, getSpecies('trochus_snail'), state.clock.hour)).toEqual({ label: 'Can’t be told by eye', detail: 'Keep a few together and they pair up on their own.' });
+    for (const id of ['yellow_tang', 'fahaka_puffer', 'bubbletip_anemone']) {
+      const sp = getSpecies(id);
+      expect(sp.lifecycle.sexVisibleAtDays, id).toBeGreaterThanOrEqual(sp.lifecycle.lifespanDays);
+      const tank = createTank(state, 'g180', sp.waterClasses[0], { cycled: true });
+      const c = addCreature(state, createCreature(state, simRng(state), id, { ageDays: 60 }), tank.id);
+      c.sex = 'unknown';
+      expect(sexRoleText(c, sp, state.clock.hour), id).toEqual({ label: 'Can’t be told by eye' });
+    }
   });
 });
 
@@ -326,7 +339,7 @@ describe('E22: an anemone that isn’t splitting says why', () => {
     const reef = createTank(state, 'g180', 'reef', { cycled: true });
     const rosie = addCreature(state, createCreature(state, simRng(state), 'bubbletip_anemone', { ageDays: 200, name: 'Rosie' }), reef.id);
     rosie.acquiredHour = state.clock.hour;
-    expect(breedingStatus(state, rosie.id)).toMatchObject({ label: 'Splits by itself', detail: 'Not yet — Rosie hasn’t settled in yet: an anemone splits only after a couple of weeks in one tank.' });
+    expect(breedingStatus(state, rosie.id)).toMatchObject({ label: 'Splits by itself', detail: 'Not splitting — Rosie hasn’t settled in yet: an anemone splits only after a couple of weeks in one tank.' });
     expect(breedingSystemInfo('bubbletip_anemone')?.breedable).toBe(true);
   });
 });
@@ -399,6 +412,11 @@ describe('E11: the nest-site gate asks each species for what it lays on (B-223)'
     expect(pair('freshwater_angelfish', 'freshwater_planted', ['java_moss', 'floating_plants'])).toMatch(/There is no broad leaf or smooth stone to lay eggs on\./);
   });
 
+  it('a discus lays on an upright stone, slate or a broad leaf (its notes: a vertical surface)', () => {
+    expect(pair('discus', 'freshwater_planted', ['amazon_sword'])).not.toMatch(/no smooth stone/);
+    expect(pair('discus', 'freshwater_planted', ['java_moss'])).toMatch(/There is no smooth stone, slate or broad leaf to lay eggs on\./);
+  });
+
   it('an oscar still needs a stone; a moss clump no longer passes', () => {
     expect(pair('oscar', 'freshwater_tropical', ['java_moss'])).toMatch(/There is no flat rock or tile to lay eggs on\./);
     expect(pair('oscar', 'freshwater_tropical', ['slate_stack'])).not.toMatch(/no flat rock/);
@@ -435,17 +453,18 @@ describe('E8: the partner the player picked fathers a livebearer’s brood', () 
 });
 
 describe('E10: young eat what their species’ notes say', () => {
-  it('copepods for the marine cave spawners and the mandarin, infusoria for the bumblebee goby; trochus parents spare theirs', async () => {
+  it('copepods for the marine cave spawners and the mandarin, infusoria for the bumblebee goby; the trochus is unchanged', async () => {
     const { moduleFor } = await import('@/sim/life/breeding/registry');
     const foods = (id: string) => moduleFor(getSpecies(id)).plan.phases.map((p) => p.foods);
     for (const id of ['royal_gramma', 'firefish', 'watchman_goby']) expect(foods(id)[1], id).toEqual(['copepod_live', 'baby_brine']);
     expect(foods('bumblebee_goby')[1]).toEqual(['infusoria', 'baby_brine']);
     expect(foods('mandarin_dragonet')).toEqual([['copepod_live'], ['copepod_live', 'baby_brine']]);
     expect(foods('bristlenose_pleco')[1]).toContain('algae_wafer'); // the freshwater cave spawner is unchanged
-    const trochus = moduleFor(getSpecies('trochus_snail'));
-    expect(trochus.id).toBe('egg_layer_generic');
-    expect(trochus.plan.parentsEatEggs).toBe(false);
-    expect(getSpecies('trochus_snail').breeding.predationWithoutNursery).toBe(0);
+    // the review: letting trochus young settle made a colony run away (4 snails became about 200 in a month), so it keeps
+    // the plain generic module and its parents' predation, as before; the owner decides whether a few should settle
+    const { genericEggLayerModule } = await import('@/sim/life/breeding/systems/spawners');
+    expect(moduleFor(getSpecies('trochus_snail'))).toBe(genericEggLayerModule);
+    expect(getSpecies('trochus_snail').breeding.predationWithoutNursery).toBe(0.98);
     expect(moduleFor(getSpecies('yellowtail_damselfish')).plan.phases[0].foods).toEqual(['infusoria']); // not in E10's list
   });
 });
@@ -462,6 +481,15 @@ describe('E16: a spent gourami female rests once the male stops guarding', () =>
     m.repro.stageEndsHour = state.clock.hour + 200;
     run(state, 2, 26, () => false);
     expect(f.repro.stage).toBe('resting');
+    // a betta female ('breeding_only_temporary') still stays spent while a male shares her tank: she must be moved
+    const bt = createTank(state, 'g10', 'freshwater_planted', { cycled: true, name: 'Betta' });
+    const bm = addCreature(state, createCreature(state, rng, 'betta', { sex: 'male', ageDays: 60, name: 'Blade' }), bt.id);
+    const bf = addCreature(state, createCreature(state, rng, 'betta', { sex: 'female', ageDays: 60, name: 'Ruby' }), bt.id);
+    bf.repro.stage = 'spent';
+    bm.repro.stage = 'resting';
+    bm.repro.stageEndsHour = state.clock.hour + 200;
+    run(state, 2, 26, () => false);
+    expect(bf.repro.stage).toBe('spent');
   });
 });
 
@@ -475,5 +503,138 @@ describe('E30: young arrive before their sex shows (B-214)', () => {
     const kids = mintJuveniles(state, cl, big, sp, state.clock.hour, makeContext(state, 1));
     expect(kids.length).toBeGreaterThan(0);
     for (const k of kids) expect(k.sex).toBe('unknown');
+  });
+});
+
+describe('Review E: the pairing step keeps a name’s capital', () => {
+  it('“then: Bella isn’t comfortable…”, not “then: bella …”', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 151 });
+    const home = createTank(state, 'g29', 'freshwater_planted', { cycled: true, name: 'Community' });
+    const away = createTank(state, 'g29', 'freshwater_planted', { cycled: true, name: 'Away' });
+    // dense cover, so the livebearer's own "dense plants" step doesn't come first
+    home.decor = Array.from({ length: 10 }, (_, i) => ({ id: `moss${i}`, defId: 'java_moss', x: -0.3 + i * 0.06, y: 0, z: 0, rotY: 0, scale: 2.4, seed: i, growth: 1, health: 100 }));
+    const rng = simRng(state);
+    const bella = addCreature(state, createCreature(state, rng, 'fancy_guppy', { sex: 'female', ageDays: 90, name: 'Bella' }), home.id);
+    const max = addCreature(state, createCreature(state, rng, 'fancy_guppy', { sex: 'male', ageDays: 90, name: 'Max' }), away.id);
+    keeper(state, 25);
+    bella.stats.breedingReadiness = 10;
+    bella.stats.comfort = 5;
+    bella.stats.health = 70;
+    max.stats.breedingReadiness = 100;
+    expect(breedingCheck(state, bella.id, max.id).nextStep).toMatch(/ — then: Bella isn’t comfortable enough to breed/);
+  });
+});
+
+describe('Review E: another species hunting young in a nursery is what has to go', () => {
+  it('says to move the hunters out, not to move the clutch to a nursery', async () => {
+    const { stepClutch } = await import('@/sim/life/breeding/clutch');
+    const { moduleFor } = await import('@/sim/life/breeding/registry');
+    const { makeTankInfo } = await import('@/sim/life/breeding/common');
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 161 });
+    const nursery = createTank(state, 'g29', 'freshwater_planted', { cycled: true, purpose: 'nursery', name: 'Nursery' });
+    const sp = getSpecies('fancy_guppy');
+    const rng = simRng(state);
+    const mom = addCreature(state, createCreature(state, rng, 'fancy_guppy', { sex: 'female', ageDays: 90, name: 'Bella' }), createTank(state, 'g10', 'freshwater_planted', { cycled: true }).id);
+    addCreature(state, createCreature(state, rng, 'betta', { sex: 'male', ageDays: 90, name: 'Blade' }), nursery.id);
+    const cl = createClutch(state, { sp, tank: nursery, mother: mom, father: null, hour: state.clock.hour, stage: 'fry', count: 40, visual: 'fry_cloud', nextStageHour: state.clock.hour + 200 });
+    const from = state.log.length;
+    stepClutch(state, cl, nursery, sp, moduleFor(sp), state.clock.hour, 1, makeContext(state, 1), makeTankInfo(state, nursery, state.clock.hour, () => []));
+    expect(logFrom(state, from).find((t) => /hunting/.test(t))).toBe('The betta is hunting Bella’s fry! Move the betta out of Nursery.');
+  });
+});
+
+describe('Review E: smaller clutch-card and notice words', () => {
+  it('a nest’s eggs are moved once free-swimming; “after lights-out” only while it is light; “1 larva hatched”', async () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 171 });
+    const ember = starter(state);
+    const home = state.tanks[ember.tankId!];
+    const cl = createClutch(state, { sp: getSpecies('betta'), tank: home, mother: null, father: ember, hour: state.clock.hour, stage: 'eggs', count: 150, visual: 'bubble_nest', nextStageHour: state.clock.hour + 14, guardedById: ember.id });
+    const room = clutchStatus(state, cl.id)!.warnings.find((w) => /when they grow up/.test(w));
+    expect(room).toMatch(/when they grow up — once they’re free-swimming, move them to a bigger or emptier tank$/);
+
+    const reef = createTank(state, 'g29', 'reef', { cycled: true, name: 'Reef' });
+    const eggs = createClutch(state, { sp: getSpecies('ocellaris_clownfish'), tank: reef, mother: null, father: null, hour: state.clock.hour - 200, stage: 'eggs', count: 300, visual: 'eggs_adhesive', nextStageHour: state.clock.hour - 1 });
+    const h = ((state.clock.hour % 24) + 24) % 24;
+    reef.lighting = { ...reef.lighting, onHour: Math.floor(h + 23) % 24, offHour: Math.floor(h + 2) % 24 }; // lights on now
+    expect(clutchStatus(state, eggs.id)!.waitsForDark).toBe(true);
+    reef.lighting = { ...reef.lighting, onHour: Math.floor(h + 2) % 24, offHour: Math.floor(h + 23) % 24 }; // lights off now
+    expect(clutchStatus(state, eggs.id)!.waitsForDark).toBe(false);
+
+    const { planNotification } = await import('@/ui/notify/rules');
+    const ev = { id: 'ev_2', hour: 100, kind: 'breeding' as const, text: 'x', notice: { topic: 'hatch' as const, vars: { name: 'Sol', n: 1, tank: 'Reef', young: 'larvae' } } };
+    expect(planNotification(ev, { hour: 100, tankName: () => null })?.body).toBe('1 larva hatched in Reef.');
+  });
+});
+
+describe('Review E: H4’s readinessDrag reads the readiness target’s own terms', () => {
+  it('gives the same answer as its old inline copy over many random animals', async () => {
+    const { readinessDrag, makeTankInfo, conditioningLevel, gallonsOf, isMature, isResting } = await import('@/sim/life/breeding/common');
+    const { fitsEnvironment } = await import('@/sim/compat/salinity');
+    const { mulberry32 } = await import('@/sim/rng');
+    const ramp = (v: number, lo: number, hi: number) => Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+    // the pre-review inline copy (Audit 2026-11-17, H4), kept here as the reference
+    const old = (tank: Parameters<typeof readinessDrag>[0], c: Parameters<typeof readinessDrag>[1], sp: Parameters<typeof readinessDrag>[2], hour: number, info: Parameters<typeof readinessDrag>[4]) => {
+      if (!isMature(c, sp, hour) || c.repro?.lineHold || isResting(c, hour) || !fitsEnvironment(sp, tank.environment)) return null;
+      const s = c.stats;
+      const t = tank.water.tempC;
+      const cond = sp.breeding.conditions;
+      const load = info.loadRatio();
+      const terms: [string, number][] = [
+        ['water', tank.environment === sp.environment ? 1 : 0.7],
+        ['health', ramp(s.health, 45, 85)],
+        ['stress', 1 - ramp(s.stress, 45, 90)],
+        ['hunger', 1 - ramp(s.hunger, 55, 90)],
+        ['comfort', 0.4 + 0.6 * ramp(s.comfort, 25, 65)],
+        ['illness', c.illness ? 0.3 : 1],
+        ['temp_range', t < sp.tempC.min || t > sp.tempC.max ? 0.15 : 1],
+        ['too_cool', cond.minTempC !== undefined && t < cond.minTempC - 0.25 ? 0.4 : 1],
+        ['too_warm', cond.maxTempC !== undefined && t > cond.maxTempC + 0.25 ? 0.35 : 1],
+        ['conditioning', cond.needsConditioningFood?.length ? 0.45 + 0.55 * conditioningLevel(tank, c, sp, hour) : 1],
+        ['crowded', load > 1.05 ? 0.15 : load > 0.85 ? 0.6 : 1],
+        ['small_tank', cond.minTankGallons && gallonsOf(tank) < cond.minTankGallons ? 0.5 : 1],
+      ];
+      let best: { drag: string; factor: number } | null = null;
+      for (const [drag, factor] of terms) if (factor < 1 - 1e-9 && (!best || factor < best.factor)) best = { drag, factor };
+      return best;
+    };
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 181 });
+    const rnd = mulberry32(181);
+    const ids = ['fancy_guppy', 'neon_tetra', 'betta', 'discus', 'white_cloud_minnow', 'panda_corydoras', 'sailfin_molly'];
+    for (let i = 0; i < 300; i++) {
+      const id = ids[Math.floor(rnd.next() * ids.length)];
+      const sp = getSpecies(id);
+      const tank = createTank(state, rnd.next() < 0.5 ? 'g10' : 'g55', sp.waterClasses[0], { cycled: true });
+      const c = addCreature(state, createCreature(state, simRng(state), id, { sex: 'female', ageDays: sp.breeding.maturityDays + 5 }), tank.id);
+      Object.assign(c.stats, { health: rnd.next() * 100, stress: rnd.next() * 100, hunger: rnd.next() * 100, comfort: rnd.next() * 100 });
+      if (rnd.next() < 0.2) c.illness = { kind: 'ich', severity: 0.3 } as never;
+      tank.water.tempC = sp.tempC.min - 3 + rnd.next() * (sp.tempC.max - sp.tempC.min + 6);
+      const info = makeTankInfo(state, tank, state.clock.hour, () => []);
+      expect(readinessDrag(tank, c, sp, state.clock.hour, info), `case ${i}`).toEqual(old(tank, c, sp, state.clock.hour, info));
+    }
+  });
+});
+
+describe('Review E: an old save’s brood whose foods changed (E10) hears about it', () => {
+  it('a royal gramma brood already warned under the old foods is warned again, and the card says hungry within hours', async () => {
+    const { noteBreedingFood } = await import('@/sim/life/breeding');
+    const state = newGame({ starterId: 'ocellaris_clownfish', starterName: 'Solo', seed: 5 });
+    const sp = getSpecies('royal_gramma');
+    const t = createTank(state, 'g40B', 'marine_fowlr', { cycled: true, purpose: 'nursery', name: 'Nursery' });
+    const mom = addCreature(state, createCreature(state, simRng(state), 'royal_gramma', { sex: 'female', ageDays: 200, name: 'Gem' }), createTank(state, 'g40B', 'marine_fowlr', { cycled: true }).id);
+    const cl = createClutch(state, { sp, tank: t, mother: mom, father: null, hour: state.clock.hour - 60, stage: 'fry', count: 100, visual: 'fry_cloud', nextStageHour: state.clock.hour + 150 });
+    cl.stageSinceHour = state.clock.hour - 60;
+    cl.fed = 0.9;
+    cl.flags = ['food_fry']; // the old flag: warned once before, under the old foods
+    const from = state.log.length;
+    let cardAt = -1;
+    for (let h = 1; h <= 12; h++) {
+      noteBreedingFood(state, t.id, ['algae_wafer']); // what the old foods asked for
+      advanceWorld(state, 1, { forceFull: true });
+      if (cardAt < 0 && (clutchStatus(state, cl.id)?.warnings ?? []).some((w) => /^Hungry/.test(w))) cardAt = h;
+    }
+    expect(cardAt).toBeGreaterThan(0);
+    expect(cardAt).toBeLessThanOrEqual(6);
+    expect(logFrom(state, from).some((x) => /^Gem’s fry are hungry/.test(x))).toBe(true);
+    expect(state.clutches[cl.id].survival).toBeGreaterThan(0.85); // a slow loss: time to buy copepods or baby brine
   });
 });

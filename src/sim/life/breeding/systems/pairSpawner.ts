@@ -122,7 +122,7 @@ export function allDataGates(state: GameState, tank: Tank, sp: SpeciesDefinition
   }
   if (cond.coolingTrigger && !coolCueActive(tank, hour)) {
     // audit E14: name the button and say it takes two (one Cool 25% drops ~1.25 °C; the cue needs ~1.8 °C below the day's warmest)
-    out.push({ ok: false, reason: 'They are waiting for a seasonal cue.', step: 'Press Cool 25% twice in a row (tank card › Care) — the water needs to drop about 2 °C to feel like the first cool rains.' });
+    out.push({ ok: false, reason: 'They are waiting for a seasonal cue.', step: 'Press Cool 25% twice in a row (tank card › Water › Care) — the water needs to drop about 2 °C to feel like the first cool rains.' });
   }
   if (cond.minTempC !== undefined && tank.water.tempC < cond.minTempC - 0.5) {
     out.push({ ok: false, reason: `The water is too cool to spawn (needs ${cond.minTempC} °C+).`, step: `Warm the tank to about ${cond.minTempC + 1} °C.` });
