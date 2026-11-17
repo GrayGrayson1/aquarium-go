@@ -87,6 +87,11 @@ export function noteIssue(day: StaffDay, text: string): void {
   if (day.issues.length > 6) day.issues.splice(0, day.issues.length - 6);
 }
 
+/** Take back today's flags whose cause is gone (food in stock again, a repair; Audit 2026-11-17, H26). */
+export function dropIssues(day: StaffDay, gone: (text: string) => boolean): void {
+  if (day.issues.some(gone)) day.issues = day.issues.filter((t) => !gone(t));
+}
+
 // ───────────────────────────── queries (UI + render) ─────────────────────────────
 
 /** Most staff this facility level can employ. */

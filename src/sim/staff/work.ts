@@ -42,7 +42,7 @@ import { currentPhase, isCarried, youngLabel } from '../life/breeding/clutch';
 import { moduleFor } from '../life/breeding/registry';
 import { foodRecency } from '../life/breeding/common';
 import { DOSER } from '@/data/catalog/machines';
-import { asStaff, clamp, dayRecord, displayTankIds, ensureStaff, firstName, fmt$, isExhibit, noteIssue, totals, FEED_RING, TALK_RING } from './common';
+import { asStaff, clamp, dayRecord, displayTankIds, dropIssues, ensureStaff, firstName, fmt$, isExhibit, noteIssue, totals, FEED_RING, TALK_RING } from './common';
 import { dayOf } from '../time';
 import * as dmath from '../dmath';
 
@@ -383,6 +383,19 @@ export function keeperFeed(state: GameState, m: StaffMember, tank: Tank, mode: '
   return { fed, missing };
 }
 
+/**
+ * What to do when the cupboard has nothing an animal eats, for the reason no reorder comes (Audit 2026-11-17, H13: it
+ * said "raise the stock manager’s budget" with her orders switched off or no cash at all).
+ */
+export function restockHint(state: GameState, missing: SpeciesDefinition[]): string {
+  const sm = stockManager(state);
+  const cheapest = Math.min(...FOODS.filter((f) => missing.some((sp) => eats(sp, f))).map((f) => f.price));
+  if (Number.isFinite(cheapest) && state.finance.money < cheapest) return 'Buy food in Market › Supplies once there’s cash.';
+  if (!sm) return 'Buy food in Market › Supplies, or hire a stock manager.';
+  if (state.staff?.ordersOff) return `Buy food in Market › Supplies, or switch ${firstName(sm)}’s orders back on in Visitors › Staff.`;
+  return `Buy food in Market › Supplies, or raise ${firstName(sm)}’s stock budget.`;
+}
+
 // ── Audit 2026-11-17 (H2, the owner's choice: "keepers feed fry") ──
 
 /** Young offered one of their phase's foods this recently (by hand, a doser or the keeper's own meal) aren't fed again. */
@@ -613,6 +626,8 @@ function speciesPhrase(list: SpeciesDefinition[]): string {
  * at 10×, and a dead filter quietly turns a healthy tank into an overstocked one.
  */
 export function keeperEquipmentCheck(state: GameState, m: StaffMember, tank: Tank): void {
+  // a repaired failure leaves today's flags (Audit 2026-11-17, H26)
+  if (!(tank.equipment ?? []).some((e) => e.failed)) dropIssues(dayRecord(state, m), (t) => t.endsWith(` failed in ${tank.name}`));
   for (const inst of tank.equipment ?? []) {
     if (!inst.failed) continue;
     const def = getEquipmentDef(inst.defId);
@@ -652,15 +667,17 @@ export function keeperVisit(state: GameState, m: StaffMember, tankId: string, ro
     if (!day.tanksFed.includes(tank.id)) day.tanksFed.push(tank.id);
     day.last = { hour, kind: 'feed', tankId: tank.id, text: `Fed ${tank.name}` };
   }
+  // what was flagged here and is fed now leaves today's flags (Audit 2026-11-17, H26)
+  if (meal.fed > 0 && !missing.length) dropIssues(day, (t) => t.startsWith('No food for the ') && t.endsWith(` in ${tank.name}`));
+  if (young.fed > 0 && !young.short.length) dropIssues(day, (t) => t.startsWith('No first foods for the ') && t.endsWith(` in ${tank.name}`));
   if (missing.length) {
     const who = speciesPhrase(missing);
     noteIssue(day, `No food for the ${who} in ${tank.name}`);
     // Honest, not silent: the log says what couldn't be fed and what to do (toasted at most once a game day).
     if (throttled(state, `nofood:${tank.id}`, 12)) {
-      const hasStock = (state.staff?.roster ?? []).some((x) => x.role === 'stock_manager');
       emitEvent(state, {
         kind: 'warning',
-        text: `${firstName(m)} couldn’t feed the ${who} in ${tank.name} — there’s nothing in stock they eat. Buy food in Market › Supplies${hasStock ? ' or raise the stock manager’s budget' : ', or hire a stock manager'}.`,
+        text: `${firstName(m)} couldn’t feed the ${who} in ${tank.name} — there’s nothing in stock they eat. ${restockHint(state, missing)}`,
         tankId: tank.id,
         toast: throttled(state, 'nofood:toast', 24),
       });
@@ -1121,16 +1138,24 @@ export function giveTalk(state: GameState, m: StaffMember, hour: number): void {
   pushReaction(state.visitors.reactions, { hour, tankId, text: line, mood: 'happy' });
 }
 
+/**
+ * The hours of day a docent talks: 11 AM, 2 PM and 4 PM (early birds fit in a 10 AM talk before the first crowd), the
+ * second, third and fourth docent 15, 30 and 45 minutes later. One rule for the talks and the card's "Next talk at"
+ * (Audit 2026-11-17, H12: the card said 11:00 AM for a docent who talks at 11:15).
+ */
+export function talkHours(state: GameState, m: StaffMember): number[] {
+  const docents = (state.staff?.roster ?? []).filter((x) => x.role === 'docent');
+  const offset = (Math.max(0, docents.indexOf(m)) % 4) * 0.25;
+  return (m.trait === 'early_bird' ? [10, ...TALK_HOURS] : TALK_HOURS).map((hod) => hod + offset);
+}
+
 export function stepDocents(state: GameState, start: number, end: number): void {
   const st = state.staff;
   if (!st) return;
-  let j = 0;
   for (const m of st.roster) {
     if (m.role !== 'docent') continue;
-    const offset = (j++ % 4) * 0.25;
-    // Early birds fit in a 10 AM talk before the first crowd.
-    for (const hod of m.trait === 'early_bird' ? [10, ...TALK_HOURS] : TALK_HOURS) {
-      for (const h of crossings(start, end, hod + offset)) if (isOpenAt(state, h)) giveTalk(state, m, h);
+    for (const hod of talkHours(state, m)) {
+      for (const h of crossings(start, end, hod)) if (isOpenAt(state, h)) giveTalk(state, m, h);
     }
   }
 }
@@ -1205,13 +1230,14 @@ export function nextDuty(state: GameState, m: StaffMember): string {
     return `${next === roundStart(m, 'morning') && next <= h ? 'Tomorrow’s' : 'Next'} round at ${formatClock(next)}`;
   }
   if (m.role === 'stock_manager') {
-    const checks = m.skill >= 3 ? STOCK_CHECKS : STOCK_CHECKS.slice(0, 1);
+    const checks = stockCheckHours(m); // an early bird's 8 AM (Audit 2026-11-17, H12)
     const next = checks.find((t) => t > h) ?? checks[0];
     return `Next shelf check at ${formatClock(next)}`;
   }
   if (!state.facility.openToPublic) return 'No talks while the doors are closed';
-  const next = TALK_HOURS.find((t) => t > h);
-  return next !== undefined ? `Next talk at ${formatClock(next)}` : `First talk tomorrow at ${formatClock(TALK_HOURS[0])}`;
+  const hours = talkHours(state, m);
+  const next = hours.find((t) => t > h);
+  return next !== undefined ? `Next talk at ${formatClock(next)}` : `First talk tomorrow at ${formatClock(hours[0])}`;
 }
 
 /** Plain summary of today's work ("Fed 4 tanks · 1 water change"), or null before they've done anything. */
