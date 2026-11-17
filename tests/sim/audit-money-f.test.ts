@@ -465,6 +465,7 @@ describe('F10: one listing, one fair value', () => {
     const want = Math.round(((b.amount - l.lastValuation) / l.lastValuation) * 100);
     const live = text(renderToStaticMarkup(createElement(ListingsTab, { g, focusId: l.id, onCreate: () => {} })));
     expect(live).toContain(`+${want}% fair value`);
+    expect(live).toContain('Hide offers (they stay open)'); // F19: the button only folds the list
     expect(acceptBid(g, l.id, b.id).ok).toBe(true);
     const sold = text(renderToStaticMarkup(createElement(ListingsTab, { g, focusId: null, onCreate: () => {} })));
     expect(sold).toContain(`+${Math.round(((l.soldFor! - l.lastValuation) / l.lastValuation) * 100)}% vs fair value`);

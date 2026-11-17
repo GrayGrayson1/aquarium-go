@@ -293,7 +293,8 @@ function ListingCard({ g, l, defaultOpen, focus }: { g: GameState; l: Listing; d
                   setOpen(false);
                 }}
               >
-                <Hourglass size={14} /> Wait for more offers
+                {/* audit 2026-11-17 (F19) — it only folds the list: say so (the offers stay open) */}
+                <Hourglass size={14} /> Hide offers (they stay open)
               </Button>
               <span className="pn-tiny pn-muted">Waiting may bring a better bid — or buyers may lose interest.</span>
             </li>
@@ -334,7 +335,8 @@ function ListingCard({ g, l, defaultOpen, focus }: { g: GameState; l: Listing; d
         }
       >
         <p className="pn-p">
-          {nOpen > 0 ? `${plural(nOpen, 'open bid')} will be declined. ` : ''}Everything returns to your collection. Withdrawing often can make buyers a little wary.
+          {/* audit 2026-11-17 (F19) — no "buyers get wary": withdrawing changes no buyer's opinion in the sim */}
+          {nOpen > 0 ? `${plural(nOpen, 'open bid')} will be declined. ` : ''}Everything returns to your collection.
         </p>
       </Modal>
     </div>
