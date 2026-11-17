@@ -45,7 +45,8 @@ export const SNAPSHOT_GAP_MS = 30 * 60_000;
 const HIDDEN_SEND_WAIT_MS = 10_000;
 const MAX_SNAPSHOT = 200_000;
 
-export type CloudStatus = 'idle' | 'checking' | 'saving' | 'unreachable' | 'blocked';
+/** Audit 2026-11-17, I20: `tooBig`, the save is over the online limit (not a connection that failed). */
+export type CloudStatus = 'idle' | 'checking' | 'saving' | 'unreachable' | 'blocked' | 'tooBig';
 
 export interface CloudPromptState {
   kind: CloudPromptKind;
@@ -328,7 +329,7 @@ async function runSend(g: GameState, userId: string): Promise<void> {
     const body = await encodeSaveBody(exportSaveText(stateForSaving(g)));
     if (body.body.length > MAX_CLOUD_BODY) {
       console.warn(`[aquarium-go] online save not sent: ${body.body.length} characters is over the ${MAX_CLOUD_BODY} limit`);
-      useCloud.setState({ status: 'unreachable' });
+      useCloud.setState({ status: 'tooBig' }); // audit I20: its own line, not "Can't reach Aquarium Go online"
       lastSentAt = Date.now(); // not again before the gap is up
       return;
     }

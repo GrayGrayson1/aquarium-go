@@ -155,6 +155,8 @@ export const SOCIAL_COPY = {
   notSavedOnline: 'Not saved online yet',
   onlineUnreachable: 'Can’t reach Aquarium Go online. Your game still saves on this device.',
   onlineTooNew: 'Your online save comes from a newer version of Aquarium Go. Refresh the page to update.',
+  // audit 2026-11-17, I20: over the online limit, which retrying never fixes (not "Can't reach…")
+  onlineTooBig: 'Your save is too big to put online (listing photos take the most room). It still saves on this device.',
   deleteTitle: 'Delete your account?',
   deleteBody: 'This removes your account, online save, friends and clubs from Aquarium Go’s server. The game on this device stays.',
   cancel: 'Cancel',

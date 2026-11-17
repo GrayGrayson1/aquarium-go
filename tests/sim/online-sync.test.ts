@@ -21,7 +21,7 @@ import type { GameState } from '@/types';
 
 // another tab played an aquarium further (persistence's stale-tab rule): the ids the test marks
 // and a local save that fails (the review's note: nothing loads over a device copy that couldn't be kept)
-const mocks = vi.hoisted(() => ({ stale: new Set<string>(), failSave: false, imports: 0, leaveSaveDue: true }));
+const mocks = vi.hoisted(() => ({ stale: new Set<string>(), failSave: false, imports: 0, leaveSaveDue: true, big: false }));
 // and whether autosave would write a save on leaving (it skips one when a save landed moments before)
 vi.mock('@/game/useAutosave', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/game/useAutosave')>()), leaveSaveDue: () => mocks.leaveSaveDue }));
 vi.mock('@/persistence', async (importOriginal) => {
@@ -40,7 +40,7 @@ vi.mock('@/persistence', async (importOriginal) => {
 // the codec's streams don't mix with fake timers; online-compress.test.ts tests it on its own
 vi.mock('@/social/codec', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/social/codec')>()),
-  encodeSaveBody: async (text: string) => ({ encoding: 'json', body: text }),
+  encodeSaveBody: async (text: string) => ({ encoding: 'json', body: mocks.big ? 'x'.repeat(4_000_001) : text }), // audit I20: `big`, over the limit
   decodeSaveBody: async (b: { body: string }) => b.body,
 }));
 
@@ -818,3 +818,18 @@ describe('chunk 13: a shared shop is never anyone’s online save (SHARE-011)', 
   });
 });
 
+
+describe('audit 2026-11-17, I20: a save too big to put online', () => {
+  it('says so with a status of its own, not "Can’t reach Aquarium Go online"', async () => {
+    await signIn();
+    mocks.big = true;
+    try {
+      const sent = server.uploads.length;
+      await cloudSyncNow();
+      expect(server.uploads).toHaveLength(sent);
+      expect(useCloud.getState().status).toBe('tooBig');
+    } finally {
+      mocks.big = false;
+    }
+  });
+});

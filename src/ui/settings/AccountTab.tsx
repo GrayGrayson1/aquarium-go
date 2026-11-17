@@ -25,6 +25,7 @@ export function onlineLine(status: ReturnType<typeof useCloud.getState>['status'
   if (status === 'blocked') return { text: C.onlineTooNew, warn: true };
   if (status === 'saving') return { text: C.savingOnline, warn: false };
   if (status === 'unreachable') return { text: C.onlineUnreachable, warn: true };
+  if (status === 'tooBig') return { text: C.onlineTooBig, warn: true }; // audit I20
   if (syncedAt !== null) return { text: C.savedOnline(timeAgo(syncedAt)), warn: false };
   return { text: C.notSavedOnline, warn: false };
 }

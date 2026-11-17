@@ -431,6 +431,8 @@ describe('chunk 8: Settings › Account, server-rendered (REL-031)', () => {
     expect(onlineLine('idle', null).text).toBe('Not saved online yet');
     expect(onlineLine('unreachable', now)).toEqual({ text: 'Can’t reach Aquarium Go online. Your game still saves on this device.', warn: true });
     expect(onlineLine('blocked', now)).toEqual({ text: 'Your online save comes from a newer version of Aquarium Go. Refresh the page to update.', warn: true });
+    // audit I20: a save over the online limit isn't a connection that failed
+    expect(onlineLine('tooBig', now)).toEqual({ text: 'Your save is too big to put online (listing photos take the most room). It still saves on this device.', warn: true });
   });
 });
 
