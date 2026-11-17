@@ -8,6 +8,7 @@ import { moduleFor } from './registry';
 import type { StatusOut } from './types';
 import { incidentRisks } from '@/sim/compat';
 import { currentPhase, isCarried, predationInfo, youngLabel } from './clutch';
+import { fissionBlocker } from './systems/fission';
 import {
   READY,
   SURFACE_CALM_MAX,
@@ -35,7 +36,13 @@ export function creatureBreedingStatus(state: GameState, creatureId: string): St
   const mod = moduleFor(sp);
   const hour = state.clock.hour;
   // an animal that breeds alone (the living anemone splitting) does reproduce: the owner's wording (ADR-0052 decision 11)
-  if (!mod.breedable) return { label: mod.asexual ? 'Splits by itself' : 'Not bred here', detail: mod.explain?.(sp) };
+  // audit E22: an anemone that won't split says why (settling, health, hunger, room), or that it may split any day
+  if (!mod.breedable && mod.asexual) {
+    const tank = c.tankId ? state.tanks[c.tankId] : undefined;
+    const why = tank ? fissionBlocker(state, tank, sp, c, state.clock.hour) : null;
+    return { label: 'Splits by itself', detail: why ? `Not yet — ${why}` : 'Settled and well fed — it may split any day' };
+  }
+  if (!mod.breedable) return { label: 'Not bred here', detail: mod.explain?.(sp) };
   if (!isMature(c, sp, hour)) {
     const age = ageDaysAt(c, hour);
     return { label: 'Too young to breed', detail: `Matures in ${approxDuration((sp.breeding.maturityDays - age) * 24)}`, progress: clamp01(age / Math.max(1, sp.breeding.maturityDays)) };

@@ -255,7 +255,8 @@ export function breedingSystemInfo(speciesId: string): { system: string; breedab
   const sp = findSpecies(speciesId);
   if (!sp) return null;
   const mod = moduleFor(sp);
-  return { system: sp.breeding.system, breedable: mod.breedable, summary: mod.explain?.(sp) ?? sp.breeding.notes };
+  // audit E22: an anemone that splits by itself does reproduce here: the encyclopedia mustn't say "Not bred in this build"
+  return { system: sp.breeding.system, breedable: mod.breedable || !!mod.asexual, summary: mod.explain?.(sp) ?? sp.breeding.notes };
 }
 
 /** Is a tank currently giving a seasonal cooling cue (axolotl, corydoras)? */

@@ -446,8 +446,10 @@ function sellWarningIcon(w: string) {
 }
 
 /** Only surface breeding states worth attention (hide idle / too young / not bred here). */
-function activeBreeding<T extends { label: string } | null>(s: T): T | null {
+function activeBreeding<T extends { label: string; detail?: string } | null>(s: T): T | null {
   if (!s) return null;
+  // audit E22: an anemone is listed only when a split is near, so the empty state can show
+  if (/^splits by itself/i.test(s.label) && /^not yet/i.test(s.detail ?? '')) return null;
   return /^(not breeding|not bred here|too young|conditioning|getting into breeding shape)/i.test(s.label) ? null : s;
 }
 

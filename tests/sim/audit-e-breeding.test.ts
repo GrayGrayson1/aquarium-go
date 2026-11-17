@@ -318,3 +318,15 @@ describe('E24: genotype words a child can read', () => {
     expect(describeLocus(additive!, [y, y])).toMatch(/ ×2 \(two copies: the full look\)$/);
   });
 });
+
+describe('E22: an anemone that isn’t splitting says why', () => {
+  it('a newly bought anemone says it hasn’t settled in yet, and the encyclopedia doesn’t call it “not bred”', async () => {
+    const { breedingSystemInfo } = await import('@/sim/life/breeding');
+    const state = newGame({ starterId: 'ocellaris_clownfish', starterName: 'Nemo', seed: 97 });
+    const reef = createTank(state, 'g180', 'reef', { cycled: true });
+    const rosie = addCreature(state, createCreature(state, simRng(state), 'bubbletip_anemone', { ageDays: 200, name: 'Rosie' }), reef.id);
+    rosie.acquiredHour = state.clock.hour;
+    expect(breedingStatus(state, rosie.id)).toMatchObject({ label: 'Splits by itself', detail: 'Not yet — Rosie hasn’t settled in yet: an anemone splits only after a couple of weeks in one tank.' });
+    expect(breedingSystemInfo('bubbletip_anemone')?.breedable).toBe(true);
+  });
+});
