@@ -25,6 +25,7 @@ import { CloudPrompt } from './online/CloudPrompt';
 import './styles/online.css';
 import { SimFailureBanner } from './common/SimFailureBanner'; // lane:core (chunk 6, B-002)
 import { SharedClosingCard, SharedFirstTime, SharedNotices, SharedOpening, SharedStillHere } from './shared/SharedScreens'; // chunk 13
+import { SaveLossConfirm } from './common/SaveLossConfirm'; // audit 2026-11-17, I3
 import { useSharedMode } from '@/state/sharedMode';
 import { applyPlatformStorage } from './platformBoot';
 import './styles/shell.css';
@@ -108,6 +109,10 @@ export function UIRoot() {
         {/* chunk 8 — the online-save box, over the game */}
         <ErrorBoundary name="cloud">
           <CloudPrompt />
+        </ErrorBoundary>
+        {/* audit 2026-11-17, I3 — every slot full: asks before a switch deletes a copy (over the online-save box too) */}
+        <ErrorBoundary name="saves">
+          <SaveLossConfirm />
         </ErrorBoundary>
         {/* chunk 13 (SHARED-SHOPS.md §8) — a shared shop's opening card, its lines, "Still here?" and its closings */}
         <ErrorBoundary name="shared">

@@ -7,7 +7,7 @@
  * identity), listed, until the slot switches aquarium again; `keepReplaced` keeps the replaced copy whatever its
  * progress (Import). PERSIST-014 still holds: a newer build's record in the backup is never written over.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { newGame } from '@/sim/newGame';
 import {
   saveGame,
@@ -109,7 +109,9 @@ describe('E1: an older copy written over a newer one keeps the newer one listed'
     expect(await lines()).toEqual(['auto.backup: Tide Pool day 4 (previous of auto)', 'auto: Other day 4']);
   });
 
-  it('a kept copy takes the backup’s place, as any switch of aquarium does (the dialog offers a slot first)', async () => {
+  // audit 2026-11-17, I3: the slot's own rotation is unchanged; what changed is that every door that switches parks the
+  // copy it would push out in a free slot first, or asks (the describe "audit I3" below)
+  it('a kept copy takes the backup’s place, as any switch of aquarium does (the doors park it in a slot first)', async () => {
     const w = aquarium('Old W', 26);
     const a = aquarium('Now A', 27);
     expect((await saveGame(onDay(w, 3), 'auto')).ok).toBe(true);
@@ -342,15 +344,39 @@ describe('the review’s confirmation (B): a title-screen load, then Load in Set
     }
   });
 
-  it('with every slot full nothing loads, and it says so', async () => {
+  // audit 2026-11-17, I3 (the owner's decision): changed on purpose. With every slot full the load no longer refuses
+  // with a toast: the box asks before day 10 is deleted, and Cancel leaves everything as it was
+  it('with every slot full the box asks first; Cancel loads nothing and changes nothing', async () => {
     const { useGame, useUI } = await setUp();
-    const { loadIntoGame } = await import('@/ui/common/saves');
+    const { loadIntoGame, useSaveLoss, lossLine, takeDeclined } = await import('@/ui/common/saves');
     try {
       expect((await saveGame(aquarium('Filler', 61), 'slot3')).ok).toBe(true);
-      expect(await loadIntoGame('slot2')).toBeNull();
-      expect(useUI.getState().toasts.map((t) => t.text)).toContain('Reef Corner is only in the autosave and every slot is full. Free a slot in Settings › Saves first.');
+      const before = [...map.entries()].sort();
+      const loading = loadIntoGame('slot2');
+      await vi.waitFor(() => expect(useSaveLoss.getState().ask).not.toBeNull());
+      expect(useSaveLoss.getState().ask!.lost.map(lossLine)).toEqual(['“Autosave” (Reef Corner, Day 10) will be deleted.']);
+      useSaveLoss.getState().ask!.answer(false);
+      expect(await loading).toBeNull();
+      expect(takeDeclined()).toBe(true); // the screens don't call it a failed load
+      expect(useSaveLoss.getState().ask).toBeNull();
+      expect(useUI.getState().toasts.filter((t) => t.kind === 'danger')).toEqual([]);
       expect(useGame.getState().game!.clock.hour).toBe(24 + 10);
-      expect((await listSaves()).find((m) => m.slot === 'auto')?.day).toBe(10);
+      expect([...map.entries()].sort()).toEqual(before);
+    } finally {
+      await done();
+    }
+  });
+
+  it('audit I3: with every slot full, "Delete and continue" loads', async () => {
+    const { useGame } = await setUp();
+    const { loadIntoGame, useSaveLoss } = await import('@/ui/common/saves');
+    try {
+      expect((await saveGame(aquarium('Filler', 61), 'slot3')).ok).toBe(true);
+      const loading = loadIntoGame('slot2');
+      await vi.waitFor(() => expect(useSaveLoss.getState().ask).not.toBeNull());
+      useSaveLoss.getState().ask!.answer(true);
+      expect((await loading)?.clock.hour).toBe(4 * 24 + 10);
+      expect(useGame.getState().game!.clock.hour).toBe(4 * 24 + 10);
     } finally {
       await done();
     }
@@ -501,10 +527,152 @@ describe('the review’s final confirmation: a stale tab’s Load still keeps a 
       await saveCurrentGame('auto');
       const kept = (await listSaves()).filter((m) => m.slot !== 'auto' && !m.previousOf);
       expect(kept.some((m) => baseSaveId(m.saveId ?? '') === y.saveId && m.day === 9)).toBe(true); // before: in no save
-      expect(useUI.getState().toasts.map((t) => t.text)).toContain('Yarrow was only in the autosave, so it was saved to Slot 3 first.');
+      // audit I3: changed on purpose: the copy the switch would delete (Yarrow's) takes the first free slot now, then
+      // Xenia's further copy (which stays listed as "Previous autosave" anyway); before, Xenia's took Slot 1
+      expect(useUI.getState().toasts.map((t) => t.text)).toContain('Yarrow was only in the autosave, so it was saved to Slot 1 first.');
     } finally {
       useGame.getState().setGame(null);
       useUI.setState({ screen: 'boot' });
+    }
+  });
+});
+
+describe('audit 2026-11-17, I3 (the owner’s decision): a switch never deletes an aquarium kept in no slot without asking', () => {
+  async function env() {
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const { useSettings } = await import('@/state/settings');
+    const saves = await import('@/ui/common/saves');
+    const { saveCurrentGame } = await import('@/persistence');
+    useSettings.setState({ autosave: true });
+    useUI.setState({ screen: 'title', toasts: [] });
+    useGame.getState().setGame(null);
+    const toasts = () => useUI.getState().toasts.map((t) => t.text);
+    const done = () => {
+      useGame.getState().setGame(null);
+      useUI.setState({ screen: 'boot' });
+      saves.useSaveLoss.setState({ ask: null });
+    };
+    return { useGame, useUI, saves, saveCurrentGame, toasts, done };
+  }
+  /** Coral Cove only in "Previous autosave", Reef Town only in the autosave (the finding's two games). */
+  async function twoOnlyInTheAutosave() {
+    const coral = aquarium('Coral Cove', 100);
+    const reef = aquarium('Reef Town', 101);
+    expect((await saveGame(onDay(coral, 12), 'auto')).ok).toBe(true);
+    expect((await saveGame(onDay(reef, 4), 'auto')).ok).toBe(true);
+    expect(await lines()).toEqual(['auto.backup: Coral Cove day 12 (previous of auto)', 'auto: Reef Town day 4']);
+    return { coral, reef };
+  }
+
+  it('New Game: both go to free slots first, the one it would delete first, and say so', async () => {
+    const { saves, toasts, done } = await env();
+    try {
+      await twoOnlyInTheAutosave();
+      const parked = await saves.keepAutosavedCopies([], { writes: [saves.NEW_GAME_WRITE] });
+      expect(parked).toEqual(['Coral Cove was only in the autosave, so it was saved to Slot 1 first.', 'Reef Town was only in the autosave, so it was saved to Slot 2 first.']);
+      // the new game's autosaves: nothing is lost
+      const fresh = aquarium('Third Try', 102);
+      for (let d = 1; d <= 2; d++) expect((await saveGame(onDay(fresh, d), 'auto')).ok).toBe(true);
+      expect(await lines()).toEqual(['auto.backup: Reef Town day 4 (previous of auto)', 'auto: Third Try day 2', 'slot1: Coral Cove day 12', 'slot2: Reef Town day 4']);
+      expect(toasts()).toEqual([]); // the title shows them (the screen's own toasts)
+    } finally {
+      done();
+    }
+  });
+
+  it('New Game with one free slot: it goes to the copy New Game would delete; the autosave stays “Previous autosave”', async () => {
+    const { saves, done } = await env();
+    try {
+      await twoOnlyInTheAutosave();
+      for (const [slot, seed] of [['slot1', 103], ['slot2', 104]] as const) expect((await saveGame(aquarium('Filler', seed), slot)).ok).toBe(true);
+      const plan = saves.planKeep(await listSaves(), [], { writes: [saves.NEW_GAME_WRITE] });
+      expect(plan.park.map((p) => `${p.m.shopName} → ${p.to}`)).toEqual(['Coral Cove → slot3']);
+      expect(plan.unkept).toEqual([]);
+    } finally {
+      done();
+    }
+  });
+
+  it('the title’s Load: “Previous autosave” goes to a free slot first; the autosave stays “Previous autosave”', async () => {
+    const { saves, saveCurrentGame, toasts, done } = await env();
+    try {
+      await twoOnlyInTheAutosave();
+      const other = aquarium('Other Shop', 105);
+      expect((await saveGame(onDay(other, 7), 'slot1')).ok).toBe(true);
+      expect((await saves.loadIntoGame('slot1'))?.saveId).toBe(other.saveId);
+      expect(toasts()).toContain('Coral Cove was only in the autosave, so it was saved to Slot 2 first.');
+      for (let i = 0; i < 2; i++) expect((await saveCurrentGame('auto')).ok).toBe(true);
+      expect(await lines()).toEqual(['auto.backup: Reef Town day 4 (previous of auto)', 'auto: Other Shop day 7', 'slot1: Other Shop day 7', 'slot2: Coral Cove day 12']);
+    } finally {
+      done();
+    }
+  });
+
+  it('every slot full: the box asks; Cancel keeps both and writes nothing, "Delete and continue" goes on', async () => {
+    const { saves, done } = await env();
+    try {
+      await twoOnlyInTheAutosave();
+      const other = aquarium('Other Shop', 106);
+      expect((await saveGame(onDay(other, 7), 'slot1')).ok).toBe(true);
+      for (const [slot, seed] of [['slot2', 107], ['slot3', 108]] as const) expect((await saveGame(aquarium('Filler', seed), slot)).ok).toBe(true);
+      const before = [...map.entries()].sort();
+      let loading = saves.loadIntoGame('slot1');
+      await vi.waitFor(() => expect(saves.useSaveLoss.getState().ask).not.toBeNull());
+      expect(saves.useSaveLoss.getState().ask!.lost.map(saves.lossLine)).toEqual(['“Previous autosave” (Coral Cove, Day 12) will be deleted.']);
+      saves.useSaveLoss.getState().ask!.answer(false);
+      expect(await loading).toBeNull();
+      expect([...map.entries()].sort()).toEqual(before);
+      expect((await listSaves()).map((m) => m.shopName)).toEqual(expect.arrayContaining(['Coral Cove', 'Reef Town']));
+      loading = saves.loadIntoGame('slot1');
+      await vi.waitFor(() => expect(saves.useSaveLoss.getState().ask).not.toBeNull());
+      saves.useSaveLoss.getState().ask!.answer(true);
+      expect((await loading)?.saveId).toBe(other.saveId);
+    } finally {
+      done();
+    }
+  });
+
+  it('New Game, every slot full: the box asks for the one it deletes, never for the autosave (it stays listed)', async () => {
+    const { saves, done } = await env();
+    try {
+      await twoOnlyInTheAutosave();
+      for (const [slot, seed] of [['slot1', 109], ['slot2', 110], ['slot3', 111]] as const) expect((await saveGame(aquarium('Filler', seed), slot)).ok).toBe(true);
+      const asked: string[][] = [];
+      const parked = await saves.keepAutosavedCopies([], { writes: [saves.NEW_GAME_WRITE], confirmLoss: async (lost) => (asked.push(lost.map(saves.lossLine)), false) });
+      expect(parked).toBeNull();
+      expect(asked).toEqual([['“Previous autosave” (Coral Cove, Day 12) will be deleted.']]);
+    } finally {
+      done();
+    }
+  });
+
+  it('nothing is parked or asked when the copy is already in a slot, as far along', async () => {
+    const { saves, toasts, done } = await env();
+    try {
+      const { coral } = await twoOnlyInTheAutosave();
+      expect((await saveGame(onDay(coral, 12), 'slot3')).ok).toBe(true);
+      const other = aquarium('Other Shop', 112);
+      expect((await saveGame(onDay(other, 7), 'slot1')).ok).toBe(true);
+      expect((await saveGame(aquarium('Filler', 113), 'slot2')).ok).toBe(true);
+      expect((await saves.loadIntoGame('slot1'))?.saveId).toBe(other.saveId);
+      expect(saves.useSaveLoss.getState().ask).toBeNull();
+      expect(toasts().some((t) => t.includes('was only in the autosave'))).toBe(false);
+    } finally {
+      done();
+    }
+  });
+
+  it('Continue of the autosave pushes nothing out, so it parks and asks nothing', async () => {
+    const { saves, done } = await env();
+    try {
+      await twoOnlyInTheAutosave();
+      for (const [slot, seed] of [['slot1', 114], ['slot2', 115], ['slot3', 116]] as const) expect((await saveGame(aquarium('Filler', seed), slot)).ok).toBe(true);
+      expect(saves.pushedOut(await listSaves(), [{ saveId: (await listSaves()).find((m) => m.slot === 'auto')!.saveId!, hour: 3 * 24 + 10 }]).size).toBe(0);
+      expect((await saves.loadIntoGame('auto'))?.shopName).toBe('Reef Town');
+      expect(saves.useSaveLoss.getState().ask).toBeNull();
+    } finally {
+      done();
     }
   });
 });

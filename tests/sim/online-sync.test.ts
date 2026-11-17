@@ -639,12 +639,22 @@ describe('chunk 9 (B1, REL-038): Load online save never pushes out an aquarium k
     expect(useGame.getState().game!.clock.hour).toBeGreaterThanOrEqual(mine.clock.hour + 40);
   });
 
-  it('with every slot full, nothing loads and it says so', async () => {
+  // audit 2026-11-17, I3 (the owner's decision) and I5: changed on purpose. With every slot full the box asks before
+  // Reef Corner is deleted (before: a toast and a refusal); Cancel loads nothing, and the online-save box closes for now
+  // so Settings › Saves (behind it) can free a slot; the link is as it was, so the next check asks again
+  it('with every slot full, the box asks; Cancel loads nothing and closes the online-save box for now', async () => {
     const { w, mine } = await setUp();
+    const { useSaveLoss, lossLine } = await import('@/ui/common/saves');
     for (const [slot, seed] of [['slot1', 91], ['slot3', 92]] as const) expect((await saveGame(newGame({ starterId: 'betta', starterName: 'Fill', seed }), slot)).ok).toBe(true);
     const hour = useGame.getState().game!.clock.hour;
-    expect(await loadOnlineCopy()).toBe(false);
-    expect(toasts()).toContain('Reef Corner is only in the autosave and every slot is full. Free a slot in Settings › Saves first.');
+    const link = readLink(useSocial.getState().user!.id);
+    const loading = loadOnlineCopy();
+    await vi.waitFor(() => expect(useSaveLoss.getState().ask).not.toBeNull());
+    expect(useSaveLoss.getState().ask!.lost.map(lossLine)).toEqual(['“Autosave” (Reef Corner, Day 1) will be deleted.']);
+    useSaveLoss.getState().ask!.answer(false);
+    expect(await loading).toBe(false);
+    expect(useCloud.getState().prompt).toBeNull();
+    expect(readLink(useSocial.getState().user!.id)).toEqual(link);
     expect(useGame.getState().game!.clock.hour).toBe(hour); // still this device's game
     expect((await listSaves()).find((m) => m.slot === 'auto')?.saveId).toBe(w.saveId);
     expect(useGame.getState().game!.saveId).toBe(mine.saveId);

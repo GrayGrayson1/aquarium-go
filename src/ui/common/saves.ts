@@ -25,6 +25,7 @@ import {
   type SaveGameOptions,
 } from '@/persistence';
 import type { GameState } from '@/types';
+import { create } from 'zustand';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { autosaveAllowed } from '@/game/useAutosave';
@@ -94,18 +95,29 @@ export async function loadIntoGame(slot: string): Promise<GameState | null> {
       return null;
     }
     let wrote = false;
+    const loaded: AutosaveWrite = { saveId: r.state.saveId, hour: r.state.clock.hour };
+    if (!writable) {
+      // audit I3: with nothing of ours on screen (the title's Load, Continue, a link) the loaded copy's autosaves still
+      // switch the autosave slot: a "Previous autosave" kept in no slot goes to a free slot first, or the box asks
+      const kept = await keepAutosavedCopies([loaded], { lostOnly: true, loading: slot });
+      if (!kept) return null;
+      parked = kept;
+    }
     if (writable) {
       try {
         const g = useGame.getState().game!;
+        const asKept = g.saveId === r.state.saveId;
         // the review's confirmation (B): a further copy of this aquarium kept only in the autosave (a title-screen load
-        // of an earlier one, not yet autosaved) would go with the writes this load makes: to a slot first
-        const kept = await keepAutosavedCopies([{ saveId: g.saveId, hour: g.clock.hour }, { saveId: r.state.saveId, hour: r.state.clock.hour }], { sameAquariumOnly: true, loading: slot });
+        // of an earlier one, not yet autosaved) would go with the writes this load makes: to a slot first; audit I3:
+        // and another aquarium these writes push out of "Previous autosave" (or the box asks)
+        const writes: AutosaveWrite[] = saveFirst ? [{ saveId: g.saveId, hour: g.clock.hour, kept: asKept }, loaded] : [loaded];
+        const kept = await keepAutosavedCopies([{ saveId: g.saveId, hour: g.clock.hour }, loaded], { sameAquariumOnly: true, loading: slot, writes });
         if (!kept) return null;
         parked = kept;
         // with Settings' autosave off too (the review's blocker 4): the dialog promises the current progress is kept
         if (saveFirst) {
           wrote = true; // tried: even a write that failed part-way may have changed the slot this copy came from
-          const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: g.saveId === r.state.saveId });
+          const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept });
           if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
         }
       } catch (e) {
@@ -153,43 +165,147 @@ export function loadKeepAdvice(saves: SaveMeta[], g: GameState | null): { text: 
   };
 }
 
+/** Audit 2026-11-17, I3: a write a switch makes to the autosave slot, in order; `kept`, written as a kept copy (a new identity). */
+export interface AutosaveWrite {
+  saveId: string;
+  hour: number;
+  kept?: boolean;
+}
+
+/** The first autosave of a new game: an identity no stored copy has. */
+export const NEW_GAME_WRITE: AutosaveWrite = { saveId: '\u0000new-game', hour: 0 };
+
 /**
- * Chunk 9 (B1; the review's confirmation, A and B; ADR-0044 decisions 4 and 6): a load writes the autosave slot (the
- * game it replaces, then the loaded copy's autosaves), which can push out what is there. A copy kept only there (in
- * the autosave or its "Previous autosave", in no slot as far along) is saved to a free slot first, unless it is a copy
- * of an aquarium being written (`written`: the game on screen, the
- * copy loaded) no further along than each copy of it written now (an older state of it), or, with `sameAquariumOnly`
- * (Settings › Saves' Load), another aquarium (that goes on a switch, as the dialog says). `loading` is the slot the
- * load reads, never parked. With every slot full nothing may load, and it says so. Returns null when the load must
- * stop, else the messages to show once the load is done (the toasts are cleared when the aquarium changes).
+ * Audit 2026-11-17, I3 — which of the autosave slot's copies (the autosave, its "Previous autosave") the writes push out
+ * of the slot: its rotation (src/persistence/slots.ts, saveGame) played on their identities. A write of another
+ * aquarium moves the autosave into "Previous autosave", over what was there; a write of the same aquarium keeps another
+ * aquarium's "Previous autosave", unless the autosave is further along (then that goes there, as a kept copy).
  */
-export async function keepAutosavedCopies(written: { saveId: string; hour: number }[], opts: { sameAquariumOnly?: boolean; loading?: string } = {}): Promise<string[] | null> {
+export function pushedOut(saves: SaveMeta[], writes: AutosaveWrite[]): Set<string> {
+  type Rec = { slot: string | null; id: string; hour: number };
+  const auto = saves.find((m) => m.slot === 'auto' && !m.previousOf);
+  const prev = saves.find((m) => m.previousOf === 'auto');
+  const rec = (m: SaveMeta | undefined): Rec | null => (m ? { slot: m.slot, id: m.saveId ?? m.slot, hour: m.hour ?? Infinity } : null);
+  let p = rec(auto);
+  let b = rec(prev);
+  writes.forEach((w, i) => {
+    const r: Rec = { slot: null, id: w.kept ? `\u0000kept-${i}` : w.saveId, hour: w.hour };
+    if (p && p.id === r.id && !(p.hour > r.hour + 1e-6)) {
+      if (!b || b.id === r.id) b = p;
+      p = { ...r, slot: p.slot }; // the same aquarium, as far along or further: nothing of it is lost
+      return;
+    }
+    if (p) b = p;
+    p = r;
+  });
+  const left = new Set([p?.slot, b?.slot]);
+  return new Set([auto, prev].filter((m): m is SaveMeta => !!m && !left.has(m.slot)).map((m) => m.slot));
+}
+
+export interface KeepOptions {
+  /** Settings › Saves' Load: another aquarium the switch leaves listed goes as the dialog says (not parked). */
+  sameAquariumOnly?: boolean;
+  /** Only copies the switch deletes (a load with nothing on screen: the title's Load, Continue, a link). */
+  lostOnly?: boolean;
+  /** The slot the load reads, never parked. */
+  loading?: string;
+  /** The writes to the autosave slot, in order (default: `written`, in its order). */
+  writes?: AutosaveWrite[];
+  /** Every slot is full and copies would be deleted: may they be? (default: the box, `askBeforeDeleting`) */
+  confirmLoss?: (lost: SaveMeta[]) => Promise<boolean>;
+}
+
+/**
+ * Chunk 9 (B1; ADR-0044 decisions 4 and 6) and audit 2026-11-17, I3 (the owner's decision: "Save it to a free slot"):
+ * which of the autosave slot's copies go to a free slot before a switch. A copy kept only there (in the autosave or its
+ * "Previous autosave", in no slot as far along) is parked, unless it is a copy of an aquarium being written
+ * (`written`) no further along than each copy of it written now (an older state of it), or, with `sameAquariumOnly`
+ * or `lostOnly`, another aquarium the switch leaves listed. The copies the switch deletes (`pushedOut`) take the free
+ * slots first; `unkept` are those left with none, which would be deleted.
+ */
+export function planKeep(saves: SaveMeta[], written: { saveId: string; hour: number }[], opts: KeepOptions = {}): { park: { m: SaveMeta; to: string }[]; unkept: SaveMeta[] } {
   const hoursOf = (id: string) => written.filter((w) => baseSaveId(w.saveId) === baseSaveId(id)).map((w) => w.hour);
-  let saves = await listSlots();
-  const manual = () => saves.filter((m) => m.slot !== 'auto' && !m.previousOf);
-  const parked = new Set<string>();
-  const messages: string[] = [];
+  const out = pushedOut(saves, opts.writes ?? written);
+  const manual = saves.filter((m) => m.slot !== 'auto' && !m.previousOf);
+  const wanted: { m: SaveMeta; lost: boolean }[] = [];
   for (const m of saves.filter((x) => (x.slot === 'auto' || x.previousOf === 'auto') && x.slot !== opts.loading)) {
-    if (!m.saveId || parked.has(m.saveId)) continue;
+    if (!m.saveId || wanted.some((w) => w.m.saveId === m.saveId)) continue;
+    const lost = out.has(m.slot);
     const same = hoursOf(m.saveId);
-    if (opts.sameAquariumOnly && !same.length) continue;
+    if (!lost && (opts.lostOnly || (opts.sameAquariumOnly && !same.length))) continue;
     // a copy of an aquarium being written, no further along than each copy of it written now: an older state of it,
     // which goes as any "Previous autosave" goes on a switch (an exact copy of the game on screen included)
     if (same.length && !same.every((h) => typeof m.hour === 'number' && Number.isFinite(h) && m.hour > h + 1e-6)) continue;
-    if (manual().some((k) => k.saveId === m.saveId && (k.hour ?? -Infinity) >= (m.hour ?? Infinity) - 1e-6)) continue;
-    const to = freeSaveSlot(saves); // never over another save: a slot's older copy may be a checkpoint kept on purpose
-    if (!to) {
-      useUI.getState().toast(`${m.shopName} is only in the autosave and every slot is full. Free a slot in Settings › Saves first.`, 'danger');
-      return null;
-    }
+    if (manual.some((k) => k.saveId === m.saveId && (k.hour ?? -Infinity) >= (m.hour ?? Infinity) - 1e-6)) continue;
+    wanted.push({ m, lost });
+  }
+  // the copies the switch deletes first; one that stays listed as "Previous autosave" only if a slot is left
+  wanted.sort((a, b) => Number(b.lost) - Number(a.lost));
+  const taken = new Set(saves.filter((m) => !m.previousOf).map((m) => m.slot));
+  const free = SAVE_SLOTS.filter((x) => x !== 'auto' && !taken.has(x)); // never over another save: it may be a checkpoint
+  const park: { m: SaveMeta; to: string }[] = [];
+  const unkept: SaveMeta[] = [];
+  wanted.forEach((w, i) => {
+    if (free[i]) park.push({ m: w.m, to: free[i] });
+    else if (w.lost) unkept.push(w.m);
+  });
+  return { park, unkept };
+}
+
+/** Audit I3: the box that asks before every slot being full means a copy is deleted (SaveLossConfirm.tsx shows it). */
+export interface LossAsk {
+  lost: SaveMeta[];
+  answer(ok: boolean): void;
+}
+export const useSaveLoss = create<{ ask: LossAsk | null }>(() => ({ ask: null }));
+
+/** "“Previous autosave” (Coral Cove, Day 12) will be deleted." */
+export const lossLine = (m: SaveMeta): string => `“${slotLabel(m.slot)}” (${m.shopName}, Day ${m.day}) will be deleted.`;
+
+/** Ask (the box) whether the copies may be deleted; a second ask answers the first "no". */
+export function askBeforeDeleting(lost: SaveMeta[]): Promise<boolean> {
+  useSaveLoss.getState().ask?.answer(false);
+  return new Promise((resolve) => {
+    const ask: LossAsk = {
+      lost,
+      answer: (ok) => {
+        if (useSaveLoss.getState().ask === ask) useSaveLoss.setState({ ask: null });
+        resolve(ok);
+      },
+    };
+    useSaveLoss.setState({ ask });
+  });
+}
+
+let declined = false;
+/** The player answered the box "Cancel" in the last keep (a load that stops for that isn't a failure to report). */
+export function takeDeclined(): boolean {
+  const d = declined;
+  declined = false;
+  return d;
+}
+
+/**
+ * Park what `planKeep` says before a switch writes the autosave slot. With every slot full and a copy that would be
+ * deleted, the box asks first (Cancel: nothing written). Returns null when the switch must stop, else the messages to
+ * show once it is done (the toasts are cleared when the aquarium changes).
+ */
+export async function keepAutosavedCopies(written: { saveId: string; hour: number }[], opts: KeepOptions = {}): Promise<string[] | null> {
+  declined = false;
+  const plan = planKeep(await listSlots(), written, opts);
+  if (plan.unkept.length && !(await (opts.confirmLoss ?? askBeforeDeleting)(plan.unkept))) {
+    declined = true;
+    return null;
+  }
+  const messages: string[] = [];
+  for (const { m, to } of plan.park) {
     const r = await copySave(m.slot, to);
     if (!r.ok) {
+      messages.forEach((t) => useUI.getState().toast(t, 'success')); // what was saved to a slot, it was (B-208)
       useUI.getState().toast(r.message, 'danger');
       return null;
     }
     messages.push(`${m.shopName} was only in the autosave, so it was saved to ${slotLabel(to)} first.`);
-    saves = [...saves.filter((k) => k.slot !== to), { ...m, slot: to, previousOf: undefined }];
-    parked.add(m.saveId);
   }
   return messages;
 }

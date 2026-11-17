@@ -9,7 +9,7 @@ import { useGame } from '@/state/game';
 import { findSpecies } from '@/data/species';
 import { sfx, unlockAudio } from '@/audio/sfx';
 import { useOnboarding, loadShowcase, prepareStarters } from './onboarding';
-import { listSlots, loadIntoGame, timeAgo, slotLabel, watchSaves, storageNotice, type SaveMeta } from '../common/saves';
+import { listSlots, loadIntoGame, timeAgo, slotLabel, watchSaves, storageNotice, keepAutosavedCopies, planKeep, NEW_GAME_WRITE, type SaveMeta } from '../common/saves';
 import { LoadDialog } from './LoadDialog';
 import { speciesName } from '../common/format';
 import { Modal, Button } from '../kit';
@@ -71,10 +71,12 @@ export function Wordmark({ size = 'xl' }: { size?: 'xl' | 'md' }) {
  * What starting over costs: the new game only overwrites the autosave. If the same aquarium is also in a manual slot
  * (same shop, starter and name) and that copy is as recent, nothing is lost; if the slot copy is older, say how much.
  */
-function autosaveKeepAdvice(saves: SaveMeta[]): { safe: boolean; text: string } {
+function autosaveKeepAdvice(saves: SaveMeta[], parkTo: string | null = null): { safe: boolean; text: string } {
   const auto = saves.find((s) => s.slot === 'auto');
   if (!auto) return { safe: true, text: '' };
   const what = `${auto.shopName} (${speciesName(auto.starterId)}${auto.starterName ? ` ${auto.starterName}` : ''} · Day ${auto.day})`;
+  // audit I3: a free slot takes it before the new game starts
+  if (parkTo) return { safe: true, text: `${what} is only in the autosave, so it will be saved to ${slotLabel(parkTo)} first.` };
   const copies = saves
     .filter((s) => s.slot !== 'auto' && s.shopName === auto.shopName && s.starterId === auto.starterId && (s.starterName ?? '') === (auto.starterName ?? ''))
     .sort((a, b) => b.savedAt - a.savedAt);
@@ -145,7 +147,9 @@ export function TitleScreen() {
   const prewarmNow = () => safe('prepareStarters', prepareStarters, undefined);
 
   const latest = saves?.[0];
-  const keep = useMemo(() => autosaveKeepAdvice(saves ?? []), [saves]);
+  // audit I3 (the owner's decision): New Game saves what it would push out to a free slot first; the box says which
+  const parkAutoTo = useMemo(() => planKeep(saves ?? [], [], { writes: [NEW_GAME_WRITE] }).park.find((p) => p.m.slot === 'auto')?.to ?? null, [saves]);
+  const keep = useMemo(() => autosaveKeepAdvice(saves ?? [], parkAutoTo), [saves, parkAutoTo]);
   const showcaseCreature = game?.isShowcase ? Object.values(game.creatures).find((c) => c.isStarter) : undefined;
   const sp = showcaseCreature ? findSpecies(showcaseCreature.speciesId) : undefined;
 
@@ -303,7 +307,19 @@ export function TitleScreen() {
         actions={
           <>
             <Button variant="ghost" onClick={() => setConfirmNew(false)}>Cancel</Button>
-            <Button variant="primary" onClick={() => { setConfirmNew(false); startNew(); }}>Start fresh</Button>
+            <Button
+              variant="primary"
+              onClick={async () => {
+                setConfirmNew(false);
+                // audit I3: copies kept only in the autosave go to free slots first; every slot full, the box asks
+                const parked = await keepAutosavedCopies([], { writes: [NEW_GAME_WRITE] });
+                if (!parked) return;
+                parked.forEach((m) => useUI.getState().toast(m, 'success'));
+                startNew();
+              }}
+            >
+              Start fresh
+            </Button>
           </>
         }
       >

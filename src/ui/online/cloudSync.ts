@@ -446,8 +446,16 @@ export async function loadOnlineCopy(): Promise<boolean> {
     const g = useGame.getState().game;
     // chunk 9 (B1): what the two writes below would push out of every save goes to a slot first; its messages show once
     // the load is done (a change of aquarium clears the toasts: the review's confirmation, C)
-    const parked = await keepAutosavedCopies([incoming, ...(g && !g.isShowcase ? [g] : [])].map((x) => ({ saveId: x.saveId, hour: x.clock.hour })));
-    if (!parked) return false;
+    // audit I3: the writes in order (this device's game, as a kept copy when it is the same aquarium, then the online
+    // copy); with every slot full, the box asks before a copy is deleted
+    const mine = g && !g.isShowcase ? [{ saveId: g.saveId, hour: g.clock.hour, kept: g.saveId === incoming.saveId }] : [];
+    const parked = await keepAutosavedCopies([incoming, ...(g && !g.isShowcase ? [g] : [])].map((x) => ({ saveId: x.saveId, hour: x.clock.hour })), { writes: [...mine, { saveId: incoming.saveId, hour: incoming.clock.hour }] });
+    if (!parked) {
+      // audit I5: the box closes for now (the link as it was, so the next check asks again): Settings › Saves, where a
+      // slot can be freed, is behind it
+      useCloud.setState({ prompt: null });
+      return false;
+    }
     if (user()?.id !== u.id) return false;
     // this device's game into the autosave slot, so storing the online copy rotates it into the backup; the same
     // aquarium as a kept copy (chunk 9: one write, not two, so nothing else is pushed out), as the backup lists only

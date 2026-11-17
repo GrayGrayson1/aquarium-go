@@ -4,6 +4,7 @@
  * toast queue before loading, then call `reportLoadFailure` only if nothing explained the failure meanwhile.
  */
 import { useUI } from '@/state/ui';
+import { takeDeclined } from '../common/saves';
 
 /** The newest toast id right now (pass to `reportLoadFailure` after a failed load). */
 export function toastMark(): number {
@@ -13,6 +14,7 @@ export function toastMark(): number {
 
 /** Toast a generic failure unless a warning/danger toast already explained it since `mark`. */
 export function reportLoadFailure(mark: number): void {
+  if (takeDeclined()) return; // audit I3: the player cancelled (every slot full): nothing failed
   const ui = useUI.getState();
   if (ui.toasts.some((t) => t.id > mark && (t.kind === 'danger' || t.kind === 'warning'))) return;
   ui.toast('That save could not be opened. Try its previous copy, or an exported file.', 'danger');
