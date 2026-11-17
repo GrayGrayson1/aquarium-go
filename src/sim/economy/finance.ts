@@ -30,6 +30,7 @@ import { FOODS, eatsFood } from '@/data/catalog/foods'; // audit 2026-11-17: the
 import { ANIMAL_THRESHOLDS, needsFedFood, refreshFoodStatus } from '../tankStatus';
 import { isFoodAvailable } from './shop';
 import { cheapestKit } from './purchases'; // F7: the restart loan counts a whole kit
+import { takeDownCheck } from './sellBack'; // audit 2026-11-17 (G19 review): an empty tank's take-down as a way to raise cash
 
 const LEDGER_CAP = 400;
 const DAILY_CAP = 120;
@@ -116,7 +117,7 @@ export function dailyOperatingCost(state: GameState): OperatingCosts {
  * animal to the local store, list one, auction a tank, open to visitors, an empty tank's bill, trimming the bills, the
  * Market's first visit, holding steady, or the starter as a last resort.
  */
-export type CashIdeaKind = 'quick_sell' | 'list_tank' | 'list_animal' | 'visitors' | 'empty_tank' | 'trim' | 'decor' | 'open_market' | 'hold' | 'starter';
+export type CashIdeaKind = 'quick_sell' | 'list_tank' | 'list_animal' | 'visitors' | 'empty_tank' | 'take_down' | 'spare_gear' | 'trim' | 'decor' | 'open_market' | 'hold' | 'starter'; // take_down, spare_gear: audit 2026-11-17 (G19, G22)
 export interface CashIdea {
   kind: CashIdeaKind;
   text: string;
@@ -143,12 +144,21 @@ export function cashIdeas(state: GameState): CashIdea[] {
   }
   if (isUnlocked(state, 'visitors') && !state.facility.openToPublic) out.push({ kind: 'visitors', text: 'Open your doors to visitors for admission and tips.' });
   const empty = state.tankOrder.filter((id) => state.tanks[id] && !Object.values(state.creatures).some((c) => c.tankId === id && (c.status === 'alive' || c.status === 'listed')));
-  // lane:guide — a tank can only leave through a whole-aquarium auction, so only suggest selling one once that is open
+  // lane:guide — a tank is sold only through a whole-aquarium auction, so only suggest selling one once that is open (an
+  // empty one can also be taken down: below)
   const it = empty.length === 1 ? 'it' : 'them';
   // audit 2026-11-17 (F13) — "restock" only while purchases are possible (in debt they are paused)
   const restock = state.finance.money >= 0 ? `restock ${it}, or ` : '';
   const fix = isUnlocked(state, 'tank_auctions') ? `${restock}auction ${it} as a whole aquarium` : `${restock}switch off ${empty.length === 1 ? 'its' : 'their'} gear to cut the bill`;
   if (empty.length > 0) out.push({ kind: 'empty_tank', text: `${empty.length === 1 ? 'An empty tank still costs' : `${empty.length} empty tanks still cost`} money to run — ${fix}.` });
+  // audit 2026-11-17 (G19, G22 review) — the store takes an empty tank back for half the bare tank's price (Tanks), and
+  // buys spare stored gear at half its price (Build › Equipment, shown with a tank)
+  const downable = empty.map((id) => takeDownCheck(state, id)).filter((c) => c.ok);
+  if (downable.length) {
+    const sum = downable.reduce((a, c) => a + c.value, 0);
+    out.push({ kind: 'take_down', text: downable.length === 1 ? `Take down ${downable[0].called} in Tanks if you don’t need it: the store pays ${fmtMoney(sum)} for it.` : `Take down the empty tanks you don’t need in Tanks: the store pays up to ${fmtMoney(sum)} for all ${downable.length}.` });
+  }
+  if ((state.inventory?.equipment?.length ?? 0) > 0 && state.tankOrder.length > 0) out.push({ kind: 'spare_gear', text: 'Sell spare equipment from storage in Build › Equipment: the shop pays half its price.' });
   // audit 2026-11-17 (F13) — Build buys placed decor back at half its price (SELL_BACK_FRACTION)
   if (state.tankOrder.some((id) => (state.tanks[id]?.decor?.length ?? 0) > 0)) out.push({ kind: 'decor', text: 'Sell decor you can spare in Build › Decor: the shop pays half its price.' });
   if (state.tankOrder.some((id) => (state.tanks[id]?.equipment.length ?? 0) > 1)) out.push({ kind: 'trim', text: 'Trim running costs: a shorter light schedule and switching off gear you do not need lowers the daily bill.' });

@@ -11,7 +11,7 @@ import { newGame } from '@/sim/newGame';
 import type { StarterId } from '@/data/species';
 import { unlockProgress, guideHoldLine, evalCond, upgradeFacility } from '@/sim/facility';
 import { createTank } from '@/sim/tanks';
-import { marketAccess } from '@/sim/economy';
+import { marketAccess, cashIdeas } from '@/sim/economy';
 import { lockViews, UnlockHelpBody } from '@/ui/panels/common/UnlockHelp';
 import { GROUPS, UnlocksTab, researchLockKeys, researchTankLine } from '@/ui/panels/research/ResearchPanel';
 import { RESEARCH } from '@/data/research';
@@ -645,5 +645,19 @@ describe('G23 review fix: one tank without a spot is pointed at its own card', (
       if (note) break;
     }
     throw new Error('no count left exactly one tank without a spot');
+  });
+});
+
+describe('G19/G22 review: the ways to raise cash name taking an empty tank down and selling spare gear', () => {
+  it('an empty tank and a stored unit each become a cash idea, with the amount and where', () => {
+    const g = game('betta');
+    g.finance.money = 5000;
+    const r = buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true });
+    const half = Math.round(TANK_TIER_BY_ID.g10.price / 2);
+    expect(cashIdeas(g).find((i) => i.kind === 'take_down')?.text).toBe(`Take down the ${g.tanks[r.tankId!].name} in Tanks if you don’t need it: the store pays $${half} for it.`);
+    expect(cashIdeas(g).some((i) => i.kind === 'spare_gear')).toBe(false);
+    const t = g.tanks[g.tankOrder[0]];
+    removeEquipment(g, t.id, t.equipment[0].id);
+    expect(cashIdeas(g).find((i) => i.kind === 'spare_gear')?.text).toBe('Sell spare equipment from storage in Build › Equipment: the shop pays half its price.');
   });
 });

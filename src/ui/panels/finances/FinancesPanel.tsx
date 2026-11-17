@@ -299,6 +299,8 @@ const CASH_IDEA_LINK: Partial<Record<CashIdea['kind'], { panel: PanelId; target:
   list_tank: { panel: 'market', target: 'list:tank', label: 'New listing' },
   visitors: { panel: 'visitors', target: 'tab:visitors', label: 'Open Visitors' },
   empty_tank: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' },
+  take_down: { panel: 'tanks', target: null, label: 'Open Tanks' }, // audit 2026-11-17 (G19 review)
+  spare_gear: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' }, // audit 2026-11-17 (G22 review)
   trim: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' },
   decor: { panel: 'build', target: 'tab:decor', label: 'Open decor' },
   open_market: { panel: 'market', target: 'tab:shop', label: 'Open the Market' },
