@@ -21,6 +21,7 @@ import { currentCoachStep, friendWait } from '@/ui/tutorial/guideText';
 import { finaleLines, finaleNext } from '@/ui/tutorial/TutorialCoach';
 import { guideAim, type GuideScreen } from '@/ui/tutorial/guideTargets';
 import { tourStops } from '@/ui/tutorial/tourStops';
+import { guideMentions } from '@/ui/hud/ToolRail';
 import { eventLink } from '@/ui/hud/eventLinks';
 import { navDots } from '@/ui/common/notify';
 import { DOCK_ITEMS } from '@/ui/hud/Dock';
@@ -142,6 +143,17 @@ describe('A5, A10: the finale says where the quests and the guide’s reward are
     tutorialAdvance(g, 'opened_research');
     expect(navDots(g, DOCK_ITEMS).research).toEqual({ level: 'new', label: '1 quest reward to claim', target: 'tab:quests' });
     expect(eventLink({ kind: 'celebrate', text: 'Quest complete: Feeding routine — claim your reward!' })).toEqual({ panel: 'research', target: 'tab:quests', where: 'Claim it in Research › Quests.', label: 'Claim it' });
+  });
+});
+
+describe('A12: the axolotl’s feed step suggests the earthworm it names, not the pellets', () => {
+  it('only the instruction sentence counts', () => {
+    const body = tutorialChain('axolotl').find((s) => s.id === 'feed')!.body;
+    expect(guideMentions(body, 'Earthworms')).toBe(true);
+    expect(guideMentions(body, 'Axolotl Pellets')).toBe(false);
+    const clown = tutorialChain('ocellaris_clownfish').find((s) => s.id === 'feed')!.body;
+    expect(guideMentions(clown, 'Marine Pellets')).toBe(true);
+    expect(guideMentions(clown, 'Frozen Mysis Shrimp')).toBe(true);
   });
 });
 
