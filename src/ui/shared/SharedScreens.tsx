@@ -156,7 +156,7 @@ function useNewBuildOut(watch: boolean): 'new' | 'same' | null {
   return out;
 }
 
-/** Why the visit ended (§8 "Closing: …"), over wherever the player went back to; `build` and `outofstep` offer Reload. */
+/** Why the visit ended (§8 "Closing: …"), over wherever the player went back to; `build` offers Reload, RETRY_CLOSINGS Try again. */
 export function SharedClosingCard() {
   const closing = useShared((s) => s.closing);
   const club = useShared((s) => s.club?.name ?? '');
