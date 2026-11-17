@@ -21,6 +21,7 @@ import { MoreSheetBody } from '@/ui/hud/MoreSheet';
 import { ResearchPanel } from '@/ui/panels/research/ResearchPanel';
 import { decorWaterNote } from '@/ui/panels/build/decorWater';
 import { WATER_CLASS_BLURB } from '@/ui/panels/common/format';
+import { tankAttention, tankAttentionLevel } from '@/ui/common/notify';
 import { RESEARCH_BY_ID } from '@/data/research';
 
 const game = (starterId: StarterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
@@ -143,5 +144,18 @@ describe('G7: corals after Reef Systems: the link finds a tank that takes them, 
   it('the water types say which take corals', () => {
     expect(WATER_CLASS_BLURB.marine_fowlr).toMatch(/No corals or anemones\.$/);
     expect(WATER_CLASS_BLURB.marine_live_rock).toMatch(/Takes gorgonians and anemones, not reef corals\.$/);
+  });
+});
+
+describe('G8: a fading plant or coral is an alert', () => {
+  it('a coral under 40% health raises a watch item that opens the Life tab, with the beauty tip’s reason', () => {
+    const g = game('ocellaris_clownfish');
+    const t = g.tanks[g.tankOrder[0]];
+    t.decor.push({ id: 'd-test', defId: 'hammer_coral', x: 0, y: 0, z: 0, rotY: 0, scale: 1, seed: 1, health: 12, growth: 0.3 });
+    const item = tankAttention(g, t.id).items.find((i) => /hammer coral/.test(i.text));
+    expect(item).toMatchObject({ level: 'watch', tab: 'life', text: 'Your hammer coral is struggling (12% health): it needs stronger light than this tank provides.' }); // (a bright-light coral: the tip’s reason)
+    expect(tankAttentionLevel(g, t.id)).not.toBe('good');
+    t.decor.find((d) => d.id === 'd-test')!.health = 60;
+    expect(tankAttention(g, t.id).items.some((i) => /hammer coral/.test(i.text))).toBe(false);
   });
 });

@@ -11,7 +11,7 @@ import type { BackdropKind, DecorCategory, DecorDef, Environment, EquipmentKind,
 import { Button, Money, formatMoney, Toggle, Slider, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { TANK_TIERS } from '@/data/catalog/tanks';
-import { DECOR } from '@/data/catalog/decor';
+import { DECOR, isLiving } from '@/data/catalog/decor'; // isLiving: Audit 2026-11-17 (G8)
 import { EQUIPMENT, getEquipmentDef } from '@/data/catalog/equipment';
 import { SUBSTRATES } from '@/data/catalog/substrates';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
@@ -23,6 +23,7 @@ import type { CommandOf } from '@/sim/commands';
 import { tankKitPrice, kitEquipmentFor, kitSwapNote, type KitEquipment } from '@/sim/economy';
 import { findFreeSpot, waterClassLock, guideHoldLine } from '@/sim/facility';
 import { decorWaterNote } from './decorWater'; // Audit 2026-11-17 (G7)
+import { STRUGGLING_HEALTH } from '@/ui/common/notify'; // Audit 2026-11-17 (G8)
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { formatTemp } from '@/ui/common/format';
 import { usePanelGame, safe, useIsPhone, useTempText } from '../common/hooks';
@@ -582,7 +583,7 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
                     <span className="pn-small">{def?.name ?? titleCase(inst.defId)}</span>
                     {typeof inst.health === 'number' && (
                       <span className="pn-tiny pn-muted">
-                        Health {Math.round(inst.health)}
+                        Health {Math.round(inst.health)}%{inst.health < STRUGGLING_HEALTH && def && isLiving(def) ? ' · struggling' : '' /* Audit 2026-11-17 (G8) */}
                         {typeof inst.growth === 'number' ? ` · grown ${Math.round(inst.growth * 100)}%` : ''}
                       </span>
                     )}
@@ -723,6 +724,7 @@ function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameSta
         {h.nitrateUptake > 0 && <Chip tone="good">Eats nitrate</Chip>}
         {h.enrichment > 0.1 && <Chip tone="violet">Enrichment</Chip>}
         {d.anchors.some((a) => a.kind === 'host') && <Chip tone="coral">Host</Chip>}
+        {isLiving(d) && (d.lightNeed ?? 0) >= 0.5 && <Chip tone="watch">Needs bright light</Chip> /* Audit 2026-11-17 (G8) */}
         {d.hazards?.sharp && <Chip tone={longFins ? 'danger' : 'watch'} icon={<TriangleAlert size={10} />}>{longFins ? 'Tears long fins' : 'Sharp edges'}</Chip>}
         {d.hazards?.ingestible && <Chip tone="watch" icon={<TriangleAlert size={10} />}>Swallowable</Chip>}
       </span>
