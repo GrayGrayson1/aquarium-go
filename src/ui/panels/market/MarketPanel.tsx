@@ -21,7 +21,7 @@ import { SuppliesTab } from './Supplies';
 import { ListingsTab } from './Listings';
 import { CreateListing, type WizardSeed } from './CreateListing';
 import { TrendsTab } from './Trends';
-import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { NOT_FOUND, useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1); audit B21: NOT_FOUND
 
 export type MarketTab = 'shop' | 'supplies' | 'listings' | 'trends';
 const MARKET_TABS: readonly MarketTab[] = ['shop', 'supplies', 'listings', 'trends'];
@@ -71,8 +71,14 @@ export function MarketPanel() {
     } else if (target.startsWith('listing:')) {
       setTab('listings');
       setOfferId(null);
-      setFocusListing(target.slice(8));
       setWizard(null);
+      // audit B21: a link to a listing the market no longer keeps says so (the router does for addresses; the Log's
+      // and the bell's "View listing" come here directly)
+      const id = target.slice(8);
+      if (g && !g.market.listings.some((l) => l.id === id)) {
+        setFocusListing(null);
+        useUI.getState().toast(NOT_FOUND.listing.title, 'info', { detail: NOT_FOUND.listing.detail });
+      } else setFocusListing(id);
     } else if (target === 'sell' || target === 'list') {
       setTab('listings');
       setWizard({});
