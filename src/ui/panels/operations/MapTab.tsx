@@ -368,7 +368,7 @@ function Pipes({ ctx }: { ctx: Ctx }) {
   const show = L === 'all' || L === 'water' || L === 'food';
   if (!show) return null;
   return (
-    <div style={{ gridColumn: ctx.small ? undefined : '1 / -1', display: 'flex', flexDirection: 'column', gap: 4 }} aria-hidden>
+    <div style={{ gridColumn: ctx.small ? undefined : '1 / -1', display: 'flex', flexDirection: 'column', gap: 4 }}>
       {g.facility.water &&
         L !== 'food' &&
         rows.map((r) => (
@@ -376,14 +376,14 @@ function Pipes({ ctx }: { ctx: Ctx }) {
             <span style={{ minWidth: 150 }}>
               {r.area} · {g1(r.f)} gal fresh + {g1(r.s)} gal salt
             </span>
-            <span className={clsx('ops-pipe__line', held && isHeld(g, 'water') ? 'ops-pipe__line--held' : 'ops-pipe__line--fresh')} />
-            <span className={clsx('ops-pipe__line', held && isHeld(g, 'water') ? 'ops-pipe__line--held' : saltOut ? 'ops-pipe__line--short' : 'ops-pipe__line--salt')} />
+            <span aria-hidden className={clsx('ops-pipe__line', held && isHeld(g, 'water') ? 'ops-pipe__line--held' : 'ops-pipe__line--fresh')} />
+            <span aria-hidden className={clsx('ops-pipe__line', held && isHeld(g, 'water') ? 'ops-pipe__line--held' : saltOut ? 'ops-pipe__line--short' : 'ops-pipe__line--salt')} />
           </div>
         ))}
       {g.facility.food && L !== 'water' && (
         <div className="ops-pipe">
           <span style={{ minWidth: 150 }}>Live food · to the dosers</span>
-          <span className={clsx('ops-pipe__line', held && isHeld(g, 'food') ? 'ops-pipe__line--held' : 'ops-pipe__line--food')} />
+          <span aria-hidden className={clsx('ops-pipe__line', held && isHeld(g, 'food') ? 'ops-pipe__line--held' : 'ops-pipe__line--food')} />
         </div>
       )}
     </div>

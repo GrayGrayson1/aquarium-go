@@ -229,9 +229,11 @@ function LockedStaff({ g }: { g: GameState }) {
 
 function Stars({ skill }: { skill: number }) {
   return (
-    <span className="st-stars" aria-label={`Skill ${skill} of 5`} title={`Skill ${skill} of 5`}>
-      <span className="st-stars__on">{skillStars(skill)}</span>
-      <span className="st-stars__off">{'★'.repeat(Math.max(0, 5 - skill))}</span>
+    <span className="st-stars" title={`Skill ${skill} of 5`}>
+      {/* Audit 2026-11-17 (J36): a plain span's aria-label isn't read; the glyphs were ("black star" five times) */}
+      <span className="st-stars__on" aria-hidden>{skillStars(skill)}</span>
+      <span className="st-stars__off" aria-hidden>{'★'.repeat(Math.max(0, 5 - skill))}</span>
+      <span className="st-sr">Skill {skill} of 5</span>
     </span>
   );
 }
@@ -310,7 +312,7 @@ function StaffCard({ g, m }: { g: GameState; m: StaffMember }) {
       {m.skill < 5 && (
         <div className="st-xp" title="Experience grows with every day on the job">
           <span className="pn-tiny pn-muted">
-            <Sparkles size={11} aria-hidden /> Experience {Math.floor(m.xp)} / {need} days to {skillStars(m.skill + 1)}
+            <Sparkles size={11} aria-hidden /> Experience {Math.floor(m.xp)} / {need} days to <span aria-hidden>{skillStars(m.skill + 1)}</span><span className="st-sr">skill {m.skill + 1}</span>
           </span>
           <Bar value={(m.xp / Math.max(1, need)) * 100} tone="gold" label={`${m.name} experience`} thin />
         </div>

@@ -153,7 +153,7 @@ function ResultCard({ g, e, open, isNew, onToggle }: { g: GameState; e: ShowEntr
                 <li key={l}>{l}</li>
               ))}
             </ul>
-            <div className="sh-crit" aria-label="Points by criterion">
+            <div className="sh-crit" role="group" aria-label="Points by criterion">
               {e.card.criteria.map((c) =>
                 c.key === 'judge' ? (
                   <div key={c.key} className="sh-crit__row sh-crit__row--eye">

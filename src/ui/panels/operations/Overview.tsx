@@ -106,7 +106,7 @@ function ProblemsCard({ g, issues, counts, nav, small }: { g: GameState; issues:
       <section className={`ops-card ops-card--${counts.danger ? 'danger' : 'watch'}`} data-testid="ops-problems">
         <Kicker
           end={
-            <button type="button" className="ops-link" data-testid="ops-problems-all" onClick={() => nav.view('issues')}>
+            <button type="button" className="ops-link" data-testid="ops-problems-all" aria-label="All problems" onClick={() => nav.view('issues')}>
               All <ChevronRight size={14} aria-hidden />
             </button>
           }
@@ -144,7 +144,7 @@ function ProblemsCard({ g, issues, counts, nav, small }: { g: GameState; issues:
           </div>
         </section>
       ))}
-      <button type="button" className="ops-link" data-testid="ops-problems-all" onClick={() => nav.view('issues')}>
+      <button type="button" className="ops-link" data-testid="ops-problems-all" aria-label="All problems" onClick={() => nav.view('issues')}>
         All <ChevronRight size={14} aria-hidden />
       </button>
     </div>

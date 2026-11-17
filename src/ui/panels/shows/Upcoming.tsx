@@ -100,7 +100,12 @@ export function ShowCard({ g, show, onEnter }: { g: GameState; show: Show; onEnt
             <span key={cl.classId} className={clsx('sh-class-chip', locked && 'is-locked', !locked && n === 0 && 'is-none')} title={locked ? 'Aquascape classes open with Aquascape Awards' : def.blurb}>
               {locked && <Lock size={11} aria-hidden />}
               {def.short}
-              {open && !locked && <b aria-label={`${n} of yours eligible`}>{n}</b>}
+              {open && !locked && (
+                <b>
+                  <span aria-hidden>{n}</span>
+                  <span className="pn-sr">{n} of yours eligible</span>
+                </b>
+              )}
             </span>
           );
         })}

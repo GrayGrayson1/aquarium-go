@@ -38,7 +38,7 @@ export function TankKeeperLine({ game, tank }: { game: GameState; tank: Tank }) 
     >
       <StaffAvatar seed={keeper.avatarSeed} role={keeper.role} size={22} name={keeper.name} />
       <span className="st-keeperline__text">
-        Cared for by <b>{firstName}</b> (Aquarist <span className="st-stars"><span className="st-stars__on">{skillStars(keeper.skill)}</span></span>)
+        Cared for by <b>{firstName}</b> (<span className="st-sr">{keeper.skill}-star </span>Aquarist <span className="st-stars" aria-hidden><span className="st-stars__on">{skillStars(keeper.skill)}</span></span>)
       </span>
     </button>
   );

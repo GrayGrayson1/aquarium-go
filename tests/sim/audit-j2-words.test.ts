@@ -18,6 +18,7 @@ import { tierLadder } from '@/ui/common/ops';
 import { whenPhrase, saltBuyLabel } from '@/ui/panels/operations/issues';
 import { money as showMoney } from '@/ui/panels/shows/util';
 import { LOAD_FAILED, onlineLoadError } from '@/ui/online/cloudSync';
+import { SHARED_WORDS } from '@/ui/shared/words';
 
 const src = (path: string) => readFileSync(new URL(`../../src/${path}`, import.meta.url), 'utf8');
 
@@ -250,5 +251,29 @@ describe('Audit 2026-11-17 (J35): an online save that won’t load gives the rig
     expect(onlineLoadError({})).toBe(LOAD_FAILED);
     expect(onlineLoadError({ code: 'too_new', error: 'A newer version saved this.' })).toBe('A newer version saved this.');
     expect(onlineLoadError({ code: 'storage', error: 'Couldn’t save — browser storage refused the write.' })).toBe('Couldn’t save — browser storage refused the write.');
+  });
+});
+
+describe('Audit 2026-11-17 (J36): screen readers hear words, not glyphs or ids', () => {
+  it('names where they are announced, and no star glyphs read aloud', () => {
+    const cases: [string, string, string][] = [
+      ['ui/panels/operations/Overview.tsx', 'data-testid="ops-problems-all" onClick', 'data-testid="ops-problems-all" aria-label="All problems"'],
+      ['ui/panels/visitors/StaffTab.tsx', 'aria-label={`Skill ${skill} of 5`}', '<span className="st-sr">Skill {skill} of 5</span>'],
+      ['ui/panels/visitors/StaffTab.tsx', 'days to {skillStars(m.skill + 1)}', '<span className="st-sr">skill {m.skill + 1}</span>'],
+      ['ui/panels/visitors/TankKeeperLine.tsx', '(Aquarist <span className="st-stars">', '<span className="st-sr">{keeper.skill}-star </span>Aquarist <span className="st-stars" aria-hidden>'],
+      ['ui/panels/shows/Upcoming.tsx', '<b aria-label=', '<span className="pn-sr">{n} of yours eligible</span>'],
+      ['ui/panels/shows/Results.tsx', 'className="sh-crit" aria-label', 'className="sh-crit" role="group" aria-label="Points by criterion"'],
+      ['ui/shared/SharedMoney.tsx', 'aria-label={W.giveMoney} value={to.id}', 'aria-label={W.giveTo} value={to.id}'],
+      ['ui/panels/tanks/TanksPanel.tsx', 'label="Water class"', '<Select<WaterClass> label="Water type"'],
+      ['ui/panels/visitors/VisitorsPanel.tsx', '`day ${h.day} ${h.count}`', '`Day ${h.day}: ${h.count}`'],
+      ['ui/panels/operations/MapTab.tsx', "flexDirection: 'column', gap: 4 }} aria-hidden>", "<span aria-hidden className={clsx('ops-pipe__line'"],
+    ];
+    for (const [file, gone, now] of cases) {
+      const s = src(file);
+      expect(s, `${file}: ${gone}`).not.toContain(gone);
+      expect(s, `${file}: ${now}`).toContain(now);
+    }
+    expect(SHARED_WORDS.giveTo).toBe('Give money to');
+    expect(SHARED_WORDS.giveTo).not.toBe(SHARED_WORDS.giveMoney);
   });
 });

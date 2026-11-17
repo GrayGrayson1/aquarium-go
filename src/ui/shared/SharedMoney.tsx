@@ -195,7 +195,7 @@ export function SharedMoneyBody({ initialAsking = false }: { initialAsking?: boo
               act({ k: 'giveMoney', member: to.id, name: to.name, amount: giveAmount }, { sound: 'coin', after: (r) => r?.ok && setGive('') });
             }}
           >
-            <select className="ag-input" aria-label={W.giveMoney} value={to.id} onChange={(e) => setGiveTo(e.target.value)} data-testid="shared-give-member">
+            <select className="ag-input" aria-label={W.giveTo} value={to.id} onChange={(e) => setGiveTo(e.target.value)} data-testid="shared-give-member">
               {limited.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
