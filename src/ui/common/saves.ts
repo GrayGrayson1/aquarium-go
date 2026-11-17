@@ -70,6 +70,23 @@ export async function saveNow(slot = 'auto', toast = true): Promise<boolean> {
 }
 
 /**
+ * Audit 2026-11-17, I10 (B-123): the save before "Save and return to title". True when the player may go: it landed, or
+ * it was refused on purpose (a scenario lab world, which never saves over the autosave; another tab played this
+ * aquarium further). Otherwise it says why, and false: leaving would lose the play since the last save.
+ */
+export async function saveBeforeLeaving(): Promise<boolean> {
+  try {
+    const r = await saveCurrentGame('auto', { toast: false });
+    if (r.ok || r.code === 'scenario' || r.code === 'stale') return true;
+    useUI.getState().toast(r.message, 'danger');
+  } catch (e) {
+    console.warn('[ui] save failed', e);
+    useUI.getState().toast('Saving failed — please try again.', 'danger');
+  }
+  return false;
+}
+
+/**
  * Load a slot (with bounded offline catch-up) and enter the game.
  * lane:fix-core (P7-03/S14-05) — a game that is running is autosaved first, exactly like "Save and return to title",
  * so browsing saves mid-game can never throw away the last minute of play. Chunk 9 (E1): when the slot holds another
@@ -118,7 +135,13 @@ export async function loadIntoGame(slot: string): Promise<GameState | null> {
         if (saveFirst) {
           wrote = true; // tried: even a write that failed part-way may have changed the slot this copy came from
           const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept });
-          if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
+          // audit I10 (B-123): a save that didn't land stops the load (it would lose the play since the last save) and
+          // says why; another tab that played this aquarium further ('stale') goes on, as before
+          if (!saved.ok && saved.code !== 'stale') {
+            showParked();
+            useUI.getState().toast(saved.message, 'danger');
+            return null;
+          }
         }
       } catch (e) {
         console.warn('[ui] autosave before load failed', e);

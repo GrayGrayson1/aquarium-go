@@ -38,7 +38,7 @@ import { sfx } from '@/audio/sfx';
 import { Sheet } from '../common/Sheet';
 import { Button, Row, Segmented, Slider, Tabs, Toggle, Section, Modal } from '../kit';
 import { usePrefs } from '../common/prefs';
-import { listSlots, saveNow, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, timeAgo, isSameGame, loadKeepAdvice, freeSaveSlot, type SaveMeta } from '../common/saves';
+import { listSlots, saveNow, saveBeforeLeaving, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, timeAgo, isSameGame, loadKeepAdvice, freeSaveSlot, type SaveMeta } from '../common/saves';
 import { SaveRow } from '../screens/LoadDialog';
 import { useShell } from '../common/shellStore';
 import { buildDetail, versionLabel } from '../common/version';
@@ -390,7 +390,8 @@ function SoloSavesTab() {
           <Button
             variant="danger"
             onClick={async () => {
-              await saveNow('auto', false);
+              // audit I10: a save that didn't land keeps the player here, and the toast says why
+              if (!(await saveBeforeLeaving())) return;
               sfx('close');
               useUI.getState().set({ panel: null, screen: 'title', selectedCreatureId: null, photoMode: false, partyMode: false, hudHidden: false, tool: 'none' });
             }}

@@ -96,3 +96,36 @@ describe('audit 2026-11-17, I2: Autosave off, leaving with unsaved play', () => 
     }
   });
 });
+
+describe('audit 2026-11-17, I10 (B-123): a save that didn’t land is never ignored', () => {
+  it('Load stops and says why; "Save and return to title" says why and keeps the player in the game', async () => {
+    const { loadIntoGame, saveBeforeLeaving } = await import('@/ui/common/saves');
+    const { useSettings } = await import('@/state/settings');
+    const mem = createMemoryBackend();
+    setStorageBackend(mem);
+    const a = newGame({ starterId: 'betta', starterName: 'Here', seed: 34 });
+    const b = newGame({ starterId: 'betta', starterName: 'There', seed: 35 });
+    expect((await saveGame(a, 'auto')).ok).toBe(true);
+    expect((await saveGame(b, 'slot1')).ok).toBe(true);
+    const shown = structuredClone(a);
+    shown.clock.hour += 24;
+    useSettings.setState({ autosave: true });
+    useGame.getState().setGame(shown);
+    useUI.setState({ screen: 'game', toasts: [] });
+    try {
+      // the storage now refuses every write (full, or a wedged database), with nothing to fall back to
+      setStorageBackend({ ...mem, set: async () => Promise.reject(new Error('refused')) });
+      expect(await loadIntoGame('slot1')).toBeNull();
+      expect(useUI.getState().toasts.map((t) => t.text)).toContain("Couldn't save — browser storage refused the write.");
+      expect(useGame.getState().game!.saveId).toBe(a.saveId); // still the game on screen
+      useUI.setState({ toasts: [] });
+      expect(await saveBeforeLeaving()).toBe(false);
+      expect(useUI.getState().toasts.map((t) => t.text)).toContain("Couldn't save — browser storage refused the write.");
+      // a save that lands lets the player go
+      setStorageBackend(mem);
+      expect(await saveBeforeLeaving()).toBe(true);
+    } finally {
+      useUI.setState({ screen: 'boot', toasts: [] });
+    }
+  });
+});
