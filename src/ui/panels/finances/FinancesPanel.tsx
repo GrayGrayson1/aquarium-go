@@ -14,6 +14,7 @@ import { Chip, Seg, EmptyState, SectionHead, Callout, Bar } from '../common/part
 import { IncomeChart, type DayPoint } from './IncomeChart';
 import { orderedTanks, dailyCost } from '../common/derive';
 import { LEDGER_LABEL, dayOfHour, relTime, formatSpan } from '../common/format';
+import { needsCashIdeas } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F1)
 
 type LedgerFilter = 'all' | 'income' | 'expenses';
 
@@ -67,7 +68,8 @@ export function FinancesPanel() {
   const debtHours = g.finance.debtSinceHour != null ? g.clock.hour - g.finance.debtSinceHour : 0;
   const loan = g.finance.loan;
   const runway = data.ops.total > 0 ? money / data.ops.total : Infinity;
-  const tips = inDebt || runway < 3 ? safe(() => cashSuggestions(g), []) : [];
+  // audit 2026-11-17 (F1) — also when money stands between the animals and their food (Supplies' "Ways to raise cash")
+  const tips = inDebt || runway < 3 || safe(() => needsCashIdeas(g), false) ? safe(() => cashSuggestions(g), []) : [];
   // lane:fix-integrate-ui — an empty room the player can't restock: the club lends a restart at its second midnight
   // (the first one only notes it), so say which midnight (P5-08)
   const stranded = safe(() => restartNeed(g), null);

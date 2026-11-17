@@ -23,8 +23,8 @@ import { makeContext } from '../context';
 import { MAX_SUBSTEP_HOURS } from '../time';
 
 // ── finance helpers (used by every lane) ──
-export { spend, earn, canAfford, stepFinance, dailyOperatingCost, cashSuggestions, restartNeed, LOAN_AFTER_DEBT_HOURS, LOAN_REPAY_SHARE, RESTART_AFTER_HOURS } from './finance';
-export type { OperatingCosts } from './finance';
+export { spend, earn, canAfford, stepFinance, dailyOperatingCost, cashSuggestions, cashIdeas, restartNeed, LOAN_AFTER_DEBT_HOURS, LOAN_REPAY_SHARE, RESTART_AFTER_HOURS } from './finance';
+export type { OperatingCosts, CashIdea, CashIdeaKind } from './finance';
 
 // ── valuation ──
 export { creatureValue, tankValuation, bundleValue, quickSellQuote, morphRarity, lineageSummary, livestockSummary, careDifficultyLabel, tankSignature } from './valuation';

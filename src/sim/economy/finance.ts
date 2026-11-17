@@ -103,37 +103,55 @@ export function dailyOperatingCost(state: GameState): OperatingCosts {
 
 // ───────────────────────────── suggestions when cash is short ─────────────────────────────
 
-/** Concrete, currently-possible ways to raise cash (used in debt warnings and by the UI). */
-export function cashSuggestions(state: GameState): string[] {
-  const out: string[] = [];
+/**
+ * What a way to raise cash is about, so a screen can link it to the place it happens (audit 2026-11-17, F1/F2): sell an
+ * animal to the local store, list one, auction a tank, open to visitors, an empty tank's bill, trimming the bills, the
+ * Market's first visit, holding steady, or the starter as a last resort.
+ */
+export type CashIdeaKind = 'quick_sell' | 'list_tank' | 'list_animal' | 'visitors' | 'empty_tank' | 'trim' | 'open_market' | 'hold' | 'starter';
+export interface CashIdea {
+  kind: CashIdeaKind;
+  text: string;
+  /** The animal a quick sale is about. */
+  creatureId?: string;
+}
+
+/** Concrete, currently-possible ways to raise cash, each with its kind (cashSuggestions gives the words alone). */
+export function cashIdeas(state: GameState): CashIdea[] {
+  const out: CashIdea[] = [];
   const candidates = Object.values(state.creatures).filter((c) => c.status === 'alive' && !c.isStarter && !c.favorite);
-  let best: { name: string; value: number } | null = null;
+  let best: { id: string; name: string; value: number } | null = null;
   for (const c of candidates) {
     const q = quickSellQuote(state, [c.id]);
-    if (q.ok && (!best || q.total > best.value)) best = { name: c.name, value: q.total };
+    if (q.ok && (!best || q.total > best.value)) best = { id: c.id, name: c.name, value: q.total };
   }
-  if (best && best.value >= 1) out.push(`Quick-sell ${best.name} to ${LOCAL_FISH_STORE} (about ${fmtMoney(best.value)} today).`);
+  if (best && best.value >= 1) out.push({ kind: 'quick_sell', creatureId: best.id, text: `Quick-sell ${best.name} to ${LOCAL_FISH_STORE} (about ${fmtMoney(best.value)} today).` });
   const listable = state.tankOrder.filter((id) => state.tanks[id] && !state.tanks[id].listingId);
   if (isUnlocked(state, 'tank_auctions') && listable.length > 0) {
-    out.push('List a whole aquarium at auction — finished displays attract the biggest bids.');
+    out.push({ kind: 'list_tank', text: 'List a whole aquarium at auction — finished displays attract the biggest bids.' });
   } else if (isUnlocked(state, 'market_listings')) {
-    out.push('List a spare animal on the marketplace and let buyers bid.');
+    out.push({ kind: 'list_animal', text: 'List a spare animal on the marketplace and let buyers bid.' });
   }
-  if (isUnlocked(state, 'visitors') && !state.facility.openToPublic) out.push('Open your doors to visitors for admission and tips.');
+  if (isUnlocked(state, 'visitors') && !state.facility.openToPublic) out.push({ kind: 'visitors', text: 'Open your doors to visitors for admission and tips.' });
   const empty = state.tankOrder.filter((id) => state.tanks[id] && !Object.values(state.creatures).some((c) => c.tankId === id && (c.status === 'alive' || c.status === 'listed')));
   // lane:guide — a tank can only leave through a whole-aquarium auction, so only suggest selling one once that is open
   const it = empty.length === 1 ? 'it' : 'them';
   const fix = isUnlocked(state, 'tank_auctions') ? `restock ${it}, or auction ${it} as a whole aquarium` : `restock ${it}, or switch off ${empty.length === 1 ? 'its' : 'their'} gear to cut the bill`;
-  if (empty.length > 0) out.push(`${empty.length === 1 ? 'An empty tank still costs' : `${empty.length} empty tanks still cost`} money to run — ${fix}.`);
-  if (state.tankOrder.some((id) => (state.tanks[id]?.equipment.length ?? 0) > 1)) out.push('Trim running costs: a shorter light schedule and switching off gear you do not need lowers the daily bill.');
-  if (!isUnlocked(state, 'market_listings')) out.push('Visit the Market once to open listings, where buyers bid — healthy offspring sell well.');
+  if (empty.length > 0) out.push({ kind: 'empty_tank', text: `${empty.length === 1 ? 'An empty tank still costs' : `${empty.length} empty tanks still cost`} money to run — ${fix}.` });
+  if (state.tankOrder.some((id) => (state.tanks[id]?.equipment.length ?? 0) > 1)) out.push({ kind: 'trim', text: 'Trim running costs: a shorter light schedule and switching off gear you do not need lowers the daily bill.' });
+  if (!isUnlocked(state, 'market_listings')) out.push({ kind: 'open_market', text: 'Visit the Market once to open listings, where buyers bid — healthy offspring sell well.' });
   if (out.length === 0) {
     const starter = Object.values(state.creatures).find((c) => c.status === 'alive' && (c.isStarter || c.favorite));
     const q = starter ? quickSellQuote(state, [starter.id]) : null;
-    out.push('Hold steady: bills keep running, but nothing is taken from you, and help is available if debt lasts a few days.');
-    if (starter && q?.ok) out.push(`As a last resort, ${LOCAL_FISH_STORE} would pay about ${fmtMoney(q.total)} for ${starter.name}.`);
+    out.push({ kind: 'hold', text: 'Hold steady: bills keep running, but nothing is taken from you, and help is available if debt lasts a few days.' });
+    if (starter && q?.ok) out.push({ kind: 'starter', creatureId: starter.id, text: `As a last resort, ${LOCAL_FISH_STORE} would pay about ${fmtMoney(q.total)} for ${starter.name}.` });
   }
   return out;
+}
+
+/** Concrete, currently-possible ways to raise cash (used in debt warnings and by the UI). */
+export function cashSuggestions(state: GameState): string[] {
+  return cashIdeas(state).map((i) => i.text);
 }
 
 // ───────────────────────────── stranded: empty room, no way back ─────────────────────────────
