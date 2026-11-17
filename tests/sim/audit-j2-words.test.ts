@@ -277,3 +277,29 @@ describe('Audit 2026-11-17 (J36): screen readers hear words, not glyphs or ids',
     expect(SHARED_WORDS.giveTo).not.toBe(SHARED_WORDS.giveMoney);
   });
 });
+
+describe('Audit 2026-11-17 (J37): the species pages read as sentences', () => {
+  it('broken sentences, agreement, stray capitals, tone and the guide’s temperature line', () => {
+    const sp = (id: string) => getSpecies(id);
+    const compat = (id: string, other: string) => sp(id).exceptionRules.find((o) => o.other === other)?.reason;
+    expect(compat('clown_loach', 'ornate_bichir')).toMatch(/; keep only loaches too big for it to swallow\.$/);
+    expect(compat('motoro_stingray', 'oscar')).toMatch(/: keep them together only in a very large tank\.$/);
+    expect(compat('silver_mono', 'queen_angelfish')).toMatch(/: keep them together only in a very large tank, with the angel added last\.$/);
+    expect(compat('lined_seahorse', 'tag:tang')).not.toContain('This animal is likely');
+    expect(compat('peacock_mantis_shrimp', 'tag:fish_large')).toMatch(/It’s best in a tank of its own\.$/);
+    expect(compat('melanurus_wrasse', 'tag:shrimp_dwarf')).toBe('Picks off small ornamental shrimp (such as dwarf shrimp) and their young.');
+    expect(sp('oscar').encyclopedia.compatibilityNotes).toContain('so keep it away from small fish, shrimp, snails and frogs.');
+    expect(JSON.stringify(sp('lyretail_anthias'))).toContain('Keep one male per tank; two males fight.');
+    expect(JSON.stringify(sp('sailfin_tang'))).toContain('When threatened, it raises');
+    expect(sp('mystery_snail').breeding.notes).toContain('climbs out of the water');
+    expect(sp('comet_goldfish').conservation?.status).toBe('Least Concern (wild species, IUCN 2010); rated a high invasion risk in the US');
+    expect(sp('ocellaris_clownfish').starterBlurb).toMatch(/— and a secret: every clownfish starts life as a male\.$/);
+    for (const id of ['brownbanded_bamboo_shark', 'epaulette_shark', 'coral_catshark']) expect(JSON.stringify(sp(id))).not.toContain('real keepers');
+    expect(JSON.stringify(sp('betta'))).toContain('follows your cursor or finger');
+    for (const id of ['axolotl', 'fighting_conch', 'peppermint_shrimp', 'cleaner_shrimp', 'chocolate_tang', 'kole_tang']) {
+      const e = sp(id).encyclopedia as unknown as Record<string, unknown>;
+      for (const k of ['funFact', 'keeperTip', 'breedingOverview', 'summary']) expect(String(e[k] ?? ''), `${id}.${k}`).not.toContain('"');
+    }
+    expect(src('data/species/guide.ts')).toContain('No heater in a normal room; it needs cooler water than a tropical tank.');
+  });
+});

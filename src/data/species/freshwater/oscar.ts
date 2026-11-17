@@ -192,7 +192,7 @@ export const oscar: SpeciesDefinition = {
     nativeHabitat: 'Quiet, shallow, mud- and sand-bottomed water in the Amazon basin, where it hunts small fish, crayfish, worms and insect larvae.',
     socialStructure: 'Lives alone or in a bonded pair that forms by itself from a group of young.',
     tankNeeds: 'A six-foot tank of 180 gallons or more for one adult (a pair wants more), deep sand, a few heavy rocks, a guarded heater, strong filtration and a tight lid: it jumps.',
-    compatibilityNotes: 'Eats anything that fits in its mouth: no small fish, shrimp, snails or frogs. Big, robust fish of its own size can share a large tank; never with a fahaka puffer.',
+    compatibilityNotes: 'Eats anything that fits in its mouth, so keep it away from small fish, shrimp, snails and frogs. Big, robust fish of its own size can share a large tank; never with a fahaka puffer.',
     breedingOverview: 'A pair cleans a flat rock and lays hundreds to thousands of eggs. Both parents guard them and move the young to pits they dig in the sand.',
     conservationNote: 'Least Concern (IUCN 2020). It has become an invasive species in Florida, Hawaii and Puerto Rico: never release one.',
     funFact: 'Wild oscars sometimes lie on their side on the bottom as if dead, then snap up the small fish that come to investigate.',

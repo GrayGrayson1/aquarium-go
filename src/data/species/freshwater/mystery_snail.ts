@@ -74,7 +74,7 @@ export const mysterySnail: SpeciesDefinition = {
     predationWithoutNursery: 0.35,
     nurseryRequired: false,
     maxRaisedPerClutch: 8,
-    notes: 'Sexes are separate and females store sperm for months. At night the female climbs OUT of the water and lays a raspberry-like pink clutch of 200–600 eggs (young females 50–100) on glass or lids just above the waterline; the eggs need humid air and pale as they age. They hatch in about 2–3 weeks and the 2–3 mm babies drop into the water, where fish often eat them. Keeping the water within about 4 cm of the rim leaves no room to lay, which prevents clutches.',
+    notes: 'Sexes are separate and females store sperm for months. At night the female climbs out of the water and lays a raspberry-like pink clutch of 200–600 eggs (young females 50–100) on glass or lids just above the waterline; the eggs need humid air and pale as they age. They hatch in about 2–3 weeks and the 2–3 mm babies drop into the water, where fish often eat them. Keeping the water within about 4 cm of the rim leaves no room to lay, which prevents clutches.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'none',

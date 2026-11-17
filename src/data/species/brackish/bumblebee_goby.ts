@@ -161,7 +161,7 @@ export const bumblebeeGoby: SpeciesDefinition = {
     compatibilityNotes: 'Best in a species tank: too small, slow and picky to compete with boisterous feeders, easily bullied by puffers and eaten by archerfish. They may pick off the odd shrimplet.',
     breedingOverview: 'A cave spawner: the male guards 100–200 eggs stuck to the roof of a cave or shell until they hatch after about a week. The tiny fry need infusoria, then baby brine shrimp, in a nursery tank.',
     conservationNote: 'Their mangrove and estuary habitats are shrinking. Keep and breed them responsibly, and never release them.',
-    funFact: 'Like most gobies, its pelvic fins are fused into a little suction disc — perfect for perching on stones, or even the glass, in a tidal current. There are about ten Brachygobius species, all sold as “bumblebees”.',
+    funFact: 'Like most gobies, it has its pelvic fins fused into a little suction disc — perfect for perching on stones, or even the glass, in a tidal current. There are about ten Brachygobius species, all sold as “bumblebees”.',
     inGameBehavior: 'Perches on stones, roots and glass, hops from spot to spot, flares at rivals, and males guard their cave full of eggs.',
     feedingNote: 'A slow, picky feeder that pounces from its perch. Feed small frozen or live food daily — bloodworms, daphnia, brine shrimp, mysis or baby brine shrimp. It ignores flakes and pellets, so an autofeeder can’t feed it.',
     keeperTip: 'Ask the shop to show them eating frozen food before you buy. Many are wild-caught and only recognise live food at first, and a thin, pinched belly is a warning sign.',

@@ -237,7 +237,7 @@ export const betta: SpeciesDefinition = {
     breedingOverview: 'The male builds a bubble nest, embraces the female beneath it, and guards eggs and fry alone.',
     conservationNote: 'Wild populations are threatened; domestic bettas should never be released into waterways.',
     funFact: 'The labyrinth organ lets bettas breathe atmospheric air — they will drown if they cannot reach the surface.',
-    inGameBehavior: 'Patrols its territory, flares at rivals (and its own reflection), follows your cursor, and builds bubble nests when content.',
+    inGameBehavior: 'Patrols its territory, flares at rivals (and its own reflection), follows your cursor or finger, and builds bubble nests when content.',
     feedingNote: 'A surface feeder. Small pellets or flakes make a good staple, with thawed bloodworms, brine shrimp, daphnia or mysis as treats. Feed a few pellets once or twice a day; an autofeeder with pellets or flakes suits it.',
     keeperTip: 'Long fins tire easily: baffle a strong filter outlet with a sponge, or use a gentle sponge filter, so it can swim and build bubble nests without fighting the current.',
   },

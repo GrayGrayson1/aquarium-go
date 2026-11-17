@@ -145,7 +145,7 @@ export const lyretailAnthias: SpeciesDefinition = {
     nativeHabitat: 'Clear lagoons, channels and outer slopes 0–55 m deep, in big plankton-feeding groups over coral heads.',
     socialStructure: 'Harems of one male with several females inside larger shoals. If the male is lost, the dominant female becomes the new male.',
     tankNeeds: 'A six-foot tank (125 gallons or more) with open water above plenty of rock, strong flow, a tight lid and several small feedings every day.',
-    compatibilityNotes: 'Reef-safe and safe with invertebrates. Keep one male per tank; a second is fought. Feeds fast, so slow feeders like seahorses lose out.',
+    compatibilityNotes: 'Reef-safe and safe with invertebrates. Keep one male per tank; two males fight. Feeds fast, so slow feeders like seahorses lose out.',
     breedingOverview: 'Spawns nightly at dusk, scattering floating eggs; the long larval stage has only been reared experimentally.',
     conservationNote: 'Least Concern (IUCN 2015). All aquarium anthias are wild-caught.',
     funFact: 'A group that loses its male makes a new one in two to four weeks; a group of females kept with no male at all can take most of a year.',

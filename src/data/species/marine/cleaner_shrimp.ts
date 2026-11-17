@@ -149,7 +149,7 @@ export const cleanerShrimp: SpeciesDefinition = {
     compatibilityNotes: 'Peaceful and reef-safe. Lionfish, groupers, hawkfish, triggers and mantis shrimp eat it. It will not bother corals, snails or fish.',
     breedingOverview: 'Shrimp carry green eggs under the tail and release larvae at night every few weeks, but the larvae drift for about half a year and almost never survive in aquaria.',
     conservationNote: 'Not assessed by the IUCN. Nearly all are wild-caught because larval rearing is so hard, which makes good care especially important.',
-    funFact: 'Cleaners rock their white legs side to side as a "don’t eat me, I’m your cleaner" signal — and do it far more often when the client is a predator.',
+    funFact: 'Cleaners rock their white legs side to side as a “don’t eat me, I’m your cleaner” signal — and do it far more often when the client is a predator.',
     inGameBehavior: 'Holds a station on the rockwork, rocks its legs, and climbs over visiting fish to pick them clean. It will even try to clean your hand.',
     feedingNote: 'A scavenger that takes almost any meaty food: thawed mysis and brine shrimp, flakes, and small or sinking pellets. It lives mostly on leftovers, so autofeeder flakes and pellets suit it; add frozen food a few times a week.',
     keeperTip: 'Drip-acclimate it over about an hour. Shrimp cope badly with sudden changes in salinity and pH, and a rushed transfer is a common cause of early losses.',

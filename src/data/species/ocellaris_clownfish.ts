@@ -16,7 +16,7 @@ export const ocellarisClownfish: SpeciesDefinition = {
   nativeRegion: 'Eastern Indian Ocean and western Pacific — Andaman Sea and north-west Australia through Southeast Asia to the Philippines, Taiwan and the Ryukyu Islands',
   isStarter: true,
   starterIdentity: 'The Reef Partner',
-  starterBlurb: 'Your doorway to saltwater. A hardy captive-bred reef fish with a hierarchy, a partner to find — and a secret about sex.',
+  starterBlurb: 'Your doorway to saltwater. A hardy captive-bred reef fish with a hierarchy, a partner to find — and a secret: every clownfish starts life as a male.',
 
   // FishBase max 11 cm TL; ADW average 8 cm; captive-bred adults usually 7–9 cm (females largest).
   adultSizeCm: 9,

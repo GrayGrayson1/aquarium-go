@@ -88,7 +88,7 @@ export const cometGoldfish: SpeciesDefinition = {
   unlock: { requires: ['fw_coldwater'] },
   captiveBredAvailable: true,
   conservation: {
-    status: 'Least Concern (wild species, IUCN 2010); rated High invasion risk by USFWS',
+    status: 'Least Concern (wild species, IUCN 2010); rated a high invasion risk in the US',
     note: 'Goldfish have been recorded in all 50 US states. Released fish grow large, uproot plants, cloud the water, eat native fish eggs and spread carp diseases. Never release a goldfish — rehome it.',
   },
 

@@ -74,7 +74,7 @@ export const pandaCorydoras: SpeciesDefinition = {
     predationWithoutNursery: 0.7,
     nurseryRequired: true,
     maxRaisedPerClutch: 10,
-    notes: 'A cool water change often triggers spawning. Males chase a female, then pair in the classic "T-position"; she carries one to four eggs in a basket of her pelvic fins and sticks them to glass, plants or mops — up to about 25 per spawning. Eggs hatch in 3–5 days; fry live on the yolk for ~48 h, then take microworms and baby brine shrimp. No parental care: eggs are moved away from hungry tank mates.',
+    notes: 'A cool water change often triggers spawning. Males chase a female, then pair in the classic “T-position”; she carries one to four eggs in a basket of her pelvic fins and sticks them to glass, plants or mops — up to about 25 per spawning. Eggs hatch in 3–5 days; fry live on the yolk for ~48 h, then take microworms and baby brine shrimp. No parental care: eggs are moved away from hungry tank mates.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'none',

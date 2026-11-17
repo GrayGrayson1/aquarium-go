@@ -156,7 +156,7 @@ export const coralCatshark: SpeciesDefinition = {
     funFact: 'It goes back to the same hiding place day after day, and hatchlings are striped until about three months old.',
     inGameBehavior: 'Lies wedged in a crevice by day, patrols the floor at dusk and lunges at food that lands near its head.',
     feedingNote: 'Bite-size frozen seafood two or three times a week from tongs or dropped by its head; it finds food slowly, by smell.',
-    keeperTip: 'Sharks need iodine and vitamins in their food: real keepers soak the seafood in a shark supplement.',
+    keeperTip: 'Sharks need iodine and vitamins in their food: keepers soak the seafood in a shark supplement.',
   },
   sourceReferences: [
     { id: 'fishbase-atelomycterus-marmoratus', title: 'FishBase — Atelomycterus marmoratus (Coral catshark)', url: 'https://www.fishbase.se/summary/Atelomycterus-marmoratus.html', tier: 1, facts: ['70 cm TL max', 'uses crevices and holes on reefs', 'one egg case per oviduct', 'IUCN Near Threatened (2020)'] },
