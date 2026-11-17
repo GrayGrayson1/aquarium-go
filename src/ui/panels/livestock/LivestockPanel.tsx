@@ -461,7 +461,7 @@ const LOSS_WORDS: Record<string, string> = { predation: 'eaten', starvation: 'st
 function activeBreeding<T extends { label: string; detail?: string } | null>(s: T): T | null {
   if (!s) return null;
   // audit E22: an anemone is listed only when a split is near, so the empty state can show
-  if (/^splits by itself/i.test(s.label) && /^not yet/i.test(s.detail ?? '')) return null;
+  if (/^splits by itself/i.test(s.label) && /^not splitting/i.test(s.detail ?? '')) return null;
   return /^(not breeding|not bred here|too young|conditioning|getting into breeding shape)/i.test(s.label) ? null : s;
 }
 
@@ -645,7 +645,25 @@ function YoungView({ g }: { g: GameState }) {
                             {nurseries.length > 0 ? ' · or move them to:' : '.'}
                           </span>
                         ) : (
-                          nurseries.length > 0 && <span className="pn-small pn-muted">Or move them to:</span>
+                          <>
+                            {/* review E (E1): the adult that eats them here gets the creature card's Move dialog */}
+                            {st?.moveOut && (
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => {
+                                  const out = st.moveOut!;
+                                  const who = g.creatures[out.id];
+                                  useUI.getState().set({ selectedCreatureId: out.id, ...(who?.tankId ? { focusedTankId: who.tankId, view: 'tank' as const } : {}) });
+                                  close();
+                                  useShell.getState().set({ moveCreatureId: out.id });
+                                }}
+                              >
+                                <ArrowRightLeft size={14} /> Move {st.moveOut.name}
+                              </Button>
+                            )}
+                            {nurseries.length > 0 && <span className="pn-small pn-muted">Or move them to:</span>}
+                          </>
                         )}
                         {nurseries.slice(0, 2).map((t) => (
                           <Button key={t.id} size="sm" onClick={() => act({ k: 'moveClutch', clutch: cl.id, to: t.id, from: cl.tankId }, { sound: 'splash' })}>
