@@ -90,7 +90,7 @@ import {
 import { dietGuide, feedingLine, temperatureGuide, FLOW_GUIDE } from '@/data/species/guide'; // lane:guide
 import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
 import { lifespanFacts } from '../common/lifespan'; // Audit 2026-11-17 (D20)
-import { illnessSeverityPct } from './conditionWords'; // Audit 2026-11-17 (D12)
+import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone } from './conditionWords'; // Audit 2026-11-17 (D10, D12)
 import { AutofeederVerdict, RealLifeTips, openSpeciesGuide } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
 import { Badge, Button, Chip, Meter, Section, StatusBadge, formatMoney, KV, Empty } from '../kit';
 import { setCameraMode } from '../hud/ToolRail';
@@ -128,9 +128,6 @@ function hungerWord(h: number) {
 }
 function hungerTone(h: number): 'good' | 'watch' | 'danger' {
   return h >= 90 ? 'danger' : h >= 55 ? 'watch' : 'good';
-}
-function stressWord(s: number) {
-  return s < 20 ? 'Calm' : s < 40 ? 'Settled' : s < 70 ? 'Stressed' : 'Panicking';
 }
 function levelWord(v: number) {
   // Same thresholds as Meter tone="auto" (≥60 good, ≥30 watch) so word and colour always agree.
@@ -639,10 +636,10 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           </div>
         )}
         <div className="ag-meters">
-          <Meter label="Health" value={c.stats.health} tone="auto" display={levelWord(c.stats.health)} />
+          <Meter label="Health" value={c.stats.health} tone={healthTone(c.stats.health)} display={healthWord(c.stats.health)} /* Audit 2026-11-17 (D10): the Condition box's bands */ />
           <Meter label="Hunger" value={c.stats.hunger} tone={hungerTone(c.stats.hunger)} display={hungerWord(c.stats.hunger)} />
           <Meter label="Comfort" value={c.stats.comfort} tone="auto" display={levelWord(c.stats.comfort)} />
-          <Meter label="Stress" value={c.stats.stress} tone="auto" invert display={stressWord(c.stats.stress)} />
+          <Meter label="Stress" value={c.stats.stress} tone={stressTone(c.stats.stress)} display={stressWord(c.stats.stress)} /* Audit 2026-11-17 (D10) */ />
           <Meter label="Social" value={c.stats.social} tone="auto" display={levelWord(c.stats.social)} />
           {/* "Thriving" starts at enrichment > 55 (sim/life/index.ts): the same cut here, so a day-1 starter at ~58 is not
               "Good · Thriving" with an orange "Enrichment: Low" underneath */}

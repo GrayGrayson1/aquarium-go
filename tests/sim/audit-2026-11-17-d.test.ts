@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import type { CompatReport, GameState, Tank } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { createTank } from '@/sim/tanks';
-import { createCreature, addCreature, stepTankCreatures } from '@/sim/life';
+import { createCreature, addCreature, stepTankCreatures, creatureWellbeing } from '@/sim/life';
 import { makeContext } from '@/sim/context';
 import { simRng, mulberry32 } from '@/sim/rng';
 import { previewAddition, evaluateComposition, simpleMember, neutralContext } from '@/sim/compat';
@@ -16,7 +16,7 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { offerDiet } from '@/ui/panels/market/offerDietText';
 import { lifespanFacts } from '@/ui/common/lifespan';
 import { convertTempText } from '@/ui/common/format';
-import { illnessSeverityPct } from '@/ui/cards/conditionWords';
+import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone } from '@/ui/cards/conditionWords';
 
 const texts = (r: CompatReport) => r.reasons.map((x) => x.text).join('\n');
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Test', seed: 777 });
@@ -252,5 +252,34 @@ describe('D12: an illness that is almost cured never reads “severity 99%”', 
     expect(illnessSeverityPct(0.99)).toBe(1);
     expect(illnessSeverityPct(0.5)).toBe(1);
     expect(illnessSeverityPct(1)).toBe(1);
+  });
+});
+
+describe('D10: the card’s meters and its Condition box tell the same story', () => {
+  it('stress above 55 always comes with a reason in the box; the meter says Stressed on the same line', () => {
+    const s = base();
+    const ember = Object.values(s.creatures).find((c) => c.isStarter)!;
+    ember.stats.stress = 60;
+    const w = creatureWellbeing(s, ember);
+    expect(w.status).not.toBe('good');
+    expect(w.notes.some((n) => n.startsWith('Stressed — '))).toBe(true);
+    expect([stressWord(50), stressTone(50)]).toEqual(['Settled', 'good']);
+    expect([stressWord(60), stressTone(60)]).toEqual(['Stressed', 'watch']);
+    expect([stressWord(85), stressTone(85)]).toEqual(['Panicking', 'danger']);
+  });
+
+  it('health 60–74 is Watch on both; a habitat note never becomes the headline', () => {
+    expect([healthWord(70), healthTone(70)]).toEqual(['Low', 'watch']);
+    expect([healthWord(35), healthTone(35)]).toEqual(['Poor', 'danger']);
+    expect([healthWord(80), healthTone(80)]).toEqual(['Good', 'good']);
+    const s = base();
+    const bare = createTank(s, 'g20L', 'freshwater_tropical', { cycled: true });
+    const kuhli = addCreature(s, createCreature(s, mulberry32(4), 'kuhli_loach', { ageDays: 120, name: 'Noodle' }), bare.id);
+    kuhli.stats.health = 70;
+    const w = creatureWellbeing(s, kuhli);
+    expect(w.status).toBe('watch');
+    expect(w.notes.some((n) => n.startsWith('Habitat:'))).toBe(true);
+    expect(w.notes[0].startsWith('Habitat:')).toBe(false);
+    expect(w.headline).not.toMatch(/^Habitat/);
   });
 });

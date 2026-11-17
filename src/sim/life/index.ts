@@ -268,8 +268,10 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
     notes.push('Healing from injuries — check for aggressive or nipping tank mates.');
     watch = true;
   }
-  if (s.stress > 55 && factors.length) {
-    notes.push(`Stressed — mainly ${factors[0].label}.`);
+  // Audit 2026-11-17 (D10): the tank card says "stressed" above 55 whatever the cause, so the card always says why or
+  // that it is passing (a move, a chase or a scare leaves stress with no standing cause of 5 points or more)
+  if (s.stress > 55) {
+    notes.push(factors.length ? `Stressed — mainly ${factors[0].label}.` : 'Stressed — still settling after something upset it (a move, a chase or a scare).');
     watch = true;
     if (s.stress > 80) danger = true;
   }
@@ -277,12 +279,17 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
   else if (s.health < 75) watch = true;
   // lane:guide — low health with nothing else to explain it used to read only "Keep an eye on this one": name what
   // wore it down (the damage the sim recorded, which fades over about a day) and how it recovers
-  if (s.health < 75 && notes.length === 0) notes.push(recoveryNote(c));
+  // Audit 2026-11-17 (D10): ahead of habitat notes too, which say what the tank lacks, not what wore the health down
+  if (s.health < 75 && notes.every((n) => n.startsWith('Habitat:'))) notes.unshift(recoveryNote(c));
   const status: CreatureWellbeing['status'] = danger ? 'danger' : watch ? 'watch' : 'good';
   let headline: string;
   if (status === 'good') headline = s.stress < 25 && s.enrichment > 55 && s.comfort > 75 ? 'Thriving' : 'Doing well';
   // First clause of the first note; split on sentence ends only, so decimals ("1.35 ppm") survive.
-  else headline = (notes[0] ?? (status === 'danger' ? 'Needs help' : 'Keep an eye on this one')).split(/\.(?=\s|$)|[:—]/)[0].trim();
+  // Audit 2026-11-17 (D10): never "Habitat" — the first note that isn't about the habitat, else what the habitat needs
+  else {
+    const lead = notes.find((n) => !n.startsWith('Habitat:'));
+    headline = lead ? lead.split(/\.(?=\s|$)|[:—]/)[0].trim() : notes.length ? 'Needs a better home' : status === 'danger' ? 'Needs help' : 'Keep an eye on this one';
+  }
   return { status, headline, notes, stress: factors };
 }
 
