@@ -42,7 +42,7 @@ import { currentPhase, isCarried, youngLabel } from '../life/breeding/clutch';
 import { moduleFor } from '../life/breeding/registry';
 import { foodRecency } from '../life/breeding/common';
 import { DOSER } from '@/data/catalog/machines';
-import { asStaff, clamp, dayRecord, displayTankIds, dropIssues, ensureStaff, firstName, fmt$, isExhibit, noteIssue, totals, FEED_RING, TALK_RING } from './common';
+import { asStaff, clamp, dayRecord, displayTankIds, dropIssues, ensureStaff, firstName, fmt$, isExhibit, keeperOf, noteIssue, totals, FEED_RING, TALK_RING } from './common';
 import { dayOf } from '../time';
 import * as dmath from '../dmath';
 
@@ -410,6 +410,39 @@ export function youngFoodWords(tags: readonly string[]): string {
   return sold.slice(0, 2).map((t) => TAG_WORDS[t] ?? t.replace(/_/g, ' ')).join(' or ') || 'first foods';
 }
 
+/** The foods a phase eats, in the phase's order, made for this water and species: what a keeper picks from (first in stock). */
+function youngFoodFits(foods: readonly string[], tank: Tank, speciesId: string): FoodDef[] {
+  const rank = (f: FoodDef) => Math.min(...f.tags.map((t) => foods.indexOf(t)).filter((i) => i >= 0));
+  return FOODS.filter((f) => f.tags.some((t) => foods.includes(t)) && !madeForOtherWater(f, tank.environment) && !madeForOtherSpecies(f, speciesId)).sort((a, b) => rank(a) - rank(b) || (a.id < b.id ? -1 : 1));
+}
+
+/** Keepers' rounds a day that can feed young (YOUNG_FED_RECENTLY_H apart: 8 AM, 1 PM and 6 PM; 9 PM is too soon after). */
+const YOUNG_ROUNDS_A_DAY = 3;
+
+/**
+ * Audit 2026-11-17 (follow-up to H2) — servings a day of the first foods the young in keepers' tanks will be given:
+ * each brood past its eggs in a tank an aquarist looks after (and no working doser feeds), in a phase that eats fed
+ * food, on the food its keeper would pick (the first of its phase's foods in stock, else the first the shop sells),
+ * about a serving per 20 young at up to three rounds a day. Pure: the stock manager's plan reads it.
+ */
+export function plannedYoungUsage(state: GameState): Map<string, number> {
+  const usage = new Map<string, number>();
+  for (const cl of Object.values(state.clutches)) {
+    if (!(cl.count > 0) || cl.stage === 'eggs' || cl.stage === 'in_pouch' || isCarried(cl)) continue;
+    const tank = state.tanks[cl.tankId];
+    if (!tank || !keeperOf(state, tank.id) || (doserOf(tank) && !isHeld(state, 'food'))) continue;
+    const sp = findSpecies(cl.speciesId);
+    if (!sp) continue;
+    const ph = currentPhase(cl, moduleFor(sp));
+    if (!ph || !ph.foods.length) continue;
+    const fits = youngFoodFits(ph.foods, tank, sp.id);
+    const pick = fits.find((f) => inStock(state, f.id) >= 1) ?? fits.find((f) => isFoodAvailable(state, f));
+    if (!pick) continue;
+    usage.set(pick.id, (usage.get(pick.id) ?? 0) + Math.max(1, Math.ceil(cl.count / DOSER.youngPerServing)) * YOUNG_ROUNDS_A_DAY);
+  }
+  return usage;
+}
+
 /**
  * A keeper's round feeds the young in the tank their first foods from stock, as a live-food doser does (the same
  * `feedTank`, so the brood's food recency is what feeds them; one way young get fed): each brood past its yolk, in a
@@ -432,8 +465,7 @@ export function keeperFeedYoung(state: GameState, m: StaffMember, tank: Tank, ho
     const yolkEnd = (cl.stageSinceHour ?? cl.laidHour) + mod.plan.yolkFrac * sp.breeding.fryRearingHours;
     if (ph === mod.plan.phases[0] && hour < yolkEnd) continue;
     if (foodRecency(tank, ph.foods, hour, YOUNG_FED_RECENTLY_H, 0) >= 1) continue;
-    const rank = (f: FoodDef) => Math.min(...f.tags.map((t) => ph.foods.indexOf(t)).filter((i) => i >= 0));
-    const fits = FOODS.filter((f) => f.tags.some((t) => ph.foods.includes(t)) && !madeForOtherWater(f, tank.environment) && !madeForOtherSpecies(f, sp.id)).sort((a, b) => rank(a) - rank(b) || (a.id < b.id ? -1 : 1));
+    const fits = youngFoodFits(ph.foods, tank, sp.id);
     const pick = fits.find((f) => inStock(state, f.id) - (plan.get(f.id) ?? 0) >= 1);
     if (!pick) {
       short.push({ label: youngLabel(cl, mod), tags: ph.foods });
@@ -825,6 +857,9 @@ export function plannedUsage(state: GameState): Map<string, number> {
 export function plannedOrders(state: GameState, m: StaffMember): Order[] {
   const orders: Order[] = [];
   const perDay = plannedUsage(state); // lane:staff2 — servings a day (was per round × 2)
+  // Audit 2026-11-17 (follow-up to H2): plus the first foods keepers give young in their tanks, so a staffed nursery
+  // isn't flagged every round until the player buys by hand (none: the plan is as it was)
+  for (const [foodId, n] of plannedYoungUsage(state)) perDay.set(foodId, (perDay.get(foodId) ?? 0) + n);
   const target = stockTargetDays(m);
   const maxPacks = m.trait === 'thrifty' ? 1 : 6;
   // 1) Foods in use that would run out within the target (a day of keeper meals at a time).
