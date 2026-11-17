@@ -20,6 +20,7 @@ import { tutorialChain } from '@/data/quests';
 import { currentCoachStep, friendWait } from '@/ui/tutorial/guideText';
 import { finaleLines, finaleNext } from '@/ui/tutorial/TutorialCoach';
 import { guideAim, type GuideScreen } from '@/ui/tutorial/guideTargets';
+import { tourStops } from '@/ui/tutorial/tourStops';
 import { eventLink } from '@/ui/hud/eventLinks';
 import { navDots } from '@/ui/common/notify';
 import { DOCK_ITEMS } from '@/ui/hud/Dock';
@@ -155,5 +156,15 @@ describe('A3: the betta’s and seahorse’s nursery step opens Tanks (a tank’
     const axo = tutorialChain('axolotl').find((s) => s.id === 'upgrade')!;
     expect(axo.hintTarget).toBe('dock-build');
     expect(guideAim('upgrade', axo.hintTarget, 'axolotl', screen({ panel: 'build' }), axo.reward?.unlocks ?? [])?.candidates[0]).toBe('[data-testid="panel-build"] [data-tier-id="g40B"]');
+  });
+});
+
+describe('A8: the phone tour’s money stop has no star to point at', () => {
+  it('phones say where reputation is; computers keep the star', () => {
+    const phone = tourStops({ mobile: true, social: false, unlocked: () => true }).find((s) => s.id === 'money')!;
+    expect(phone.body).not.toMatch(/star/);
+    expect(phone.body).toMatch(/top of Research, under More/);
+    const desk = tourStops({ mobile: false, social: false, unlocked: () => true }).find((s) => s.id === 'money')!;
+    expect(desk.body).toMatch(/\(the star\)/);
   });
 });
