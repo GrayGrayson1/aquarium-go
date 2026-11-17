@@ -22,6 +22,7 @@ import { deleteTank } from '../tanks';
 import { creaturesInTank, isPrismatic } from '../life';
 import { environmentGate, previewAddition } from '../compat';
 import { isUnlocked, addReputation, addMastery, bumpCounter } from '../facility';
+import { counterValue, heldByGuideStep } from '../facility/progression'; // audit 2026-11-17 (F8)
 import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { BUYER_ARCHETYPES, LOCAL_FISH_STORE, archetypeLabel } from '@/data/buyers';
@@ -146,8 +147,15 @@ export function marketAccess(state: GameState): { listings: boolean; tankAuction
   const tankAuctions = isUnlocked(state, 'tank_auctions');
   let hint: string | undefined;
   // lane:guide — the real rule (src/data/unlocks.ts market_listings): the first visit to the Market, finishing the guide, or 10 reputation
-  if (!listings) hint = 'Listings open after your first visit to the Market (or at 10 reputation). Until then, the local fish store buys animals for quick cash in Livestock › Quick sell.';
-  else if (!tankAuctions) hint = 'Whole-aquarium auctions unlock a little later. You can already list individual animals, pairs and groups.';
+  // audit 2026-11-17 (F8) — while the guide runs it holds listings for its own step: say that, not a rule already met
+  const held = !listings ? heldByGuideStep(state, 'market_listings') : null;
+  if (held) hint = `Listings open at the guide’s “${held}” step, or when you finish or skip the guide. Until then the local fish store buys animals for quick cash: tick them in Livestock and press Quick sell.`;
+  else if (!listings) hint = 'Listings open after your first visit to the Market (or at 10 reputation). Until then, the local fish store buys animals for quick cash in Livestock › Quick sell.';
+  else if (!tankAuctions) {
+    // F8: the rule, with progress (src/data/unlocks.ts tank_auctions: 3 sales, business mastery or the Specialty Shop)
+    const sales = counterValue(state, 'sales');
+    hint = `Whole-aquarium auctions open after 3 sales (you’ve made ${sales}), or when you move into the Specialty Shop. You can already list individual animals, pairs and groups.`;
+  }
   return { listings, tankAuctions, hint };
 }
 

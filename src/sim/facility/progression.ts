@@ -1311,6 +1311,16 @@ export interface UnlockProgressView {
   requirements: { label: string; met: boolean; current: number; target: number }[];
   /** Research projects that grant this key. */
   viaResearch: { id: string; name: string }[];
+  /** Audit 2026-11-17 (F8) — the guide holds this key back for one of its steps (its title): the rule alone won't open it. */
+  heldBy?: string;
+}
+
+/** Audit 2026-11-17 (F8) — the title of the guide step that will hand out `key` (pendingTutorialUnlocks holds it). */
+export function heldByGuideStep(state: GameState, key: string): string | null {
+  if (!pendingTutorialUnlocks(state).has(key)) return null;
+  const step = tutorialStepDefs(state).find((d) => d.reward?.unlocks?.includes(key as never));
+  const name = Object.values(state.creatures).find((c) => c.isStarter)?.name ?? 'your starter';
+  return step ? step.title.replace(/\{name\}/g, name) : null;
 }
 
 /** Locked keys with how close the player is, nearest first. */
@@ -1324,13 +1334,16 @@ export function unlockProgress(state: GameState): UnlockProgressView[] {
     const reqs = (rule?.when ?? []).map((c) => evalCond(state, c, cache));
     const viaResearch = RESEARCH.filter((r) => r.grants.includes(key as never)).map((r) => ({ id: r.id, name: r.name }));
     const progress = reqs.length ? reqs.reduce((a, s) => a + ratio(s), 0) / reqs.length : 0;
+    // F8: a key the guide holds shows that, not a met rule that is still locked
+    const held = heldByGuideStep(state, key);
     out.push({
       key,
       label: unlockLabel(key),
-      hint: rule?.hint ?? (viaResearch.length ? `Research ${viaResearch[0].name}.` : 'Keep playing.'),
-      progress,
-      requirements: reqs.map((s) => ({ label: s.label, met: s.met, current: s.current, target: s.target })),
+      hint: held ? `Comes with the guide’s “${held}” step, or when you finish or skip the guide.` : rule?.hint ?? (viaResearch.length ? `Research ${viaResearch[0].name}.` : 'Keep playing.'),
+      progress: held ? Math.min(progress, 0.9) : progress,
+      requirements: held ? [{ label: `The guide’s “${held}” step`, met: false, current: 0, target: 1 }] : reqs.map((s) => ({ label: s.label, met: s.met, current: s.current, target: s.target })),
       viaResearch,
+      ...(held ? { heldBy: held } : {}),
     });
   }
   out.sort((a, b) => b.progress - a.progress);

@@ -18,6 +18,9 @@ import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
 import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, devOpenMarket, createListing, forceBuyerVisit, acceptBid, restartNeed, tankKitPrice } from '@/sim/economy';
 import { cheapestKit } from '@/sim/economy/purchases';
+import { marketAccess, cashSuggestions } from '@/sim/economy';
+import { unlockProgress } from '@/sim/facility';
+import { lockViews } from '@/ui/panels/common/UnlockHelp';
 import { TANK_TIERS } from '@/data/catalog/tanks';
 import { reserveHint } from '@/ui/panels/market/CreateListing';
 import { addCreature, createCreature } from '@/sim/life';
@@ -385,6 +388,32 @@ describe('F5: in debt after the club’s one-time loan, the words say so plainly
     expect(red.text).not.toContain('may be able to help');
     const out = text(renderToStaticMarkup(createElement(FinancesPanel)));
     expect(out).toContain('The aquarium club’s one-time loan has been used: sell an animal or decor to get back above zero. If your animals run out of food, the club drops off a little.');
+  });
+});
+
+describe('F8: the listings and auctions hints say what really opens them', () => {
+  it('while the guide holds listings for its own step: the step, not "your first visit"', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 5 });
+    g.progress.unlocked = g.progress.unlocked.filter((k) => k !== 'market_listings');
+    g.progress.tutorial.done = false;
+    g.progress.tutorial.skipped = false;
+    g.progress.tutorial.step = 2;
+    g.progress.tutorial.flags.opened_market = true; // the rule is met, but the guide holds the key
+    expect(marketAccess(g).hint).toBe('Listings open at the guide’s “The market” step, or when you finish or skip the guide. Until then the local fish store buys animals for quick cash: tick them in Livestock and press Quick sell.');
+    const u = unlockProgress(g).find((x) => x.key === 'market_listings')!;
+    expect(u.heldBy).toBe('The market');
+    expect(u.requirements).toEqual([{ label: 'The guide’s “The market” step', met: false, current: 0, target: 1 }]);
+    const v = lockViews(g, ['market_listings'])[0];
+    expect(v.either).toEqual([]);
+    expect(v.hint).toMatch(/^Comes with the guide’s “The market” step/);
+    expect(cashSuggestions(g).join(' ')).toContain('open at the guide’s “The market” step');
+  });
+
+  it('auctions: the rule, with progress', () => {
+    const g = game();
+    g.progress.unlocked = g.progress.unlocked.filter((k) => k !== 'tank_auctions');
+    if (!g.progress.unlocked.includes('market_listings')) g.progress.unlocked.push('market_listings');
+    expect(marketAccess(g).hint).toBe('Whole-aquarium auctions open after 3 sales (you’ve made 0), or when you move into the Specialty Shop. You can already list individual animals, pairs and groups.');
   });
 });
 

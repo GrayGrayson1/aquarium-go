@@ -60,8 +60,9 @@ export function lockViews(g: GameState, keys: readonly (string | null | undefine
       key,
       label: u?.label ?? safe(() => unlockLabel(key), (UNLOCK_KEYS as Record<string, string>)[key] ?? key),
       hint: u?.hint ?? rule?.hint ?? '',
-      requirements: rule ? reqsFor(g, flat) : u?.requirements ?? [],
-      either,
+      // audit 2026-11-17 (F8) — a key the guide holds back: its step, not the rule's alternatives (they read as met)
+      requirements: u?.heldBy ? u.requirements : rule ? reqsFor(g, flat) : u?.requirements ?? [],
+      either: u?.heldBy ? [] : either,
       research: (u?.viaResearch ?? []).map((r) => ({ id: r.id, name: r.name, status: research.get(r.id) ?? 'unknown' })),
       venue: (rule?.when ?? []).some(asksVenue),
     };

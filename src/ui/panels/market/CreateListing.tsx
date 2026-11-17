@@ -18,6 +18,7 @@ import { isPrismatic } from '@/sim/life'; // lane:genetics
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { safe } from '../common/hooks';
+import { LockedButton } from '../common/UnlockHelp'; // audit 2026-11-17 (F8)
 import { act, toast } from '../common/act';
 import { Chip, EmptyState, Callout, SectionHead, NumberField, Checkbox, KV, Bar, LoadMore, usePaged } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
@@ -232,7 +233,16 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
         <section className="pn-col pn-gap-3">
           <h3 className="pn-wizard__h">What would you like to sell?</h3>
           {access.hint && (
-            <Callout tone={access.listings ? 'info' : 'watch'} icon={<Info size={15} />}>
+            <Callout
+              tone={access.listings ? 'info' : 'watch'}
+              icon={<Info size={15} />}
+              action={
+                // audit 2026-11-17 (F8) — the whole route, with progress (chunk 19's unlock help)
+                <LockedButton title={access.listings ? 'Whole-aquarium auctions' : 'Listings'} keys={[access.listings ? 'tank_auctions' : 'market_listings']} testId="listing-unlock-help">
+                  How to unlock
+                </LockedButton>
+              }
+            >
               {access.hint}
             </Callout>
           )}

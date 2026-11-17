@@ -16,6 +16,7 @@ import type { SimContext } from '../context';
 import { emitEvent } from '../context';
 import { tankDailyCost } from '../water';
 import { isUnlocked } from '../facility';
+import { heldByGuideStep } from '../facility/progression'; // audit 2026-11-17 (F8)
 import { getFacilityLevel } from '@/data/facilities';
 import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
 import { AQUARIUM_CLUB, LOCAL_FISH_STORE } from '@/data/buyers';
@@ -146,7 +147,11 @@ export function cashIdeas(state: GameState): CashIdea[] {
   const fix = isUnlocked(state, 'tank_auctions') ? `restock ${it}, or auction ${it} as a whole aquarium` : `restock ${it}, or switch off ${empty.length === 1 ? 'its' : 'their'} gear to cut the bill`;
   if (empty.length > 0) out.push({ kind: 'empty_tank', text: `${empty.length === 1 ? 'An empty tank still costs' : `${empty.length} empty tanks still cost`} money to run — ${fix}.` });
   if (state.tankOrder.some((id) => (state.tanks[id]?.equipment.length ?? 0) > 1)) out.push({ kind: 'trim', text: 'Trim running costs: a shorter light schedule and switching off gear you do not need lowers the daily bill.' });
-  if (!isUnlocked(state, 'market_listings')) out.push({ kind: 'open_market', text: 'Visit the Market once to open listings, where buyers bid — healthy offspring sell well.' });
+  if (!isUnlocked(state, 'market_listings')) {
+    // audit 2026-11-17 (F8) — while the guide holds listings for its own step, visiting the Market won't open them
+    const held = heldByGuideStep(state, 'market_listings');
+    out.push({ kind: 'open_market', text: held ? `Listings, where buyers bid, open at the guide’s “${held}” step — healthy offspring sell well.` : 'Visit the Market once to open listings, where buyers bid — healthy offspring sell well.' });
+  }
   if (out.length === 0) {
     const starter = Object.values(state.creatures).find((c) => c.status === 'alive' && (c.isStarter || c.favorite));
     const q = starter ? quickSellQuote(state, [starter.id]) : null;
