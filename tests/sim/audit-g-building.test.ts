@@ -626,3 +626,24 @@ describe('G13 review fix: the rockwork tip offers soft corals only to a reef', (
     expect(tip('reef')).toMatch(/^Soften the rockwork with life — macroalgae or a few soft corals around the /);
   });
 });
+
+describe('G23 review fix: one tank without a spot is pointed at its own card', () => {
+  it('“Move it with Move tank on its card.”', () => {
+    const g = game('betta');
+    g.finance.money = 1e7;
+    g.progress.unlocked.push('facility_specialty_shop');
+    // as many 125-gallon tanks as leave exactly one without a spot: find the count on copies
+    for (let n = 1; n <= 40; n++) {
+      const c = structuredClone(g);
+      for (let i = 0; i < n; i++) createTank(c, 'g125', 'freshwater_tropical', { placement: { x: 0, z: 0, rotY: 0 } });
+      upgradeFacility(c);
+      const note = c.log.find((e) => /could not find a good spot/.test(e.text));
+      if (note && /^1 tank /.test(note.text)) {
+        expect(note.text).toBe('1 tank could not find a good spot. Move it with Move tank on its card.');
+        return;
+      }
+      if (note) break;
+    }
+    throw new Error('no count left exactly one tank without a spot');
+  });
+});
