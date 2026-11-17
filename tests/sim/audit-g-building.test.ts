@@ -8,13 +8,16 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { GameState } from '@/types';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { newGame } from '@/sim/newGame';
+import type { StarterId } from '@/data/species';
 import { unlockProgress, guideHoldLine } from '@/sim/facility';
 import { marketAccess } from '@/sim/economy';
 import { lockViews, UnlockHelpBody } from '@/ui/panels/common/UnlockHelp';
-import { GROUPS, UnlocksTab, researchLockKeys } from '@/ui/panels/research/ResearchPanel';
+import { GROUPS, UnlocksTab, researchLockKeys, researchTankLine } from '@/ui/panels/research/ResearchPanel';
+import { RESEARCH } from '@/data/research';
+import { unlockLink } from '@/ui/hud/eventLinks';
 import { RESEARCH_BY_ID } from '@/data/research';
 
-const game = (starterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
+const game = (starterId: StarterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
 
 describe('G1: an unlock the guide holds back says so', () => {
   it('names the guide step that hands out the 40 gallon, and never shows it 100% done', () => {
@@ -73,5 +76,20 @@ describe('G4: a locked research project’s box says how to get the unlocks it n
     expect(html).toContain('data-testid="unlock-help-research-life_support_2"'); // …with the research that grants it
     expect(html).toContain('50 reputation'); // …and its play route
     expect(html).not.toContain('data-testid="unlock-help-marine_basics"'); // a clownfish keeper already has marine
+  });
+});
+
+describe('G5: research that opens animals still waiting for a bigger tank says so', () => {
+  it('Big-water Freshwater names the smallest tank its animals need, and says when some already fit', () => {
+    const g = game('betta');
+    const big = RESEARCH.find((d) => d.id === 'large_freshwater')!;
+    expect(researchTankLine(g, big)).toBe('Its animals also need a bigger tank: the 180 Gallon (reach 280 reputation in your store) and larger.');
+    g.progress.unlocked.push('tank_180');
+    expect(researchTankLine(g, big)).toMatch(/^Some of its animals also need a bigger tank: the 240 Gallon \(/);
+    expect(researchTankLine(g, RESEARCH.find((d) => d.id === 'shark_ray_husbandry')!)).toMatch(/the 500 Gallon Showpiece/);
+    expect(researchTankLine(g, RESEARCH.find((d) => d.id === 'life_support_2')!)).toBeNull(); // opens no animals
+  });
+  it('the unlock toast for the big fish and the sharks says the shop waits for a big enough tank', () => {
+    for (const k of ['fw_large', 'elasmobranchs']) expect(unlockLink(k)?.where, k).toBe('They come into Market › Shop once you have a tank big enough for them.');
   });
 });

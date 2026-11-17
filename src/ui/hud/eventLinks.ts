@@ -31,6 +31,9 @@ const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
   market_listings: { panel: 'market', target: 'tab:listings', where: 'List animals in Market › My listings.' },
   tank_auctions: { panel: 'market', target: 'tab:listings', where: 'List a whole aquarium in Market › My listings.' },
   nursery: { panel: 'tanks', target: null, where: 'Set a tank’s purpose in Tanks.' },
+  // Audit 2026-11-17 (G5): the shop also waits for a tank big enough for these animals (ADR-0053 decision 4)
+  fw_large: { panel: 'market', target: 'tab:shop', where: 'They come into Market › Shop once you have a tank big enough for them.' },
+  elasmobranchs: { panel: 'market', target: 'tab:shop', where: 'They come into Market › Shop once you have a tank big enough for them.' },
 };
 
 const PANEL_WORD: Partial<Record<PanelId, string>> = { shows: 'Shows', visitors: 'Visitors', build: 'Build', market: 'Market', tanks: 'Tanks', research: 'Research' };

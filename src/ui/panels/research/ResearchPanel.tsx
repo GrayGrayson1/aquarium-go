@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { FlaskConical, Map as MapIcon, ScrollText, Trophy, Clock, Coins, Lock, Check, Gift, Star, Sparkles, X, CircleCheck, GraduationCap, MapPin } from 'lucide-react';
-import type { GameState, MasteryTrack } from '@/types';
+import type { GameState, MasteryTrack, TankTier } from '@/types';
 import { Button, Money, formatMoney, Modal } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
@@ -26,6 +26,10 @@ import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
 import { glow } from '@/ui/common/glow'; // chunk 19 (QOL-004, QOL-006)
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { matches } from '../common/match'; // chunk 19 (QOL-003)
+import { listSpecies } from '@/data/species'; // Audit 2026-11-17 (G5)
+import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks'; // Audit 2026-11-17 (G5)
+import { isUnlocked, tankTierFor, tankKeyFor } from '@/sim/facility'; // Audit 2026-11-17 (G5)
+import { requiredUnlocks } from '@/sim/economy'; // Audit 2026-11-17 (G5)
 
 type Tab = 'research' | 'unlocks' | 'quests' | 'achievements';
 const RESEARCH_TABS: readonly Tab[] = ['research', 'unlocks', 'quests', 'achievements'];
@@ -249,6 +253,28 @@ const grantLabel = (k: string): string => safe(() => unlockLabel(k), UNLOCK_KEYS
 /** chunk 6 (DES-011, desk-research.png): what an unlock also does elsewhere, as a chip beside its own. */
 const GRANT_EFFECTS: Record<string, string> = { genetics_lab: 'Shop: hidden carriers in Rare genes' };
 
+/**
+ * Audit 2026-11-17 (G5) — the animals a project opens that the shop still holds back for a bigger tank (ADR-0053
+ * decision 4), as one line for its card (null: none wait). "Opens" means every other key the animal needs is granted
+ * by the project or already unlocked, so koi count for Big-water Freshwater only once Cool-water Systems is in hand.
+ */
+export function researchTankLine(g: GameState, d: ResearchView['def']): string | null {
+  const grants = new Set<string>(d.grants);
+  const opened = listSpecies((sp) => {
+    const tk = tankKeyFor(sp);
+    const own = requiredUnlocks(sp).filter((k) => k !== tk);
+    return own.some((k) => grants.has(k)) && own.every((k) => grants.has(k) || isUnlocked(g, k));
+  });
+  const waiting = opened.map((sp) => tankTierFor(sp)).filter((t): t is TankTier => !!t?.unlock && !isUnlocked(g, t.unlock));
+  if (!waiting.length) return null;
+  waiting.sort((a, b) => a.gallons - b.gallons);
+  const first = waiting[0];
+  const hint = (first.unlock && UNLOCK_RULE_BY_KEY[first.unlock]?.hint) || '';
+  const route = hint ? ` (${hint.charAt(0).toLowerCase()}${hint.slice(1).replace(/\.$/, '')})` : '';
+  const larger = waiting.some((t) => t.gallons > first.gallons) ? ' and larger' : '';
+  return `${waiting.length < opened.length ? 'Some of its animals' : 'Its animals'} also need a bigger tank: the ${first.name}${route}${larger}.`;
+}
+
 /** Audit 2026-11-17 (G4): the unlocks a research project needs, each explained in its "How to unlock" box. */
 export const researchLockKeys = (d: ResearchView['def']): string[] => d.requires.flatMap((c) => (c.type === 'unlocked' ? [c.key] : []));
 
@@ -260,6 +286,7 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
   const owned = !!r.alreadyOwned;
   const fresh = r.grantsNew ?? d.grants;
   const cost = typeof r.cost === 'number' ? r.cost : d.cost;
+  const tankLine = safe(() => researchTankLine(g, d), null); // Audit 2026-11-17 (G5)
   return (
     <div className={clsx('pn-research', `is-${status}`)} data-testid={`research-${d.id}`} /* lane:w2-ui */>
       <span className={clsx('pn-research__icon', status === 'done' && 'is-done')}>{status === 'done' ? <Check size={18} /> : <NamedIcon name={d.icon} size={18} />}</span>
@@ -271,6 +298,7 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
           {status === 'active' && <Chip tone="aqua">In progress</Chip>}
         </div>
         <div className="pn-small pn-dim">{d.blurb}</div>
+        {tankLine && <div className="pn-small pn-muted" data-testid={`research-tankwait-${d.id}`}>{tankLine}</div> /* Audit 2026-11-17 (G5) */}
         <div className="pn-chips">
           {/* only what the project would still add counts as an unlock; the rest you already have */}
           {(status === 'done' ? d.grants : fresh).flatMap((k) =>
