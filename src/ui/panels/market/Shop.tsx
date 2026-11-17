@@ -31,6 +31,7 @@ import { buyState, NO_TANK_BADGE, NO_TANK_CALLOUT, tileTempReason } from './buyS
 import { OfferGenes } from './OfferGenes';
 import { OfferTemperament } from './OfferTemperament';
 import { OfferDiet } from './OfferDiet'; // Audit 2026-11-17 (D5)
+import { SLIGHTLY_SMALL_TANK } from '@/sim/life/growth'; // Audit 2026-11-17 (D4)
 import { Chip, Card, EmptyState, Callout, SectionHead, Checkbox } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
 import { CompatPreview } from '../common/CompatPreview';
@@ -384,7 +385,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   const risky = !!report && VERDICT_RANK[report.verdict] >= VERDICT_RANK.high_risk;
   const locked = !speciesUnlocked(g, sp);
   const afford = g.finance.money >= price;
-  const tooSmall = tank ? gallonsOf(tank) < sp.recommendedMinTankGallons : false;
+  const tooSmall = tank ? gallonsOf(tank) < sp.recommendedMinTankGallons * SLIGHTLY_SMALL_TANK : false; // Audit 2026-11-17 (D4): a little small is the preview's note
   const noSuitable = suitable.length === 0;
   const state = buyState({ locked, picked: chosen.length, noSuitableTank: noSuitable, environment: sp.environment, affordable: afford, gateOk: !!tank && gate.ok, risky, acknowledged: ack, price });
   const coolSpecies = !!sp.special?.coolWater || sp.waterClasses.includes('freshwater_cool');

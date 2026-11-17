@@ -32,6 +32,7 @@ import { youngKindOf } from '@/data/species';
 import { withArticle } from '../economy/util'; // lane:w2-ui ("An ocellaris clownfish was stung…")
 import { fitsEnvironment, offIdealEnvironmentNote, sharedEnvironments, waterNeedPhrase } from './salinity'; // lane:brackish
 import * as dmath from '../dmath';
+import { SLIGHTLY_SMALL_TANK } from '../life/growth'; // Audit 2026-11-17 (D4)
 
 // ───────────────────────────── contracts ─────────────────────────────
 
@@ -425,10 +426,13 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
   const juvNote = m.adults === 0 && m.count > 0 ? ' Juveniles fit for now, but they grow.' : '';
   if (ctx.gallons < minGal * 0.5) {
     add('critical', 'size', `This tank is far too small for an adult ${lower(sp.commonName)} (${sp.adultSizeCm} cm) — it needs at least ${minGal} gallons.${juvNote}`);
-  } else if (ctx.gallons < minGal) {
+  } else if (ctx.gallons < minGal * SLIGHTLY_SMALL_TANK) {
     add('warning', 'size', `An adult ${lower(sp.commonName)} (${sp.adultSizeCm} cm) needs at least ${minGal} gallons; this tank holds ${ctx.gallons}.${juvNote}`, {
       mitigation: 'Plan a larger tank before it reaches adult size.',
     });
+  } else if (ctx.gallons < minGal) {
+    // Audit 2026-11-17 (D4, the owner's decision): only a little small (see SLIGHTLY_SMALL_TANK) is a note
+    add('info', 'size', `This tank is a little under the ${minGal} gallons an adult ${lower(sp.commonName)} likes (it holds ${ctx.gallons}). Fine with good care.`);
   } else if (sp.special?.outgrowsSmallTanks && ctx.gallons < minGal * 1.5) {
     add('info', 'size', `${cap(name)} grow large quickly — this tank is at the lower limit.`);
   }

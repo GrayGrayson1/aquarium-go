@@ -150,3 +150,41 @@ describe('D3: group animals that need one companion come as a pair (the owner’
     expect(texts(r)).not.toMatch(/needs a group of at least/);
   });
 });
+
+describe('D4: the tank-size verdict is graded by how short the tank is (the owner’s decision)', () => {
+  const clownGame = () => newGame({ starterId: 'ocellaris_clownfish', starterName: 'Tango', seed: 777 });
+  const sizeReasons = (r: CompatReport) => r.reasons.filter((x) => x.category === 'size' && /gallons/.test(x.text));
+
+  it('29 gallons for a 30-gallon royal gramma: a note inside a good verdict, no risk', () => {
+    const s = clownGame();
+    const t = createTank(s, 'g29', 'marine_live_rock', { cycled: true });
+    const r = previewAddition(s, t.id, { speciesId: 'royal_gramma', sizeCm: 8 });
+    const size = sizeReasons(r);
+    expect(size).toHaveLength(1);
+    expect(size[0].severity).toBe('info');
+    expect(size[0].text).toBe('This tank is a little under the 30 gallons an adult royal gramma likes (it holds 29). Fine with good care.');
+  });
+
+  it('20 gallons for the same fish is still High risk: needs at least 30', () => {
+    const s = clownGame();
+    const t = createTank(s, 'g20L', 'marine_live_rock', { cycled: true });
+    const r = previewAddition(s, t.id, { speciesId: 'royal_gramma', sizeCm: 8 });
+    const size = sizeReasons(r);
+    expect(size).toHaveLength(1);
+    expect(size[0].severity).toBe('warning');
+    expect(size[0].text).toMatch(/needs at least 30 gallons; this tank holds 20/);
+    expect(['high_risk', 'incompatible']).toContain(r.verdict);
+  });
+
+  it('the sim warns “tank is too small” only when it is well short', () => {
+    for (const [tier, warned] of [['g29', false], ['g20L', true]] as const) {
+      const s = clownGame();
+      const t = createTank(s, tier, 'marine_live_rock', { cycled: true });
+      addCreature(s, createCreature(s, mulberry32(9), 'royal_gramma', { ageDays: 200, name: 'Gus' }), t.id);
+      const before = s.log.length;
+      stepTankCreatures(s, t, 1, makeContext(s, 1));
+      const said = s.log.slice(before).some((e) => /Gus's tank is too small/.test(e.text));
+      expect(said, tier).toBe(warned);
+    }
+  });
+});

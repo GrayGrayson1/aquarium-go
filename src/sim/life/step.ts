@@ -15,7 +15,7 @@ import { lightsOn } from '../time';
 import { feedingPersonalityMul } from './personality';
 import { canAutofeed, handFoodPhrase } from '../care/autofeed'; // lane:fit — text only (no RNG)
 import { getEquipmentDef } from '@/data/catalog/equipment'; // lane:fit
-import { ageDaysOf, gallonsNeededNow, lifeStageFor, observableSex, sexVisible, sizeAtAge } from './growth';
+import { ageDaysOf, gallonsNeededNow, lifeStageFor, observableSex, sexVisible, sizeAtAge, SLIGHTLY_SMALL_TANK } from './growth';
 import { ILLNESSES, eligibleIllnesses, illnessDef, type IllnessKind } from './illness';
 import {
   buildTankEnv,
@@ -1061,7 +1061,8 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
 
   // ── Tank size warnings (a juvenile growing beyond its tank)
   const need = gallonsNeededNow(sp, c.sizeCm, c.reproRole);
-  if (env.gallons < need && throttleGroup(state, ids, 'tank_small', hour, 48)) {
+  // Audit 2026-11-17 (D4): a tank only a little small (SLIGHTLY_SMALL_TANK) raises no alarm; compatibility notes it
+  if (env.gallons < need * SLIGHTLY_SMALL_TANK && throttleGroup(state, ids, 'tank_small', hour, 48)) {
     const adultNeed = sp.recommendedMinTankGallons;
     const text =
       c.lifeStage === 'juvenile'
