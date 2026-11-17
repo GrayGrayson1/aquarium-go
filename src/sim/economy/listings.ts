@@ -457,6 +457,28 @@ export interface ListingPreview {
   warnings: string[];
 }
 
+/**
+ * The buyers who bid are mostly the ones a listing suits: their fit lifts a private value about 10 % above fair value
+ * on average (measured on the bid model, audit 2026-11-17: first offers' median ≈ 0.96× fair value).
+ */
+const TYPICAL_BIDDER_FIT = 1.1;
+
+/**
+ * Audit 2026-11-17 (F3) — where buyers' FIRST offers usually land for a listing worth `expected`, from the bid model
+ * itself (arrivals): a bidder's private value is fair value × fit × noise (±11 %), and they open at their archetype's
+ * `opening` share of it (bargain hunters lower). The archetypes' average opening range, at the typical bidder's fit,
+ * one spread either side: about 0.8×–1.15× fair value, where most first offers land. The listing screen's advice and
+ * the "Listed …" line quote this; a bid under the reserve is turned down automatically, so the reserve advice is
+ * measured against it.
+ */
+export function typicalOpening(expected: number): { low: number; high: number } {
+  const arch = Object.values(BUYER_ARCHETYPES);
+  if (!(expected > 0) || !arch.length) return { low: 0, high: 0 };
+  const lo = arch.reduce((a, d) => a + d.opening[0], 0) / arch.length;
+  const hi = arch.reduce((a, d) => a + d.opening[1], 0) / arch.length;
+  return { low: nicePrice(expected * lo * TYPICAL_BIDDER_FIT * dmath.exp(-0.11)), high: nicePrice(expected * hi * TYPICAL_BIDDER_FIT * dmath.exp(0.11)) };
+}
+
 /** Everything the listing dialog needs before the player commits. */
 export function previewListing(state: GameState, spec: Omit<ListingSpec, 'reserve' | 'durationHours'>): ListingPreview {
   const empty: ListingPreview = { ok: false, message: '', title: '', expected: 0, low: 0, high: 0, suggestedReserve: 0, suggestedBuyNow: 0, warnings: [] };
@@ -565,7 +587,7 @@ export function createListing(state: GameState, spec: ListingSpec): ActionResult
   bumpCounter(state, 'listingsCreated');
   emitEvent(state, {
     kind: 'market',
-    text: `Listed "${title}" — expected ${fmtMoney(built.snapshot.low ?? built.snapshot.valuation)}–${fmtMoney(built.snapshot.high ?? built.snapshot.valuation)}. Buyers will start looking soon.`,
+    text: `Listed "${title}". Buyers usually open at ${fmtMoney(typicalOpening(built.snapshot.valuation).low)}–${fmtMoney(typicalOpening(built.snapshot.valuation).high)}, and they will start looking soon.`, // F3
     listingId: id,
     tankId: contents.tank?.id,
   });

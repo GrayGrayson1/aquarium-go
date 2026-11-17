@@ -14,7 +14,10 @@ import { SuppliesTab } from '@/ui/panels/market/Supplies';
 import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas } from '@/ui/common/moneyShort';
 import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
-import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS } from '@/sim/economy';
+import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, devOpenMarket, createListing, forceBuyerVisit } from '@/sim/economy';
+import { reserveHint } from '@/ui/panels/market/CreateListing';
+import { addCreature, createCreature } from '@/sim/life';
+import { simRng } from '@/sim/rng';
 import { offerLeavesText } from '@/ui/panels/market/Shop';
 import { PARCEL_DAY_KEY, clubFoodParcel } from '@/sim/economy/finance';
 import { FOODS, eatsFood } from '@/data/catalog/foods';
@@ -289,5 +292,42 @@ describe('F6 (the owner’s choice): an open offer stays while you look', () => 
     expect(offerLeavesText(24 * 4 + 8, 24 * 3 + 15)).toBe('Leaves the shop tomorrow morning. It stays while you’re looking.');
     expect(offerLeavesText(24 * 3 + 18, 24 * 3 + 15)).toBe('Leaves the shop this evening. It stays while you’re looking.');
     expect(offerLeavesText(24 * 6 + 8, 24 * 3 + 15)).toBe('Leaves the shop in 3 days. It stays while you’re looking.');
+  });
+});
+
+describe('F3: the listing’s price advice matches what buyers in the code actually offer', () => {
+  it('first offers mostly land in the quoted range, and about half fall below fair value', () => {
+    const ratios: number[] = [];
+    for (let seed = 1; seed <= 30; seed++) {
+      const g = newGame({ starterId: 'betta', starterName: 'Ember', seed });
+      g.clock.speed = 1;
+      devOpenMarket(g);
+      const c = addCreature(g, createCreature(g, simRng(g), 'betta', { ageDays: 120 }), g.tankOrder[0]);
+      c.stats.health = 100;
+      delete c.illness;
+      const r = createListing(g, { kind: 'creature', creatureIds: [c.id], reserve: 1, durationHours: 72 });
+      expect(r.ok).toBe(true);
+      const l = g.market.listings.find((x) => x.id === r.listingId)!;
+      for (let i = 0; i < 40 && l.bids.length < 4 && l.status === 'active'; i++) forceBuyerVisit(g, l.id);
+      for (const b of l.bids) if (b.status === 'open' && !b.counterAmount) ratios.push(b.amount / l.snapshot.valuation);
+    }
+    expect(ratios.length).toBeGreaterThan(40);
+    const { low, high } = typicalOpening(100);
+    const inRange = ratios.filter((x) => x >= low / 100 - 0.02 && x <= high / 100 + 0.02).length / ratios.length;
+    const atFair = ratios.filter((x) => x >= 1).length / ratios.length;
+    expect(inRange).toBeGreaterThan(0.6);
+    // a reserve at fair value turns about half of first offers down (the old hint called it "steady bidding")
+    expect(atFair).toBeGreaterThan(0.25);
+    expect(atFair).toBeLessThan(0.7);
+    expect(reserveHint(100, typicalOpening(100))).toMatch(/^About half of first offers/);
+  });
+
+  it('the quoted range and the reserve hint', () => {
+    const o = typicalOpening(100);
+    expect(o).toEqual({ low: 81, high: 116 });
+    expect(reserveHint(120, o)).toBe('Above most first offers: many will be turned down automatically.');
+    expect(reserveHint(100, o)).toBe('About half of first offers will be below this and turned down automatically.');
+    expect(reserveHint(85, o)).toBe('Some first offers will be below this and turned down automatically.');
+    expect(reserveHint(80, o)).toBe('Most first offers will reach this. You still choose which one to accept.');
   });
 });
