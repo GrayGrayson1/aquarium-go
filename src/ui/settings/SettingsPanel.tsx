@@ -185,7 +185,8 @@ function DisplayTab() {
         <Row label="Exact water values" description="Show numbers, not just Good / Watch / Danger." icon={<FlaskConical size={16} />}>
           <Toggle label="Exact water values" checked={s.advancedWater} onChange={(v) => up({ advancedWater: v })} />
         </Row>
-        <Row label="Autosave" description="Saves quietly every few minutes and when you leave." icon={<Save size={16} />}>
+        {/* audit 2026-11-17, I2: off, nothing saves on leaving either (the browser asks first), so the words say so */}
+        <Row label="Autosave" description={s.autosave ? 'Saves quietly every few minutes and when you leave.' : 'Off: nothing saves on its own. Use Save now to keep your progress.'} icon={<Save size={16} />}>
           <Toggle label="Autosave" checked={s.autosave} onChange={(v) => up({ autosave: v })} />
         </Row>
         <Row label="Guide hints" description="Show the tutorial coach card." icon={<Lightbulb size={16} />}>
@@ -578,11 +579,12 @@ function AboutTab() {
 
 function SaveNowFooter() {
   const game = useGame((s) => s.game);
+  const autosave = useSettings((s) => s.autosave);
   const [busy, setBusy] = useState(false);
   if (!game || game.isShowcase) return null;
   return (
     <div className="ag-row" style={{ gap: 10 }}>
-      <span className="ag-grow ag-small ag-muted">Autosave keeps your progress. Save now any time.</span>
+      <span className="ag-grow ag-small ag-muted">{autosave ? 'Autosave keeps your progress. Save now any time.' : 'Autosave is off. Save now to keep your progress.'}</span>
       <Button
         variant="primary"
         size="sm"

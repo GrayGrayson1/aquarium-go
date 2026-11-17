@@ -62,3 +62,37 @@ describe('the save on leaving a freshly loaded game', () => {
     expect(await autosaveNow('pagehide')).toBe(false);
   });
 });
+
+describe('audit 2026-11-17, I2: Autosave off, leaving with unsaved play', () => {
+  it('the browser is asked to warn only when Autosave is off and the aquarium changed since its last save', async () => {
+    const { noteGameChange, leaveWouldLose } = await import('@/game/useAutosave');
+    const { useSettings } = await import('@/state/settings');
+    const { saveCurrentGame } = await import('@/persistence');
+    const off = useGame.subscribe((s, p) => noteGameChange(s.game, p.game));
+    const was = useSettings.getState().autosave;
+    try {
+      useSettings.setState({ autosave: false });
+      useGame.getState().setGame(newGame({ starterId: 'betta', starterName: 'Off', seed: 33 }));
+      useUI.getState().set({ screen: 'game' });
+      expect(leaveWouldLose()).toBe(false); // just loaded or started: nothing to lose yet
+      useGame.getState().mutate((d) => {
+        d.finance.money += 10;
+      });
+      expect(leaveWouldLose()).toBe(true);
+      useSettings.setState({ autosave: true });
+      expect(leaveWouldLose()).toBe(false); // on, leaving saves
+      useSettings.setState({ autosave: false });
+      expect((await saveCurrentGame('slot1', { toast: false })).ok).toBe(true);
+      expect(leaveWouldLose()).toBe(false); // Save now (any slot) makes it safe
+      useGame.getState().mutate((d) => {
+        d.finance.money += 10;
+      });
+      expect(leaveWouldLose()).toBe(true);
+      useUI.getState().set({ screen: 'title' });
+      expect(leaveWouldLose()).toBe(false); // nothing on screen to save
+    } finally {
+      off();
+      useSettings.setState({ autosave: was });
+    }
+  });
+});
