@@ -300,7 +300,7 @@ describe('A8: the phone tour’s money stop has no star to point at', () => {
   it('phones say where reputation is; computers keep the star', () => {
     const phone = tourStops({ mobile: true, social: false, unlocked: () => true }).find((s) => s.id === 'money')!;
     expect(phone.body).not.toMatch(/star/);
-    expect(phone.body).toMatch(/top of Research, under More/);
+    expect(phone.body).toMatch(/: see it at the top of More\.$/); // More's header shows it (G6)
     const desk = tourStops({ mobile: false, social: false, unlocked: () => true }).find((s) => s.id === 'money')!;
     expect(desk.body).toMatch(/\(the star\)/);
   });
