@@ -363,10 +363,11 @@ function SoloSavesTab() {
               <Download size={14} /> Export save file
             </Button>
           )}
-          <Button size="sm" onClick={() => fileRef.current?.click()}>
-            <Upload size={14} /> Import into
-          </Button>
+          {/* audit 2026-11-17, I22: the slot is chosen first, and the button names it (the picker opened before the choice) */}
           <Segmented size="sm" label="Import slot" value={importSlot} onChange={setImportSlot} items={SAVE_SLOTS.filter((s) => s !== 'auto').map((s) => ({ id: s, label: slotLabel(s).replace('Slot ', '#') }))} />
+          <Button size="sm" onClick={() => fileRef.current?.click()}>
+            <Upload size={14} /> Import into {slotLabel(importSlot)}
+          </Button>
           <input
             ref={fileRef}
             type="file"

@@ -162,6 +162,23 @@ describe('the helpers', () => {
     expect(await lines()).toEqual(['auto.backup: Parked day 5 (previous of auto)', 'auto: Shown day 1', 'slot3: Parked day 5']);
     expect((await copySave('slot2', 'slot1')).ok).toBe(false); // nothing there
   });
+
+  it('audit I22: a parked copy keeps when it was last saved (it read "just now")', async () => {
+    const w = aquarium('Days Ago', 32);
+    const a = aquarium('Today', 33);
+    const then = Date.now() - 3 * 86_400_000;
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(then);
+    try {
+      expect((await saveGame(onDay(w, 5), 'auto')).ok).toBe(true);
+    } finally {
+      clock.mockRestore();
+    }
+    expect((await saveGame(onDay(a, 1), 'auto')).ok).toBe(true);
+    expect((await copySave('auto.backup', 'slot3')).ok).toBe(true);
+    const parked = (await listSaves()).find((m) => m.slot === 'slot3')!;
+    expect(parked.shopName).toBe('Days Ago');
+    expect(parked.savedAt).toBe(then);
+  });
 });
 
 describe('Settings › Saves’ Load (loadIntoGame): an earlier copy of the aquarium on screen', () => {
