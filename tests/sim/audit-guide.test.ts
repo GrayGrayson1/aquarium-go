@@ -168,3 +168,20 @@ describe('A8: the phone tour’s money stop has no star to point at', () => {
     expect(desk.body).toMatch(/\(the star\)/);
   });
 });
+
+describe('A9: a panel already open when its step begins counts', () => {
+  it('"Open the Market" with the Market already open ends "The market" (it did nothing, and the step waited)', async () => {
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const { soloDispatch } = await import('@/game/dispatch');
+    const { showMe } = await import('@/ui/tutorial/TutorialCoach');
+    useGame.getState().installDispatch(soloDispatch);
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 9 });
+    walkTo(g, 'market');
+    useGame.getState().setGame(g);
+    useUI.getState().set({ panel: 'market', panelTarget: null });
+    showMe('dock-market', useGame.getState().game!);
+    expect(useUI.getState().panel).toBe('market'); // still open
+    expect(tutorialStepId(useGame.getState().game!)).toBe('first_goal');
+  });
+});

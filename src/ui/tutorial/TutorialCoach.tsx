@@ -30,6 +30,7 @@ import { useDockedCard } from '../hud/cardDock';
 import { setCameraMode } from '../hud/ToolRail';
 import { setSpeed } from '../hud/TopBar';
 import { personalityLabel } from '../common/format';
+import { tutorialFlag } from '../common/actions';
 import { Spotlight, useSpotlightTarget } from './Spotlight'; // chunk 19 (ADR-0055 decision 7, QOL-008)
 import { guideAim } from './guideTargets'; // chunk 19 (QOL-008)
 import { startTour, useTour } from './tourStore'; // chunk 19 (QOL-008)
@@ -112,7 +113,7 @@ function restoreGuideSpeed(): boolean {
 }
 
 /** "Show me": do the first half of the step for the player (open the thing), never complete it for them. */
-function showMe(target: string, g: GameState) {
+export function showMe(target: string, g: GameState) {
   const ui = useUI.getState();
   sfx('open');
   switch (target) {
@@ -153,7 +154,13 @@ function showMe(target: string, g: GameState) {
         const id = target.slice(5) as Parameters<typeof openPanel>[0];
         // "show me" never closes the panel it points at (openPanel toggles): an open one is pointed at the step's section
         if (ui.panel !== id) openPanel(id);
-        else ui.set({ panelTarget: guideTarget(id) });
+        else {
+          ui.set({ panelTarget: guideTarget(id) });
+          // audit 2026-11-17 (A9): a panel already open when its step began ("The market" with the Market open) counts
+          // now; its flag is only raised as a panel opens, so the step used to wait and this button did nothing
+          tutorialFlag(`opened_${id}`);
+          tutorialFlag(`opened_panel:${id}`);
+        }
       }
   }
 }
