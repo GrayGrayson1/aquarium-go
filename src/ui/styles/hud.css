@@ -101,6 +101,12 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 /* Alerts popover */
 .ag-alerts-pop { right: 0; top: calc(100% + 10px); width: 390px; max-height: min(72vh, 640px); overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 16px; }
 .ag-alerts-pop__log { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+/* audit B1: under the title the drawer scrolls as one (it clipped: eight low-food rows hid the danger rows, Recent
+   events, "Full event log" and "Turn on"). No section shrinks; a long event list keeps its own short scroll so "Full
+   event log" stays near. The side and end padding keeps the rows' focus rings inside the scroll box. */
+.ag-alerts-pop__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 14px; margin: -4px -6px; padding: 4px 6px; overflow-y: auto; overscroll-behavior: contain; }
+.ag-alerts-pop__body > * { flex-shrink: 0; }
+.ag-alerts-pop__body .ag-eventlist { max-height: min(340px, 40dvh); }
 /* chunk 6 (DES-011): the drawer's title row (0.5 phone-alerts.png, S3-D alerts-*.png) */
 .ag-alerts-pop__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px -4px -6px 0; }
 .ag-alerts-pop__title { margin: 0; font-family: var(--font-display); font-size: calc(20px * var(--text-scale)); font-weight: 560; color: var(--c-ink); }

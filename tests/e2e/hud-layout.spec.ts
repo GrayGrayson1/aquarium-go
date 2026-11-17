@@ -34,6 +34,58 @@ async function waitCalm(page: Page) {
 
 const panel = (page: Page) => page.evaluate(() => (window as unknown as { __AQ: { ui(): { panel: string | null } } }).__AQ.ui().panel);
 
+/**
+ * Audit B1: a bell with many rows (nine stocked tanks, an empty cupboard, every tank's gear wearing out). The drawer's
+ * body scrolls, the danger rows lead, and once scrolled to its end "Full event log" is on screen and takes the tap.
+ */
+async function crowdedBell(page: Page, touch = false) {
+  await plainGame(page);
+  await aq(page, 'dev.fillTestFacility', 8);
+  type Api = { __AQ: { mutate(fn: (s: { tankOrder: string[]; inventory: { foods: Record<string, number> }; tanks: Record<string, { equipment: { condition?: number; failed?: boolean }[] }> }) => void): void } };
+  await page.evaluate(() => (window as unknown as Api).__AQ.mutate((s) => void (s.inventory.foods = {})));
+  await aq(page, 'advance', 0.25);
+  await aq(page, 'dev.setSpeed', 0);
+  await page.evaluate(() =>
+    (window as unknown as Api).__AQ.mutate((s) => {
+      for (const id of s.tankOrder) for (const e of s.tanks[id].equipment) if (!e.failed) e.condition = 0.1;
+    }),
+  );
+  const bell = tid(page, 'hud-alerts');
+  if (touch) await bell.tap();
+  else await bell.click();
+  await expect(page.locator('.ag-alerts-pop')).toBeVisible();
+  const before = await page.evaluate(() => {
+    const body = document.querySelector('[data-testid="alerts-body"]') as HTMLElement | null;
+    const rows = [...document.querySelectorAll('.ag-alert-list .ag-alert-row')];
+    return {
+      scrolls: !!body && getComputedStyle(body).overflowY === 'auto' && body.scrollHeight > body.clientHeight + 40,
+      first: rows[0]?.className ?? '',
+      dangerAfterWatch: rows.some((r, i) => r.classList.contains('is-danger') && rows.slice(0, i).some((x) => x.classList.contains('is-watch'))),
+    };
+  });
+  expect(before.scrolls).toBe(true);
+  expect(before.first).toContain('is-danger');
+  expect(before.dangerAfterWatch).toBe(false);
+  await page.evaluate(() => {
+    const body = document.querySelector('[data-testid="alerts-body"]') as HTMLElement;
+    body.scrollTop = body.scrollHeight;
+  });
+  await page.waitForTimeout(200);
+  const reach = await page.evaluate(() => {
+    const pop = document.querySelector('.ag-alerts-pop')!.getBoundingClientRect();
+    const b = document.querySelector('[data-testid="alerts-open-log"]')!.getBoundingClientRect();
+    const x = b.left + b.width / 2;
+    const y = b.top + b.height / 2;
+    if (y > pop.bottom || y < pop.top || y > innerHeight) return 'off screen';
+    return document.querySelector('[data-testid="alerts-open-log"]')!.contains(document.elementFromPoint(x, y)) ? 'reachable' : 'covered';
+  });
+  expect(reach).toBe('reachable');
+  const log = tid(page, 'alerts-open-log');
+  if (touch) await log.tap();
+  else await log.click();
+  await expect.poll(() => panel(page)).toBe('log');
+}
+
 test.describe('desktop 1440×900', () => {
   test('the alerts popover opens above the creature card and above a panel', async ({ page }) => {
     await plainGame(page);
@@ -49,6 +101,10 @@ test.describe('desktop 1440×900', () => {
     await tid(page, 'hud-alerts').click();
     await page.waitForTimeout(600);
     expect(await popoverHits(page)).toBe(1);
+  });
+
+  test('audit B1: a bell with many rows scrolls, leads with danger and reaches Full event log', async ({ page }) => {
+    await crowdedBell(page);
   });
 
   test('a calm HUD still takes the click of a mouse resting on a control', async ({ page }) => {
@@ -90,6 +146,10 @@ test.describe('phone 390×844 (touch)', () => {
       return d.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)) ? 'delta' : 'covered';
     });
     expect(await hit.jsonValue()).toBe('delta');
+  });
+
+  test('audit B1: a bell with many rows scrolls, leads with danger and reaches Full event log', async ({ page }) => {
+    await crowdedBell(page, true);
   });
 
   test('a calm HUD: the first tap on the hidden dock only wakes it, the quick retry lands, the drawn bell acts at once', async ({ page }) => {
@@ -149,6 +209,10 @@ test.describe('phone held sideways 844×390 (touch)', () => {
       return !t || !body ? 'none' : t.bottom <= body.top ? 'clear' : 'over the list';
     });
     expect(['none', 'clear']).toContain(r);
+  });
+
+  test('audit B1: a bell with many rows scrolls, leads with danger and reaches Full event log', async ({ page }) => {
+    await crowdedBell(page, true);
   });
 });
 
