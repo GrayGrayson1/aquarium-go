@@ -48,8 +48,10 @@ export const SOCIAL_COPY = {
   memberTitle: (club: string) => `You’re in ${club}`,
   memberText: 'This invite has already been used on your account.',
   openClub: 'Open club',
-  expiredTitle: 'This invite has expired',
-  expiredText: 'Ask the club for a new code, or browse clubs you can join right away.',
+  // audit 2026-11-17, I9: codes don't expire (the club is gone, or the code mistyped); signed out, Find clubs can't help
+  expiredTitle: 'This invite link doesn’t work',
+  expiredText: 'The club may have been removed, or the code mistyped. Ask the club for a new link, or browse clubs you can join right away.',
+  expiredTextOut: 'The club may have been removed, or the code mistyped. Ask whoever invited you for a new link.',
   findClubs: 'Find clubs',
 
   // §13.4 overview

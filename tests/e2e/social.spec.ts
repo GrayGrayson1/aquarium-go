@@ -90,11 +90,11 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
   test('expired codes, the invite field and Not now', async ({ page }) => {
     await go(page, '#/social/join/NOPE-0000');
     const expired = tid(page, 'social-invite-expired');
-    await expect(expired).toContainText('This invite has expired');
-    await expect(expired).toContainText('Ask the club for a new code, or browse clubs you can join right away.');
-    await expired.getByRole('button', { name: 'Find clubs' }).click();
-    await expect.poll(() => hash(page)).toBe('#/social/clubs');
-    // signed out, Clubs is the sign-in form; its invite field rejects an unknown code and opens a good one
+    // audit 2026-11-17, I9 (changed on purpose): signed out, the words say what is true and there is no Find clubs
+    await expect(expired).toContainText('This invite link doesn’t work');
+    await expect(expired).toContainText('The club may have been removed, or the code mistyped. Ask whoever invited you for a new link.');
+    await expect(expired.getByRole('button', { name: 'Find clubs' })).toHaveCount(0);
+    // signed out, the sign-in form is below it; its invite field rejects an unknown code and opens a good one
     await tid(page, 'social-invite-code').fill('REEF-1234');
     await tid(page, 'social-invite-join').click();
     await expect(tid(page, 'social-error')).toHaveText('That invite code didn’t match a club. Check it and try again.');
@@ -106,9 +106,10 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await tid(page, 'social-not-now').click();
     await expect.poll(() => hash(page)).toBe('#/social');
     await expect(tid(page, 'social-overview')).toBeVisible();
-    // signed in, an expired code is the same empty state
+    // signed in, a code that doesn't work is the same empty state, with Find clubs
     await go(page, '#/social/join/OLD-1999');
     await expect(tid(page, 'social-invite-expired')).toBeVisible();
+    await expect(tid(page, 'social-invite-expired').getByRole('button', { name: 'Find clubs' })).toBeVisible();
   });
 
   test('the tabs, their routes, the trade note, Add friend, leaderboards and Sign out', async ({ page }) => {

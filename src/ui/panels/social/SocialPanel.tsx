@@ -128,7 +128,15 @@ export function SocialPanel() {
 function SignedOut({ invite, offline }: { invite: string | null; offline: boolean }) {
   const [inv] = useSocialQuery(() => (invite ? socialService().resolveInvite(invite) : Promise.resolve(null)), [invite]);
   if (invite && inv.state === 'loading') return <Skeleton rows={4} tall />;
-  if (invite && inv.state === 'ok' && !inv.data) return <Expired />;
+  // audit I9: signed out, no Find clubs (Clubs is this form, and signing up needs a working code); the form below is
+  // for someone who already has an account
+  if (invite && inv.state === 'ok' && !inv.data)
+    return (
+      <>
+        <Expired signedOut />
+        <SignInForm initialError={null} inviteCode={null} />
+      </>
+    );
   return (
     <>
       {invite && inv.state === 'ok' && inv.data && (
@@ -327,11 +335,11 @@ export function SignInForm({ initialError, inviteCode, startInSignUp = false }: 
 
 // ───────────────────────────── invites (§13.3) ─────────────────────────────
 
-function Expired() {
+function Expired({ signedOut = false }: { signedOut?: boolean }) {
   return (
     <div data-testid="social-invite-expired">
-      <EmptyState icon={<Ticket size={28} />} title={C.expiredTitle} action={<Button variant="primary" onClick={() => go({ kind: 'panel', panel: 'social', tab: 'clubs' })}>{C.findClubs}</Button>}>
-        {C.expiredText}
+      <EmptyState icon={<Ticket size={28} />} title={C.expiredTitle} action={signedOut ? undefined : <Button variant="primary" onClick={() => go({ kind: 'panel', panel: 'social', tab: 'clubs' })}>{C.findClubs}</Button>}>
+        {signedOut ? C.expiredTextOut : C.expiredText}
       </EmptyState>
     </div>
   );

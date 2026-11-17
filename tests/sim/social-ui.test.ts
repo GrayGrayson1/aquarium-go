@@ -68,7 +68,10 @@ describe('DES-010: every Social string as §13 and the owner’s answers write i
     expect(C.joinText).toBe('Members see each other’s aquariums and share a leaderboard.');
     expect([C.joinClub, C.notNow, C.welcome, C.youJoined('Highland Betta Club'), C.welcomeDetail]).toEqual(['Join club', 'Not now', 'Welcome', 'You joined Highland Betta Club', 'Club show on Saturday — entries close Friday.']);
     expect([C.memberTitle('Highland Betta Club'), C.memberText, C.openClub]).toEqual(['You’re in Highland Betta Club', 'This invite has already been used on your account.', 'Open club']);
-    expect([C.expiredTitle, C.expiredText, C.findClubs]).toEqual(['This invite has expired', 'Ask the club for a new code, or browse clubs you can join right away.', 'Find clubs']);
+    // audit 2026-11-17, I9: changed on purpose: codes don't expire (the club was removed, or the code mistyped), and
+    // signed out there is no Find clubs (Clubs is the sign-in form; signing up needs a working code)
+    expect([C.expiredTitle, C.expiredText, C.findClubs]).toEqual(['This invite link doesn’t work', 'The club may have been removed, or the code mistyped. Ask the club for a new link, or browse clubs you can join right away.', 'Find clubs']);
+    expect(C.expiredTextOut).toBe('The club may have been removed, or the code mistyped. Ask whoever invited you for a new link.');
   });
 
   it('§13.4–§13.5, ADR-0028 and ADR-0034: overview, tabs, empty lists, the note, Add friend, search, units, dots', () => {
