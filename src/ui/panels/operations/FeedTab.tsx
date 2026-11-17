@@ -10,7 +10,7 @@ import { go } from '@/ui/nav/router';
 import { formatClock, dayOf } from '@/sim/time';
 import { BRINE, EGGS_SUPPLY, FOOD_ROOM, INFUSORIA, VEGETABLES } from '@/data/catalog/machines';
 import { getFoodDef } from '@/data/catalog/foods';
-import { cultureState, doserNeeds, doserOf, isHeld, savedThisWeek, storeCap, type CultureKind } from '@/sim/automation';
+import { cultureState, doserNeeds, doserOf, doserShortWords, isHeld, savedThisWeek, storeCap, type CultureKind } from '@/sim/automation';
 import { opsMemo } from '@/ui/common/ops';
 import { findSpecies } from '@/data/species';
 import { moduleFor } from '@/sim/life/breeding/registry';
@@ -59,7 +59,7 @@ export function FeedTab({ g, small }: { g: GameState; nav: OpsNav; small: boolea
                   <OpsBar value={s.progress} kind={kind === 'cone' ? 'violet' : 'gold'} label={`${kind === 'cone' ? 'Cone' : 'Jar'} ${i + 1}: ${Math.round(s.progress * 100)}%`} />
                 </div>
                 <span className="ops-row__sub" style={{ minWidth: 112, textAlign: 'right' }}>
-                  {s.status === 'empty' ? (kind === 'cone' ? 'Empty · needs eggs' : 'Empty · needs vegetables') : s.status === 'full' ? 'Full · waits for room' : s.status === 'held' ? 'Held' : `ready ${formatClock(s.readyHour ?? g.clock.hour)}`}
+                  {s.status === 'no_salt_water' ? 'Empty · needs salt water' : s.status === 'empty' ? (kind === 'cone' ? 'Empty · needs eggs' : 'Empty · needs vegetables') : s.status === 'full' ? 'Full · waits for room' : s.status === 'held' ? 'Held' : `ready ${formatClock(s.readyHour ?? g.clock.hour)}`}
                 </span>
               </div>
             );
@@ -107,13 +107,14 @@ export function FeedTab({ g, small }: { g: GameState; nav: OpsNav; small: boolea
             ),
           ].join(' and ');
           const amounts = [BRINE, INFUSORIA].filter((f) => per.get(f)).map((f) => `${per.get(f)} ${f === BRINE ? 'brine' : 'infusoria'}`);
+          const short = needs.length ? doserShortWords(g, t) : null; // Audit 2026-11-17 (H15): it said "Running" with nothing to give
           return (
             <div key={t.id} className="ops-row">
               <div className="ops-row__main">
                 <span className="ops-row__title">{t.name}</span>
-                <span className="ops-row__sub">{needs.length ? [who, ...amounts].join(' · ') : 'idle until the next clutch hatches'}</span>
+                <span className="ops-row__sub">{short ? `${who} · no ${short} in stock: the young go hungry` : needs.length ? [who, ...amounts].join(' · ') : 'idle until the next clutch hatches'}</span>
               </div>
-              {held ? <Status tone="watch" icon="held">Held</Status> : needs.length ? <Status tone="good" icon="running">Running</Status> : <Status tone="neutral">Idle</Status>}
+              {held ? <Status tone="watch" icon="held">Held</Status> : short ? <Status tone="watch">Out of food</Status> : needs.length ? <Status tone="good" icon="running">Running</Status> : <Status tone="neutral">Idle</Status>}
             </div>
           );
         })}

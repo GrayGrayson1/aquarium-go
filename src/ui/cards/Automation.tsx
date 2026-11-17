@@ -21,7 +21,7 @@ import { recommendedServings } from '@/sim/water';
 import { inhabitantsOf } from '@/sim/water/env';
 import { keeperOf } from '@/sim/staff/common';
 import { isHeld } from '@/sim/automation/hold'; // lane:automation (chunk 5)
-import { doserNeeds } from '@/sim/automation'; // lane:automation (chunk 5)
+import { doserNeeds, doserShortWords } from '@/sim/automation'; // lane:automation (chunk 5)
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { sfx } from '@/audio/sfx';
@@ -280,6 +280,7 @@ function DoserRow({ g, tank }: { g: GameState; tank: Tank }) {
   if (!dev && !unlocked) return null;
   const needs = safe('doserNeeds', () => doserNeeds(g, tank), []);
   const young = needs.reduce((a, n) => a + n.clutch.count, 0);
+  const short = young ? safe('doserShortWords', () => doserShortWords(g, tank), null) : null; // Audit 2026-11-17 (H15)
   if (!dev)
     return (
       <div className="ag-auto is-missing" data-testid="tank-doser-row">
@@ -324,6 +325,11 @@ function DoserRow({ g, tank }: { g: GameState; tank: Tank }) {
       <div>
         <div className="ag-auto__title">Live-food doser</div>
         <div className="ag-auto__sub">{young ? `Feeding ${young} young · three times a day` : 'Idle until the next clutch hatches'}</div>
+        {short && dev.on && !dev.failed && !isHeld(g, 'food') && (
+          <div className="ag-auto__warn" data-testid="tank-doser-short">
+            No {short} in stock: the young go hungry.
+          </div>
+        )}
         {dev.on && isHeld(g, 'food') && (
           <div className="ag-auto__warn" data-testid="tank-doser-held">
             <Hand size={12} aria-hidden /> Held by manual mode — no doses until you resume.

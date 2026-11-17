@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { facility, run } from './support/automation';
-import { automationProblems, cultureState, doseTank, doserNeeds, foodRoom, holdAll, resumeAll, storeCap, waterRoom } from '@/sim/automation';
+import { automationProblems, cultureState, doseTank, doserNeeds, doserShortWords, foodRoom, holdAll, resumeAll, storeCap, waterRoom } from '@/sim/automation';
 import { BRINE, FOOD_ROOM, INFUSORIA, VEGETABLES } from '@/data/catalog/machines';
 import { installEquipment } from '@/sim/care';
 import { getSpecies } from '@/data/species';
@@ -64,6 +64,17 @@ describe('AUTO-033: hatchery cones and infusoria jars', () => {
     const eggs = automationProblems(g).find((p) => p.kind === 'supply' && p.supply === 'eggs');
     expect(eggs).toMatchObject({ state: 'out', tone: 'danger', why: 'no_manager' });
     expect(automationProblems(g).some((p) => p.kind === 'supply' && p.supply === 'veg' && p.state === 'out')).toBe(true);
+  });
+
+  it('Audit 2026-11-17 (H14): a cone with eggs in stock but no salt water says it needs salt water, not eggs', () => {
+    const { g } = room({ eggs: 30, salt: 0 });
+    waterRoom(g)!.mix = null;
+    run(g, 2);
+    const r = foodRoom(g)!;
+    expect(r.cones.every((c) => c.startedHour === null)).toBe(true);
+    expect(cultureState(g, r, 'cone', 0).status).toBe('no_salt_water');
+    g.inventory.brineShrimpEggs = 0;
+    expect(cultureState(g, r, 'cone', 0).status).toBe('empty'); // no eggs: "needs eggs", as before
   });
 
   it('nothing expires; a harvest that would pass the store waits ("Full") until there is room, then lands once', () => {
@@ -142,6 +153,11 @@ describe('AUTO-033: live-food dosers', () => {
     const { g, t, cl } = withFry(10);
     expect(doseTank(g, t, 24 * 3 + 8)).toBe('short');
     expect(automationProblems(g).find((p) => p.kind === 'supply' && p.supply === 'live')).toMatchObject({ tankIds: [t.id] });
+    // Audit 2026-11-17 (H15): the doser rows say so ("Feeding 10 young" and "Running" it said)
+    expect(doserShortWords(g, t)).toBe('baby brine or infusoria');
+    g.inventory.foods[INFUSORIA] = 2;
+    expect(doserShortWords(g, t)).toBeNull();
+    g.inventory.foods[INFUSORIA] = 0;
     delete g.clutches[cl.id];
     expect(doseTank(g, t, 24 * 3 + 14)).toBe('idle');
   });
