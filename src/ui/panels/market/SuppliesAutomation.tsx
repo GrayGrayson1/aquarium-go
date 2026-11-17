@@ -202,7 +202,6 @@ export function DryFoodSection({ g, flash }: { g: GameState; flash: string | nul
   );
 }
 
-/** Marine salt mix in 5, 20 and 40 kg, with its status (§8.5; shown with a salt tank, salt in stock or a Water room). */
 /**
  * Audit 2026-11-17 C2 — salt is paid for when bought, not in the running cost (the owner's choice): say what the stock
  * buys, in the largest salt tank's 25% water changes.
@@ -217,9 +216,10 @@ function saltLasts(g: GameState): string {
   }
   if (!best) return '';
   const n = Math.floor((g.inventory.salt + 1e-6) / best.kg);
-  return n === 0 ? ` · not enough for a 25% water change of ${best.name}` : ` · enough for about ${n} 25% water ${n === 1 ? 'change' : 'changes'} of ${best.name}`;
+  return n === 0 ? ` · not enough for a 25% water change of ${best.name}` : ` · enough for about ${n} water ${n === 1 ? 'change' : 'changes'} (25% each) of ${best.name}`;
 }
 
+/** Marine salt mix in 5, 20 and 40 kg, with its status (§8.5; shown with a salt tank, salt in stock or a Water room). */
 export function SaltRow({ g, flash }: { g: GameState; flash: string | null }) {
   const room = g.facility.water;
   const snap = opsSnapshot(g); // memoised per game hour and stock (PERF-004)

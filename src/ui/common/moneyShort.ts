@@ -10,6 +10,10 @@ import { findSpecies } from '@/data/species';
 import { isFoodAvailable } from '@/sim/economy/shop';
 import { cashIdeas } from '@/sim/economy/finance';
 import { tankFoodOutlook } from '@/sim/tankStatus';
+import { SALT_PRICE_PER_KG } from '@/sim/economy';
+import { waterChangeCost } from '@/sim/care';
+import { isSaltClass } from '@/sim/water/constants';
+import { SALT_BAGS } from '@/data/catalog/machines';
 import { safe } from './safe';
 
 /**
@@ -44,7 +48,39 @@ export function cheapestFoodPrice(g: GameState): number {
 
 /** Finances shows its "Ways to raise cash" whenever money stands between the player and food or anything on sale. */
 export function needsCashIdeas(g: GameState): boolean {
-  return g.finance.money < 0 || g.finance.money < cheapestFoodPrice(g) || !!hungryAndShort(g);
+  return g.finance.money < 0 || g.finance.money < cheapestFoodPrice(g) || !!hungryAndShort(g) || saltAndShort(g);
+}
+
+// ───────────── Audit 2026-11-17 C1 (review): salt water with no salt and no money for a bag ─────────────
+
+/** The smallest bag of marine salt mix on sale (Market › Supplies). */
+export function cheapestSaltPrice(): number {
+  return SALT_BAGS[0] * SALT_PRICE_PER_KG;
+}
+
+/** Can't even a 10% change (the card's smallest) be done in this salt tank with the salt in stock? */
+const saltBlocked = (g: GameState, tankId: string): boolean => {
+  const t = g.tanks[tankId];
+  return !!t && isSaltClass(t.waterClass) && !safe('waterChangeCost', () => waterChangeCost(g, tankId, 0.1), { saltKg: 0, enoughSalt: true }).enoughSalt;
+};
+
+/** A salt tank that can't have a water change for want of salt, and too little money for the smallest bag. */
+export function saltAndShort(g: GameState): boolean {
+  if (g.finance.money >= cheapestSaltPrice()) return false;
+  return g.tankOrder.some((id) => saltBlocked(g, id));
+}
+
+/**
+ * The tank card's line under its water-change buttons when the salt can't cover any change and the money won't buy
+ * the smallest bag (the change's own refusal says where to buy, which doesn't help then). Null otherwise.
+ */
+export function saltCashLine(g: GameState, tankId: string): string | null {
+  const money = g.finance.money;
+  const price = cheapestSaltPrice();
+  if (money >= price || !saltBlocked(g, tankId)) return null;
+  return money < 0
+    ? `Not enough salt for even a 10% water change, and purchases are paused while you’re ${moneyHeld(money)} in debt.`
+    : `Not enough salt for even a 10% water change, and the smallest bag of salt mix (${formatMoney(price)}) costs more than the ${moneyHeld(money)} you have.`;
 }
 
 export interface HungryAndShort {

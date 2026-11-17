@@ -32,14 +32,23 @@ export function idealBand(state: GameState, tank: Tank, key: 'tempC' | 'salinity
 }
 
 /**
+ * The range a player can set a heater or chiller to (°C): the tank card's stepper and Build's slider read it, and advice
+ * that names a setting stays inside it (Audit 2026-11-17 C7 review: "raise the chiller to 27 °C" on a dial that stops at
+ * 26). The sim itself accepts a wider range (`settingRange` in ./index.ts).
+ */
+export const THERMOSTAT_DIAL = { heater: { min: 18, max: 32 }, chiller: { min: 10, max: 26 } } as const;
+
+/**
  * Audit 2026-11-17 C7 — what to do when the heater is set at or above the chiller. When these animals need it warmer
- * than the chiller's setting (a cool tank's chiller kept after converting to tropical water) the chiller is the fix;
- * otherwise the heater, as before.
+ * than the chiller's setting (a cool tank's chiller kept after converting to tropical water) the chiller is the fix:
+ * raise it above the heater if the dial goes that high, otherwise switch it off. Else the heater, as before.
  */
 export function fightAdvice(state: GameState, tank: Tank, heaterSet: number, chillerSet: number): string {
-  return idealBand(state, tank, 'tempC').min > chillerSet + 0.05
-    ? `Raise the chiller setting to at least ${(heaterSet + 1).toFixed(1)} °C, or switch the chiller off.`
-    : 'Set the heater at least 1 °C below the chiller setting.';
+  if (idealBand(state, tank, 'tempC').min <= chillerSet + 0.05) return 'Set the heater at least 1 °C below the chiller setting.';
+  const want = heaterSet + 1;
+  return want <= THERMOSTAT_DIAL.chiller.max + 1e-9
+    ? `Raise the chiller setting to at least ${want.toFixed(1)} °C, or switch the chiller off.`
+    : 'Switch the chiller off — these animals need warmer water than it can be set to.';
 }
 
 /** The setting a newly installed unit of `kind` gets in this tank (thermostats for the animals, gentle pumps for weak swimmers). */

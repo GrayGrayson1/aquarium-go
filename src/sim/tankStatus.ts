@@ -18,7 +18,7 @@ import { illnessDef } from './life/illness';
 import { emitEvent } from './context';
 import { getWaterReport } from './water';
 import { creaturesInTank, hungerAdvice } from './life';
-import { foodsFor } from '@/data/species/guide'; // Audit 2026-11-17 C8
+import { foodsFor, menuFor } from '@/data/species/guide'; // Audit 2026-11-17 C8
 import { speciesWaterView } from './life/welfare'; // lane:fix-water — the creature card's water-harm number
 import { pluralName } from './economy/util';
 import { isFoodAvailable } from './economy/shop';
@@ -138,7 +138,11 @@ function hungerLine(state: GameState, issue: 'starving' | 'very_hungry', list: C
   const advice = hungerAdvice(state, sp, outpaced, plural);
   if (advice) return `${head} — ${advice}`;
   const stock = state.inventory?.foods ?? {};
-  const names = [...new Set(foodsFor(sp).filter((f) => (stock[f.id] ?? 0) >= 1).map((f) => f.name.toLowerCase()))].slice(0, 2);
+  // (review) the guide's list first (menuFor: no goldfish pellets for a betta while micro pellets are in), then any
+  // food in stock it eats
+  const have = (f: { id: string }) => (stock[f.id] ?? 0) >= 1;
+  const menu = menuFor(sp).filter(have);
+  const names = [...new Set((menu.length ? menu : foodsFor(sp).filter(have)).map((f) => f.name.toLowerCase()))].slice(0, 2);
   if (!names.length) return null;
   const them = plural ? 'them' : 'it';
   return issue === 'starving' ? `${head} — feed ${them} ${names.join(' or ')} right away.` : `${head} — time to feed ${them} ${names.join(' or ')}.`;
