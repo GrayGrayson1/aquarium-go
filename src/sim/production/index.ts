@@ -21,7 +21,9 @@
  * - **Quarantine.** A batch moves into the line's first free quarantine tank (one batch per tank at a time, across
  *   lines; the tank must have room and be cycled or seeded) and stays 168 game hours.
  * - **Sell.** With "List automatically" on, the batch is listed when quarantine ends, by each animal's life stage then
- *   (juveniles as a juvenile batch, adults singly or as a group; ADR-0025 decision 2), at a reserve of fair value × 0.9.
+ *   (juveniles as a juvenile batch, adults singly or as a group; ADR-0025 decision 2), with a buy-now price of fair value
+ *   × 0.9 (and the reserve at it), so a buyer who likes the price buys them without the player. What doesn't sell is
+ *   listed again 10 % cheaper each time, never below half its fair value (the owner's decision, Audit 2026-11-17 H1).
  *   Never a Prismatic, a favourite or an animal in a keep tank. Sales count in the line's week once.
  * - **Waiting for room.** With "Pause when a tank is full", the pair is held while the raise tank can't take the next
  *   clutch (fewer places than the species raises per clutch) and holds the line's young; it restarts by itself.
@@ -51,6 +53,7 @@ import { environmentGate, previewAddition } from '../compat';
 import { tankDailyCost } from '../water';
 import { activeListingFor, createListing, DEFAULT_LISTING_HOURS } from '../economy/listings';
 import { bundleValue, creatureValue } from '../economy/valuation';
+import { fmtMoney } from '../economy/util';
 import { buyTank, tankKitPrice } from '../economy/purchases';
 import { chargeLine, isLineParent, isLineYoung, lineShare, lineTankIds } from './costs';
 
@@ -58,8 +61,19 @@ export { noteFoodSpend, lineShare, lineTankIds, isLineYoung } from './costs';
 
 export const QUARANTINE_HOURS = 168;
 export const WEEK_HOURS = 168;
-/** "Auctions · reserve at fair value −10%" (0.5 §11.1, PROD-014). */
+/** A line's price: fair value −10% (0.5 §11.1, PROD-014), as a buy-now price since Audit 2026-11-17 (H1). */
 export const RESERVE_SHARE = 0.9;
+/** Each relisting of young that didn't sell is 10 % cheaper than the last (Audit 2026-11-17, H1: the owner's choice)... */
+export const RELIST_STEP = 0.9;
+/** ...but never below half of fair value. */
+export const RELIST_FLOOR = 0.5;
+
+/** The buy-now price for one animal of fair value `fairEach`, after `relists` relistings: whole dollars, $1 or more. */
+export function linePriceEach(fairEach: number, relists = 0): number {
+  let share = RESERVE_SHARE;
+  for (let i = 0; i < Math.min(relists, 20); i++) share *= RELIST_STEP;
+  return Math.max(1, Math.round(fairEach * Math.max(RELIST_FLOOR, share)));
+}
 /**
  * A quarantine tank takes a batch once it's cycled: the game's own line for a tank with animals, below which the water
  * report says "Tank is still cycling" (danger) and buying animals warns "This tank is not cycled yet" (0.4). Seeded
@@ -724,7 +738,7 @@ export function quarantineBusyUntil(state: GameState, tankId: string): number | 
   let until: number | null = null;
   for (const l of productionLines(state)) {
     for (const b of l.batches ?? []) {
-      if (b.tankId !== tankId || b.released || b.quarantinedHour === undefined) continue;
+      if (b.tankId !== tankId || b.released || b.relists || b.quarantinedHour === undefined) continue; // a batch listed again finished its hold
       const end = b.quarantinedHour + QUARANTINE_HOURS;
       until = until === null ? end : Math.max(until, end);
     }
@@ -869,6 +883,7 @@ function countSales(state: GameState, line: ProductionLine): void {
   for (const b of line.batches ?? []) {
     if (!b.listingIds?.length) continue;
     const open: string[] = [];
+    let unsold = false;
     for (const id of b.listingIds) {
       const l = state.market.listings.find((x) => x.id === id);
       if (!l) continue;
@@ -884,10 +899,12 @@ function countSales(state: GameState, line: ProductionLine): void {
         line.stats.totalSold += n;
         line.stats.totalRevenue = roundCents(line.stats.totalRevenue + v);
       } else if (l.status === 'expired') {
-        // Audit 2026-11-17 (H1): the line lists a batch once; say where the young that didn't sell are and what to do
+        // Audit 2026-11-17 (H1): what didn't sell is listed again, a little cheaper (release()); with "List
+        // automatically" off the line leaves them to the player and says where they are
         const back = l.creatureIds.map((cid) => state.creatures[cid]).filter((c): c is Creature => !!c && c.status === 'alive');
         const sp = findSpecies(line.speciesId);
-        if (back.length && sp) {
+        if (back.length && line.rules.autoList) unsold = true;
+        else if (back.length && sp) {
           const where = back.map((c) => c.tankId).find(Boolean) ?? b.tankId;
           const n = back.length;
           const them = n === 1 ? 'it' : 'them';
@@ -897,6 +914,10 @@ function countSales(state: GameState, line: ProductionLine): void {
     }
     if (open.length) b.listingIds = open;
     else delete b.listingIds; // §3.2 rule 10
+    if (unsold) {
+      b.released = false; // release() lists the rest again
+      b.relists = (b.relists ?? 0) + 1;
+    }
   }
   // A batch is done once its hold ended and none of its listings is still open.
   if (line.batches) {
@@ -1177,11 +1198,19 @@ function release(state: GameState, line: ProductionLine, sp: SpeciesDefinition, 
     const ids: string[] = [];
     let failed: string | null = null;
     const unlisted: Creature[] = [];
+    const relists = b.relists ?? 0;
     for (const g of groups) {
-      const value = bundleValue(state, g.kind, g.creatures).expected;
-      const r = createListing(state, { kind: g.kind, creatureIds: g.creatures.map((c) => c.id), reserve: Math.round(value * RESERVE_SHARE), durationHours: DEFAULT_LISTING_HOURS });
-      if (r.ok && r.listingId) ids.push(r.listingId);
-      else {
+      // a buy-now price at fair value −10%, a little lower each time it's listed again; the reserve is the same, so no
+      // offer waits on the player (Audit 2026-11-17, H1: the owner's choice, "Sell by itself")
+      const n = g.creatures.length;
+      const each = linePriceEach(bundleValue(state, g.kind, g.creatures).expected / n, relists);
+      const r = createListing(state, { kind: g.kind, creatureIds: g.creatures.map((c) => c.id), reserve: each * n, buyNow: each * n, durationHours: DEFAULT_LISTING_HOURS });
+      if (r.ok && r.listingId) {
+        ids.push(r.listingId);
+        const title = state.market.listings.find((x) => x.id === r.listingId)?.title ?? `${n} ${youngWord(sp, g.creatures, n)}`;
+        const price = `${fmtMoney(each)}${n === 1 ? '' : ' each'}`;
+        emitEvent(state, { kind: 'info', text: relists ? `${line.name}: ${n} didn’t sell: listed again at ${price}` : `${line.name}: ${title} listed · Buy now ${price}`, tankId: b.tankId, listingId: r.listingId });
+      } else {
         failed = r.message;
         unlisted.push(...g.creatures);
       }

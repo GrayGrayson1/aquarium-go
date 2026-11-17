@@ -1395,6 +1395,8 @@ export interface ProductionBatch {
   released?: boolean;
   /** The line's listings for this batch that are still open, and those already counted in the stats. */
   listingIds?: Id[];
+  /** Times what didn't sell was listed again (each 10 % cheaper; Audit 2026-11-17, H1). Absent: never. */
+  relists?: number;
 }
 
 /** lane:production — what a paused line is missing (ADR-0025 decision 10): a parent, or a stage's tank. */

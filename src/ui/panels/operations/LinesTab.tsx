@@ -141,7 +141,7 @@ function LineRow({ g, line, held, small, early }: { g: GameState; line: Producti
         {early && v.selling.listed > 0 && (
           <span className="ops-row__sub ops-num" data-testid={`line-listed-${line.id}`}>
             Listed now {v.selling.listed}
-            {v.selling.bestBid ? ` · best bid ${formatMoney(v.selling.bestBid)}` : ''}
+            {v.selling.each !== undefined ? ` · Buy now ${v.selling.listings > 1 ? 'from ' : ''}${formatMoney(v.selling.each)}${v.selling.listed > 1 ? ' each' : ''}` : v.selling.bestBid ? ` · best bid ${formatMoney(v.selling.bestBid)}` : ''}
           </span>
         )}
       </div>

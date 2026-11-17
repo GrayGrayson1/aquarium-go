@@ -28,6 +28,9 @@ import { act } from '../common/act';
 import { useSheet } from '../common/PanelLayout';
 import { CreaturePortrait } from '../common/Portrait';
 
+/** The List automatically rule's line (set-up step 3 and the line's rules; Audit 2026-11-17, H1: the owner's "Sell by itself"). */
+export const LIST_AUTOMATICALLY = 'Juveniles go on sale the day quarantine ends: a buyer who likes the price buys them without you. What doesn’t sell is listed again a little cheaper.';
+
 type Pair = ReturnType<typeof candidatePairs>[number];
 const pairKey = (p: { motherId: string; fatherId: string }) => `${p.motherId}-${p.fatherId}`;
 const gal = (g: GameState, id: string) => TANK_TIER_BY_ID[g.tanks[id]?.tierId ?? '']?.gallons;
@@ -410,7 +413,7 @@ export function NewLine({ g, onStarted }: { g: GameState; onStarted: (lineId: st
             </div>
             <div className="pr-field">
               <span className="pr-field__label">Sell</span>
-              <span className="pr-fieldbtn pr-fieldbtn--static">Auctions · reserve at fair value −10%</span>
+              <span className="pr-fieldbtn pr-fieldbtn--static">Buy now at fair value −10%</span>
             </div>
           </section>
           <section className="pr-card" aria-label="Line rules">
@@ -419,7 +422,7 @@ export function NewLine({ g, onStarted }: { g: GameState; onStarted: (lineId: st
               [
                 ['pauseWhenFull', 'Pause when a tank is full', `Stops spawning when ${g.tanks[tanks.raise ?? '']?.name ?? 'the raise tank'} reaches its stocking limit.`],
                 ['keepPrismatic', 'Never sell Prismatic animals', `A Prismatic youngster always moves to ${g.tanks[tanks.keep ?? '']?.name ?? 'the keep tank'} instead.`],
-                ['autoList', 'List automatically', 'Juveniles go to auction the day quarantine ends.'],
+                ['autoList', 'List automatically', LIST_AUTOMATICALLY],
               ] as const
             ).map(([key, title, sub]) => (
               <div key={key} className="pr-rule">

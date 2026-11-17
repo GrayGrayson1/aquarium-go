@@ -29,7 +29,7 @@ import { doserOf } from '@/sim/automation';
 import { act } from '../common/act';
 import { Bar, EmptyState, Seg, Tile } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
-import { NewLine, PairPicker, SortSheet, TankPicker } from './ProductionSetup';
+import { LIST_AUTOMATICALLY, NewLine, PairPicker, SortSheet, TankPicker } from './ProductionSetup';
 import { go } from '@/ui/nav/router'; // lane:automation (chunk 5)
 import './production.css';
 
@@ -163,6 +163,17 @@ type Fixing = null | { kind: 'pair' } | { kind: 'tank'; stage: LineStage; replac
 
 const daysLeft = (n: number | undefined) => `${n ?? 0} ${n === 1 ? 'day' : 'days'} left`;
 
+/** The Sell stage's foot: "12 juvenile bettas listed · Buy now $18 each", or this week's sales (Audit 2026-11-17, H1). */
+function sellFoot(v: LineView): string {
+  const s = v.selling;
+  if (s.listed > 0) {
+    const price = s.each !== undefined ? ` · Buy now ${s.listings > 1 ? 'from ' : ''}${formatMoney(s.each)}${s.listed > 1 ? ' each' : ''}` : '';
+    return `${s.title ?? `${s.listed} ${s.listed === 1 ? v.sp.commonName.toLowerCase() : spPlural(v.sp)}`} listed${price}`;
+  }
+  if (v.week.sold > 0) return `Sold ${v.week.sold} ${v.week.sold === 1 ? v.sp.commonName.toLowerCase() : spPlural(v.sp)} this week · ${formatMoney(v.week.revenue)}`;
+  return 'Nothing listed';
+}
+
 /** One line: header card, the note while it's held up, four tiles, five stages, Line rules. */
 export function LineDetail({ g, line, onEnded }: { g: GameState; line: ProductionLine; onEnded?: () => void }) {
   const [ending, setEnding] = useState(false);
@@ -175,8 +186,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
   const plural = spPlural(v.sp);
   const morph = line.breedFor ? morphDisplayName(v.sp, line.breedFor).replace(new RegExp(`\\s*${v.sp.commonName}$`, 'i'), '') : '';
   const pairNames = `${v.mother?.name ?? '—'} × ${v.father?.name ?? '—'}`;
-  // Audit 2026-11-17 (H1): a line lists its young; a sale needs the player to accept a bid
-  const subline = several ? `${v.sp.commonName} · ${pairNames} · breeds, raises and lists while you play` : `Breeds, raises and lists ${morph ? `${morph} ` : ''}${plural} while you play. Accept a bid to sell.`;
+  const subline = several ? `${v.sp.commonName} · ${pairNames} · breeds, raises and sells while you play` : `Breeds, raises and sells ${morph ? `${morph} ` : ''}${plural} while you play.`;
   const raiseName = v.raise?.name ?? 'the raise tank';
   const keepName = v.keep?.name ?? 'the keep tank';
   const broken = line.broken;
@@ -342,8 +352,9 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
           {fixTank('quarantine') && <FixTank onClick={() => setFixing({ kind: 'tank', stage: 'quarantine', replace: broken?.id })} />}
         </Stage>
         <Stage id="sell" n={5} icon={<Gavel size={16} />} title="Sell" active={v.active === 'sell'} pill={<TankPill g={g} name="Market" />}>
-          <p>Auctions · reserve at fair value −10%</p>
-          <p className="pr-stage__foot">{v.selling.listed > 0 ? `${v.selling.listed} listed${v.selling.bestBid !== undefined ? ` · best bid ${formatMoney(v.selling.bestBid)}` : ''}` : 'Nothing listed'}</p>
+          {/* Audit 2026-11-17 (H1): the owner's "Sell by itself" — a buy-now price, a little lower each time it's listed again */}
+          <p>Buy now at fair value −10% · a little cheaper each time it’s listed again</p>
+          <p className="pr-stage__foot">{sellFoot(v)}</p>
         </Stage>
       </div>
 
@@ -353,7 +364,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
         <h4 className="pr-section">Line rules</h4>
         <Rule title="Pause when a tank is full" sub={`Stops spawning when ${raiseName} reaches its stocking limit.`} checked={line.rules.pauseWhenFull} testId="production-rule-pauseWhenFull" lineName={line.name} onChange={(on) => act({ k: 'setLineRule', line: line.id, rule: 'pauseWhenFull', on }, { quiet: true })} />
         <Rule title="Never sell Prismatic animals" sub={`A Prismatic youngster always moves to ${keepName} instead.`} checked={line.rules.keepPrismatic} testId="production-rule-keepPrismatic" lineName={line.name} onChange={(on) => act({ k: 'setLineRule', line: line.id, rule: 'keepPrismatic', on }, { quiet: true })} />
-        <Rule title="List automatically" sub="Juveniles go to auction the day quarantine ends." checked={line.rules.autoList} testId="production-rule-autoList" lineName={line.name} onChange={(on) => act({ k: 'setLineRule', line: line.id, rule: 'autoList', on }, { quiet: true })} />
+        <Rule title="List automatically" sub={LIST_AUTOMATICALLY} checked={line.rules.autoList} testId="production-rule-autoList" lineName={line.name} onChange={(on) => act({ k: 'setLineRule', line: line.id, rule: 'autoList', on }, { quiet: true })} />
       </section>
 
       <Modal

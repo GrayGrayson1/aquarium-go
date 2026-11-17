@@ -85,7 +85,7 @@ describe('PROD-003, DES-008: the Production tab', () => {
     expect(t).toContain('1 of 1 line slot · more at Specialty Shop');
     expect(t).toContain('Betta line');
     expect(t).toContain('Running');
-    expect(t).toContain('Breeds, raises and lists Cambodian Veiltail bettas while you play. Accept a bid to sell.'); // Audit 2026-11-17 (H1): it lists; a sale needs a bid accepted
+    expect(t).toContain('Breeds, raises and sells Cambodian Veiltail bettas while you play.'); // Audit 2026-11-17 (H1): a buy-now price makes it true
     expect(attr(m, 'production-toggle', 'role')).toBe('switch');
     expect(attr(m, 'production-toggle', 'aria-checked')).toBe('true');
     expect(attr(m, 'production-toggle', 'aria-label')).toBe('Betta line running');
@@ -97,12 +97,12 @@ describe('PROD-003, DES-008: the Production tab', () => {
     expect(t).toContain('Waiting for the next clutch');
     expect(t).toContain('Keep Prismatic Sell the rest');
     expect(t).toContain('Free');
-    expect(t).toContain('Auctions · reserve at fair value −10% Nothing listed');
+    expect(t).toContain('Buy now at fair value −10% · a little cheaper each time it’s listed again Nothing listed'); // Audit 2026-11-17 (H1): the owner's "Sell by itself" 
     expect(routeText(m)).toMatch(/^Breeding Tank Grow-out Tub Quarantine Market/); // the route strip (§8.6)
     expect(t).toContain('Line rules');
     expect(t).toContain('Pause when a tank is full Stops spawning when Grow-out Tub reaches its stocking limit.');
     expect(t).toContain('Never sell Prismatic animals A Prismatic youngster always moves to Quiet Corner instead.');
-    expect(t).toContain('List automatically Juveniles go to auction the day quarantine ends.');
+    expect(t).toContain('List automatically Juveniles go on sale the day quarantine ends: a buyer who likes the price buys them without you. What doesn’t sell is listed again a little cheaper.');
     for (const r of ['pauseWhenFull', 'keepPrismatic', 'autoList']) {
       expect(attr(m, `production-rule-${r}`, 'role')).toBe('switch');
       expect(attr(m, `production-rule-${r}`, 'aria-checked')).toBe('true');
@@ -138,7 +138,7 @@ describe('PROD-003, DES-008: the Production tab', () => {
     expect(attr(m, 'production-line-royal', 'aria-checked')).toBe('true');
     expect(attr(m, 'production-line-cambodian', 'aria-checked')).toBe('false');
     expect(t).toContain('Royal Blue Halfmoon line');
-    expect(t).toContain('Betta · Iris × Sapphire · breeds, raises and lists while you play');
+    expect(t).toContain('Betta · Iris × Sapphire · breeds, raises and sells while you play');
   });
 
   it('paused by you, and a line missing a parent (ADR-0030 decision 2)', () => {

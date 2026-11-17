@@ -34,8 +34,9 @@ export interface LineView {
   /** Quarantine: the batch in its hold (its word: "juveniles", or the species' plural once grown), days left, the day
    * it lists; or the day a busy shared tank frees up. */
   quarantined: { count: number; word: string; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number; uncycledTank?: Tank; /** Audit 2026-11-17 (H1): the line's young in its quarantine tanks that no batch tracks (the line never lists them again). */ unsold: number; /** A free, cycled quarantine tank with no room for the waiting batch. */ fullTank?: Tank };
-  /** Sell: the line's open listings and the best open bid among them. */
-  selling: { listed: number; bestBid?: number };
+  /** Sell: the line's open listings and the best open bid among them; the buy-now price an animal (the lowest, when
+   * several listings are open), and the listing's title when there's one ("12 juvenile bettas"; Audit 2026-11-17, H1). */
+  selling: { listed: number; bestBid?: number; each?: number; title?: string; listings: number };
   week: { revenue: number; sold: number; net: number };
   /** The stage the line is busiest in (highlighted). */
   active: StageId;
@@ -103,7 +104,7 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
   }
 
   // Quarantine
-  const inHold = (line.batches ?? []).find((b) => b.tankId && b.quarantinedHour !== undefined && !b.released);
+  const inHold = (line.batches ?? []).find((b) => b.tankId && b.quarantinedHour !== undefined && !b.released && !b.relists); // a batch listed again has done its hold
   const quarantine = (inHold?.tankId ? state.tanks[inHold.tankId] : undefined) ?? line.tanks.quarantine.map((id) => state.tanks[id]).find(Boolean);
   const quarantined: LineView['quarantined'] = { count: 0, word: 'juveniles', unsold: unsoldYoung(state, line).length };
   if (inHold && inHold.quarantinedHour !== undefined) {
@@ -137,11 +138,20 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
   // Sell
   let listed = 0;
   let bestBid: number | undefined;
+  let each: number | undefined;
+  let title: string | undefined;
+  let listings = 0;
   for (const b of line.batches ?? []) {
     for (const id of b.listingIds ?? []) {
       const l = state.market.listings.find((x) => x.id === id);
       if (!l || l.status !== 'active') continue;
       listed += l.creatureIds.length;
+      listings += 1;
+      title = l.title;
+      if (l.buyNow && l.creatureIds.length) {
+        const e = l.buyNow / l.creatureIds.length;
+        if (each === undefined || e < each) each = e;
+      }
       const bid = bestOpenBid(l);
       if (bid && (bestBid === undefined || bid.amount > bestBid)) bestBid = bid.amount;
     }
@@ -161,7 +171,7 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     next,
     raising,
     quarantined,
-    selling: { listed, bestBid },
+    selling: { listed, bestBid, listings, ...(each !== undefined ? { each } : {}), ...(listings === 1 && title ? { title } : {}) },
     // whole dollars, as the tile shows them (a few cents' loss reads "$0", not "−$0")
     week: { revenue: s.revenue, sold: s.soldCount, net: Math.round(s.revenue - s.costs) || 0 },
     active,

@@ -1068,6 +1068,11 @@ function repairProduction(s: Json, repairs: string[]): void {
             delete b.listingIds;
             repairs.push(`${at}.batch ${shortId(b.id)}.listingIds: unreadable, removed`);
           }
+          // Audit 2026-11-17 (H1): how often what didn't sell was listed again
+          if (b.relists !== undefined && !(typeof b.relists === 'number' && Number.isInteger(b.relists) && b.relists >= 1)) {
+            delete b.relists;
+            repairs.push(`${at}.batch ${shortId(b.id)}.relists: unreadable, removed`);
+          }
         }
         if (good.length) l.batches = good;
         else delete l.batches;
