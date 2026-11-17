@@ -250,7 +250,8 @@ export function tankAttention(g: GameState, tankId: string): TankAttention {
     if (!e.failed) continue;
     const name = getEquipmentDef(e.defId)?.name ?? 'Equipment';
     if (said.includes(name)) continue;
-    const text = e.failMode === 'stuck_on' ? `The ${name} is stuck on — switch it off, then repair it.` : `The ${name} has failed — repair or replace it.`;
+    // Audit 2026-11-17 C9 — once switched off, a stuck heater only needs its repair (as the water report and link say)
+    const text = e.failMode === 'stuck_on' && e.on ? `The ${name} is stuck on — switch it off, then repair it.` : `The ${name} has failed — repair or replace it.`;
     items.push({ level: 'watch', source: 'gear', text, tab: 'gear', equipmentId: e.id });
   }
   // 3b. chunk 19 (QOL-002) — gear wearing out, before it fails

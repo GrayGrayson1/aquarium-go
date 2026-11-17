@@ -10,6 +10,7 @@ import { waterChange, waterChangeCost, dose, installEquipment } from '@/sim/care
 import { convertWaterClass, convertWaterClassCost } from '@/sim/tankOps';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { fixForWaterIssue } from '@/ui/common/fixLinks';
+import { tankAttention } from '@/ui/common/notify';
 import { buyTank } from '@/sim/economy';
 import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
@@ -282,5 +283,21 @@ describe('C7: converting between cool, tropical and planted water resets the hea
     expect(fight.advice).toMatch(/^Raise the chiller setting to at least \d+\.\d °C, or switch the chiller off\.$/);
     const chiller = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'chiller')!;
     expect(fixForWaterIssue(t, fight)).toEqual({ label: 'Open Equipment', to: { kind: 'card', tankId: t.id, tab: 'gear', fix: `equip-${chiller.id}` } });
+  });
+});
+
+describe('C9: a stuck heater that has been switched off no longer asks to be switched off', () => {
+  it('the attention line reads "has failed — repair or replace it" once it is off', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    const heater = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'heater')!;
+    const name = getEquipmentDef(heater.defId)!.name;
+    heater.failed = true;
+    heater.failMode = 'stuck_on';
+    heater.on = true;
+    const line = () => tankAttention(s, t.id).items.find((i) => i.equipmentId === heater.id)?.text;
+    expect(line()).toBe(`The ${name} is stuck on — switch it off, then repair it.`);
+    heater.on = false;
+    expect(line()).toBe(`The ${name} has failed — repair or replace it.`);
   });
 });
