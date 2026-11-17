@@ -352,8 +352,8 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   const labOwned = geneticsRevealLevel(g, lead) >= 1; // lane:genetics (0.5 §9.1) — the one reveal rule
   const candidate = useMemo(() => {
     if (!sp || chosen.length === 0) return null;
-    const sexes = new Set(chosen.map((c) => c.sex));
-    return { speciesId: sp.id, count: chosen.length, sex: sexes.size === 1 ? chosen[0].sex : undefined, sizeCm: Math.max(...chosen.map((c) => c.sizeCm)) };
+    // Audit 2026-11-17 (D1): the offer's own animals, so a "Male & female" pair is previewed as one
+    return { speciesId: sp.id, creatures: chosen };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sp?.id, picked]);
 

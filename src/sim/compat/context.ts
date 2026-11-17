@@ -46,6 +46,9 @@ export function candidateIndividuals(state: GameState, cand: CandidateAddition, 
     }
     if (out.length) return out;
   }
+  // Audit 2026-11-17 (D1): a shop offer's own animals, with their real sexes and sizes ("Male & female", a trio).
+  // Their ids get the candidate prefix: they aren't in state.creatures yet, so memberFrom keeps them out of creatureIds.
+  if (cand.creatures?.length) return cand.creatures.map((c) => ({ ...individualOf(c, findSpecies(c.speciesId) ?? sp), id: `candidate:${c.id}` }));
   const n = Math.max(1, Math.min(100, Math.round(cand.count ?? 1)));
   const size = cand.sizeCm ?? sp.adultSizeCm * 0.8;
   const inds: MemberIndividual[] = [];
