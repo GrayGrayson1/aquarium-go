@@ -93,7 +93,7 @@ import { dietGuide, feedingLine, temperatureGuide, FLOW_GUIDE } from '@/data/spe
 import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
 import { lifespanFacts } from '../common/lifespan'; // Audit 2026-11-17 (D20)
 import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isMemoryCard } from './conditionWords'; // Audit 2026-11-17 (D10, D12, D17)
-import { NoteFixButton } from './NoteFixButton'; // Audit 2026-11-17 (D16)
+import { ConditionNotes } from './ConditionNotes'; // Audit 2026-11-17 (D8, D16)
 import { MoveGroupButton } from './MoveGroupButton'; // Audit 2026-11-17 (D2)
 import { AutofeederVerdict, RealLifeTips, openSpeciesGuide } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
 import { Badge, Button, Chip, Meter, Section, StatusBadge, formatMoney, KV, Empty } from '../kit';
@@ -653,13 +653,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
             <StatusBadge status={wellbeing.status} label={wellbeing.status === 'good' ? 'Good' : wellbeing.status === 'watch' ? 'Watch' : 'Danger'} />
             <div className="ag-grow">
               <div className="ag-wellbeing__headline">{convertTempText(wellbeing.headline, unit) /* Audit 2026-11-17 (D8) */}</div>
-              {wellbeing.notes.length > 0 && (
-                <ul className="ag-wellbeing__notes">
-                  {wellbeing.notes.slice(0, 3).map((n, i) => (
-                    <li key={i}>{convertTempText(n, unit)} <NoteFixButton c={c} note={n} /></li>
-                  ))}
-                </ul>
-              )}
+              <ConditionNotes c={c} notes={wellbeing.notes} unit={unit} /* Audit 2026-11-17 (D8, D16) */ />
             </div>
           </div>
         )}
