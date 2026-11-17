@@ -87,7 +87,7 @@ export function ShowCard({ g, show, onEnter }: { g: GameState; show: Show; onEnt
       <div>
         <h4 className="sh-show__name">{show.name}</h4>
         <div className="sh-show__host">
-          {show.tier === 'club' ? `A friendly table show · judge ${show.judge}` : `${tier.name} show · judge ${show.judge}`}
+          {show.tier === 'club' ? `A friendly club show · judge ${show.judge}` : `${tier.name} show · judge ${show.judge}`}
         </div>
       </div>
       <div className="sh-classes" aria-label="Classes">
@@ -107,7 +107,7 @@ export function ShowCard({ g, show, onEnter }: { g: GameState; show: Show; onEnt
       </div>
       <div className="sh-show__money">
         <span className="sh-purse">
-          Purse <strong>{purseRange(show.classes.map((c) => c.purse))}</strong> per class
+          Prizes <strong>{purseRange(show.classes.map((c) => c.purse))}</strong> per class
         </span>
         <span>
           Entry <strong>{money(show.fee)}</strong>

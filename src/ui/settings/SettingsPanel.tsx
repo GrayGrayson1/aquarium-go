@@ -200,7 +200,7 @@ function DisplayTab() {
             </Button>
           </Row>
         )}
-        <Row label="Fade interface while watching" description="The HUD softly fades after a few quiet seconds in tank view. Move the pointer to bring it back." icon={<Eye size={16} />}>
+        <Row label="Fade interface while watching" description="The buttons fade after a few quiet seconds in tank view. Move the pointer or tap to bring them back." icon={<Eye size={16} />}>
           <Toggle label="Fade interface while watching" checked={calm} onChange={(v) => usePrefs.getState().update({ calmHud: v })} />
         </Row>
         <Row label="Party mode microphone" description="Let party lights follow your own music. Asked only when party mode starts." icon={<Mic size={16} />}>

@@ -303,7 +303,7 @@ describe('DES-013 A: the design words chunk 6 built (ADR-0035 decision 3)', () =
     expect(ops(held).bell()).toMatch(/Manual mode since \d+:\d\d [AP]M · 5 of 5 systems held Open/); // C37
     const f = waitingLine();
     f.line.waiting = true;
-    expect(ops(f.g).bell()).toMatch(/Add a quarantine tank · \$\d+/); // C39 (phone: "Add QT tank · $95", useIsMobile)
+    expect(ops(f.g).bell()).toMatch(/Add a quarantine tank · \$\d+/); // C39 (phone: "Add quarantine tank · $95", useIsMobile)
     const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 5 });
     use(g);
     expect(render(createElement(AlertsPopover))).toMatch(/All tanks look healthy\./); // one tank keeps the 0.5 words

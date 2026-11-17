@@ -94,7 +94,7 @@ describe('PROD-003, DES-008: the Production tab', () => {
     // "Pair conditioning" for ever); once conditioned, it's the pair conditioning
     expect(t).toContain('Next clutch Not ready They need rich food (bloodworm, brine shrimp or daphnia) to get into condition');
     for (const c of [s.cinder, s.blaze]) (c.life ??= {} as NonNullable<typeof c.life>).conditioning = 100;
-    expect(text(render(s.g))).toContain('Next clutch — Pair conditioning');
+    expect(text(render(s.g))).toContain('Next clutch — Pair getting ready');
     expect(t).toContain('$0 0 sold $0 after food and power');
     for (const s2 of ['breed', 'raise', 'sort', 'quarantine', 'sell']) expect(m).toContain(`data-testid="production-stage-${s2}"`);
     expect(t).toContain('Cinder × Blaze · spawns about every 10 days');

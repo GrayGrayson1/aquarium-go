@@ -36,6 +36,8 @@ import { StaffAvatar } from './StaffAvatar';
 import './staff.css';
 
 const ROLE_ICON: Record<StaffRole, typeof Fish> = { aquarist: Fish, stock_manager: Package, docent: Presentation };
+/** Audit 2026-11-17 (J22): a hired docent's card has no blurb, so its tag says what the role does. */
+const ROLE_GLOSS: Partial<Record<StaffRole, string>> = { docent: 'gives talks' };
 const first = (m: Pick<StaffMember, 'name'>) => m.name.split(' ')[0];
 
 /** A tank's care load for this aquarist, on average over the shop's tanks (a 20-gallon tank's before there are any). */
@@ -234,11 +236,12 @@ function Stars({ skill }: { skill: number }) {
   );
 }
 
-function RoleTag({ role }: { role: StaffRole }) {
+function RoleTag({ role, gloss }: { role: StaffRole; gloss?: boolean }) {
   const Icon = ROLE_ICON[role];
   return (
     <span className={clsx('st-role-tag', `st-role-tag--${role}`)}>
       <Icon size={12} aria-hidden /> {STAFF_ROLES[role].label}
+      {gloss && ROLE_GLOSS[role] ? ` (${ROLE_GLOSS[role]})` : ''}
     </span>
   );
 }
@@ -264,7 +267,7 @@ function StaffCard({ g, m }: { g: GameState; m: StaffMember }) {
         <div className="st-card__who">
           <div className="st-card__name">{m.name}</div>
           <div className="st-card__meta">
-            <RoleTag role={m.role} />
+            <RoleTag role={m.role} gloss />
             <Stars skill={m.skill} />
             <span className="st-wage">{formatMoney(m.wage)}/day</span>
           </div>

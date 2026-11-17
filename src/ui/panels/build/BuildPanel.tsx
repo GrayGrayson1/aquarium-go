@@ -939,7 +939,7 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
                       </div>
                       <div className="pn-tiny pn-muted">
                         {def ? `${titleCase(def.kind)} · ${formatMoney(def.upkeep, { cents: def.upkeep < 10 })}/day` : ''}
-                        {def?.stats.flowGph ? ` · ${def.stats.flowGph} gph` : ''}
+                        {def?.stats.flowGph ? ` · ${def.stats.flowGph} gallons an hour` : ''}
                         {def?.stats.power ? ` · ${def.stats.power} W` : ''}
                       </div>
                       <FitLine verdict={gearFit.get(inst.id)} testId={`build-equip-fit-${inst.id}`} />

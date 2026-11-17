@@ -263,7 +263,7 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
       </div>
       {mode === 'feed' && feedFoodId && (game?.inventory.foods[feedFoodId] ?? 0) > 0 && (
         <div className="ag-popover__row ag-foodnow">
-          <span className="ag-small ag-muted">No pointer? Drop it at the surface.</span>
+          <span className="ag-small ag-muted">Or drop it at the surface:</span>
           <Button size="sm" data-testid="feed-now" onClick={() => feedNow(feedFoodId)}>
             <Utensils size={14} /> Feed now
           </Button>
