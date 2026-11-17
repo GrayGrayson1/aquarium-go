@@ -89,7 +89,7 @@ export function findAnything(g: GameState, q: string, opts: { social?: boolean; 
   for (const sc of screenList()) {
     if (!opts.social && (sc.panel === 'social' || (sc.route.kind === 'settings' && sc.route.tab === 'account'))) continue;
     const lock = sc.panel !== 'settings' ? SCREEN_LOCK[sc.panel] : undefined;
-    push({ key: `screen:${sc.name}`, group: 'Screens', title: sc.name, locked: !!lock && !has(g, lock), go: { kind: 'route', route: sc.route } }, sc.name);
+    push({ key: `screen:${sc.name}`, group: 'Screens', title: sc.name, locked: !!lock && !has(g, lock), go: { kind: 'route', route: sc.route } }, sc.name, sc.keywords);
   }
   if (!words.length) return out;
 

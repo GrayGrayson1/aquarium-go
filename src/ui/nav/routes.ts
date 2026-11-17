@@ -405,14 +405,32 @@ export interface ScreenSpec {
   /** "Market", "Market › Supplies", "Settings › Notifications". */
   name: string;
   panel: NavPanel | 'settings';
+  /** audit B10: everyday words the screen answers to in Find anything ("sound" finds Settings). */
+  keywords?: string;
 }
+
+/** audit B10: what each screen holds, in the words a player types (screen names alone missed "sound", "sell", "hire"). */
+const SCREEN_WORDS: Readonly<Record<string, string>> = {
+  Settings: 'sound music volume mute graphics quality',
+  'Settings › Play & access': 'accessibility reduced motion high contrast text size temperature fahrenheit celsius exact water values autosave guide hints tour fade camera sensitivity microphone',
+  'Settings › Saves': 'save load export import delete slots transfer backup',
+  'Settings › Notifications': 'alerts',
+  Market: 'buy animals fish shop',
+  'Market › My listings': 'sell auction bids listing',
+  'Visitors › Staff': 'hire keeper keepers',
+  Finances: 'money loan bills income expenses',
+  'Research › Quests': 'rewards claim goals',
+  'Event log': 'history events',
+};
+
 export function screenList(): ScreenSpec[] {
   const out: ScreenSpec[] = [];
+  const add = (s: ScreenSpec) => out.push(SCREEN_WORDS[s.name] ? { ...s, keywords: SCREEN_WORDS[s.name] } : s);
   for (const p of NAV_PANELS) {
     const list = PANEL_TABS[p];
-    if (!list.length) out.push({ route: panel(p), name: PANEL_LABEL[p], panel: p });
-    for (const t of list) out.push({ route: panel(p, t.id), name: t.word === null ? PANEL_LABEL[p] : `${PANEL_LABEL[p]} › ${t.label}`, panel: p });
+    if (!list.length) add({ route: panel(p), name: PANEL_LABEL[p], panel: p });
+    for (const t of list) add({ route: panel(p, t.id), name: t.word === null ? PANEL_LABEL[p] : `${PANEL_LABEL[p]} › ${t.label}`, panel: p });
   }
-  for (const t of SETTINGS_TABS) out.push({ route: { kind: 'settings', tab: t.id as SettingsTab }, name: t.word === null ? 'Settings' : `Settings › ${t.label}`, panel: 'settings' });
+  for (const t of SETTINGS_TABS) add({ route: { kind: 'settings', tab: t.id as SettingsTab }, name: t.word === null ? 'Settings' : `Settings › ${t.label}`, panel: 'settings' });
   return out;
 }

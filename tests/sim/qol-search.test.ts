@@ -171,3 +171,24 @@ describe('audit B5: Find anything finds the help', () => {
     expect(nodeText(createElement('p', null, 'Waste becomes ', createElement('b', null, 'ammonia'), ', ', 3, ' times'))).toBe('Waste becomes  ammonia ,  3  times');
   });
 });
+
+describe('audit B10: Find anything knows the screens’ everyday words', () => {
+  const screen = (q: string) => orderResults(findAnything(game(), q, { social: true })).filter((r) => r.group === 'Screens').map((r) => r.title);
+  it('finds Settings’ controls by what they do', () => {
+    for (const q of ['sound', 'music', 'volume', 'mute']) expect(screen(q)[0], q).toBe('Settings');
+    for (const q of ['accessibility', 'fahrenheit', 'text size', 'reduced motion']) expect(screen(q)[0], q).toBe('Settings › Play & access');
+    expect(screen('export')[0]).toBe('Settings › Saves');
+  });
+  it('finds a feature by its verb once it is open: sell, auction, hire, keeper, reward, history', () => {
+    expect(screen('sell')).toContain('Market › My listings');
+    expect(screen('auction')).toContain('Market › My listings');
+    expect(screen('hire')).toContain('Visitors › Staff');
+    expect(screen('keeper')).toContain('Visitors › Staff');
+    expect(screen('reward')).toContain('Research › Quests');
+    expect(screen('history')).toContain('Event log');
+  });
+  it('a screen’s own name still comes first', () => {
+    expect(screen('notifications')[0]).toBe('Settings › Notifications');
+    expect(screen('market supplies')[0]).toBe('Market › Supplies');
+  });
+});
