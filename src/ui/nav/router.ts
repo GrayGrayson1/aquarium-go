@@ -35,6 +35,7 @@ import { useTankCardTab } from '../cards/tankCardTab';
 import { urlFixtureName } from '@/game/useAutosave';
 import { useShopFilters } from '../panels/market/shopFilters';
 import { guardLeave } from '../panels/common/leaveGuard'; // audit B6
+import { useTour } from '../tutorial/tourStore'; // audit B13 (read only)
 import { urlSandboxName, urlScenarioBoot } from '@/state/devTools'; // chunk 7 (REL-019); chunk 15 (the scenario lab)
 import { socialAvailable } from '../online/mode'; // lane:social (chunk 6; chunk 8, REL-025)
 import {
@@ -226,6 +227,9 @@ function writeHash(hash: string, mode: 'auto' | 'push' | 'replace'): void {
 export function syncAddress(mode: 'auto' | 'push' | 'replace' = 'auto'): void {
   syncQueued = false;
   if (!started || applying) return;
+  // audit B13: the tour's stops open panel after panel, each after a click on Next: they replace the address, so Back
+  // afterwards doesn't walk back through every panel it showed
+  if (mode === 'auto' && useTour.getState().running) mode = 'replace';
   const nav = useNav.getState();
   if (useUI.getState().screen !== 'game' || nav.boot || nav.pending) return;
   const route = currentRoute();
@@ -600,6 +604,8 @@ export function startRouter(opts: { boot?: boolean } = {}): () => void {
   offs.push(useNav.subscribe((s, p) => (s.tab !== p.tab || s.sub !== p.sub ? scheduleSync() : undefined)));
   offs.push(useShopFilters.subscribe((s, p) => (s.filters !== p.filters ? scheduleSync() : undefined)));
   offs.push(useTankCardTab.subscribe((s, p) => (s.want !== p.want ? scheduleSync() : undefined)));
+  // audit B13: the tour starting or ending is not the player's own navigation: what it opens or closes next replaces
+  offs.push(useTour.subscribe((s, p) => (s.running !== p.running ? void (gestureAt = -Infinity) : undefined)));
   if (opts.boot !== false) runBoot();
   if (useUI.getState().screen === 'game') onGameStart();
   return () => {

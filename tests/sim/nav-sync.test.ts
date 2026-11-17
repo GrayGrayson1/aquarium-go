@@ -447,3 +447,29 @@ describe('audit B6: the show-entry flow and the listing wizard have addresses', 
     }
   });
 });
+
+describe('audit B13: the tour leaves no Back trail', () => {
+  it('its stops replace the address, and so does its end', async () => {
+    const { startTour, endTour } = await import('@/ui/tutorial/tourStore');
+    const before = pushes();
+    gesture();
+    startTour();
+    for (const panel of ['market', 'build', 'livestock', 'research'] as const) {
+      gesture(); // Next
+      useUI.getState().set({ panel, panelTarget: null });
+      await flush();
+    }
+    expect(fakeLocation.hash).toBe('#/research');
+    gesture(); // Done
+    endTour();
+    useUI.getState().set({ panel: null, panelTarget: null });
+    await flush();
+    expect(fakeLocation.hash).toBe('#/');
+    expect(pushes()).toBe(before);
+    // and the player's own navigation pushes again
+    gesture();
+    useUI.getState().set({ panel: 'build', panelTarget: null });
+    await flush();
+    expect(pushes()).toBe(before + 1);
+  });
+});
