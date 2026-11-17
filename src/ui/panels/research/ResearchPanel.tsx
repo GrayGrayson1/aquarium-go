@@ -249,6 +249,9 @@ const grantLabel = (k: string): string => safe(() => unlockLabel(k), UNLOCK_KEYS
 /** chunk 6 (DES-011, desk-research.png): what an unlock also does elsewhere, as a chip beside its own. */
 const GRANT_EFFECTS: Record<string, string> = { genetics_lab: 'Shop: hidden carriers in Rare genes' };
 
+/** Audit 2026-11-17 (G4): the unlocks a research project needs, each explained in its "How to unlock" box. */
+export const researchLockKeys = (d: ResearchView['def']): string[] => d.requires.flatMap((c) => (c.type === 'unlocked' ? [c.key] : []));
+
 function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boolean }) {
   const d = r.def;
   const status = r.status;
@@ -322,7 +325,8 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
         )}
         {status === 'locked' && (
           // chunk 19 (ADR-0055 decision 5, QOL-006) — what it still needs, with progress and the way there
-          <LockedButton title={d.name} conds={d.requires} testId={`research-locked-${d.id}`} />
+          // Audit 2026-11-17 (G4): each unlock it needs also gets its own route (hint, progress, the research that grants it)
+          <LockedButton title={d.name} conds={d.requires} keys={researchLockKeys(d)} testId={`research-locked-${d.id}`} />
         )}
       </div>
     </div>

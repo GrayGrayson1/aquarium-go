@@ -105,7 +105,7 @@ export function UnlockHelpBody({ g, keys, conds, lead, onGo }: { g: GameState; k
       )}
       {views.map((v) => (
         <section key={v.key} className="pn-unlockhelp__item" data-testid={`unlock-help-${v.key}`}>
-          {views.length > 1 && <h4 className="pn-unlockhelp__name">{v.label}</h4>}
+          {(views.length > 1 || condReqs.length > 0) && <h4 className="pn-unlockhelp__name">{v.label}</h4> /* Audit 2026-11-17 (G4): under a research checklist, say which unlock this route is for */}
           {v.hint && <p className="pn-unlockhelp__hint">{v.hint}</p>}
           {v.guide && <p className="pn-unlockhelp__hint" data-testid={`unlock-guide-${v.key}`}>{v.guide}</p> /* Audit 2026-11-17 (G1) */}
           {v.requirements.length > 0 && <Requirements items={v.requirements} />}

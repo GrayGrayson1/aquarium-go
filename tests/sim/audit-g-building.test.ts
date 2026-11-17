@@ -10,8 +10,9 @@ import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { newGame } from '@/sim/newGame';
 import { unlockProgress, guideHoldLine } from '@/sim/facility';
 import { marketAccess } from '@/sim/economy';
-import { lockViews } from '@/ui/panels/common/UnlockHelp';
-import { GROUPS, UnlocksTab } from '@/ui/panels/research/ResearchPanel';
+import { lockViews, UnlockHelpBody } from '@/ui/panels/common/UnlockHelp';
+import { GROUPS, UnlocksTab, researchLockKeys } from '@/ui/panels/research/ResearchPanel';
+import { RESEARCH_BY_ID } from '@/data/research';
 
 const game = (starterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
 
@@ -59,5 +60,18 @@ describe('G2: the Unlock map shows every unlock, and an empty search says so', (
     expect(none).toContain('Nothing matches');
     expect(none).toContain('data-testid="unlocks-clear"');
     expect(tab('')).not.toContain('Nothing matches');
+  });
+});
+
+describe('G4: a locked research project’s box says how to get the unlocks it needs', () => {
+  it('Reef Systems’ box routes “Better filters, heaters, lights” to Better Life Support and its reputation', () => {
+    const g = game('ocellaris_clownfish');
+    const reef = RESEARCH_BY_ID.reef_systems;
+    expect(researchLockKeys(reef)).toEqual(['marine_basics', 'gear_tier2']);
+    const html = renderToStaticMarkup(createElement(UnlockHelpBody, { g, conds: reef.requires, keys: researchLockKeys(reef), onGo: () => {} }));
+    expect(html).toContain('data-testid="unlock-help-gear_tier2"'); // its own section…
+    expect(html).toContain('data-testid="unlock-help-research-life_support_2"'); // …with the research that grants it
+    expect(html).toContain('50 reputation'); // …and its play route
+    expect(html).not.toContain('data-testid="unlock-help-marine_basics"'); // a clownfish keeper already has marine
   });
 });
