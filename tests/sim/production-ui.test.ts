@@ -85,7 +85,7 @@ describe('PROD-003, DES-008: the Production tab', () => {
     expect(t).toContain('1 of 1 line slot · more at Specialty Shop');
     expect(t).toContain('Betta line');
     expect(t).toContain('Running');
-    expect(t).toContain('Breeds, raises and sells Cambodian Veiltail bettas while you play.');
+    expect(t).toContain('Breeds, raises and lists Cambodian Veiltail bettas while you play. Accept a bid to sell.'); // Audit 2026-11-17 (H1): it lists; a sale needs a bid accepted
     expect(attr(m, 'production-toggle', 'role')).toBe('switch');
     expect(attr(m, 'production-toggle', 'aria-checked')).toBe('true');
     expect(attr(m, 'production-toggle', 'aria-label')).toBe('Betta line running');
@@ -138,7 +138,7 @@ describe('PROD-003, DES-008: the Production tab', () => {
     expect(attr(m, 'production-line-royal', 'aria-checked')).toBe('true');
     expect(attr(m, 'production-line-cambodian', 'aria-checked')).toBe('false');
     expect(t).toContain('Royal Blue Halfmoon line');
-    expect(t).toContain('Betta · Iris × Sapphire · breeds, raises and sells while you play');
+    expect(t).toContain('Betta · Iris × Sapphire · breeds, raises and lists while you play');
   });
 
   it('paused by you, and a line missing a parent (ADR-0030 decision 2)', () => {
@@ -180,7 +180,12 @@ describe('PROD-003, DES-008: the Production tab', () => {
     t = text(m);
     expect(l.waiting).toBeFalsy();
     expect(m).not.toContain('data-testid="production-note"');
-    expect(t).toMatch(/Free Add a quarantine tank · \$[\d,]+/);
+    // Audit 2026-11-17 (H1): the three juveniles left in quarantine outside any batch are unsold, not "Free"
+    expect(t).toMatch(/3 unsold · sell or move them Add a quarantine tank · \$[\d,]+/);
+    expect(routeText(m)).toMatch(/^Breeding Tank Grow-out Tub Quarantine 3 unsold Market/);
+    expect(t).toContain('3 unsold Quarantine'); // the tile: the count and the tank
+    for (const k of kids) s.g.creatures[k.id].tankId = s.tanks.keep.id; // moved away: the stage is free again
+    expect(text(render(s.g))).toMatch(/Free Add a quarantine tank · \$[\d,]+/);
   });
 
   it('waiting for room with a batch waiting for quarantine: DESIGN-S3D’s note and Add a quarantine tank', () => {

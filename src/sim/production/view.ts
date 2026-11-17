@@ -13,7 +13,7 @@ import { spPlural } from '../life/breeding/common';
 import { planAutofeed } from '../care/autofeed';
 import { bestOpenBid } from '../economy/listings';
 import { isLineYoung } from './costs';
-import { QUARANTINE_HOURS, lineStatus, productionLines, quarantineBusyUntil, quarantineReady, raiseTankFull, restartDay, youngPlaces, youngSizeCm, type LineStatus } from './index';
+import { QUARANTINE_HOURS, lineStatus, productionLines, quarantineBusyUntil, quarantineFull, quarantineReady, raiseTankFull, restartDay, unsoldYoung, youngPlaces, youngSizeCm, type LineStatus } from './index';
 
 export type StageId = 'breed' | 'raise' | 'sort' | 'quarantine' | 'sell';
 
@@ -28,12 +28,12 @@ export interface LineView {
   quarantine?: Tank;
   keep?: Tank;
   /** Next clutch: days until the pair is due again (rounded up), the cycle and how far through it they are. */
-  next: { days?: number; dayOf?: number; cycle: number; restartDay?: number; conditioning: boolean };
+  next: { days?: number; dayOf?: number; cycle: number; restartDay?: number; conditioning: boolean; /** Audit 2026-11-17 (H1): the full quarantine tank a waiting line needs room in (no restart day then). */ fullTank?: Tank };
   /** Growing out: the brood in the raise tank (or the young waiting there), its word, and its days. */
   raising: { count: number; word: string; dayOf?: number; ofDays?: number; full: boolean; waiting: number; feeding?: { food: string; meals: number }; places?: { used: number; cap: number }; /** Hours until the brood's next stage (chunk 6, DES-013: "next stage in 6 h"). */ nextStageIn?: number; /** The day the brood is raised and sorted (DES-013: "sorting on Day 42"). */ sortDay?: number };
   /** Quarantine: the batch in its hold (its word: "juveniles", or the species' plural once grown), days left, the day
    * it lists; or the day a busy shared tank frees up. */
-  quarantined: { count: number; word: string; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number; uncycledTank?: Tank };
+  quarantined: { count: number; word: string; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number; uncycledTank?: Tank; /** Audit 2026-11-17 (H1): the line's young in its quarantine tanks that no batch tracks (the line never lists them again). */ unsold: number; /** A free, cycled quarantine tank with no room for the waiting batch. */ fullTank?: Tank };
   /** Sell: the line's open listings and the best open bid among them. */
   selling: { listed: number; bestBid?: number };
   week: { revenue: number; sold: number; net: number };
@@ -64,7 +64,11 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     next.dayOf = Math.min(cycle, Math.floor(since));
     next.days = Math.max(1, Math.ceil(cycle - since));
   }
-  if (status === 'waiting') next.restartDay = restartDay(state, line);
+  if (status === 'waiting') {
+    const day = restartDay(state, line);
+    if (day !== null) next.restartDay = day;
+    else next.fullTank = quarantineFull(state, line) ?? undefined;
+  }
 
   // Growing out
   const brood = raise ? lineBrood(state, line, raise.id) : undefined;
@@ -101,7 +105,7 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
   // Quarantine
   const inHold = (line.batches ?? []).find((b) => b.tankId && b.quarantinedHour !== undefined && !b.released);
   const quarantine = (inHold?.tankId ? state.tanks[inHold.tankId] : undefined) ?? line.tanks.quarantine.map((id) => state.tanks[id]).find(Boolean);
-  const quarantined: LineView['quarantined'] = { count: 0, word: 'juveniles' };
+  const quarantined: LineView['quarantined'] = { count: 0, word: 'juveniles', unsold: unsoldYoung(state, line).length };
   if (inHold && inHold.quarantinedHour !== undefined) {
     const end = inHold.quarantinedHour + QUARANTINE_HOURS;
     quarantined.count = inHold.creatureIds.length;
@@ -125,6 +129,8 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     } else {
       // free but not cycled yet: the batch waits for it (the line's notice says so)
       quarantined.uncycledTank = line.tanks.quarantine.map((id) => state.tanks[id]).find((t) => !!t && !quarantineReady(t));
+      // free and cycled, but full (Audit 2026-11-17, H1)
+      if (!quarantined.uncycledTank) quarantined.fullTank = quarantineFull(state, line) ?? undefined;
     }
   }
 

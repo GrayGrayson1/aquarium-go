@@ -252,14 +252,21 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
   const f = g.creatures[line.pair.fatherId];
   const places = v.raising.places;
   const busy = line.tanks.quarantine.map((id) => ({ id, until: quarantineBusyUntil(g, id) })).filter((q) => q.until !== null);
-  const qt = busy[0] ? g.tanks[busy[0].id] : v.quarantine;
+  // Audit 2026-11-17 (H1): a free quarantine tank with no room promises no day
+  const full = p.restartDay === null ? v.next.fullTank ?? v.quarantined.fullTank : undefined;
+  const qt = busy[0] ? g.tanks[busy[0].id] : full ?? v.quarantine;
   const busyLine = busy[0] ? productionLines(g).find((l) => (l.batches ?? []).some((b) => b.tankId === busy[0].id && !b.released && b.quarantinedHour !== undefined)) : undefined;
   const kit = quarantineKit(g, line.id);
   return (
     <section className={`ops-card ops-card--${issue.tone}`} data-testid="issues-line">
       <Head issue={issue} />
       <span className="ops-card__body">
-        {raise?.name ?? 'The raise tank'} is full, so {m?.name ?? 'the pair'} and {f?.name ?? 'its partner'} are kept apart until there’s room. No animals are lost; the line restarts by itself.
+        {raise?.name ?? 'The raise tank'} is full, so {m?.name ?? 'the pair'} and {f?.name ?? 'its partner'} are kept apart until there’s room.{' '}
+        {full
+          ? v.quarantined.unsold > 0
+            ? `${full.name} is full of unsold young from an earlier batch: sell or move them, or add a quarantine tank.`
+            : `${full.name} has no room for the next batch: move some animals out, or add a quarantine tank.`
+          : 'No animals are lost; the line restarts by itself.'}
       </span>
       <div className="ops-chain">
         <div className="ops-chain__step ops-chain__step--good">
@@ -286,13 +293,21 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
             <div className="ops-chain__arrow">
               <ArrowDown size={12} aria-hidden /> then waits for
             </div>
-            <div className={`ops-chain__step ${busy.length ? 'ops-chain__step--watch' : 'ops-chain__step--good'}`}>
+            <div className={`ops-chain__step ${busy.length || full ? 'ops-chain__step--watch' : 'ops-chain__step--good'}`}>
               <ShieldCheck size={15} aria-hidden />
               <div className="ops-row__main">
                 <span className="ops-row__title">
-                  {qt.name} · {busy.length ? 'busy' : 'ready'}
+                  {qt.name} · {busy.length ? 'busy' : full ? 'full' : 'ready'}
                 </span>
-                <span className="ops-row__sub">{busy.length ? `${busyLine?.name ?? line.name} until Day ${dayOf(busy[0].until!)}` : `${TANK_TIER_BY_ID[qt.tierId]?.name ?? qt.name} · takes them on Day ${p.restartDay}`}</span>
+                <span className="ops-row__sub">
+                  {busy.length
+                    ? `${busyLine?.name ?? line.name} until Day ${dayOf(busy[0].until!)}`
+                    : full
+                      ? v.quarantined.unsold > 0
+                        ? `${v.quarantined.unsold} unsold · waits until it has room`
+                        : 'Waits until it has room'
+                      : `${TANK_TIER_BY_ID[qt.tierId]?.name ?? qt.name} · takes them on Day ${p.restartDay}`}
+                </span>
               </div>
             </div>
           </>
@@ -304,9 +319,11 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
             <Plus size={15} aria-hidden /> Add a quarantine tank · {formatMoney(kit.price)}
           </Button>
         )}
-        <Button data-testid="issues-wait" onClick={() => doWait(line.id, p.restartDay)}>
-          Wait · resumes Day {p.restartDay}
-        </Button>
+        {p.restartDay !== null && (
+          <Button data-testid="issues-wait" onClick={() => doWait(line.id, p.restartDay!)}>
+            Wait · resumes Day {p.restartDay}
+          </Button>
+        )}
       </div>
       {adding && (
         <AddQuarantine
@@ -336,7 +353,7 @@ function WhyLineStops({ g, lineId }: { g: GameState; lineId: string }) {
   const qt = g.tanks[busy.find((q) => q.until === until)!.id];
   // the juveniles are ready for quarantine now (a sorted batch waits) or when the brood in the grow-out tank is sorted
   const batchWaits = (line.batches ?? []).some((b) => !b.tankId);
-  const ready = batchWaits ? dayOf(now) : restartDay(g, line);
+  const ready = batchWaits ? dayOf(now) : restartDay(g, line) ?? dayOf(now);
   const wait = Math.max(ready, dayOf(until));
   if (!qt || wait <= ready) return null;
   const served = productionLines(g).filter((l) => l.tanks.quarantine.includes(qt.id));

@@ -63,7 +63,8 @@ export interface LineProblem {
   tone: ProblemTone;
   lineId: string;
   name: string;
-  restartDay: number;
+  /** Null when no day can be promised: a full quarantine tank holds the line up until the player makes room (H1). */
+  restartDay: number | null;
 }
 
 export type Problem = SupplyProblem | LineProblem;
@@ -158,8 +159,11 @@ export function automationProblems(state: GameState, hour = state.clock.hour, kn
   }
 
   for (const line of state.production?.lines ?? []) {
-    if (lineStatus(line) !== 'waiting' || state.automation?.lineWait?.[line.id] !== undefined) continue;
-    out.push({ kind: 'line', tone: 'watch', lineId: line.id, name: line.name, restartDay: restartDay(state, line) });
+    if (lineStatus(line) !== 'waiting') continue;
+    const day = restartDay(state, line);
+    // a decided wait is a plain status, unless a full quarantine tank means it never ends by itself (Audit 2026-11-17, H1)
+    if (state.automation?.lineWait?.[line.id] !== undefined && day !== null) continue;
+    out.push({ kind: 'line', tone: 'watch', lineId: line.id, name: line.name, restartDay: day });
   }
   const rank = (p: Problem) => (p.tone === 'danger' ? 0 : 1);
   return out.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p) - rank(b.p) || a.i - b.i).map((x) => x.p);
@@ -197,8 +201,11 @@ export function problemCounts(list: readonly Problem[]): { total: number; danger
 /** Lines whose pause the player chose to wait out (or added a quarantine tank for), still waiting: "Resumes Day {d}". */
 export function decidedLines(state: GameState): { lineId: string; name: string; restartDay: number }[] {
   const out: { lineId: string; name: string; restartDay: number }[] = [];
-  for (const line of state.production?.lines ?? [])
-    if (lineStatus(line) === 'waiting' && state.automation?.lineWait?.[line.id] !== undefined) out.push({ lineId: line.id, name: line.name, restartDay: restartDay(state, line) });
+  for (const line of state.production?.lines ?? []) {
+    if (lineStatus(line) !== 'waiting' || state.automation?.lineWait?.[line.id] === undefined) continue;
+    const day = restartDay(state, line);
+    if (day !== null) out.push({ lineId: line.id, name: line.name, restartDay: day }); // else it's a problem again (H1)
+  }
   return out;
 }
 

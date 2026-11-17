@@ -42,8 +42,11 @@ import {
   traitsOf,
   restartDay,
   quarantineReady,
+  quarantineFull,
+  youngSizeCm,
   PAIRS_PER_SPECIES,
 } from '@/sim/production';
+import { juvenileSlots } from '@/sim/life/breeding/common';
 import { lineView } from '@/sim/production/view';
 import { createListing, withdrawListing } from '@/sim/economy/listings';
 import { repairState } from '@/persistence/migrations';
@@ -943,7 +946,7 @@ describe('the chunk 4 review: ownership, keep tanks, the pair list, and the line
     createClutch(g, { sp: getSpecies('betta'), tank: p.b2, mother: p.f2, father: p.m2, hour: g.clock.hour, stage: 'fry', count: 20, visual: 'fry_cloud', nextStageHour: g.clock.hour + 6 });
     run(g, 12);
     expect(b.batches?.some((bt) => !bt.tankId)).toBe(true); // waiting: the shared tank is busy
-    const waitingUntil = restartDay(g, b);
+    const waitingUntil = restartDay(g, b)!; // a day: the shared tank frees up then
     const today = Math.floor(g.clock.hour / 24) + 1;
     expect(waitingUntil).toBeGreaterThan(today);
     const added = addQuarantineTank(g, b.id, true);
@@ -970,5 +973,67 @@ describe('the chunk 4 review: ownership, keep tanks, the pair list, and the line
     const a = scenario();
     expect(stateHash(a)).toBe(stateHash(scenario()));
     expect(a.market.listings.some((l) => l.creatureIds.some((id) => a.creatures[id]?.lineage.motherId === a.production!.lines[0].pair.motherId))).toBe(true);
+  });
+});
+
+describe('Audit 2026-11-17 (H1): young a line leaves in quarantine', () => {
+  /** Fill a quarantine tank with the pair's juveniles until no young one of `sizeCm` fits. */
+  function fill(f: Farm, qt: Tank, sizeCm: number): void {
+    const g = f.g;
+    const rng = simRng(g);
+    const sp = getSpecies('betta');
+    for (let i = 0; i < 300 && juvenileSlots(g, qt, sp, g.clock.hour, sizeCm) >= 1; i++) addCreature(g, createCreature(g, rng, 'betta', { ageDays: 8, motherId: f.mother.id, fatherId: f.father.id }), qt.id);
+  }
+
+  it('a full quarantine tank says so once, promises no restart day, and the view counts its unsold young', () => {
+    const f = farm({ seed: 141 });
+    const g = f.g;
+    const line = start(f, { rules: { autoList: false } });
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    run(g, QUARANTINE_HOURS + 4, 2);
+    expect(line.batches).toBeUndefined(); // the hold ended: the line no longer tracks them
+    const left = young(f, f.qt.id).length;
+    expect(left).toBeGreaterThan(0);
+    expect(lineView(g, line)!.quarantined.unsold).toBe(left);
+    fill(f, f.qt, youngSizeCm(g, line, getSpecies('betta')) * 0.5);
+    brood(f, 'fry', 20, 6);
+    run(g, 14);
+    const waiting = line.batches?.find((b) => !b.tankId);
+    expect(waiting).toBeDefined();
+    expect(line.batches?.some((b) => b.tankId)).toBe(false); // none of it fitted
+    const said = g.log.filter((e) => e.text === 'Betta line: Quarantine is full of unsold juveniles from an earlier batch, so the next batch waits in Grow-out. Sell or move them, or add a quarantine tank.');
+    expect(said.length).toBe(1);
+    expect(quarantineFull(g, line)?.id).toBe(f.qt.id);
+    expect(restartDay(g, line)).toBeNull(); // it used to say "today", every day
+    const v = lineView(g, line)!;
+    expect(v.quarantined.unsold).toBeGreaterThan(left);
+    expect(v.quarantined.fullTank?.id).toBe(f.qt.id);
+    // a second quarantine tank with room: the batch has a day again, and moves in
+    const added = addQuarantineTank(g, line.id, true);
+    expect(added.restartDay).toBe(Math.floor(g.clock.hour / 24) + 1);
+    expect(quarantineFull(g, line)).toBeNull();
+    run(g, 2);
+    expect(waiting!.tankId).toBe(added.tankId);
+  });
+
+  it('a line’s listing that ends unsold says where the young are and that the line won’t list them again', () => {
+    const f = farm({ seed: 142 });
+    const g = f.g;
+    const line = start(f);
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const ids = new Set(young(f, f.qt.id).map((c) => c.id));
+    run(g, QUARANTINE_HOURS + 2);
+    const l = lineListings(g, ids)[0];
+    expect(l?.status).toBe('active');
+    l.bids = [];
+    l.endsHour = g.clock.hour + 0.5; // it ends with no offer
+    run(g, 2);
+    expect(l.status).toBe('expired');
+    const n = l.creatureIds.length;
+    expect(g.log.filter((e) => e.text === `Betta line: the ${n} juveniles that didn’t sell are back in Quarantine. The line won’t list them again: list them in Market, or move them.`).length).toBe(1);
+    expect(line.batches).toBeUndefined();
+    expect(lineView(g, line)!.quarantined.unsold).toBe(n);
   });
 });

@@ -175,7 +175,8 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
   const plural = spPlural(v.sp);
   const morph = line.breedFor ? morphDisplayName(v.sp, line.breedFor).replace(new RegExp(`\\s*${v.sp.commonName}$`, 'i'), '') : '';
   const pairNames = `${v.mother?.name ?? '—'} × ${v.father?.name ?? '—'}`;
-  const subline = several ? `${v.sp.commonName} · ${pairNames} · breeds, raises and sells while you play` : `Breeds, raises and sells ${morph ? `${morph} ` : ''}${plural} while you play.`;
+  // Audit 2026-11-17 (H1): a line lists its young; a sale needs the player to accept a bid
+  const subline = several ? `${v.sp.commonName} · ${pairNames} · breeds, raises and lists while you play` : `Breeds, raises and lists ${morph ? `${morph} ` : ''}${plural} while you play. Accept a bid to sell.`;
   const raiseName = v.raise?.name ?? 'the raise tank';
   const keepName = v.keep?.name ?? 'the keep tank';
   const broken = line.broken;
@@ -200,7 +201,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
   const next = (() => {
     if (v.status === 'paused_by_you') return { value: '—', hint: 'Paused by you' };
     if (v.status === 'paused') return { value: '—', hint: 'Paused' };
-    if (v.status === 'waiting') return { value: v.next.restartDay ? `Day ${v.next.restartDay}` : '—', hint: `${raiseName} is full` };
+    if (v.status === 'waiting') return v.next.fullTank ? { value: '—', hint: `Waits until ${v.next.fullTank.name} has room` } : { value: v.next.restartDay ? `Day ${v.next.restartDay}` : '—', hint: `${raiseName} is full` };
     if (v.next.days === undefined) return { value: '—', hint: 'Pair conditioning' };
     return { value: `~${v.next.days} ${v.next.days === 1 ? 'day' : 'days'}`, hint: `${v.breed?.name ?? 'Breed tank'} · day ${v.next.dayOf} of ${v.next.cycle}` };
   })();
@@ -213,6 +214,8 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
       ? { value: '—', hint: `${v.quarantined.busyTank.name} is busy to Day ${v.quarantined.busyUntilDay}` }
       : v.quarantined.uncycledTank
         ? { value: '—', hint: `${v.quarantined.uncycledTank.name} isn’t cycled yet` }
+      : v.quarantined.unsold > 0
+        ? { value: `${v.quarantined.unsold} unsold`, hint: v.quarantined.fullTank ? `${v.quarantined.fullTank.name} is full` : v.quarantine?.name ?? 'Quarantine' }
       : { value: '—', hint: v.quarantine?.name ?? 'Quarantine' };
 
   return (
@@ -330,6 +333,8 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
               <Bar value={100 * (v.quarantined.holdFraction ?? 0)} tone="gold" thin label={daysLeft(v.quarantined.daysLeft)} />
               <p className="pr-stage__foot">{daysLeft(v.quarantined.daysLeft)}</p>
             </>
+          ) : v.quarantined.unsold > 0 ? (
+            <p>{v.quarantined.unsold} unsold · sell or move them</p>
           ) : (
             <p>Free</p>
           )}
@@ -428,8 +433,10 @@ export function RouteStrip({ g, line, v }: { g: GameState; line: ProductionLine;
             ? `busy to Day ${v.quarantined.busyUntilDay}`
             : v.quarantined.uncycledTank
               ? 'isn’t cycled yet'
-              : undefined,
-      warn: gone('quarantine') || !!v.quarantined.busyTank || !!v.quarantined.uncycledTank,
+              : v.quarantined.unsold > 0
+                ? `${v.quarantined.unsold} unsold`
+                : undefined,
+      warn: gone('quarantine') || !!v.quarantined.busyTank || !!v.quarantined.uncycledTank || !!v.quarantined.fullTank,
     },
     { key: 'market', name: 'Market', tag: v.selling.listed > 0 ? `${v.selling.listed} listed` : undefined, warn: false },
   ];
