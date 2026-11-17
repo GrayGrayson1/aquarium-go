@@ -114,10 +114,16 @@ export function SharedMoneyBody({ initialAsking = false }: { initialAsking?: boo
               {W.approvedForYou(rec!.extra!)}
             </p>
           )}
-          {!asking && mine.length < MAX_ASKS_EACH && (
-            <Button size="sm" onClick={() => setAsking(true)} data-testid="shared-ask-open">
+          {/* audit 2026-11-17, I23: at the limit the button stays, off, and says why (it used to vanish) */}
+          {!asking && (
+            <Button size="sm" disabled={mine.length >= MAX_ASKS_EACH} onClick={() => setAsking(true)} data-testid="shared-ask-open">
               {W.askForMoney}
             </Button>
+          )}
+          {!asking && mine.length >= MAX_ASKS_EACH && (
+            <p className="ag-shared-money__sub" data-testid="shared-ask-limit">
+              {W.asksLimit(MAX_ASKS_EACH)}
+            </p>
           )}
           {asking && (
             <form

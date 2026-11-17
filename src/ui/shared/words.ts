@@ -63,6 +63,8 @@ export const SHARED_WORDS = {
   allowanceLeft: (left: number, allowance: number) => `Allowance: ${$(left)} of ${$(allowance)} left today.`,
   approvedForYou: (extra: number) => `Approved for you: ${$(extra)}.`,
   askForMoney: 'Ask for money',
+  /** Audit I23: why "Ask for money" is off. */
+  asksLimit: (n: number) => `You can have ${n} requests waiting. Cancel one to ask again.`,
   howMuch: 'How much?',
   whatFor: 'What for? (optional)',
   sendRequest: 'Send request',
