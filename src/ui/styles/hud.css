@@ -391,7 +391,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-clock-pill { padding: 4px 10px; min-height: 40px; }
   .ag-clock-pill__time { font-size: calc(11px * var(--text-scale)); gap: 4px; }
   .ag-clock-pill__sep { display: none; }
-  .ag-clock-pill__time span:first-of-type { display: none; }
+  /* ("Day N" in the ordinary pill; the amber manual-mode pill's only span is its time: audit B3. shared.css shows the
+     shared pill's) */
+  .ag-clock-pill:not(.is-manual):not(.ag-shared-pill) .ag-clock-pill__time span:first-of-type { display: none; }
   .ag-speed { padding: 0 2px; min-height: 40px; }
   .ag-speed__label { display: none; }
   /* the four segments fill the pill's height with a seam between them (28×34 edge-to-edge buttons mis-tapped Pause vs 1×) */
@@ -543,7 +545,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 @media (max-width: 400px) {
   .ag-clock-pill { padding: 4px 8px; }
-  .ag-clock-pill__icon { display: none; }
+  .ag-clock-pill:not(.is-manual) .ag-clock-pill__icon { display: none; } /* the manual pill keeps its Hand (audit B3) */
   .ag-money-pill { padding: 0 8px 0 4px; gap: 5px; }
 }
 /* the narrowest phones (360 px Android) give the speed segments back a few pixels rather than overflow the bar */
