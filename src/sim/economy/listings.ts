@@ -23,7 +23,7 @@ import { creaturesInTank, isPrismatic } from '../life';
 import { environmentGate, previewAddition } from '../compat';
 import { isUnlocked, addReputation, addMastery, bumpCounter } from '../facility';
 import { findSpecies } from '@/data/species';
-import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
+import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { BUYER_ARCHETYPES, LOCAL_FISH_STORE, archetypeLabel } from '@/data/buyers';
 import { earn } from './finance';
 import { tankValuation, bundleValue, careDifficultyLabel, lineageSummary, livestockSummary, tankSignature, compatRank, quickSellQuote } from './valuation';
@@ -31,13 +31,14 @@ import { buildProfile, buyerFit, buyerInterestWeight, maybeDelegation, buildFrag
 import { fragBundleValue, fragValue, fragStoreOffer, FRAG_HEALED_HOURS } from './valuation'; // lane:frags
 import { fragLabel, isCoralDef } from '@/data/catalog/propagation'; // lane:frags
 import { composeBidMessage, counterReply, buyNowMessage, withdrawMessage, saleFeedback, type MsgVars, type CounterOutcome } from './messages';
-import { clamp, clamp01, clonePlain, finite, fmtMoney, nicePrice, pushCapped, speciesPlural, roundCents, morphTitle } from './util';
+import { clamp, clamp01, clonePlain, finite, fmtMoney, nicePrice, pushCapped, speciesPlural, roundCents, morphTitle, aOrAn } from './util';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { touchResidents } from '../residents'; // lane:perf2
 import { computeTankEnv, effectiveBioload } from '../water'; // B-174
 import { settleTanks } from '../settle'; // B-127
 import { saleWarnings } from './warnings'; // lane:fix-econ
+import { cheapestKit } from './purchases'; // audit 2026-11-17 (F7)
 import * as dmath from '../dmath';
 
 export interface ListingSpec {
@@ -981,11 +982,11 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
     });
   }
   if (check.tank && state.tankOrder.length === 0) {
-    const tiers = TANK_TIERS.filter((t) => isUnlocked(state, t.unlock));
-    const cheap = tiers.sort((a, b) => a.price - b.price)[0];
+    // audit 2026-11-17 (F7) — the whole kit's price (glass, gear, substrate), not the glass alone
+    const cheap = cheapestKit(state);
     emitEvent(state, {
       kind: 'info',
-      text: `${soldTankName ?? 'Your last aquarium'} has gone to its new home. You have ${fmtMoney(state.finance.money)} and an empty room — ${cheap ? `a ${cheap.name} kit starts at about ${fmtMoney(cheap.price)}. ` : ''}Tip: start the next tank early, because new tanks need time to cycle before animals move in.`,
+      text: `${soldTankName ?? 'Your last aquarium'} has gone to its new home. You have ${fmtMoney(state.finance.money)} and an empty room — ${cheap ? `the cheapest kit, ${aOrAn(cheap.name)} ${cheap.name}, costs about ${fmtMoney(cheap.total)}. ` : ''}Tip: start the next tank early, because new tanks need time to cycle before animals move in.`,
       toast: true,
     });
   }

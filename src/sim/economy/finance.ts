@@ -20,7 +20,7 @@ import { getFacilityLevel } from '@/data/facilities';
 import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
 import { AQUARIUM_CLUB, LOCAL_FISH_STORE } from '@/data/buyers';
 import { findSpecies } from '@/data/species';
-import { dayIndex, finite, fmtMoney, roundCents, pushCapped, nicePrice } from './util';
+import { dayIndex, finite, fmtMoney, roundCents, pushCapped, nicePrice, capitalise } from './util';
 import { quickSellQuote } from './valuation';
 import { isLotOffer } from '../life/rareVariants'; // lane:genetics
 import { payStaff, staffLeavingTonight, staffWagesPerDay } from '../staff'; // lane:staff
@@ -28,6 +28,7 @@ import { roomsUpkeep } from '../automation/reserve'; // lane:automation (chunk 5
 import { FOODS, eatsFood } from '@/data/catalog/foods'; // audit 2026-11-17: the club's food parcel
 import { ANIMAL_THRESHOLDS, needsFedFood, refreshFoodStatus } from '../tankStatus';
 import { isFoodAvailable } from './shop';
+import { cheapestKit } from './purchases'; // F7: the restart loan counts a whole kit
 
 const LEDGER_CAP = 400;
 const DAILY_CAP = 120;
@@ -188,9 +189,11 @@ export function restartNeed(state: GameState): number | null {
   }
   let need = Math.max(RESTART_FLOOR, Number.isFinite(cheapest) ? cheapest : 0);
   if (!tanks.length) {
-    // No tank either: the cheapest kit the player can buy (tank + bundled gear, roughly 1.5× the glass).
+    // No tank either: the cheapest whole kit the player can buy (glass, gear and substrate, as Build prices it;
+    // audit 2026-11-17, F7: it used to count 1.5× the glass, and the loan fell short of the kit's real price)
+    const kit = cheapestKit(state);
     const tier = TANK_TIERS.filter((t) => isUnlocked(state, t.unlock)).sort((a, b) => a.price - b.price)[0];
-    need += Math.round((tier?.price ?? 60) * 1.5);
+    need += kit ? kit.total : Math.round((tier?.price ?? 60) * 1.5);
   }
   need += dailyOperatingCost(state).total * 2;
   return state.finance.money < need ? Math.ceil(need) : null;
@@ -342,7 +345,7 @@ function grantLoan(state: GameState, restart?: number): void {
   emitEvent(state, {
     kind: 'celebrate',
     text: restart
-      ? `${AQUARIUM_CLUB} would rather see your room full than quiet: they've lent you ${again ? 'another ' : ''}${fmtMoney(amount)}, interest-free, to start again — enough for ${state.tankOrder.length ? 'a new animal' : 'a tank kit and a new animal'} and a few days of bills. It is repaid automatically from a quarter of your future daily income.`
+      ? `${capitalise(AQUARIUM_CLUB)} would rather see your room full than quiet: they've lent you ${again ? 'another ' : ''}${fmtMoney(amount)}, interest-free, to start again — enough for ${state.tankOrder.length ? 'a new animal' : 'a tank kit and a new animal'} and a few days of bills. It is repaid automatically from a quarter of your future daily income.`
       : `Good news: ${AQUARIUM_CLUB} heard you were struggling and lent you ${fmtMoney(amount)}, interest-free. It is repaid automatically from a quarter of your future daily income. This is a one-time lifeline, so plan your running costs carefully.`,
     toast: true,
   });

@@ -16,7 +16,7 @@ import { isUnlocked, findFreeSpot, bumpCounter, waterClassLock } from '../facili
 import { emitEvent } from '../context';
 import { settleTanks } from '../settle'; // ADR-0026 decision 5 (chunk 5)
 import { findSpecies } from '@/data/species';
-import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
+import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
 import { getEquipmentDef, equipmentOfKind } from '@/data/catalog/equipment';
 import { nextId } from '../ids';
 import { getFoodDef } from '@/data/catalog/foods';
@@ -271,6 +271,27 @@ export function tankKitPrice(tierId: string, waterClass: WaterClass, seeded = fa
   const substrate = subDef ? Math.round(subDef.price * (tier.gallons / 10)) : 0;
   const seed = seeded ? seededMediaPrice(tierId) : 0;
   return { total: tier.price + equipment + substrate + seed, tank: tier.price, equipment, substrate, seeded: seed };
+}
+
+/** Every water type a kit can be set up for (each open once its research is done: waterClassLock). */
+const KIT_WATER: WaterClass[] = ['freshwater_cool', 'freshwater_tropical', 'freshwater_planted', 'brackish', 'marine_fowlr', 'marine_live_rock', 'reef'];
+
+/**
+ * Audit 2026-11-17 (F7) — the cheapest whole kit this player can buy now (the glass, the gear it ships with and the
+ * substrate, as Build prices it), over the tank sizes and water types open to them; null when none is. The empty-room
+ * message and the restart loan quote this, not the glass alone.
+ */
+export function cheapestKit(state: GameState): { tierId: string; name: string; waterClass: WaterClass; total: number } | null {
+  let best: { tierId: string; name: string; waterClass: WaterClass; total: number } | null = null;
+  for (const tier of TANK_TIERS) {
+    if (!isUnlocked(state, tier.unlock)) continue;
+    for (const wc of KIT_WATER) {
+      if (waterClassLock(state, wc)) continue;
+      const total = tankKitPrice(tier.id, wc, false, state).total;
+      if (total > 0 && (!best || total < best.total)) best = { tierId: tier.id, name: tier.name, waterClass: wc, total };
+    }
+  }
+  return best;
 }
 
 export interface BuyTankOptions {

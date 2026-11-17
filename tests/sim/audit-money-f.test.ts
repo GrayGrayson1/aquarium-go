@@ -16,7 +16,9 @@ import { SuppliesTab } from '@/ui/panels/market/Supplies';
 import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas } from '@/ui/common/moneyShort';
 import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
-import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, devOpenMarket, createListing, forceBuyerVisit } from '@/sim/economy';
+import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, devOpenMarket, createListing, forceBuyerVisit, acceptBid, restartNeed, tankKitPrice } from '@/sim/economy';
+import { cheapestKit } from '@/sim/economy/purchases';
+import { TANK_TIERS } from '@/data/catalog/tanks';
 import { reserveHint } from '@/ui/panels/market/CreateListing';
 import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
@@ -383,5 +385,38 @@ describe('F5: in debt after the club’s one-time loan, the words say so plainly
     expect(red.text).not.toContain('may be able to help');
     const out = text(renderToStaticMarkup(createElement(FinancesPanel)));
     expect(out).toContain('The aquarium club’s one-time loan has been used: sell an animal or decor to get back above zero. If your animals run out of food, the club drops off a little.');
+  });
+});
+
+describe('F7: an empty room quotes (and the restart loan covers) a whole kit, not the glass alone', () => {
+  it('the cheapest kit is glass + gear + substrate, and the restart need counts it', () => {
+    const g = game(0);
+    const kit = cheapestKit(g)!;
+    expect(kit).not.toBeNull();
+    const glass = Math.min(...TANK_TIERS.filter((t) => !t.unlock || g.progress.unlocked.includes(t.unlock)).map((t) => t.price));
+    expect(kit.total).toBeGreaterThan(glass * 1.5); // the old guess fell short
+    expect(kit.total).toBe(tankKitPrice(kit.tierId, kit.waterClass, false, g).total);
+    // an empty room: nothing alive, no tank
+    for (const c of Object.values(g.creatures)) c.status = 'dead';
+    g.tanks = {};
+    g.tankOrder = [];
+    const need = restartNeed(g)!;
+    expect(need).toBeGreaterThanOrEqual(kit.total + 40);
+  });
+
+  it('selling the last aquarium names the cheapest whole kit and its price', () => {
+    const g = game(0);
+    devOpenMarket(g);
+    g.progress.unlocked.push('tank_auctions');
+    const tankId = g.tankOrder[0];
+    const r = createListing(g, { kind: 'tank', tankId, reserve: 1, durationHours: 72 });
+    expect(r.ok).toBe(true);
+    const l = g.market.listings.find((x) => x.id === r.listingId)!;
+    for (let i = 0; i < 60 && !l.bids.some((b) => b.status === 'open') && l.status === 'active'; i++) forceBuyerVisit(g, l.id);
+    const b = l.bids.find((x) => x.status === 'open')!;
+    expect(acceptBid(g, l.id, b.id).ok).toBe(true);
+    const kit = cheapestKit(g)!;
+    const e = g.log.find((x) => /has gone to its new home/.test(x.text))!;
+    expect(e.text).toContain(`the cheapest kit, a ${kit.name}, costs about $${Math.round(kit.total)}.`);
   });
 });
