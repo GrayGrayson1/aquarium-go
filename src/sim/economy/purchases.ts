@@ -219,6 +219,9 @@ export function kitEquipmentFor(state: GameState, tierId: string, waterClass: Wa
   for (const id of defaults) {
     const def = getEquipmentDef(id);
     if (!def || isUnlocked(state, def.unlock)) {
+      // Audit 2026-11-17 (G25 review): every unit within the per-tank limit, not only swapped ones (a reef kit from the
+      // 180 gallon up listed two auto top-offs, limit one, and charged for both)
+      if (def && ids.filter((x) => getEquipmentDef(x)?.kind === def.kind).length >= (MAX_PER_KIND[def.kind] ?? 6)) continue;
       ids.push(id);
       continue;
     }

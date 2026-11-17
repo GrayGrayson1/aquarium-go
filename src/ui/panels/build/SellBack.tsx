@@ -7,7 +7,7 @@ import { Coins, PackageOpen } from 'lucide-react';
 import type { EquipmentInstance, GameState, Tank } from '@/types';
 import { Button, Modal, formatMoney } from '@/ui/kit';
 import { getEquipmentDef } from '@/data/catalog/equipment';
-import { equipmentSellValue, takeDownCheck } from '@/sim/economy/sellBack';
+import { equipmentSellValue, takeDownCheck, type TakeDownCheck } from '@/sim/economy/sellBack';
 import { act } from '../common/act';
 import { safe } from '../common/hooks';
 import { useUI } from '@/state/ui';
@@ -17,8 +17,7 @@ export function SellStoredEquipment({ inst }: { inst: EquipmentInstance }) {
   const [asking, setAsking] = useState(false);
   const def = getEquipmentDef(inst.defId);
   const name = def?.name ?? 'equipment';
-  const value = equipmentSellValue(def, inst);
-  const why = [inst.condition < 0.995 ? 'less for wear' : '', inst.failed ? 'and half that again because it’s broken' : ''].filter(Boolean).join(', ');
+  const value = equipmentSellValue(def);
   return (
     <>
       <Button size="sm" variant="ghost" onClick={() => setAsking(true)} data-testid={`sellback-equip-${inst.id}`}>
@@ -39,11 +38,17 @@ export function SellStoredEquipment({ inst }: { inst: EquipmentInstance }) {
         }
       >
         <p className="pn-p">
-          The store pays {formatMoney(value)} for it: half its price{why ? `, ${why}` : ''}.
+          The store pays {formatMoney(value)} for it: half its price.
         </p>
       </Modal>
     </>
   );
+}
+
+/** The take-down question's body, every count read right ("Its filter goes …", "Its filter and 4 decor pieces go …"). */
+export function takeDownText(check: Pick<TakeDownCheck, 'stores' | 'storesMany' | 'value' | 'last'>): string {
+  const stores = check.stores ? `${check.stores.charAt(0).toUpperCase()}${check.stores.slice(1)} ${check.storesMany ? 'go' : 'goes'} to storage. ` : '';
+  return `${stores}You get ${formatMoney(check.value)} back for the tank.${check.last ? ' It’s your only tank, so the room will be empty until you buy another.' : ''}`;
 }
 
 /** A tank's "Take down": shown when the tank may come down, else the reason it can't; asks first. */
@@ -74,10 +79,7 @@ export function TakeDownTank({ g, tank }: { g: GameState; tank: Tank }) {
           </>
         }
       >
-        <p className="pn-p">
-          {check.stores ? `${check.stores.charAt(0).toUpperCase()}${check.stores.slice(1)} go to storage. ` : ''}You get {formatMoney(check.value)} back for the tank.
-          {check.last ? ' It’s your only tank, so the room will be empty until you buy another.' : ''}
-        </p>
+        <p className="pn-p">{takeDownText(check)}</p>
       </Modal>
     </>
   );

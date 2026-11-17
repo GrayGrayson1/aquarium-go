@@ -11,7 +11,7 @@ import { newGame } from '@/sim/newGame';
 import type { StarterId } from '@/data/species';
 import { unlockProgress, guideHoldLine, evalCond, upgradeFacility } from '@/sim/facility';
 import { createTank } from '@/sim/tanks';
-import { marketAccess } from '@/sim/economy';
+import { marketAccess, cashIdeas } from '@/sim/economy';
 import { lockViews, UnlockHelpBody } from '@/ui/panels/common/UnlockHelp';
 import { GROUPS, UnlocksTab, researchLockKeys, researchTankLine } from '@/ui/panels/research/ResearchPanel';
 import { RESEARCH } from '@/data/research';
@@ -26,6 +26,7 @@ import { ResearchPanel } from '@/ui/panels/research/ResearchPanel';
 import { decorWaterNote } from '@/ui/panels/build/decorWater';
 import { WATER_CLASS_BLURB } from '@/ui/panels/common/format';
 import { tankAttention, tankAttentionLevel } from '@/ui/common/notify';
+import { fixForAttention } from '@/ui/common/fixLinks';
 import { tierLadder } from '@/ui/common/ops';
 import { Rooms } from '@/ui/panels/build/FacilityRooms';
 import { RESEARCH_BY_ID } from '@/data/research';
@@ -33,6 +34,7 @@ import { applyCommand } from '@/sim/commands';
 import { removeEquipment } from '@/sim/care';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { equipmentSellValue, takeDownCheck } from '@/sim/economy/sellBack';
+import { takeDownText } from '@/ui/panels/build/SellBack';
 import { buyTank, kitEquipmentFor } from '@/sim/economy/purchases';
 import { MAX_PER_KIND } from '@/sim/care/tuning';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
@@ -67,7 +69,7 @@ describe('G1: an unlock the guide holds back says so', () => {
   it('names the guide step that hands out the 40 gallon, and never shows it 100% done', () => {
     const g = game('axolotl');
     g.progress.reputation = 30; // the rule (25 reputation) is met, but the guide holds the 40 gallon for "Room to grow"
-    expect(guideHoldLine(g, 'tank_40')).toBe('Your guide gives you this at its “Room to grow” step (see Research › Quests).');
+    expect(guideHoldLine(g, 'tank_40')).toBe('Your guide gives you this at its “Room to grow” step. Research › Quests shows where your guide is now.');
     const [v] = lockViews(g, ['tank_40']);
     expect(v.guide).toContain('“Room to grow”');
     const row = unlockProgress(g).find((u) => u.key === 'tank_40')!;
@@ -154,7 +156,7 @@ describe('G6: reputation is reachable on every screen and explained', () => {
     expect(renderToStaticMarkup(createElement(TopBar, {}))).toMatch(/<button[^>]*data-testid="hud-reputation"/);
     const more = renderToStaticMarkup(createElement(MoreSheetBody, { isLocked: () => false, dots: {} }));
     expect(more).toContain('data-testid="more-reputation"');
-    expect(more).toContain('30 reputation');
+    expect(more).toMatch(/ag-more__rep-text"><span class="ag-tabular">30<\/span> reputation/);
     const research = renderToStaticMarkup(createElement(ResearchPanel));
     expect(research).toContain('How reputation grows');
     expect(research).toContain('It drops when an animal dies');
@@ -189,6 +191,14 @@ describe('G8: a fading plant or coral is an alert', () => {
     t.decor.push({ id: 'd-test', defId: 'hammer_coral', x: 0, y: 0, z: 0, rotY: 0, scale: 1, seed: 1, health: 12, growth: 0.3 });
     const item = tankAttention(g, t.id).items.find((i) => /hammer coral/.test(i.text));
     expect(item).toMatchObject({ level: 'watch', tab: 'life', text: 'Your hammer coral is struggling (12% health): it needs stronger light than this tank provides.' }); // (a bright-light coral: the tip’s reason)
+    // review fix: its fix link is the lights, never "Water care"
+    const fix = fixForAttention(g, t, item!, null);
+    expect(fix?.label).toMatch(/^(Lighting|Buy a light|Buy a brighter light|Switch it on|Repair)$/);
+    t.lighting.intensity = 1;
+    for (const e of t.equipment) if (getEquipmentDef(e.defId)?.kind === 'light') Object.assign(e, { on: true, failed: false, setting: 1 });
+    expect(fixForAttention(g, t, item!, null)?.label).toBe('Lighting');
+    t.lighting.intensity = 1.5;
+    expect(fixForAttention(g, t, item!, null)?.label).toBe('Buy a brighter light');
     expect(tankAttentionLevel(g, t.id)).not.toBe('good');
     t.decor.find((d) => d.id === 'd-test')!.health = 60;
     expect(tankAttention(g, t.id).items.some((i) => /hammer coral/.test(i.text))).toBe(false);
@@ -196,13 +206,13 @@ describe('G8: a fading plant or coral is an alert', () => {
 });
 
 describe('G22 (the owner’s answer): the store buys stored equipment back at half price', () => {
-  it('sells one stored unit for half its price, by its condition, and takes it out of storage', () => {
+  it('sells one stored unit for half its price, whatever its condition, and takes it out of storage', () => {
     const g = game('betta');
     const t = g.tanks[g.tankOrder[0]];
     const unit = t.equipment[0];
     expect(removeEquipment(g, t.id, unit.id).ok).toBe(true);
     const def = getEquipmentDef(unit.defId)!;
-    g.inventory.equipment.find((e) => e.id === unit.id)!.condition = 1;
+    Object.assign(g.inventory.equipment.find((e) => e.id === unit.id)!, { condition: 0.3, failed: true }); // review: a flat half, as approved
     const money = g.finance.money;
     const half = Math.round(def.price / 2);
     const res = applyCommand(g, { k: 'sellEquipment', instance: unit.id });
@@ -214,12 +224,10 @@ describe('G22 (the owner’s answer): the store buys stored equipment back at ha
     expect(applyCommand(g, { k: 'sellEquipment', instance: unit.id }).ok).toBe(false);
     expect(g.finance.money).toBeCloseTo(money + half, 6);
   });
-  it('a worn unit fetches less, and a broken one half that again', () => {
-    const def = { price: 100 } as Parameters<typeof equipmentSellValue>[0];
-    expect(equipmentSellValue(def, { condition: 1 })).toBe(50);
-    expect(equipmentSellValue(def, { condition: 0.5 })).toBe(25);
-    expect(equipmentSellValue(def, { condition: 0.5, failed: true })).toBe(13);
-    expect(equipmentSellValue(undefined, { condition: 1 })).toBe(0);
+  it('the price is half the catalogue price, as the owner approved', () => {
+    const def = { price: 99 } as Parameters<typeof equipmentSellValue>[0];
+    expect(equipmentSellValue(def)).toBe(50);
+    expect(equipmentSellValue(undefined)).toBe(0);
   });
   it('in a shared shop the second member to sell the same unit is told who sold it', () => {
     const g = game('betta');
@@ -255,6 +263,7 @@ describe('G19 (the owner’s answer): an empty tank can be taken down', () => {
     const check = takeDownCheck(g, id);
     expect(check).toMatchObject({ ok: true, value: half, last: false });
     expect(check.stores).toMatch(/^its .*filter.* and 2 decor pieces$/);
+    expect(takeDownText(check)).toMatch(/^Its .* and 2 decor pieces go to storage\. You get \$\d+ back for the tank\.$/);
     const money = g.finance.money;
     const res = applyCommand(g, { k: 'takeDownTank', tank: id });
     expect(res.ok, res.message).toBe(true);
@@ -268,11 +277,28 @@ describe('G19 (the owner’s answer): an empty tank can be taken down', () => {
     expect(applyCommand(g, { k: 'takeDownTank', tank: id }).ok).toBe(false);
     expect(g.finance.money).toBeCloseTo(money + half, 6);
   });
+  it('the question reads right with one thing, one of each, or nothing (review fix)', () => {
+    const { g, id } = withEmptyTank();
+    const t = g.tanks[id];
+    const filter = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'filter')!;
+    const piece = t.decor[0];
+    t.equipment = [filter];
+    t.decor = [];
+    expect(takeDownText(takeDownCheck(g, id))).toMatch(/^Its filter goes to storage\. You get \$\d+ back for the tank\.$/);
+    t.equipment = [];
+    t.decor = [piece];
+    expect(takeDownText(takeDownCheck(g, id))).toMatch(/^Its decor piece goes to storage\./);
+    t.equipment = [filter];
+    expect(takeDownText(takeDownCheck(g, id))).toMatch(/^Its filter and decor piece go to storage\./);
+    t.decor = [];
+    t.equipment = [];
+    expect(takeDownText(takeDownCheck(g, id))).toMatch(/^You get \$\d+ back for the tank\.$/);
+  });
   it('refuses a tank with animals, eggs or young, a listing, or a production line, and says why', () => {
     const { g, id } = withEmptyTank();
     expect(takeDownCheck(g, g.tankOrder[0]).reason).toBe('Animals live in it. Move them to another tank first.');
     g.clutches.cl_probe = { id: 'cl_probe', tankId: id, count: 12 } as (typeof g.clutches)[string];
-    expect(takeDownCheck(g, id).reason).toMatch(/^Eggs or young are in it\./);
+    expect(takeDownCheck(g, id).reason).toBe('Eggs or young are in it. Move them to another tank first.');
     delete g.clutches.cl_probe;
     g.tanks[id].listingId = 'l_probe';
     expect(takeDownCheck(g, id).reason).toBe('It’s listed for sale. Withdraw the listing first.');
@@ -284,7 +310,9 @@ describe('G19 (the owner’s answer): an empty tank can be taken down', () => {
     const farm = lineFarm();
     const lineTank = Object.values(farm.tanks).find((t) => !Object.values(farm.g.creatures).some((c) => c.tankId === t.id && (c.status === 'alive' || c.status === 'listed')) && !Object.values(farm.g.clutches).some((cl) => cl.tankId === t.id && cl.count > 0));
     expect(lineTank, 'an empty line tank').toBeTruthy();
-    expect(takeDownCheck(farm.g, lineTank!.id).reason).toMatch(/line uses it\. Give the line another tank in Operations, or end the line, first\.$/);
+    const line = farm.g.production!.lines[0];
+    expect(takeDownCheck(farm.g, lineTank!.id).reason).toBe(`${line.name} uses it. Give the line another tank in Livestock › Production, or end the line there, first.`);
+    expect(line.name).toMatch(/line$/); // (so "The Betta line line" would have shown)
   });
   it('the world steps on for a game day after a take-down, and the last tank leaves an empty room as an auction does', () => {
     const { g, id } = withEmptyTank();
@@ -517,7 +545,7 @@ describe('G24: placing a tank on a phone', () => {
 describe('G25: a big tank’s kit never ships more units of a kind than a tank may hold', () => {
   it('without Premium Life Support, every tier’s kit stays within the per-kind limits', () => {
     const g = game('betta');
-    g.progress.unlocked.push('gear_tier2', 'marine_basics', 'reef');
+    g.progress.unlocked.push('gear_tier2', 'marine_basics', 'reef', 'gear_ato'); // (review: with auto top-offs unlocked, big reef kits listed two)
     for (const tier of Object.values(TANK_TIER_BY_ID))
       for (const wc of ['freshwater_tropical', 'marine_fowlr', 'reef'] as const) {
         const kinds = new Map<string, number>();
@@ -562,5 +590,74 @@ describe('G28 (B-231 e): the first tank bought after selling every tank doesn’
     use(g);
     const html = renderToStaticMarkup(createElement(TankBar));
     expect(html).toMatch(/data-testid="tank-buy-first"[^>]*>No tank · Buy one</);
+    // review: not while a tank is being placed (the placement focuses it as it lands)
+    const tool0 = useUI.getState().tool;
+    useUI.setState({ tool: 'tank_place' });
+    Object.assign(useUI.getInitialState(), { tool: 'tank_place' });
+    try {
+      const placing = renderToStaticMarkup(createElement(TankBar));
+      expect(placing).not.toContain('tank-buy-first');
+      expect(placing).toContain('No tank');
+    } finally {
+      useUI.setState({ tool: tool0 });
+      Object.assign(useUI.getInitialState(), { tool: tool0 });
+    }
+  });
+});
+
+describe('G20 review fix: the signage unlock points at a switch the player can reach', () => {
+  it('no link to Visitors (often still locked at 45 reputation); a where-line to the tank card’s Value tab', () => {
+    expect(unlockLink('signage')).toBeNull();
+    expect(unlockWhere('signage')).toBe('Add a sign from a tank card’s Value tab.');
+  });
+});
+
+describe('G13 review fix: the rockwork tip offers soft corals only to a reef', () => {
+  it('a live-rock tank of bare rock is told macroalgae, a reef macroalgae or soft corals', () => {
+    const g = game('ocellaris_clownfish');
+    g.progress.unlocked.push('reef', 'decor_corals_soft');
+    const t = g.tanks[g.tankOrder[0]];
+    t.decor = [0, 1, 2].map((i) => ({ id: `d-rock-${i}`, defId: 'live_rock', x: -0.12 + i * 0.12, y: 0, z: 0, rotY: 0, scale: 1, seed: i + 1 }));
+    const tip = (wc: 'marine_live_rock' | 'reef') => {
+      t.waterClass = wc;
+      return beautyScore(g, t).tips.find((x) => /^Soften the rockwork/.test(x));
+    };
+    expect(tip('marine_live_rock')).toMatch(/^Soften the rockwork with life — macroalgae around the /);
+    expect(tip('reef')).toMatch(/^Soften the rockwork with life — macroalgae or a few soft corals around the /);
+  });
+});
+
+describe('G23 review fix: one tank without a spot is pointed at its own card', () => {
+  it('“Move it with Move tank on its card.”', () => {
+    const g = game('betta');
+    g.finance.money = 1e7;
+    g.progress.unlocked.push('facility_specialty_shop');
+    // as many 125-gallon tanks as leave exactly one without a spot: find the count on copies
+    for (let n = 1; n <= 40; n++) {
+      const c = structuredClone(g);
+      for (let i = 0; i < n; i++) createTank(c, 'g125', 'freshwater_tropical', { placement: { x: 0, z: 0, rotY: 0 } });
+      upgradeFacility(c);
+      const note = c.log.find((e) => /could not find a good spot/.test(e.text));
+      if (note && /^1 tank /.test(note.text)) {
+        expect(note.text).toBe('1 tank could not find a good spot. Move it with Move tank on its card.');
+        return;
+      }
+      if (note) break;
+    }
+    throw new Error('no count left exactly one tank without a spot');
+  });
+});
+
+describe('G19/G22 review: the ways to raise cash name taking an empty tank down and selling spare gear', () => {
+  it('an empty tank and a stored unit each become a cash idea, with the amount and where', () => {
+    const g = game('betta');
+    g.finance.money = 5000;
+    const r = buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true });
+    const half = Math.round(TANK_TIER_BY_ID.g10.price / 2);
+    expect(cashIdeas(g).find((i) => i.kind === 'take_down')?.text).toBe(`Take down the ${g.tanks[r.tankId!].name} in Tanks if you don’t need it: the store pays $${half} for it.`);
+    expect(cashIdeas(g).some((i) => i.kind === 'spare_gear')).toBe(false);
+    const t = g.tanks[g.tankOrder[0]];
+    removeEquipment(g, t.id, t.equipment[0].id);
+    expect(cashIdeas(g).find((i) => i.kind === 'spare_gear')?.text).toBe('Sell spare equipment from storage in Build › Equipment: the shop pays half its price.');
   });
 });

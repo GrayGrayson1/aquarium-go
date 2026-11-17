@@ -758,7 +758,7 @@ export function tutorialStepGranting(state: GameState, key: string): string | nu
 /** Audit 2026-11-17 (G1) — the line a locked card adds while the guide holds `key` (null: not held). */
 export function guideHoldLine(state: GameState, key: string): string | null {
   const step = tutorialStepGranting(state, key);
-  return step ? `Your guide gives you this at its “${step}” step (see Research › Quests).` : null;
+  return step ? `Your guide gives you this at its “${step}” step. Research › Quests shows where your guide is now.` : null; // (review: Quests shows only the current step)
 }
 
 function checkTutorial(state: GameState, cache: CondCache): void {
