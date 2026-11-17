@@ -116,7 +116,7 @@ export function dailyOperatingCost(state: GameState): OperatingCosts {
  * animal to the local store, list one, auction a tank, open to visitors, an empty tank's bill, trimming the bills, the
  * Market's first visit, holding steady, or the starter as a last resort.
  */
-export type CashIdeaKind = 'quick_sell' | 'list_tank' | 'list_animal' | 'visitors' | 'empty_tank' | 'trim' | 'open_market' | 'hold' | 'starter';
+export type CashIdeaKind = 'quick_sell' | 'list_tank' | 'list_animal' | 'visitors' | 'empty_tank' | 'trim' | 'decor' | 'open_market' | 'hold' | 'starter';
 export interface CashIdea {
   kind: CashIdeaKind;
   text: string;
@@ -137,15 +137,20 @@ export function cashIdeas(state: GameState): CashIdea[] {
   const listable = state.tankOrder.filter((id) => state.tanks[id] && !state.tanks[id].listingId);
   if (isUnlocked(state, 'tank_auctions') && listable.length > 0) {
     out.push({ kind: 'list_tank', text: 'List a whole aquarium at auction — finished displays attract the biggest bids.' });
-  } else if (isUnlocked(state, 'market_listings')) {
+  } else if (isUnlocked(state, 'market_listings') && Object.values(state.creatures).some((c) => c.status === 'alive' && !c.isStarter)) {
+    // audit 2026-11-17 (F13) — only with an animal to list (a listed one is already on the market)
     out.push({ kind: 'list_animal', text: 'List a spare animal on the marketplace and let buyers bid.' });
   }
   if (isUnlocked(state, 'visitors') && !state.facility.openToPublic) out.push({ kind: 'visitors', text: 'Open your doors to visitors for admission and tips.' });
   const empty = state.tankOrder.filter((id) => state.tanks[id] && !Object.values(state.creatures).some((c) => c.tankId === id && (c.status === 'alive' || c.status === 'listed')));
   // lane:guide — a tank can only leave through a whole-aquarium auction, so only suggest selling one once that is open
   const it = empty.length === 1 ? 'it' : 'them';
-  const fix = isUnlocked(state, 'tank_auctions') ? `restock ${it}, or auction ${it} as a whole aquarium` : `restock ${it}, or switch off ${empty.length === 1 ? 'its' : 'their'} gear to cut the bill`;
+  // audit 2026-11-17 (F13) — "restock" only while purchases are possible (in debt they are paused)
+  const restock = state.finance.money >= 0 ? `restock ${it}, or ` : '';
+  const fix = isUnlocked(state, 'tank_auctions') ? `${restock}auction ${it} as a whole aquarium` : `${restock}switch off ${empty.length === 1 ? 'its' : 'their'} gear to cut the bill`;
   if (empty.length > 0) out.push({ kind: 'empty_tank', text: `${empty.length === 1 ? 'An empty tank still costs' : `${empty.length} empty tanks still cost`} money to run — ${fix}.` });
+  // audit 2026-11-17 (F13) — Build buys placed decor back at half its price (SELL_BACK_FRACTION)
+  if (state.tankOrder.some((id) => (state.tanks[id]?.decor?.length ?? 0) > 0)) out.push({ kind: 'decor', text: 'Sell decor you can spare in Build › Decor: the shop pays half its price.' });
   if (state.tankOrder.some((id) => (state.tanks[id]?.equipment.length ?? 0) > 1)) out.push({ kind: 'trim', text: 'Trim running costs: a shorter light schedule and switching off gear you do not need lowers the daily bill.' });
   if (!isUnlocked(state, 'market_listings')) {
     // audit 2026-11-17 (F8) — while the guide holds listings for its own step, visiting the Market won't open them

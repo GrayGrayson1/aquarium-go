@@ -18,7 +18,9 @@ import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
 import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, devOpenMarket, createListing, forceBuyerVisit, acceptBid, restartNeed, tankKitPrice } from '@/sim/economy';
 import { cheapestKit } from '@/sim/economy/purchases';
-import { marketAccess, cashSuggestions } from '@/sim/economy';
+import { marketAccess, cashSuggestions, dailyOperatingCost } from '@/sim/economy';
+import { installWaterRoom } from '@/sim/automation/water';
+import { installFoodRoom } from '@/sim/automation/food';
 import { unlockProgress } from '@/sim/facility';
 import { lockViews } from '@/ui/panels/common/UnlockHelp';
 import { useShopFilters, useShopSearch } from '@/ui/panels/market/shopFilters';
@@ -138,6 +140,7 @@ describe('F2: money trouble leads to Finances', () => {
   it('Finances’ ways to raise cash are links to where each happens', () => {
     const g = game(-30);
     g.progress.unlocked.push('market_listings');
+    addCreature(g, createCreature(g, simRng(g), 'betta', { ageDays: 120 }), g.tankOrder[0]); // a spare animal to list (F13)
     const out = renderToStaticMarkup(createElement(FinancesPanel));
     expect(out).toContain('data-testid="finance-idea-list_animal"');
     expect(out).toContain('data-testid="finance-idea-go-list_animal"');
@@ -475,6 +478,38 @@ describe('F11: money is never shown as more than the player has', () => {
     const out = text(renderToStaticMarkup(createElement(ShopTab, { g, offerId: o.id, setOfferId: () => {} })));
     expect(out).toContain('You need $1 more');
     expect(text(renderToStaticMarkup(createElement(FinancesPanel)))).toContain('$199 in the bank');
+  });
+});
+
+describe('F12: Finances’ running costs add up', () => {
+  it('the Water and Live food rooms get their own row', () => {
+    const g = game();
+    installWaterRoom(g);
+    installFoodRoom(g);
+    const ops = dailyOperatingCost(g);
+    expect(ops.rooms ?? 0).toBeGreaterThan(0);
+    const out = renderToStaticMarkup(createElement(FinancesPanel));
+    expect(out).toContain('data-testid="finance-rooms"');
+    expect(text(out)).toContain(ops.roomNames!);
+    expect(text(out)).toContain('and the rooms’ machines');
+  });
+});
+
+describe('F13: the ways to raise cash are ones the player can take', () => {
+  it('in debt with no animals: no listing an animal, no restocking; decor is named when there is some', () => {
+    const g = game(-30);
+    g.progress.unlocked.push('market_listings');
+    g.progress.unlocked = g.progress.unlocked.filter((k) => k !== 'tank_auctions');
+    for (const c of Object.values(g.creatures)) c.status = 'dead';
+    const tips = cashSuggestions(g).join(' ');
+    expect(tips).not.toContain('List a spare animal');
+    expect(tips).not.toContain('restock');
+    expect(tips).toContain('switch off its gear');
+    const t = g.tanks[g.tankOrder[0]];
+    expect(t.decor.length).toBeGreaterThan(0);
+    expect(tips).toContain('Sell decor you can spare in Build › Decor: the shop pays half its price.');
+    g.finance.money = 50;
+    expect(cashSuggestions(g).join(' ')).toContain('restock it, or switch off its gear');
   });
 });
 

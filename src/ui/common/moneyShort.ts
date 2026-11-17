@@ -107,7 +107,7 @@ export function suppliesMoneyNote(g: GameState, cheapestShown: number): { title:
     text = `You have ${moneyHeld(money)}: not enough for anything here.`;
   } else return null;
   // a way to raise cash now (selling, listing, visitors), not a way to trim tomorrow's bill
-  const now = safe('cashIdeas', () => cashIdeas(g), []).find((i) => i.kind === 'quick_sell' || i.kind === 'list_animal' || i.kind === 'list_tank' || i.kind === 'visitors');
+  const now = safe('cashIdeas', () => cashIdeas(g), []).find((i) => i.kind === 'quick_sell' || i.kind === 'list_animal' || i.kind === 'list_tank' || i.kind === 'visitors' || i.kind === 'decor');
   const alive = Object.values(g.creatures).some((c) => c.status === 'alive');
   const tip = now?.text ?? (alive ? 'Sell an animal for quick cash: tick it in Livestock and press Quick sell.' : 'Wait for income: nothing is ever taken from you.');
   return { title, text, tip };

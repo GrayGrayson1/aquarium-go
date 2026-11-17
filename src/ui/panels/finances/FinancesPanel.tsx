@@ -223,6 +223,18 @@ export function FinancesPanel() {
                     <span className="pn-opcost__v">{formatMoney(data.ops.wages ?? 0, { cents: true })}</span>
                   </div>
                 )}
+                {(data.ops.rooms ?? 0) > 0 && (
+                  // audit 2026-11-17 (F12) — the Water and Live food rooms' machines are in the total, so they get a row
+                  <div className="pn-opcost" data-testid="finance-rooms">
+                    <span className="pn-opcost__name pn-ellipsis">
+                      <Building2 size={12} className="pn-muted" aria-hidden style={{ flex: 'none' }} /> <span className="pn-ellipsis">{data.ops.roomNames}</span>
+                    </span>
+                    <div className="pn-grow">
+                      <Bar value={((data.ops.rooms ?? 0) / Math.max(0.01, data.ops.total)) * 100} tone="coral" label={`${data.ops.roomNames} running cost`} thin />
+                    </div>
+                    <span className="pn-opcost__v">{formatMoney(data.ops.rooms ?? 0, { cents: true })}</span>
+                  </div>
+                )}
                 <div className="pn-opcost pn-opcost--total">
                   <span className="pn-opcost__name">Total per day</span>
                   <div className="pn-grow" />
@@ -232,7 +244,7 @@ export function FinancesPanel() {
             )}
           </div>
           <p className="pn-tiny pn-muted" style={{ marginTop: 8 }}>
-            Electricity for filters, heaters and lights, wear on equipment, and salt for marine water changes. Empty tanks still cost money to run.
+            Electricity for filters, heaters and lights, wear on equipment, and salt for marine water changes{(data.ops.rooms ?? 0) > 0 ? ', and the rooms’ machines' : ''}. Empty tanks still cost money to run.
             {(data.ops.wages ?? 0) > 0 && ' Staff wages are paid at midnight; if the cash runs out, they work a short notice period rather than putting you in debt.'}
           </p>
         </section>
@@ -288,6 +300,7 @@ const CASH_IDEA_LINK: Partial<Record<CashIdea['kind'], { panel: PanelId; target:
   visitors: { panel: 'visitors', target: 'tab:visitors', label: 'Open Visitors' },
   empty_tank: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' },
   trim: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' },
+  decor: { panel: 'build', target: 'tab:decor', label: 'Open decor' },
   open_market: { panel: 'market', target: 'tab:shop', label: 'Open the Market' },
 };
 
