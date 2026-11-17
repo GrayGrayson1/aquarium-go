@@ -14,7 +14,7 @@ import { Chip, Seg, EmptyState, SectionHead, Callout, Bar } from '../common/part
 import { IncomeChart, type DayPoint } from './IncomeChart';
 import { orderedTanks, dailyCost } from '../common/derive';
 import { LEDGER_LABEL, dayOfHour, relTime, formatSpan } from '../common/format';
-import { needsCashIdeas } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F1)
+import { needsCashIdeas, wholeMoney } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F1, F11)
 import { useUI, type PanelId } from '@/state/ui'; // audit 2026-11-17 (F2)
 
 type LedgerFilter = 'all' | 'income' | 'expenses';
@@ -83,12 +83,12 @@ export function FinancesPanel() {
   const ledgerCats = [...new Set(g.finance.ledger.map((e) => e.category))];
 
   return (
-    <PanelLayout title="Finances" icon={<Wallet size={20} />} subtitle={`${formatMoney(money)} in the bank · ${formatMoney(data.ops.total, { cents: data.ops.total < 20 })}/day to run everything`}>
+    <PanelLayout title="Finances" icon={<Wallet size={20} />} subtitle={`${wholeMoney(money)} in the bank · ${formatMoney(data.ops.total, { cents: data.ops.total < 20 })}/day to run everything`}>
       <div className="pn-stack pn-stack--lg">
         <div className="pn-balance">
           <div>
             <div className="pn-tiny pn-muted pn-balance__label">Balance</div>
-            <div className={clsx('pn-balance__v', inDebt && 'pn-tone-danger')}>{formatMoney(money)}</div>
+            <div className={clsx('pn-balance__v', inDebt && 'pn-tone-danger')}>{wholeMoney(money) /* F11: never more than you have */}</div>
           </div>
           <div className="pn-balance__deltas">
             {data.todayPt && (

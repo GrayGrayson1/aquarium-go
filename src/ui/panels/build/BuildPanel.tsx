@@ -30,6 +30,7 @@ import { Chip, Seg, Select, EmptyState, SectionHead, Callout, Bar, Checkbox, Til
 import { FacilityUpgradeCard } from '../common/FacilityUpgrade';
 import { EquipRow } from '../market/Supplies';
 import { takeOfferReturn, clearOfferReturn, peekOfferReturn } from '../market/offerReturn'; // lane:qa-play
+import { wholeMoney } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F11)
 import { getGame } from '@/state/game'; // lane:qa-play
 import { orderedTanks, gallonsOf, unlocked, livingInTank } from '../common/derive';
 import { substrateCost } from '../common/tankOps';
@@ -173,7 +174,7 @@ export function BuildPanel() {
     <PanelLayout
       title="Build"
       icon={<Hammer size={20} />}
-      subtitle={`${getFacilityLevel(g.facility.level).name} · ${plural(tanks.length, 'tank')} · ${formatMoney(g.finance.money)} to spend`}
+      subtitle={`${getFacilityLevel(g.facility.level).name} · ${plural(tanks.length, 'tank')} · ${wholeMoney(g.finance.money) /* audit 2026-11-17 (F11) */} to spend`}
       scrollKey={tab}
       toolbar={
         <div className="pn-col pn-gap-2" style={{ width: '100%' }}>

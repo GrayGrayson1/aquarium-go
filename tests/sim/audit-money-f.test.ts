@@ -13,7 +13,7 @@ import { newGame } from '@/sim/newGame';
 import { useGame } from '@/state/game';
 import { refreshFoodStatus } from '@/sim/tankStatus';
 import { SuppliesTab } from '@/ui/panels/market/Supplies';
-import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas } from '@/ui/common/moneyShort';
+import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas, wholeMoney } from '@/ui/common/moneyShort';
 import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
 import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, devOpenMarket, createListing, forceBuyerVisit, acceptBid, restartNeed, tankKitPrice } from '@/sim/economy';
@@ -461,6 +461,20 @@ describe('F10: one listing, one fair value', () => {
     expect(acceptBid(g, l.id, b.id).ok).toBe(true);
     const sold = text(renderToStaticMarkup(createElement(ListingsTab, { g, focusId: null, onCreate: () => {} })));
     expect(sold).toContain(`+${Math.round(((l.soldFor! - l.lastValuation) / l.lastValuation) * 100)}% vs fair value`);
+  });
+});
+
+describe('F11: money is never shown as more than the player has', () => {
+  it('$199.60 reads "$199"; a $200 offer says "You need $1 more", not "$0"', () => {
+    expect(wholeMoney(199.6)).toBe('$199');
+    expect(wholeMoney(200)).toBe('$200');
+    const g = game(199.6);
+    g.market.stock = [];
+    const o: ShopOffer = { id: 'offer_f11', kind: 'creature', speciesId: 'mystery_snail', creatures: [createCreature(g, simRng(g), 'mystery_snail')], price: 200, seller: 'Test Breeder', expiresHour: g.clock.hour + 48 };
+    g.market.stock.push(o);
+    const out = text(renderToStaticMarkup(createElement(ShopTab, { g, offerId: o.id, setOfferId: () => {} })));
+    expect(out).toContain('You need $1 more');
+    expect(text(renderToStaticMarkup(createElement(FinancesPanel)))).toContain('$199 in the bank');
   });
 });
 

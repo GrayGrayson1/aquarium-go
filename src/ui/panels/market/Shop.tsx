@@ -25,6 +25,7 @@ import { rememberOfferReturn, peekOfferReturn } from './offerReturn'; // lane:qa
 import { useShopFilters, offerMatches, filtersActive, useShopSearch, offerSearchMatches, sortOffers, type ShopSort } from './shopFilters'; // lane:ui-shell (chunk 1); chunk 19 (QOL-003): search and sort
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { matches } from '../common/match'; // audit 2026-11-17 (F9)
+import { wholeMoney } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F11)
 import { ALL_SPECIES } from '@/data/species'; // audit 2026-11-17 (F9)
 import { useSeenStock } from './seenStock'; // lane:notify (0.5 §5.2)
 import { CopyLinkButton, OfferLinkRow, useOfferLink } from './OfferLink'; // lane:ui-shell (chunk 1)
@@ -721,7 +722,8 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             </span>
             <span className={clsx('pn-tiny', afford ? 'pn-muted' : 'pn-tone-danger')}>
               {offer.kind === 'group' ? `${groupPriceNote(chosen.length, offer.creatures.length, unitPrice, price)} · ` : ''}
-              {afford ? `${formatMoney(g.finance.money - price)} left after` : `You need ${formatMoney(price - g.finance.money)} more`}
+              {/* audit 2026-11-17 (F11) — never "You need $0 more": what's left rounds down, a shortfall up */}
+              {afford ? `${wholeMoney(g.finance.money - price)} left after` : `You need ${formatMoney(Math.ceil(price - g.finance.money - 1e-6))} more`}
             </span>
             {!afford && !locked && (
               // audit 2026-11-17 (F2) — short of the price: where the ways to raise cash are

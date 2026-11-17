@@ -22,6 +22,14 @@ export function moneyHeld(money: number): string {
   return formatMoney(money < 0 ? Math.ceil(v) : Math.floor(v));
 }
 
+/**
+ * A balance in whole dollars, rounded down (F11): never more than the player has, so the top bar's "$200" is always
+ * enough for a $200 price (bills leave cents, and every check compares to the cent).
+ */
+export function wholeMoney(money: number): string {
+  return formatMoney(Math.floor((Number.isFinite(money) ? money : 0) + 1e-6));
+}
+
 /** A disabled "Buy" button's reason (its `title`), or undefined when `price` is affordable. */
 export function cantAffordTitle(money: number, price: number): string | undefined {
   if (money < 0) return `You’re ${moneyHeld(money)} in debt, so purchases are paused`;
