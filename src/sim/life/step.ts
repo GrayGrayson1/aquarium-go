@@ -91,14 +91,19 @@ export function pushHistory(c: Creature, ev: Creature['history'][number]): void 
  * Audit 2026-11-17 (D11): the tank mate that last hurt this animal, from its History ("Hurt by Rex the tiger barb (fin
  * nip)."), so a death or a healing note can name it without a new save field. Null when nothing hurt it.
  */
-export function lastHurtBy(c: Creature): { label: string; verb: 'nipping' | 'chasing' | 'attacking' } | null {
+export function lastHurtBy(c: Creature, nowHour: number): { label: string; verb: 'nipping' | 'chasing' | 'stinging' | 'attacking' } | null {
   const h = Array.isArray(c.history) ? c.history : [];
   for (let i = h.length - 1; i >= 0; i--) {
+    // review: only a recent hurt counts (about two game days), never a tank mate from weeks ago or another tank
+    if (!(nowHour - (h[i]?.hour ?? -Infinity) <= HURT_BY_WINDOW_H)) break;
     const m = h[i]?.kind === 'note' ? /^Hurt by (.+) \(([a-z ]+)\)\.$/.exec(h[i].text ?? '') : null;
-    if (m) return { label: m[1], verb: /nip/.test(m[2]) ? 'nipping' : m[2] === 'harassment' ? 'chasing' : 'attacking' };
+    if (m) return { label: m[1], verb: /nip/.test(m[2]) ? 'nipping' : m[2] === 'harassment' ? 'chasing' : m[2] === 'sting' ? 'stinging' : 'attacking' };
   }
   return null;
 }
+
+/** How far back (game hours) a "Hurt by" note still names who is hurting an animal. */
+export const HURT_BY_WINDOW_H = 48;
 
 export function lifeMeta(c: Creature): NonNullable<Creature['life']> {
   if (!c.life) c.life = {};
@@ -273,11 +278,12 @@ function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
     }
     case 'injury': {
       // Audit 2026-11-17 (D11): name the tank mate that kept hurting it (its History has the last one)
-      const by = lastHurtBy(c);
+      const by = lastHurtBy(c, hour);
       if (by) {
         const p = pronoun(c);
         const obj = p.they === 'she' ? 'her' : p.they === 'he' ? 'him' : 'them';
-        return { kind: 'injury', cause: `injuries from ${by.label}`, text: `${name} has passed away from injuries — ${by.label} kept ${by.verb} ${obj}. Keep them apart.` };
+        const did = by.verb === 'stinging' ? `stung ${obj}` : `kept ${by.verb} ${obj}`;
+        return { kind: 'injury', cause: `injuries from ${by.label}`, text: `${name} has passed away from injuries — ${by.label} ${did}. Keep them apart.` };
       }
       return { kind: 'injury', cause: 'injuries from tank mates', text: `${name} has passed away from injuries caused by tank mates. Some animals simply can't share a tank.` };
     }

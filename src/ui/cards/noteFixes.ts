@@ -15,7 +15,13 @@ export interface NoteFix {
 export function fixForCreatureNote(c: Pick<Creature, 'tankId' | 'speciesId'>, note: string): NoteFix | null {
   const tankId = c.tankId;
   if (!tankId) return null;
-  if (note.startsWith('Habitat:')) return { link: { label: 'Add decor', to: { kind: 'panel', panel: 'build', target: `decor:${tankId}` } } };
+  if (note.startsWith('Habitat:')) {
+    // review of D16: each habitat note goes to what fixes it (welfare.ts habitatFit's notes)
+    if (/ substrate is unsuitable/.test(note)) return { link: { label: 'Change substrate', to: { kind: 'panel', panel: 'build', target: 'tab:substrate' } } };
+    if (/the light is (brighter|dimmer) than it likes/.test(note)) return { link: { label: 'Lighting', to: { kind: 'card', tankId, tab: 'gear', fix: 'lighting' } } };
+    if (/sharp decor/.test(note)) return { link: { label: 'See decor', to: { kind: 'panel', panel: 'build', target: `decor:${tankId}` } } };
+    return { link: { label: 'Add decor', to: { kind: 'panel', panel: 'build', target: `decor:${tankId}` } } };
+  }
   if (/^Stressed — mainly lonely/.test(note)) {
     const sp = findSpecies(c.speciesId);
     return { link: { label: 'Find more in the shop', to: { kind: 'panel', panel: 'market', target: 'tab:shop' } }, ...(sp ? { search: sp.commonName } : {}) };

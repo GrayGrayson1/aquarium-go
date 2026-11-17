@@ -160,12 +160,12 @@ export const scarletHermitCrab: SpeciesDefinition = {
     { id: 'topshelf-scarlet-hermit', title: 'Top Shelf Aquatics — Scarlet Red Hermit Crab', url: 'https://topshelfaquatics.com/pages/saltwater-invertebrates/scarlett-red-hermit-crab', tier: 2, facts: ['rarely bothers snails if shells are scarce it may', 'prefers light oval shells', 'hides to molt', 'may irritate LPS'] },
   ],
   confidenceNotes: [
-    'Snail safety: sources and keepers disagree; many bad reports turn out to be red-leg hermits. Modelled as a small risk that spare shells reduce.',
+    'Snail safety: sources and keepers disagree; many bad reports turn out to be red-leg hermits. Modelled as a small risk; spare shells are not modelled yet (audit D7, an owner decision).',
     'Depth range differs by source (0–100 m, 8–30 m, 1–52 m); irrelevant in a tank.',
     'Lifespan (2–4 years) comes from a retailer page only.',
   ],
   exceptionRules: [
-    { other: 'tag:snail', verdictFloor: 'usually_compatible', reason: 'May take a living snail’s shell when spare empty shells run out; with shells on hand it rarely bothers snails.', incidentRisk: 0.015 },
+    { other: 'tag:snail', verdictFloor: 'usually_compatible', reason: 'May take a living snail’s shell now and then.', incidentRisk: 0.015 }, // ADR-0056 d3 (audit D7): spare shells aren't modelled, so no promise
     { other: 'peacock_mantis_shrimp', verdictFloor: 'incompatible', reason: 'Hermit crabs are favourite prey for smashing mantis shrimp — the shell is no protection.', incidentRisk: 0.5 },
   ],
   special: {

@@ -89,7 +89,7 @@ import { CHIP_ICON } from '../common/tankChipIcons'; // lane:automation (chunk 5
 import { fixForAttention, fixForWaterIssue } from '../common/fixLinks'; // chunk 19 (ADR-0055 decision 2, QOL-002)
 import { isWorn } from '../common/notify'; // chunk 19 (QOL-002)
 import { FixButton } from './FixButton'; // chunk 19 (QOL-002)
-import { animalStatus } from '@/sim/tankStatus'; // Audit 2026-11-17 (D16)
+import { animalStatus, withWaterHarm } from '@/sim/tankStatus'; // Audit 2026-11-17 (D16)
 
 /** A switch flips what the game holds now, not this card's throttled copy (a quick second click turns it back, as before). */
 const liveSignage = (tankId: string): boolean => !!useGame.getState().game?.tanks[tankId]?.signage;
@@ -522,8 +522,13 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
   const exhibit = safe('exhibitScore', () => exhibitScore(game, tank.id), null);
   const load = tank.cache.stockingLoad ?? 0;
   const selected = useUI((s) => s.selectedCreatureId);
-  // Audit 2026-11-17 (D16): the animals behind the tank's "3 neon tetras are stressed" are ringed in its colour
-  const flagged = safe('animalStatus', () => animalStatus(residents), null);
+  // Audit 2026-11-17 (D16): the animals behind the tank's "3 neon tetras are stressed" are ringed in its colour, worked
+  // out as the tank's own line is (src/sim/tankStatus.ts: the water's harm first), so the ring marks who the line names
+  const flagged = safe('animalStatus', () => {
+    const a = animalStatus(residents, game);
+    const water = getWaterReport(game, tank.id);
+    return water ? withWaterHarm(tank, a, water) : a;
+  }, null);
   const flaggedIds = new Set(flagged?.creatureIds ?? []);
   return (
     <>

@@ -216,8 +216,9 @@ export function LivestockPanel() {
       }
       footer={
         tab === 'animals' && pickedList.length > 0 ? (
-          <>
-            <span className="pn-grow pn-small">
+          // Audit 2026-11-17 (review of D2): one wrapping row, so a phone's narrow sheet never cuts off a button
+          <div className="pn-footpick">
+            <span className="pn-footpick__sum pn-small">
               <b>{pickedList.length}</b> selected · worth about <Money value={pickedValue} />
             </span>
             <Button size="sm" variant="ghost" onClick={() => setPicked(new Set())}>
@@ -235,7 +236,7 @@ export function LivestockPanel() {
             <Button size="sm" variant="coral" onClick={listPicked}>
               <Tag size={14} /> List for sale
             </Button>
-          </>
+          </div>
         ) : undefined
       }
     >

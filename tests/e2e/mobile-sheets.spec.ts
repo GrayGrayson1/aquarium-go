@@ -66,6 +66,39 @@ test.describe('phone 390×844 (touch)', () => {
     expect(clear).toBe(true);
   });
 
+  test('audit 2026-11-17 (review of D2): Livestock’s selection footer keeps every button inside the sheet', async ({ page }) => {
+    await phoneGame(page);
+    // a second tank, so the footer offers Move as well (four buttons and the count: about 405 px of buttons alone)
+    await aq(page, 'act', 'buyTank', 'g20L', 'freshwater_tropical');
+    await aq(page, 'dev.spawnSpecies', 'betta', undefined, { sex: 'female', count: 2 });
+    await tid(page, 'dock-livestock').tap();
+    await settled(page, '[data-testid="panel-livestock"]');
+    const ticks = page.locator('[data-testid="panel-livestock"] .pn-lsrow .pn-check');
+    await ticks.nth(0).click();
+    await ticks.nth(1).click();
+    await expect(tid(page, 'move-picked')).toBeVisible();
+    /** Footer buttons outside the sheet, or covered at their centre (by the tab bar or anything else). */
+    const outside = () =>
+      page.evaluate(() => {
+        const sheet = document.querySelector('[data-testid="panel-livestock"]')!.getBoundingClientRect();
+        const buttons = [...document.querySelectorAll('[data-testid="panel-livestock"] .pn-foot button')] as HTMLElement[];
+        return buttons
+          .map((b) => {
+            const r = b.getBoundingClientRect();
+            const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            const ok = r.width > 0 && r.left >= sheet.left - 0.5 && r.right <= sheet.right + 0.5 && r.bottom <= sheet.bottom + 0.5 && !!top && b.contains(top);
+            return ok ? null : (b.textContent ?? '').trim();
+          })
+          .filter((x) => x !== null);
+      });
+    expect(await page.locator('[data-testid="panel-livestock"] .pn-foot button').count()).toBe(4);
+    expect(await outside()).toEqual([]);
+    // and on the narrowest phone the game supports
+    await page.setViewportSize({ width: 360, height: 780 });
+    await page.waitForTimeout(400);
+    expect(await outside()).toEqual([]);
+  });
+
   test('Settings opens at full height from the same top', async ({ page }) => {
     await phoneGame(page);
     await tid(page, 'dock-more').tap();

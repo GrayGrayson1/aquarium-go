@@ -192,7 +192,8 @@ export const silverArowana: SpeciesDefinition = {
     { other: 'silver_arowana', verdictFloor: 'high_risk', reason: 'Arowanas fight their own kind in all but the biggest tanks.', incidentRisk: 0.1 },
     { other: 'oscar', verdictFloor: 'conditional', reason: 'Big cichlids harass a young arowana: add the arowana grown, to a large tank.', incidentRisk: 0.03, mitigatedBy: ['tank_size'] },
     // Audit 2026-11-17 (D6): the eating and the water told apart (the water rule rolls no incident)
-    { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'An arowana swallows goldfish small enough to fit its mouth.', incidentRisk: 0.1 },
+    // (review: a comet is too big for its mouth, so the engine rolls an attack here: the words say so)
+    { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'An arowana attacks comets too big for it to swallow.', incidentRisk: 0.1 },
     { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'An arowana swallows goldfish small enough to fit its mouth.', incidentRisk: 0.1 },
     { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an arowana needs tropical water.', incident: 'none' },
     { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an arowana needs tropical water.', incident: 'none' },
