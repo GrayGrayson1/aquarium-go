@@ -173,7 +173,7 @@ function tankName(state: GameState, id: string): string {
  * the water or the tank as a whole names no animal (Audit 2026-11-17, H6: it named the healthy star "sick").
  */
 function subjectOf(e: ExhibitInfo, mood?: VisitorReaction['mood']): ExhibitInfo['star'] {
-  return mood === 'concerned' ? e.concernCreature : e.star;
+  return mood === 'concerned' ? e.concernCreature ?? null : e.star;
 }
 
 function varsFor(state: GameState, e: ExhibitInfo, mood?: VisitorReaction['mood']): ReactionVars {
