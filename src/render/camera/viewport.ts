@@ -85,9 +85,13 @@ export function measureOcclusion(canvas: DOMRect, out: Occlusion): Occlusion {
   return out;
 }
 
+/** Audit 2026-11-17 (G27): the narrowest strip beside a side sheet the camera still frames the tank in (CSS px). */
+export const MIN_FREE_W = 280;
+
 /**
- * Free rect = canvas − max(HUD reserve, occluders). Occluders that would leave less than ~40 % of the canvas width
- * (or ~12 % of its height) are treated as full-screen overlays and ignored — shifting behind them is pointless.
+ * Free rect = canvas − max(HUD reserve, occluders). Occluders that would leave less than ~40 % of the canvas width and
+ * less than MIN_FREE_W px (or ~12 % of its height) are treated as full-screen overlays and ignored — shifting behind
+ * them is pointless.
  */
 export function computeFreeRect(w: number, h: number, occ: Occlusion, withHud: boolean, out: FreeRect): FreeRect {
   const hud = withHud ? hudReserve(w, h) : { top: 0, bottom: 0, left: 0, right: 0 };
@@ -98,7 +102,9 @@ export function computeFreeRect(w: number, h: number, occ: Occlusion, withHud: b
   let right = Math.max(hud.right, occ.right, rail);
   let top = Math.max(hud.top, occ.top);
   let bottom = Math.max(hud.bottom, occ.bottom);
-  if (w - left - right < w * 0.4) {
+  // Audit 2026-11-17 (G27, B-231 a): a strip of MIN_FREE_W px is room enough to frame the tank beside a side sheet; at
+  // 761–793 px a 460 px panel left under 40 % of the width and the tank was framed under the sheet
+  if (w - left - right < Math.min(w * 0.4, MIN_FREE_W)) {
     left = hud.left;
     right = hud.right;
   }
