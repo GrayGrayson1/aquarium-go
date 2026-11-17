@@ -2,7 +2,7 @@
  * Audit 2026-11-17, area G (building and growing: tanks, equipment fit, decorating, the facility, research and
  * unlocks): each finding's fix, pinned.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { GameState } from '@/types';
@@ -15,9 +15,23 @@ import { lockViews, UnlockHelpBody } from '@/ui/panels/common/UnlockHelp';
 import { GROUPS, UnlocksTab, researchLockKeys, researchTankLine } from '@/ui/panels/research/ResearchPanel';
 import { RESEARCH } from '@/data/research';
 import { unlockLink } from '@/ui/hud/eventLinks';
+import { useGame } from '@/state/game';
+import { TopBar } from '@/ui/hud/TopBar';
+import { MoreSheetBody } from '@/ui/hud/MoreSheet';
+import { ResearchPanel } from '@/ui/panels/research/ResearchPanel';
 import { RESEARCH_BY_ID } from '@/data/research';
 
 const game = (starterId: StarterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
+
+/** Put the game in the store (a server render reads the store's initial state too). */
+function use(g: GameState): void {
+  useGame.setState({ game: g });
+  Object.assign(useGame.getInitialState(), useGame.getState());
+}
+afterEach(() => {
+  useGame.setState({ game: null });
+  Object.assign(useGame.getInitialState(), { game: null });
+});
 
 describe('G1: an unlock the guide holds back says so', () => {
   it('names the guide step that hands out the 40 gallon, and never shows it 100% done', () => {
@@ -91,5 +105,21 @@ describe('G5: research that opens animals still waiting for a bigger tank says s
   });
   it('the unlock toast for the big fish and the sharks says the shop waits for a big enough tank', () => {
     for (const k of ['fw_large', 'elasmobranchs']) expect(unlockLink(k)?.where, k).toBe('They come into Market › Shop once you have a tank big enough for them.');
+  });
+});
+
+describe('G6: reputation is reachable on every screen and explained', () => {
+  it('the top bar’s reputation is a button, phones get it in More’s header, and Research explains it', () => {
+    const g = game('betta');
+    g.progress.reputation = 30.4;
+    use(g);
+    expect(renderToStaticMarkup(createElement(TopBar, {}))).toMatch(/<button[^>]*data-testid="hud-reputation"/);
+    const more = renderToStaticMarkup(createElement(MoreSheetBody, { isLocked: () => false, dots: {} }));
+    expect(more).toContain('data-testid="more-reputation"');
+    expect(more).toContain('30 reputation');
+    const research = renderToStaticMarkup(createElement(ResearchPanel));
+    expect(research).toContain('How reputation grows');
+    expect(research).toContain('It drops when an animal dies');
+    expect(research).toContain('data-testid="research-reputation-next"');
   });
 });

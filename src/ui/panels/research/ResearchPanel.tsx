@@ -116,6 +116,16 @@ function StandingCard({ g }: { g: GameState }) {
           </span>
         </div>
         <Bar value={rep / 10} tone="gold" label="Reputation" />
+        {/* Audit 2026-11-17 (G6): what reputation opens and what moves it (most changes are silent) */}
+        <details className="pn-standing__help" data-testid="research-reputation-help">
+          <summary className="pn-small">How reputation grows</summary>
+          <p className="pn-small pn-muted" style={{ margin: '6px 0' }}>
+            Reputation grows when your tanks stay healthy, friends and visitors enjoy them, you raise young, sell animals, do well at shows and finish research or quests. It drops when an animal dies, a buyer is unhappy or visitors leave disappointed. It opens bigger tanks, new animals and bigger venues.
+          </p>
+          <Button size="sm" variant="ghost" onClick={() => useUI.getState().set({ panelTarget: 'tab:unlocks' })} data-testid="research-reputation-next">
+            See what’s next
+          </Button>
+        </details>
       </div>
       <div className="pn-mastery">
         {(Object.keys(TRACK_LABEL) as MasteryTrack[]).map((t) => {

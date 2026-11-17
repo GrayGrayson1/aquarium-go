@@ -44,6 +44,10 @@
 .ag-more__title { margin: 0; font-family: var(--font-display); font-weight: 560; font-size: calc(22px * var(--text-scale)); outline: none; }
 .ag-more__close { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--c-ink-2); cursor: pointer; }
 .ag-more__close:hover { background: var(--c-fill); color: var(--c-ink); }
+/* Audit 2026-11-17 (G6): reputation in More's header (phones' top bar has no room for it) */
+.ag-more__rep { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 1px solid var(--c-line); border-radius: 99px; background: var(--c-fill); color: var(--c-ink); font: inherit; font-weight: 650; font-size: calc(13px * var(--text-scale)); white-space: nowrap; cursor: pointer; }
+.ag-more__rep svg { color: var(--c-gold); fill: rgba(245, 196, 81, 0.25); }
+.ag-more__rep:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
 /* chunk 6 (DES-011): the sheet's grabber (0.5 phone-more.png, S3-D more-normal-phone.png), as the panel sheets have */
 .ag-more__grab { flex: none; width: 42px; height: 5px; margin: 0 auto -4px; border-radius: 99px; background: color-mix(in srgb, var(--c-ink-2) 30%, transparent); }
 .ag-more__close:focus-visible, .ag-more__tile:focus-visible, .ag-more__row:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }

@@ -188,11 +188,12 @@ function SpeedControls() {
 
 function ReputationPill() {
   const rep = useGameSelector((g) => g.progress.reputation, 0);
+  // Audit 2026-11-17 (G6): a button to Research, whose standing card says what reputation opens and how it grows
   return (
-    <div className="ag-hudpill ag-rep-pill" title="Reputation" aria-label={`Reputation ${formatRep(rep)} of 1000`}>
+    <button type="button" className="ag-hudpill ag-rep-pill" data-testid="hud-reputation" title="Reputation: what it opens and how it grows" aria-label={`Reputation ${formatRep(rep)} of 1000. What it opens and how it grows`} onClick={() => openPanel('research', 'tab:research')}>
       <Star size={14} aria-hidden className="ag-rep-pill__icon" />
       <span className="ag-tabular">{formatRep(rep)}</span>
-    </div>
+    </button>
   );
 }
 
