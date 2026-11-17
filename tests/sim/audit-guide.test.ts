@@ -16,8 +16,10 @@ import { friendBlocker } from '@/sim/facility/visitors';
 import { quickSell } from '@/sim/economy/listings';
 import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
+import { tutorialChain } from '@/data/quests';
 import { currentCoachStep, friendWait } from '@/ui/tutorial/guideText';
 import { finaleLines } from '@/ui/tutorial/TutorialCoach';
+import { guideAim, type GuideScreen } from '@/ui/tutorial/guideTargets';
 
 /** Press Next (or let the step complete) until the guide is on `id`. */
 function walkTo(g: GameState, id: string): void {
@@ -27,6 +29,7 @@ function walkTo(g: GameState, id: string): void {
 
 const starterOf = (g: GameState) => Object.values(g.creatures).find((c) => c.isStarter)!;
 const visits = (g: GameState) => g.progress.counters.friend_visits ?? 0;
+const screen = (p: Partial<GuideScreen> = {}): GuideScreen => ({ panel: null, popover: null, tool: 'none', tankCardOpen: false, mobile: false, ...p });
 
 describe('A1: a step waiting on friends says why none can come', () => {
   it('a healthy starter in the daytime: nothing in the way, and friends do come', () => {
@@ -113,5 +116,19 @@ describe('A1: the guide names an animal that is still there', () => {
     const lines = finaleLines(g);
     expect(lines.some((l) => /^Ember is|companion|settled|personality|one of a kind/.test(l))).toBe(false); // (the tank keeps its name)
     expect(lines.length).toBeGreaterThan(0);
+  });
+});
+
+describe('A3: the betta’s and seahorse’s nursery step opens Tanks (a tank’s purpose), not Build', () => {
+  it('points at Tanks, and at nothing once Tanks is open; the 40-gallon steps still point into Build', () => {
+    for (const id of ['betta', 'lined_seahorse']) {
+      const up = tutorialChain(id).find((s) => s.id === 'upgrade')!;
+      expect(up.hintTarget, id).toBe('dock-tanks');
+      expect(guideAim('upgrade', up.hintTarget, id, screen(), up.reward?.unlocks ?? [])?.candidates).toEqual(['[data-tutorial-id="dock-tanks"]']);
+      expect(guideAim('upgrade', up.hintTarget, id, screen({ panel: 'tanks' }), up.reward?.unlocks ?? [])).toBeNull();
+    }
+    const axo = tutorialChain('axolotl').find((s) => s.id === 'upgrade')!;
+    expect(axo.hintTarget).toBe('dock-build');
+    expect(guideAim('upgrade', axo.hintTarget, 'axolotl', screen({ panel: 'build' }), axo.reward?.unlocks ?? [])?.candidates[0]).toBe('[data-testid="panel-build"] [data-tier-id="g40B"]');
   });
 });

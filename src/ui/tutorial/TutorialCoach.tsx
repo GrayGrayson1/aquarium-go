@@ -181,6 +181,7 @@ const SHOW_ME_LABEL: Record<string, string> = {
   'creature-name': 'Meet them',
   scene: 'Try the camera',
   'dock-build': 'Open Build',
+  'dock-tanks': 'Open Tanks', // audit 2026-11-17 (A3): the betta's and seahorse's nursery step (a tank's purpose)
   'dock-market': 'Open the Market',
   'dock-research': 'Open Research',
   'hud-money': '',
@@ -336,7 +337,8 @@ export function TutorialCoach() {
   const starterName = guideAnimal(game)?.name; // A1: the animal "Follow" follows (the starter while it is with you)
   // the CTA follows the state: once the food picker / Build is open the button gives way to a plain hint saying what
   // to do there (pressing "Open Build" again used to close Build, and re-opening an open food picker did nothing).
-  // The upgrade step only waits for reputation: with Build open there is nothing more to point at.
+  // The upgrade step only waits for reputation: with its panel (Build, or Tanks for a nursery) open there is nothing
+  // more to point at.
   const starterId = game.progress.tutorial?.starterId || game.starterId;
   const opened =
     (target === 'tool-feed' && popover === 'food') || (target === 'tool-target-feed' && popover === 'target_food')
@@ -345,7 +347,9 @@ export function TutorialCoach() {
         ? cur.step.id === 'habitat'
           ? (HABITAT_PICK[starterId] ?? 'Pick a decoration')
           : ''
-        : null;
+        : cur.step.id === 'upgrade' && target === `dock-${panel}`
+          ? ''
+          : null;
   const showLabel = opened != null ? '' : observing ? (starterName ? `Follow ${shortName(starterName)}` : 'Follow') : SHOW_ME_LABEL[target] ?? (target.startsWith('dock-') ? `Open ${target.slice(5)}` : '');
   const canNext = cur.step.objective.type === 'flag' && !!cur.step.objective.fallbackHours;
   const waiting = isWaitingStep(cur.step.objective);
