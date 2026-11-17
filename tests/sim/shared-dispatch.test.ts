@@ -128,7 +128,8 @@ describe('chunk 13: the shared dispatcher', () => {
     const r = new Rig();
     const a = r.dispatch({ k: 'renameTank', tank: 't1', name: 'A' });
     r.disp.dropped();
-    expect(a.got).toBeNull();
+    // audit 2026-11-17, I12: changed on purpose: it may have happened, so not "nothing was changed" (a null result)
+    expect(a.got).toEqual({ ok: false, message: 'The connection dropped before the shop answered. Check whether it went through before trying again.' });
     r.open = false;
     expect(r.dispatch({ k: 'renameTank', tank: 't1', name: 'B' }).got).toBeNull();
     // and no game at all
@@ -204,7 +205,8 @@ describe('chunk 13: the shared dispatcher', () => {
     const held = r.dispatch({ k: 'setStockBudget', amount: 11 });
     expect(r.sent).toHaveLength(1);
     r.disp.dropped();
-    expect(first.got).toBeNull();
+    // audit I12: changed on purpose: the one sent may have happened (its own words); the one held back never went
+    expect(first.got).toEqual({ ok: false, message: SHARED_WORDS.dropped });
     expect(held.got).toBeNull();
     r.advance(COALESCE_MS * 2);
     expect(r.sent).toHaveLength(1); // nothing sent later for a dropped connection

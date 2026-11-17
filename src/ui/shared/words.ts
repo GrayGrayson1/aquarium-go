@@ -45,6 +45,8 @@ export const SHARED_WORDS = {
   slow: 'Your device can’t keep up with the shared shop at this speed, so it keeps catching up. Someone who can change the speed could slow it down.',
   tooFast: 'Slow down a little: that was a lot of actions at once.',
   failed: 'That didn’t work, and nothing was changed. Please try again.',
+  /** Audit I12: a command in flight when the connection dropped may have happened. */
+  dropped: 'The connection dropped before the shop answered. Check whether it went through before trying again.',
   savesHere: (club: string) => `This is ${club}’s shared shop: it saves on the server. Your own aquarium is saved and waits for you.`,
   reload: 'Reload',
   /** B-230 (audit I1): the closing card's button when the shop couldn't be reached. */
