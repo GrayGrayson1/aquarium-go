@@ -321,6 +321,29 @@ describe('A4: a new game always starts with its guide showing', () => {
   });
 });
 
+describe('A4: the naming screen’s own way into a new game turns the guide on', () => {
+  it('enterNewGame (what "Begin" calls) switches "Guide hints" back on and puts the new aquarium on screen', async () => {
+    const { enterNewGame } = await import('@/ui/screens/NamingScreen');
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const was = useSettings.getState().showTutorialHints;
+    try {
+      useSettings.getState().update({ showTutorialHints: false });
+      const g = newGame({ starterId: 'axolotl', starterName: 'Mochi', seed: 4 });
+      enterNewGame(g);
+      expect(useSettings.getState().showTutorialHints).toBe(true);
+      expect(useGame.getState().game?.saveId).toBe(g.saveId);
+      expect(useUI.getState().screen).toBe('game');
+      // and "Begin" goes through it
+      const { readFileSync } = await import('node:fs');
+      const src = readFileSync('src/ui/screens/NamingScreen.tsx', 'utf8');
+      expect(src.slice(src.indexOf('const begin = async')).match(/\benterNewGame\(g\);/)).not.toBeNull();
+    } finally {
+      useSettings.getState().update({ showTutorialHints: was });
+    }
+  });
+});
+
 describe('A9: a panel already open when its step begins counts', () => {
   it('"Open the Market" with the Market already open ends "The market" (it did nothing, and the step waited)', async () => {
     const { useGame } = await import('@/state/game');
