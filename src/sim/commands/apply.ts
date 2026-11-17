@@ -22,7 +22,7 @@ import { holdAll, resumeAll, setHold } from '../automation/hold';
 import { assignTank, autoAssignAll, fireStaff, hireStaff, setStockBudget } from '../staff/roster';
 import { addQuarantineTank, createLine, endLine, setKeepRules, setLinePair, setLineRule, setLineRunning, setLineTank } from '../production';
 import { enterShow, withdrawEntry } from '../shows';
-import { sellStoredEquipment } from '../economy/sellBack'; // Audit 2026-11-17 (G22)
+import { sellStoredEquipment, takeDownTank } from '../economy/sellBack'; // Audit 2026-11-17 (G19, G22)
 import { POOL_FAILED_TEXT } from '../pool';
 import type { Command } from './kinds';
 
@@ -155,6 +155,8 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
     }
     case 'placeTank':
       return placeTank(state, cmd.tank, cmd.x, cmd.z, cmd.rotY);
+    case 'takeDownTank':
+      return takeDownTank(state, cmd.tank);
     case 'placeDecor': {
       // a piece in storage is placed from there, else bought (DecorEditor used to read this before the action)
       const owned = state.inventory.decor.some((d) => d.defId === cmd.def);

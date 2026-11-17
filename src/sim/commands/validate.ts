@@ -91,6 +91,7 @@ const SCHEMA: Schema = {
   setBackdrop: { tank: id, backdrop: en(['black', 'deep_blue', 'frosted', 'none', 'rock_3d']) },
   buyTank: { tier: id, wc: en(WATER_CLASSES), seeded: bool, x: opt(coord), z: opt(coord), rotY: opt(coord) },
   placeTank: { tank: id, x: coord, z: coord, rotY: coord },
+  takeDownTank: { tank: id }, // Audit 2026-11-17 (G19)
   placeDecor: { tank: id, def: id, x: coord, z: coord, rotY: opt(coord), scale: opt({ t: 'num', min: 0, max: 100 }), fromStorage: opt(bool) },
   moveDecor: { tank: id, decor: id, x: coord, z: coord, rotY: opt(coord), scale: opt({ t: 'num', min: 0, max: 100 }) },
   removeDecor: { tank: id, decor: id, sell: bool },

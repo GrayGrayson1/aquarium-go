@@ -26,7 +26,12 @@ import { RESEARCH_BY_ID } from '@/data/research';
 import { applyCommand } from '@/sim/commands';
 import { removeEquipment } from '@/sim/care';
 import { getEquipmentDef } from '@/data/catalog/equipment';
-import { equipmentSellValue } from '@/sim/economy/sellBack';
+import { equipmentSellValue, takeDownCheck } from '@/sim/economy/sellBack';
+import { buyTank } from '@/sim/economy/purchases';
+import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
+import { advanceWorld } from '@/sim/world';
+import { findNonFinite } from '@/dev/fixtures/core-testkit';
+import { lineFarm } from './support/production';
 
 const game =(starterId: StarterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
 
@@ -199,5 +204,86 @@ describe('G22 (the owner’s answer): the store buys stored equipment back at ha
     const late = applyCommand(g, { k: 'sellEquipment', instance: unit.id }, { id: 'b', name: 'Bo', at: 2000 });
     expect(late.ok).toBe(false);
     expect(late.message).toBe('Ann already sold that equipment.');
+  });
+});
+
+describe('G19 (the owner’s answer): an empty tank can be taken down', () => {
+  /** A betta game with a second, empty 10 gallon (its kit gear) and two decor pieces moved in from the first tank. */
+  const withEmptyTank = () => {
+    const g = game('betta');
+    g.finance.money = 5000;
+    const r = buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true });
+    expect(r.ok, r.message).toBe(true);
+    const id = g.tankOrder.at(-1)!;
+    const first = g.tanks[g.tankOrder[0]];
+    g.tanks[id].decor.push(...first.decor.splice(0, 2).map((d) => ({ ...d })));
+    return { g, id };
+  };
+  it('its gear and decor go to storage, the tank goes, and the store pays half the bare tank’s price', () => {
+    const { g, id } = withEmptyTank();
+    const t = g.tanks[id];
+    const gear = t.equipment.map((e) => e.id);
+    const decor = t.decor.map((d) => d.id);
+    expect(gear.length).toBeGreaterThan(0);
+    const half = Math.round(TANK_TIER_BY_ID.g10.price / 2);
+    const check = takeDownCheck(g, id);
+    expect(check).toMatchObject({ ok: true, value: half, last: false });
+    expect(check.stores).toMatch(/^its .*filter.* and 2 decor pieces$/);
+    const money = g.finance.money;
+    const res = applyCommand(g, { k: 'takeDownTank', tank: id });
+    expect(res.ok, res.message).toBe(true);
+    expect(res.message).toMatch(new RegExp(`^Took down the ${t.name}\\. Its .* went to storage\\. You got \\$${half} back for the tank\\.$`));
+    expect(g.finance.money).toBeCloseTo(money + half, 6);
+    expect(g.tanks[id]).toBeUndefined();
+    expect(g.tankOrder).not.toContain(id);
+    for (const e of gear) expect(g.inventory.equipment.filter((x) => x.id === e)).toHaveLength(1);
+    for (const d of decor) expect(g.inventory.decor.filter((x) => x.id === d)).toHaveLength(1);
+    // a second take-down of the same tank is refused, and pays nothing
+    expect(applyCommand(g, { k: 'takeDownTank', tank: id }).ok).toBe(false);
+    expect(g.finance.money).toBeCloseTo(money + half, 6);
+  });
+  it('refuses a tank with animals, eggs or young, a listing, or a production line, and says why', () => {
+    const { g, id } = withEmptyTank();
+    expect(takeDownCheck(g, g.tankOrder[0]).reason).toBe('Animals live in it. Move them to another tank first.');
+    g.clutches.cl_probe = { id: 'cl_probe', tankId: id, count: 12 } as (typeof g.clutches)[string];
+    expect(takeDownCheck(g, id).reason).toMatch(/^Eggs or young are in it\./);
+    delete g.clutches.cl_probe;
+    g.tanks[id].listingId = 'l_probe';
+    expect(takeDownCheck(g, id).reason).toBe('It’s listed for sale. Withdraw the listing first.');
+    delete g.tanks[id].listingId;
+    expect(takeDownCheck(g, 'no_such_tank').reason).toBe('That tank no longer exists.');
+    const money = g.finance.money;
+    expect(applyCommand(g, { k: 'takeDownTank', tank: g.tankOrder[0] }).ok).toBe(false);
+    expect(g.finance.money).toBe(money);
+    const farm = lineFarm();
+    const lineTank = Object.values(farm.tanks).find((t) => !Object.values(farm.g.creatures).some((c) => c.tankId === t.id && (c.status === 'alive' || c.status === 'listed')) && !Object.values(farm.g.clutches).some((cl) => cl.tankId === t.id && cl.count > 0));
+    expect(lineTank, 'an empty line tank').toBeTruthy();
+    expect(takeDownCheck(farm.g, lineTank!.id).reason).toMatch(/line uses it\. Give the line another tank in Operations, or end the line, first\.$/);
+  });
+  it('the world steps on for a game day after a take-down, and the last tank leaves an empty room as an auction does', () => {
+    const { g, id } = withEmptyTank();
+    expect(applyCommand(g, { k: 'takeDownTank', tank: id }).ok).toBe(true);
+    for (let h = 0; h < 24; h++) advanceWorld(g, 1, {});
+    expect(findNonFinite(g)).toEqual([]);
+    expect(g.tankOrder).toHaveLength(1);
+    // the last tank: its animals gone, it comes down too, and the room is empty
+    for (const c of Object.values(g.creatures)) if (c.status === 'alive') { c.status = 'sold'; c.tankId = null; }
+    const last = g.tankOrder[0];
+    expect(takeDownCheck(g, last)).toMatchObject({ ok: true, last: true });
+    expect(applyCommand(g, { k: 'takeDownTank', tank: last }).ok).toBe(true);
+    expect(g.tankOrder).toEqual([]);
+    expect(g.log.some((e) => /an empty room/.test(e.text))).toBe(true);
+    for (let h = 0; h < 24; h++) advanceWorld(g, 1, {});
+    expect(findNonFinite(g)).toEqual([]);
+  });
+  it('a full room’s refusal names the ways out that exist', () => {
+    const g = game('betta');
+    g.finance.money = 1e6;
+    let msg = '';
+    for (let i = 0; i < 60 && !msg; i++) {
+      const r = buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true });
+      if (!r.ok) msg = r.message;
+    }
+    expect(msg).toBe('There\'s no floor space for a 10 Gallon. Choose a smaller size, move a tank, or take down an empty tank you no longer need in Tanks. A bigger venue (Build › Facility) adds room.');
   });
 });

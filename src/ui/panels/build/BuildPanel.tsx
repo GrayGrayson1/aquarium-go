@@ -371,7 +371,8 @@ function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anythi
           {/* lane:w2-ui — was "heater/lighting for freshwater water" */}
           Kits include the tank, a stand, substrate, and a filter, heater and lighting suited to a {WATER_CLASS_LABEL[wc].toLowerCase()} tank. Floor space is your only limit —{' '}
           {/* lane:qa-r3 — a tank can only leave through a whole-aquarium auction: don't suggest selling one before that opens */}
-          {unlocked(g, 'tank_auctions') ? 'auction a tank as a whole aquarium (Market › My listings) to free its spot, or move to a bigger venue in Build › Facility.' : 'a bigger venue (Build › Facility) adds room. Whole-aquarium auctions, which free a tank’s spot, open later.'}
+          {/* Audit 2026-11-17 (G19): an empty tank can be taken down in Tanks */}
+          {unlocked(g, 'tank_auctions') ? 'take down an empty tank in Tanks, auction a tank as a whole aquarium (Market › My listings), or move to a bigger venue in Build › Facility.' : 'take down an empty tank in Tanks, or move to a bigger venue in Build › Facility. Whole-aquarium auctions, which free a stocked tank’s spot, open later.'}
         </p>
       </section>
     </div>

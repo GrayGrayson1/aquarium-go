@@ -28,7 +28,7 @@ import { holdAll, resumeAll, setHold } from '@/sim/automation/hold';
 import { assignTank, autoAssignAll, fireStaff, hireStaff, setStockBudget } from '@/sim/staff/roster';
 import { addQuarantineTank, createLine, endLine, setKeepRules, setLinePair, setLineRule, setLineRunning, setLineTank } from '@/sim/production';
 import { enterShow, withdrawEntry } from '@/sim/shows';
-import { sellStoredEquipment } from '@/sim/economy/sellBack';
+import { sellStoredEquipment, takeDownTank } from '@/sim/economy/sellBack';
 import { lineFarm } from './support/production';
 import { newGame } from '@/sim/newGame';
 import { classCandidates } from '@/sim/shows';
@@ -298,6 +298,14 @@ const C: Record<CommandKind, Case | Case[]> = {
       return { k: 'placeTank', tank: g.tankOrder[0], x: spot.x, z: spot.z, rotY: spot.rotY };
     },
     direct: (d, c: Command & { k: 'placeTank' }) => placeTank(d, c.tank, c.x, c.z, c.rotY),
+    ok: true,
+  },
+  // Audit 2026-11-17 (G19): a new, empty tank taken down again
+  takeDownTank: {
+    w: 'line',
+    prep: (g) => void buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true }),
+    cmd: (g) => ({ k: 'takeDownTank', tank: g.tankOrder.at(-1)! }),
+    direct: (d, c: Command & { k: 'takeDownTank' }) => takeDownTank(d, c.tank),
     ok: true,
   },
   placeDecor: {

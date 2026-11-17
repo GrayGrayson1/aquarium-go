@@ -21,6 +21,7 @@ import { TankThumb } from '../common/TankThumb';
 import { VerdictBadge } from '../common/CompatPreview';
 import { orderedTanks, livingInTank, clutchesIn, tankValue, dailyCost, tierOf, waterReport } from '../common/derive';
 import { canChangeWaterClass, convertWaterClassCost } from '../common/tankOps';
+import { TakeDownTank } from '../build/SellBack'; // Audit 2026-11-17 (G19)
 import { WATER_CLASS_LABEL, PURPOSE_LABEL, PURPOSE_HINT, PLAYABLE_WATER_CLASSES, plural, pct } from '../common/format';
 import { tankChips, tankLineProblem } from '@/ui/common/tankChips'; // lane:automation (chunk 5)
 import { waterClassLock } from '@/sim/facility'; // chunk 7 (B-160)
@@ -414,6 +415,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
         <Button size="sm" onClick={() => useUI.getState().set({ panel: 'build', panelTarget: `equipment:${tank.id}`, focusedTankId: tank.id })}>
           <Wrench size={14} /> Equipment & decor
         </Button>
+        <TakeDownTank g={g} tank={tank} /* Audit 2026-11-17 (G19) */ />
         {residents > 0 && (
           <Button size="sm" variant="ghost" onClick={() => useUI.getState().set({ panel: 'livestock', panelTarget: `tank:${tank.id}` })}>
             <Fish size={14} /> See residents
