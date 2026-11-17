@@ -606,6 +606,8 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
                     {/* lane:frags — frag status + take a frag/cutting */}
                     <FragTag g={g} tank={tank} inst={inst} />
                     <FragTake g={g} tank={tank} inst={inst} />
+                    {/* review note (F15): the second tap's reason in the row itself (a phone shows no tooltip) */}
+                    {sellAsk === inst.id && <span className="pn-tiny pn-tone-watch" data-testid={`decor-sell-ask-${inst.id}`}>{DECOR_SELL_ASK}</span>}
                   </span>
                   <Button size="sm" variant="ghost" onClick={() => act({ k: 'removeDecor', tank: tankId, decor: inst.id, sell: false }, { sound: 'place' })}>
                     To storage
@@ -614,7 +616,7 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
                     size="sm"
                     variant="ghost"
                     data-testid={`decor-sell-${inst.id}`}
-                    title={sellAsk === inst.id ? 'A grown-in piece sells for more with its tank' : undefined}
+                    title={sellAsk === inst.id ? DECOR_SELL_ASK : undefined}
                     onClick={() => {
                       if (ask && sellAsk !== inst.id) return setSellAsk(inst.id);
                       setSellAsk(null);
@@ -637,6 +639,9 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
 export function placedSellValue(g: GameState, def: DecorDef | undefined, inst: DecorInstance): number {
   return inst.frag && inst.frag.grownHour === undefined ? safe(() => fragStoreOffer(g, inst), 0) : decorSellValue(def, inst);
 }
+
+/** F15: why a living piece's Sell asks twice (shown in its row, not only as a tooltip). */
+export const DECOR_SELL_ASK = 'A grown-in piece sells for more with its tank. Tap again to sell it.';
 
 /**
  * Audit 2026-11-17 (F15) — what Sell pays for a placed piece (the sim's own rule, decorSellValue; a frag still growing

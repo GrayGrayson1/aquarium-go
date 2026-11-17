@@ -773,9 +773,12 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
  * of the day its time runs out (today, tomorrow, or in n days), and that an open offer waits.
  */
 export function offerLeavesText(expiresHour: number, now: number): string {
-  const day = Math.floor(expiresHour / 24) - Math.floor(now / 24);
   const h = ((expiresHour % 24) + 24) % 24;
-  const part = h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
+  // the small hours (before 5 AM) belong to the night before: a special leaving at 2 AM leaves "tonight", as its toast
+  // says ("until about 2 AM tonight"), not "tomorrow morning" (review note)
+  const small = h < 5;
+  const day = Math.floor(expiresHour / 24) - Math.floor(now / 24) - (small ? 1 : 0);
+  const part = small || h >= 21 ? 'night' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
   const when = expiresHour <= now && day < 0 ? 'now' : day <= 0 ? (part === 'night' ? 'tonight' : `this ${part}`) : day === 1 ? (part === 'night' ? 'tomorrow night' : `tomorrow ${part}`) : `in ${day} days`;
   return `Leaves the shop ${when}. It stays while you’re looking.`;
 }

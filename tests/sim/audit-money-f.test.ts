@@ -27,7 +27,7 @@ import { unlockProgress } from '@/sim/facility';
 import { lockViews } from '@/ui/panels/common/UnlockHelp';
 import { useShopFilters, useShopSearch, envMatches, tankFits } from '@/ui/panels/market/shopFilters';
 import { ListingsTab, CounterNotes } from '@/ui/panels/market/Listings';
-import { decorSellOffer } from '@/ui/panels/build/BuildPanel';
+import { decorSellOffer, DECOR_SELL_ASK } from '@/ui/panels/build/BuildPanel';
 import { DECOR } from '@/data/catalog/decor';
 import { decorSellValue } from '@/sim/aquascape';
 import type { DecorInstance } from '@/types';
@@ -391,6 +391,10 @@ describe('F6 (the owner’s choice): an open offer stays while you look', () => 
     expect(offerLeavesText(24 * 4 + 8, 24 * 3 + 15)).toBe('Leaves the shop tomorrow morning. It stays while you’re looking.');
     expect(offerLeavesText(24 * 3 + 18, 24 * 3 + 15)).toBe('Leaves the shop this evening. It stays while you’re looking.');
     expect(offerLeavesText(24 * 6 + 8, 24 * 3 + 15)).toBe('Leaves the shop in 3 days. It stays while you’re looking.');
+    // review note: a special leaving at 2 AM leaves "tonight", as its toast says ("until about 2 AM tonight")
+    expect(offerLeavesText(24 * 4 + 2, 24 * 3 + 15)).toBe('Leaves the shop tonight. It stays while you’re looking.');
+    expect(offerLeavesText(24 * 3 + 3, 24 * 3 + 1)).toBe('Leaves the shop tonight. It stays while you’re looking.');
+    expect(offerLeavesText(24 * 5 + 2, 24 * 3 + 15)).toBe('Leaves the shop tomorrow night. It stays while you’re looking.');
   });
 });
 
@@ -633,6 +637,7 @@ describe('F15: Build’s decor "Sell" says what it pays, and a grown-in piece as
     expect(decorSellOffer(g, piece(coral.id), coral)).toEqual({ pays: decorSellValue(coral, piece(coral.id)), ask: true });
     expect(decorSellOffer(g, piece(rock.id), rock).ask).toBe(false);
     expect(decorSellOffer(g, piece(rock.id), rock).pays).toBe(Math.round(rock.price * 0.5));
+    expect(DECOR_SELL_ASK).toBe('A grown-in piece sells for more with its tank. Tap again to sell it.'); // shown in the row
   });
 });
 
