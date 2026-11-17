@@ -540,7 +540,11 @@ export function suggestPricing(state: GameState, spec: Omit<ListingSpec, 'reserv
 
 // ───────────────────────────── create / withdraw ─────────────────────────────
 
-export function createListing(state: GameState, spec: ListingSpec): ActionResult & { listingId?: string } {
+/**
+ * List something for sale. `opts.quiet` (a production line's listing, which logs its own line with its buy-now price;
+ * Audit 2026-11-17, H1 review) leaves out the market's "Listed …" line. Not part of the spec, so no command can set it.
+ */
+export function createListing(state: GameState, spec: ListingSpec, opts: { quiet?: boolean } = {}): ActionResult & { listingId?: string } {
   const access = marketAccess(state);
   if (!access.listings) return fail(access.hint ?? 'The marketplace is not open yet.');
   if (spec.kind === 'tank' && !access.tankAuctions) return fail(access.hint ?? 'Whole-aquarium auctions are not unlocked yet.');
@@ -594,12 +598,14 @@ export function createListing(state: GameState, spec: ListingSpec): ActionResult
   }
   state.market.listings.push(listing);
   bumpCounter(state, 'listingsCreated');
-  emitEvent(state, {
-    kind: 'market',
-    text: `Listed "${title}". Buyers usually open at ${fmtMoney(typicalOpening(built.snapshot.valuation).low)}–${fmtMoney(typicalOpening(built.snapshot.valuation).high)}, and they will start looking soon.`, // F3
-    listingId: id,
-    tankId: contents.tank?.id,
-  });
+  if (!opts.quiet) {
+    emitEvent(state, {
+      kind: 'market',
+      text: `Listed "${title}". Buyers usually open at ${fmtMoney(typicalOpening(built.snapshot.valuation).low)}–${fmtMoney(typicalOpening(built.snapshot.valuation).high)}, and they will start looking soon.`, // F3
+      listingId: id,
+      tankId: contents.tank?.id,
+    });
+  }
   return { ok: true, message: `Listed "${title}".`, listingId: id };
 }
 
@@ -628,16 +634,17 @@ function closeOpenBids(l: Listing, status: Bid['status'], note: string): void {
   }
 }
 
-export function withdrawListing(state: GameState, listingId: string): ActionResult {
+/** Withdraw a listing. `opts` (a production line taking it off sale; Audit 2026-11-17, H1 review): its own outcome, and no market log line (the line says why). */
+export function withdrawListing(state: GameState, listingId: string, opts: { quiet?: boolean; outcome?: string } = {}): ActionResult {
   const l = state.market.listings.find((x) => x.id === listingId);
   if (!l) return fail('Listing not found.');
   if (l.status !== 'active') return fail(`This listing is already ${l.status}.`);
   l.status = 'withdrawn';
   l.closedHour = state.clock.hour; // S13-10: the Sold card and 'Recently ended' order read it
-  l.outcome = 'You withdrew this listing.';
+  l.outcome = opts.outcome ?? 'You withdrew this listing.';
   restoreContents(state, l);
   closeOpenBids(l, 'declined', 'Listing withdrawn by the seller.');
-  emitEvent(state, { kind: 'market', text: `Withdrew "${l.title}". Everything stays with you.`, listingId: l.id });
+  if (!opts.quiet) emitEvent(state, { kind: 'market', text: `Withdrew "${l.title}". Everything stays with you.`, listingId: l.id });
   return { ok: true, message: `Withdrew "${l.title}".` };
 }
 
@@ -1562,8 +1569,10 @@ function arrivals(state: GameState, l: Listing, rng: Rng, dt: number, end: numbe
 
   const vars = msgVars(state, l, buyer.name, orgOf(buyer));
   const now = state.clock.hour;
-  // Buy-now: a buyer whose private value clears the buy-now price just takes it.
-  if (l.buyNow && W >= l.buyNow && buyer.budget >= l.buyNow) {
+  // Buy-now: a buyer whose private value clears the buy-now price just takes it, as does one whose offer, rounded,
+  // comes to it (Audit 2026-11-17, H1 review: on a lot under about $25 the rounded offer could equal a line's buy-now
+  // and then wait minutes as a bid). nicePrice draws nothing.
+  if (l.buyNow && buyer.budget >= l.buyNow && (W >= l.buyNow || Math.max(1, nicePrice(amount)) >= l.buyNow)) {
     const bid: Bid = {
       id: nextId(state, 'bid'),
       buyerId: buyer.id,
@@ -1667,9 +1676,15 @@ function expireListing(state: GameState, l: Listing): void {
   } else {
     advice = 'Offers expired before you accepted one. Buyers don’t wait forever — accept or counter sooner.';
   }
+  // Audit 2026-11-17 (H1 review): a production line that lists again what didn't sell says so itself ("… didn't sell, so
+  // they're listed again at …"); the market's advice to change the reserve, the length or the photo isn't the player's
+  // to act on there
+  const lineId = lineOfListing(state, l.id);
+  const line = lineId ? state.production?.lines.find((x) => x.id === lineId) : undefined;
+  if (line?.rules.autoList) advice = `The ${line.name} lists them again.`;
   l.advice = advice;
   l.outcome = 'Ended without a sale.';
-  emitEvent(state, { kind: 'market', text: `"${l.title}" ended without a sale. ${advice}`, listingId: l.id, toast: true });
+  if (!line?.rules.autoList) emitEvent(state, { kind: 'market', text: `"${l.title}" ended without a sale. ${advice}`, listingId: l.id, toast: true });
 }
 
 /** Per-tick listing simulation: integrity, counters, expiries, interest, arrivals, end of auction. */
