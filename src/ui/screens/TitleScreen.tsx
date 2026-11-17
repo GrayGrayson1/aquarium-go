@@ -19,6 +19,8 @@ import { toastMark, reportLoadFailure } from './loadFeedback'; // lane:guide
 import { useShell } from '../common/shellStore';
 import { buildDetail, versionLabel } from '../common/version';
 import { openSharedShop, openedShops, sharedServerBase } from '../shared/session'; // chunk 13
+import { useNav } from '../nav/router'; // audit I14
+import { SOCIAL_COPY } from '../panels/social/copy'; // audit I14
 import { SHARED_WORDS } from '../shared/words';
 import { useShared } from '../shared/store';
 import { useDevMode } from '@/state/devTools'; // chunk 15 (ADR-0051)
@@ -147,6 +149,7 @@ export function TitleScreen() {
   const prewarmNow = () => safe('prepareStarters', prepareStarters, undefined);
 
   const latest = saves?.[0];
+  const invited = useNav((s) => s.pending?.route.kind === 'panel' && s.pending.route.panel === 'social' && !!s.pending.route.target?.startsWith('join:'));
   // audit I3 (the owner's decision): New Game saves what it would push out to a free slot first; the box says which
   const parkAutoTo = useMemo(() => planKeep(saves ?? [], [], { writes: [NEW_GAME_WRITE] }).park.find((p) => p.m.slot === 'auto')?.to ?? null, [saves]);
   const keep = useMemo(() => autosaveKeepAdvice(saves ?? [], parkAutoTo), [saves, parkAutoTo]);
@@ -231,7 +234,8 @@ export function TitleScreen() {
             <Sparkles size={18} aria-hidden />
             <span className="ag-menubtn__text">
               <span>New Game</span>
-              {!latest && <span className="ag-menubtn__sub">Choose your first companion</span>}
+              {/* audit I14: an invite link with no save waits for the first game: say so here */}
+              {!latest && <span className="ag-menubtn__sub" data-testid={invited ? 'title-invited' : undefined}>{invited ? SOCIAL_COPY.titleInvited : 'Choose your first companion'}</span>}
             </span>
             <ChevronRight size={18} className="ag-menubtn__chev" aria-hidden />
           </motion.button>

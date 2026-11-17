@@ -124,6 +124,9 @@ export const SOCIAL_COPY = {
   backToSignIn: 'Back to sign in',
   forgotPassword: 'Forgot your password? Ask whoever invited you.',
   errorSignUpInvite: 'That invite code didn’t work. Ask whoever invited you for their link.',
+  // audit 2026-11-17, I14: an empty code isn't one that "didn't work"; and the title while an invite waits for a game
+  errorNoCode: 'Enter the invite code from your invite link.',
+  titleInvited: 'You’re invited to a club: start a game to join.',
   errorAge: 'Tick the box to confirm your age.',
   errorName: 'Enter a name of 1 to 30 characters.',
   errorTaken: 'An account with that email already exists. Sign in instead.',

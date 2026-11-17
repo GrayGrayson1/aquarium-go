@@ -41,6 +41,9 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await expect(panel(page).getByText('Bring your aquarium online')).toBeVisible();
     await expect(panel(page).getByRole('tablist')).toHaveCount(0);
     expect(await hash(page)).toBe('#/social/join/HIGHLAND-4821');
+    // audit 2026-11-17, I14 (changed on purpose): an invite's form opens on Create account; this player has an account
+    await expect(tid(page, 'social-signup-form')).toBeVisible();
+    await tid(page, 'social-back-signin').click();
 
     // the validation error (§13.2), announced
     await tid(page, 'social-email').fill('you@example');
@@ -102,6 +105,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await tid(page, 'social-invite-join').click();
     await expect.poll(() => hash(page)).toBe('#/social/join/HIGHLAND-4821');
     await expect(tid(page, 'social-invite-callout')).toBeVisible();
+    await tid(page, 'social-back-signin').click(); // audit I14: the invite's form opens on Create account
     await signIn(page);
     await tid(page, 'social-not-now').click();
     await expect.poll(() => hash(page)).toBe('#/social');
@@ -277,9 +281,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     const errors = collectErrors(page);
     await go(page, '#/social/join/HIGHLAND-4821');
     await expect(tid(page, 'social-invite-callout')).toBeVisible();
-    await expect(tid(page, 'social-forgot')).toHaveText('Forgot your password? Ask whoever invited you.');
-    // "Create account" opens sign-up mode, the invite link's code filled in
-    await tid(page, 'social-signup').click();
+    // audit 2026-11-17, I14 (changed on purpose): an invite link opens sign-up mode, the invite link's code filled in
     await expect(tid(page, 'social-signup-form')).toBeVisible();
     await expect(tid(page, 'social-signup-code')).toHaveValue('HIGHLAND-4821');
     await expect(tid(page, 'social-name')).toHaveAttribute('placeholder', 'e.g. Sam');
@@ -289,6 +291,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     // Back to sign in, and back again
     await tid(page, 'social-back-signin').click();
     await expect(tid(page, 'social-signin')).toBeVisible();
+    await expect(tid(page, 'social-forgot')).toHaveText('Forgot your password? Ask whoever invited you.');
     await tid(page, 'social-signup').click();
 
     // each missing piece has its approved message (ADR-0040 decision 3)
@@ -301,6 +304,10 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await expect(tid(page, 'social-error')).toHaveText('Tick the box to confirm your age.');
     await expect(page.getByText('I’m 13 or older, or I’m a parent or guardian signing up for my child.')).toBeVisible();
     await tid(page, 'social-age').check();
+    // audit I14: an empty code asks for one (it isn't one that "didn't work")
+    await tid(page, 'social-signup-code').fill('');
+    await tid(page, 'social-signup-submit').click();
+    await expect(tid(page, 'social-error')).toHaveText('Enter the invite code from your invite link.');
     await tid(page, 'social-signup-code').fill('NOPE-0000');
     await tid(page, 'social-signup-submit').click();
     await expect(tid(page, 'social-error')).toHaveText('That invite code didn’t work. Ask whoever invited you for their link.');

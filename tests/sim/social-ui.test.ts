@@ -460,3 +460,16 @@ describe('audit 2026-11-17, I13: friends', () => {
     expect([C.nowFriends, C.nowFriendsDetail]).toEqual(['You’re now friends', 'They had added you too. Their aquarium shows below.']);
   });
 });
+
+describe('audit 2026-11-17, I14: an invite for someone new', () => {
+  it('the words: an empty sign-up code, and the title while an invite waits for a first game', () => {
+    expect(C.errorNoCode).toBe('Enter the invite code from your invite link.');
+    expect(C.titleInvited).toBe('You’re invited to a club: start a game to join.');
+  });
+
+  it('the form opens on Create account when asked (an invite link asks)', () => {
+    const out = renderToStaticMarkup(createElement(SignInForm, { initialError: null, inviteCode: 'HIGHLAND-4821', startInSignUp: true }));
+    expect(out).toContain('data-testid="social-signup-form"');
+    expect(out).toContain('value="HIGHLAND-4821"');
+  });
+});
