@@ -22,6 +22,7 @@ import { marketAccess, cashSuggestions } from '@/sim/economy';
 import { unlockProgress } from '@/sim/facility';
 import { lockViews } from '@/ui/panels/common/UnlockHelp';
 import { useShopFilters, useShopSearch } from '@/ui/panels/market/shopFilters';
+import { ListingsTab } from '@/ui/panels/market/Listings';
 import { TANK_TIERS } from '@/data/catalog/tanks';
 import { reserveHint } from '@/ui/panels/market/CreateListing';
 import { addCreature, createCreature } from '@/sim/life';
@@ -441,6 +442,25 @@ describe('F9: searching the shop for an animal that isn’t on the shelf says wh
     expect(out).toContain('shop-not-stocked-unlock-lined_seahorse');
     expect(text(out)).toContain('How to unlock');
     expect(text(search(g, 'zzzz'))).toContain('Nothing matches that filter');
+  });
+});
+
+describe('F10: one listing, one fair value', () => {
+  it('after buyers re-price, the bid rows and the sold card use the card’s fair value', () => {
+    const g = game();
+    devOpenMarket(g);
+    const c = addCreature(g, createCreature(g, simRng(g), 'betta', { ageDays: 120 }), g.tankOrder[0]);
+    const r = createListing(g, { kind: 'creature', creatureIds: [c.id], reserve: 1, durationHours: 72 });
+    const l = g.market.listings.find((x) => x.id === r.listingId)!;
+    for (let i = 0; i < 40 && !l.bids.some((b) => b.status === 'open'); i++) forceBuyerVisit(g, l.id);
+    const b = l.bids.find((x) => x.status === 'open')!;
+    l.lastValuation = Math.round(b.amount / 1.4); // re-priced well down: the bid is now 40 % over fair value
+    const want = Math.round(((b.amount - l.lastValuation) / l.lastValuation) * 100);
+    const live = text(renderToStaticMarkup(createElement(ListingsTab, { g, focusId: l.id, onCreate: () => {} })));
+    expect(live).toContain(`+${want}% fair value`);
+    expect(acceptBid(g, l.id, b.id).ok).toBe(true);
+    const sold = text(renderToStaticMarkup(createElement(ListingsTab, { g, focusId: null, onCreate: () => {} })));
+    expect(sold).toContain(`+${Math.round(((l.soldFor! - l.lastValuation) / l.lastValuation) * 100)}% vs fair value`);
   });
 });
 

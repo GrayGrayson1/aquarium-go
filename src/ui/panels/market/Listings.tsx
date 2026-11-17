@@ -179,10 +179,11 @@ function ListingCard({ g, l, defaultOpen, focus }: { g: GameState; l: Listing; d
           </div>
           <div className="pn-sold__price">
             <Money value={l.soldFor ?? 0} />
-            {l.snapshot.valuation > 0 && l.soldFor != null && (
-              <span className={clsx('pn-tiny', l.soldFor >= l.snapshot.valuation ? 'pn-tone-good' : 'pn-muted')}>
-                {l.soldFor >= l.snapshot.valuation ? '+' : ''}
-                {Math.round(((l.soldFor - l.snapshot.valuation) / Math.max(1, l.snapshot.valuation)) * 100)}% vs fair value
+            {fair > 0 && l.soldFor != null && (
+              // audit 2026-11-17 (F10) — the same fair value the card showed (re-priced when buyers re-priced)
+              <span className={clsx('pn-tiny', l.soldFor >= fair ? 'pn-tone-good' : 'pn-muted')}>
+                {l.soldFor >= fair ? '+' : ''}
+                {Math.round(((l.soldFor - fair) / Math.max(1, fair)) * 100)}% vs fair value
               </span>
             )}
           </div>
@@ -368,7 +369,9 @@ function BidRow({ g, l, b, buyer }: { g: GameState; l: Listing; b: Bid; buyer?: 
   const archetype = buyer?.archetype ?? b.archetype;
   const isOpen = b.status === 'open' && l.status === 'active';
   const belowReserve = b.amount < l.reserve;
-  const over = l.snapshot.valuation > 0 ? (b.amount - l.snapshot.valuation) / l.snapshot.valuation : 0;
+  // audit 2026-11-17 (F10) — one fair value everywhere: the card's (re-priced when buyers re-priced), not the snapshot's
+  const fair = l.lastValuation ?? l.snapshot.valuation;
+  const over = fair > 0 ? (b.amount - fair) / fair : 0;
   // lane:fix-panels — the one tap that can't be undone gets a confirm when it matters: the starter, a whole
   // aquarium (or the last one), or a bid under the reserve / well under fair value. Ordinary bids stay one tap.
   const starter = (l.kind === 'tank' && l.tankId ? livingInTank(g, l.tankId) : l.creatureIds.map((id) => g.creatures[id]).filter(Boolean)).find((c) => c?.isStarter);
@@ -514,7 +517,7 @@ function BidRow({ g, l, b, buyer }: { g: GameState; l: Listing; b: Bid; buyer?: 
           )}
           {!belowReserve && over <= -0.15 && (
             <Callout tone="watch" icon={<TriangleAlert size={16} />} title="Well under fair value">
-              {formatMoney(b.amount)} is {Math.round(-over * 100)}% under the {formatMoney(l.snapshot.valuation)} this is worth. Counter, or wait for a better offer.
+              {formatMoney(b.amount)} is {Math.round(-over * 100)}% under the {formatMoney(fair)} this is worth. Counter, or wait for a better offer.
             </Callout>
           )}
         </div>
