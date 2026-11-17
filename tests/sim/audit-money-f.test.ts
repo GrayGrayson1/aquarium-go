@@ -23,7 +23,7 @@ import { installWaterRoom } from '@/sim/automation/water';
 import { installFoodRoom } from '@/sim/automation/food';
 import { unlockProgress } from '@/sim/facility';
 import { lockViews } from '@/ui/panels/common/UnlockHelp';
-import { useShopFilters, useShopSearch } from '@/ui/panels/market/shopFilters';
+import { useShopFilters, useShopSearch, envMatches, tankFits } from '@/ui/panels/market/shopFilters';
 import { ListingsTab, CounterNotes } from '@/ui/panels/market/Listings';
 import { decorSellOffer } from '@/ui/panels/build/BuildPanel';
 import { DECOR } from '@/data/catalog/decor';
@@ -538,6 +538,17 @@ describe('F16: a counter-offer says it is binding, with the Accept dialog’s wa
     expect(out).toContain('Ember is guarding eggs.');
     const plain = text(renderToStaticMarkup(createElement(CounterNotes, { lastTank: false, buyer: 'Maya', serious: [] })));
     expect(plain).toBe('If they agree, the sale goes through straight away.');
+  });
+});
+
+describe('F17: "Fits my tanks" checks temperature and size, not only the water type', () => {
+  it('an axolotl doesn’t fit a warm betta tank; a betta does', () => {
+    const g = game();
+    const t = g.tanks[g.tankOrder[0]];
+    t.water.tempC = 26;
+    expect(envMatches(g, findSpecies('axolotl')!, 'fits')).toBe(false);
+    expect(envMatches(g, findSpecies('betta')!, 'fits')).toBe(true);
+    expect(tankFits(findSpecies('axolotl')!, { ...t, water: { ...t.water, tempC: 17 }, tierId: 'g40B' } as typeof t)).toBe(true);
   });
 });
 
