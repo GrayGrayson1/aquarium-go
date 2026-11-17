@@ -621,6 +621,39 @@ export function youngWaterSeverity(tank: Tank, sp: SpeciesDefinition): number {
   return Number.isFinite(sev) ? sev : 0;
 }
 
+/** "fresh" / "salt" / "brackish" (never "freshwater water"). */
+const waterName = (env: string) => (env === 'freshwater' ? 'fresh' : env === 'marine' ? 'salt' : env);
+
+/**
+ * audit E9: what in the water hurts this species' young most, in words ("Community is fresh water, and sailfin molly
+ * young do much better in brackish water"), or null when nothing does. The same terms as `youngWaterSeverity` (which
+ * is left exactly as it was, so the hazard doesn't move); the largest one is named.
+ */
+export function youngWaterCause(tank: Tank, sp: SpeciesDefinition): string | null {
+  if (!fitsEnvironment(sp, tank.environment)) return `${tank.name} is ${waterName(tank.environment)} water, which ${spName(sp)} young can’t live in`;
+  const w = tank.water;
+  const t = w.tempC;
+  const range = `${sp.tempC.min}–${sp.tempC.max} °C`;
+  const terms: [number, string][] = [
+    [tank.environment === sp.environment ? 0 : 0.5, `${tank.name} is ${waterName(tank.environment)} water, and ${spName(sp)} young do much better in ${waterName(sp.environment)} water`],
+    [Math.max(0, (w.ammonia ?? 0) - 0.2) * 1.6, 'there is ammonia in the water — change some water and check the filter'],
+    [Math.max(0, (w.nitrite ?? 0) - 0.2) * 1.6, 'there is nitrite in the water — change some water and check the filter'],
+    [Math.max(0, (w.nitrate ?? 0) - 60) / 100, 'the nitrate is high — a water change brings it down'],
+    [t < sp.tempC.min ? 0.3 + (sp.tempC.min - t) * 0.25 : 0, `it is too cold for them (they need ${range})`],
+    [t > sp.tempC.max ? 0.3 + (t - sp.tempC.max) * 0.25 : 0, `it is too warm for them (they need ${range})`],
+    [(w.oxygen ?? 1) < 0.55 ? (0.55 - w.oxygen) * 2 : 0, 'the water is short of oxygen — an airstone helps'],
+  ];
+  if (sp.salinitySG) {
+    const s = w.salinitySG;
+    const want = `${sp.salinitySG.min.toFixed(3)}–${sp.salinitySG.max.toFixed(3)}`;
+    terms.push([s < sp.salinitySG.min ? (sp.salinitySG.min - s) * 150 : 0, `the salinity is too low for them (they need ${want})`]);
+    terms.push([s > sp.salinitySG.max ? (s - sp.salinitySG.max) * 150 : 0, `the salinity is too high for them (they need ${want})`]);
+  }
+  let best: [number, string] | null = null;
+  for (const x of terms) if (Number.isFinite(x[0]) && x[0] > 0 && (!best || x[0] > best[0])) best = x;
+  return best ? best[1] : null;
+}
+
 /** Is the water good enough for spawning at all (adults)? Returns a reason when not. */
 export function spawningWaterIssue(tank: Tank, sp: SpeciesDefinition): string | null {
   if (!fitsEnvironment(sp, tank.environment)) return `${tank.name} is ${tank.environment}; ${spPlural(sp)} need ${sp.environment === 'freshwater' ? 'fresh' : sp.environment === 'marine' ? 'salt' : sp.environment} water.`; // lane:w2-ui: not "freshwater water"

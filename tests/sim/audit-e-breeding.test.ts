@@ -183,3 +183,16 @@ describe('E7: a line that sends young to a nursery opens Livestock › Eggs & fr
     expect(eventLink({ kind: 'info', text: 'Tank 2 is now a nursery tank.' })).toBeNull();
   });
 });
+
+describe('E9: a water warning names what is wrong with the water', () => {
+  it('molly fry in fresh water hear about the water type, not about ammonia and nitrite', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 61 });
+    const tank = createTank(state, 'g29', 'freshwater_planted', { cycled: true, name: 'Community' });
+    const sp = getSpecies('sailfin_molly');
+    const mom = addCreature(state, createCreature(state, simRng(state), 'sailfin_molly', { sex: 'female', ageDays: 200, name: 'Bella' }), createTank(state, 'g29', 'brackish', { cycled: true }).id);
+    createClutch(state, { sp, tank, mother: mom, father: null, hour: state.clock.hour, stage: 'fry', count: 40, visual: 'fry_cloud', nextStageHour: state.clock.hour + 48 });
+    const from = state.log.length;
+    run(state, 4, 25, () => logFrom(state, from).some((t) => /is hurting/.test(t)));
+    expect(logFrom(state, from).find((t) => /is hurting/.test(t))).toBe('The water in Community is hurting Bella’s fry: Community is fresh water, and sailfin molly young do much better in brackish water.');
+  });
+});

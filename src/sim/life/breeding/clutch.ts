@@ -49,6 +49,7 @@ import {
   stockingOf,
   toastWorthy,
   unitsPerJuvenile,
+  youngWaterCause,
   youngWaterSeverity,
   type Vec,
   breedNotice,
@@ -364,7 +365,9 @@ export function loseClutch(state: GameState, cl: Clutch, sp: SpeciesDefinition, 
     const l = cl.losses ?? { predation: 0, starvation: 0, water: 0, crowding: 0, fungus: 0 };
     let worst: LossCause = 'predation';
     for (const k of Object.keys(l) as LossCause[]) if (l[k] > l[worst]) worst = k;
-    text = `${parentName(state, cl)} ${cl.stage === 'eggs' ? 'eggs' : 'brood'} didn’t make it: ${LOSS_TEXT[worst](sp)}.`;
+    // audit E9: a water loss names its cause
+    const cause = worst === 'water' && state.tanks[cl.tankId] ? youngWaterCause(state.tanks[cl.tankId], sp) : null;
+    text = `${parentName(state, cl)} ${cl.stage === 'eggs' ? 'eggs' : 'brood'} didn’t make it: ${cause ? `the water was wrong for such delicate young — ${cause}` : LOSS_TEXT[worst](sp)}.`;
   }
   say(state, ctx, { kind, text, tankId: cl.tankId, creatureId: cl.motherId ?? cl.fatherId ?? undefined, toast: kind === 'warning' });
   releaseParents(state, cl);
@@ -548,7 +551,9 @@ function warnings(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinitio
     say(state, ctx, { kind: 'warning', text, tankId: cl.tankId });
   }
   if (hz.water > 0.01 && flag(cl, 'water')) {
-    say(state, ctx, { kind: 'warning', text: `The water in ${tank.name} is hurting ${whose} ${label} — check temperature, ammonia and nitrite.`, tankId: cl.tankId, toast: true });
+    // audit E9: say what is wrong (a tolerated water type, nitrate, oxygen, salinity…), not always the same three checks
+    const cause = youngWaterCause(tank, sp);
+    say(state, ctx, { kind: 'warning', text: cause ? `The water in ${tank.name} is hurting ${whose} ${label}: ${cause}.` : `The water in ${tank.name} is hurting ${whose} ${label} — check temperature, ammonia and nitrite.`, tankId: cl.tankId, toast: true });
   }
   if (hz.fungus > 0 && flag(cl, 'fungus')) {
     say(state, ctx, { kind: 'warning', text: `Nobody is tending ${whose} eggs — some are turning white with fungus. An airstone nearby helps.`, tankId: cl.tankId });
