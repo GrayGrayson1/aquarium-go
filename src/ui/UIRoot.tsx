@@ -26,6 +26,7 @@ import './styles/online.css';
 import { SimFailureBanner } from './common/SimFailureBanner'; // lane:core (chunk 6, B-002)
 import { SharedClosingCard, SharedFirstTime, SharedNotices, SharedOpening, SharedStillHere } from './shared/SharedScreens'; // chunk 13
 import { SaveLossConfirm } from './common/SaveLossConfirm'; // audit 2026-11-17, I3
+import { ReloadConfirm } from './common/ReloadConfirm'; // audit 2026-11-17, the review of I2
 import { useSharedMode } from '@/state/sharedMode';
 import { applyPlatformStorage } from './platformBoot';
 import './styles/shell.css';
@@ -113,6 +114,7 @@ export function UIRoot() {
         {/* audit 2026-11-17, I3 — every slot full: asks before a switch deletes a copy (over the online-save box too) */}
         <ErrorBoundary name="saves">
           <SaveLossConfirm />
+          <ReloadConfirm />
         </ErrorBoundary>
         {/* chunk 13 (SHARED-SHOPS.md §8) — a shared shop's opening card, its lines, "Still here?" and its closings */}
         <ErrorBoundary name="shared">

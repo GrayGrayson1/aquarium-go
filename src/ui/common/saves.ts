@@ -19,6 +19,7 @@ import {
   downloadSave,
   slotLabel as coreSlotLabel,
   SAVE_SLOTS,
+  SCHEMA_VERSION,
   isSharedShop,
   SHARED_SAVE_REFUSED,
   type SaveMeta,
@@ -144,7 +145,11 @@ export async function loadIntoGame(slot: string): Promise<GameState | null> {
           }
         }
       } catch (e) {
+        // the review of I10: a save that threw is a save that didn't land: stop, and say so (it used to load anyway)
         console.warn('[ui] autosave before load failed', e);
+        showParked();
+        useUI.getState().toast('Saving failed — please try again.', 'danger');
+        return null;
       }
     }
     resumeState(r.state);
@@ -182,11 +187,15 @@ export function loadKeepAdvice(saves: SaveMeta[], g: GameState | null): { text: 
   const freeSlot = SAVE_SLOTS.find((s) => s !== 'auto' && !taken.has(s)) ?? null;
   if (kept) return { text: `${g.shopName} is also saved in ${slotLabel(kept.slot)} (${timeAgo(kept.savedAt)}), so you can come back to it any time.`, freeSlot: null, keptIn: kept.slot };
   return {
-    text: `${g.shopName} is only in the autosave. It stays available as “Previous autosave” after you switch, until you switch again — save it to a slot to keep it for good.`,
+    // the review of I3: a later switch saves it to a free slot first, or asks: say what is true now
+    text: `${g.shopName} is only in the autosave. It stays as “Previous autosave” after you switch, and nothing deletes it without asking you first.`,
     freeSlot,
     keptIn: null,
   };
 }
+
+/** A newer build wrote this copy (PERSIST-014): this build never writes over it, rotates it out or reads it. */
+const newerBuild = (m: SaveMeta | undefined): boolean => !!m && typeof m.schemaVersion === 'number' && m.schemaVersion > SCHEMA_VERSION;
 
 /** Audit 2026-11-17, I3: a write a switch makes to the autosave slot, in order; `kept`, written as a kept copy (a new identity). */
 export interface AutosaveWrite {
@@ -208,6 +217,9 @@ export function pushedOut(saves: SaveMeta[], writes: AutosaveWrite[]): Set<strin
   type Rec = { slot: string | null; id: string; hour: number };
   const auto = saves.find((m) => m.slot === 'auto' && !m.previousOf);
   const prev = saves.find((m) => m.previousOf === 'auto');
+  // PERSIST-014 (the review of I3): a newer build's record in either place is never written over or rotated out, and a
+  // write that would (another aquarium over it, or over the copy above it) is refused: nothing leaves the slot
+  if ([auto, prev].some((m) => newerBuild(m))) return new Set();
   const rec = (m: SaveMeta | undefined): Rec | null => (m ? { slot: m.slot, id: m.saveId ?? m.slot, hour: m.hour ?? Infinity } : null);
   let p = rec(auto);
   let b = rec(prev);
@@ -253,6 +265,7 @@ export function planKeep(saves: SaveMeta[], written: { saveId: string; hour: num
   const wanted: { m: SaveMeta; lost: boolean }[] = [];
   for (const m of saves.filter((x) => (x.slot === 'auto' || x.previousOf === 'auto') && x.slot !== opts.loading)) {
     if (!m.saveId || wanted.some((w) => w.m.saveId === m.saveId)) continue;
+    if (newerBuild(m)) continue; // never pushed out, and this build can't copy it (PERSIST-014)
     const lost = out.has(m.slot);
     const same = hoursOf(m.saveId);
     if (!lost && (opts.lostOnly || (opts.sameAquariumOnly && !same.length))) continue;
