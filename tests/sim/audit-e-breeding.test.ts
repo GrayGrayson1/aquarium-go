@@ -352,3 +352,28 @@ describe('E23/E25: clutch words match what the young are and what can be done', 
     expect(breedingStatus(state, m.id)).toMatchObject({ label: 'Tending 90 wriggling fry', detail: 'Keeping them together and safe' });
   });
 });
+
+describe('E28: a lost shark egg case is said, and the last one is an egg case', () => {
+  it('one case eaten of two is said; losing the last names egg cases, not eggs', async () => {
+    const { stepClutch } = await import('@/sim/life/breeding/clutch');
+    const { moduleFor } = await import('@/sim/life/breeding/registry');
+    const { makeTankInfo } = await import('@/sim/life/breeding/common');
+    const state = newGame({ starterId: 'ocellaris_clownfish', starterName: 'Nemo', seed: 101 });
+    const tank = createTank(state, 'g500', 'marine_fowlr', { cycled: true, name: 'Big' });
+    const sp = getSpecies('epaulette_shark');
+    const rng = simRng(state);
+    const mom = addCreature(state, createCreature(state, rng, 'epaulette_shark', { sex: 'female', ageDays: sp.breeding.maturityDays + 10, name: 'Coral' }), tank.id);
+    addCreature(state, createCreature(state, rng, 'epaulette_shark', { sex: 'male', ageDays: sp.breeding.maturityDays + 10, name: 'Reef' }), tank.id);
+    const cl = createClutch(state, { sp, tank, mother: mom, father: null, hour: state.clock.hour, stage: 'eggs', count: 2, visual: 'egg_case', nextStageHour: state.clock.hour + 5000 });
+    const draws = [0, 0.999, 0];
+    const ctx = makeContext(state, 1);
+    ctx.rng = { ...ctx.rng, next: () => draws.shift() ?? 0.999 };
+    const info = makeTankInfo(state, tank, state.clock.hour, () => []);
+    const from = state.log.length;
+    stepClutch(state, cl, tank, sp, moduleFor(sp), state.clock.hour, 1, ctx, info);
+    expect(logFrom(state, from)).toContain('One of Coral’s egg cases was eaten; 1 is left. A nursery tank keeps the rest safe (Livestock › Eggs & fry).');
+    stepClutch(state, cl, tank, sp, moduleFor(sp), state.clock.hour, 1, ctx, info);
+    expect(state.clutches[cl.id]).toBeUndefined();
+    expect(logFrom(state, from).some((t) => /^Coral’s egg cases didn’t make it: /.test(t))).toBe(true);
+  });
+});

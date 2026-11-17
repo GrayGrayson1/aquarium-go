@@ -368,7 +368,9 @@ export function loseClutch(state: GameState, cl: Clutch, sp: SpeciesDefinition, 
     for (const k of Object.keys(l) as LossCause[]) if (l[k] > l[worst]) worst = k;
     // audit E9: a water loss names its cause
     const cause = worst === 'water' && state.tanks[cl.tankId] ? youngWaterCause(state.tanks[cl.tankId], sp) : null;
-    text = `${parentName(state, cl)} ${cl.stage === 'eggs' ? 'eggs' : 'brood'} didn’t make it: ${cause ? `the water was wrong for such delicate young — ${cause}` : LOSS_TEXT[worst](sp)}.`;
+    // audit E28 (B-222): a shark's egg cases are egg cases, not "eggs"
+    const lostWhat = cl.visual === 'egg_case' && cl.stage === 'eggs' ? ((cl.initialCount ?? 2) === 1 ? 'egg case' : 'egg cases') : cl.stage === 'eggs' ? 'eggs' : 'brood';
+    text = `${parentName(state, cl)} ${lostWhat} didn’t make it: ${cause ? `the water was wrong for such delicate young — ${cause}` : LOSS_TEXT[worst](sp)}.`;
   }
   say(state, ctx, { kind, text, tankId: cl.tankId, creatureId: cl.motherId ?? cl.fatherId ?? undefined, toast: kind === 'warning' });
   releaseParents(state, cl);
@@ -457,6 +459,17 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
         for (const k of Object.keys(hz) as LossCause[]) if (hz[k] > 0) cl.losses[k] += (lost * hz[k]) / total;
         cl.count -= lost;
         cl.survival = init > 0 ? cl.count / init : 0;
+        // audit E28 (B-222): a case is lost whole, by chance, so the per-hour warning threshold is never reached over a
+        // ~1,000-hour incubation: say each loss while some are left (the last one's line is loseClutch's)
+        if (cl.count > 0) {
+          const eaten = hz.predation >= total / 2;
+          const nurseryHere = isNurseryFor(state, tank, hour);
+          say(state, ctx, {
+            kind: 'warning',
+            text: `${lost === 1 ? 'One' : lost.toLocaleString('en-US')} of ${parentName(state, cl).replace(/^The$/, 'the')} egg cases ${lost === 1 ? 'was' : 'were'} ${eaten ? 'eaten' : 'lost'}; ${cl.count} ${cl.count === 1 ? 'is' : 'are'} left.${eaten && !nurseryHere ? ' A nursery tank keeps the rest safe (Livestock › Eggs & fry).' : ''}`,
+            tankId: cl.tankId,
+          });
+        }
       }
     }
     warnings(state, cl, tank, sp, mod, hz, pred, hour, ctx);
