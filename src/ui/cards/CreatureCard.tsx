@@ -90,6 +90,7 @@ import {
 import { dietGuide, feedingLine, temperatureGuide, FLOW_GUIDE } from '@/data/species/guide'; // lane:guide
 import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
 import { lifespanFacts } from '../common/lifespan'; // Audit 2026-11-17 (D20)
+import { illnessSeverityPct } from './conditionWords'; // Audit 2026-11-17 (D12)
 import { AutofeederVerdict, RealLifeTips, openSpeciesGuide } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
 import { Badge, Button, Chip, Meter, Section, StatusBadge, formatMoney, KV, Empty } from '../kit';
 import { setCameraMode } from '../hud/ToolRail';
@@ -609,7 +610,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           <div>
             {(() => {
               const def = illnessDef(c.illness.kind);
-              const sev = Math.round(c.illness.severity * (c.illness.severity <= 1 ? 100 : 1));
+              const sev = illnessSeverityPct(c.illness.severity); // Audit 2026-11-17 (D12)
               if (!def || !sp) return <><strong>{titleCase(c.illness.kind)}</strong> — severity {sev}%. Check the water and keep stress low.</>;
               return (
                 <>

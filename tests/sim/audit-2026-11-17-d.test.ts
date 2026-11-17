@@ -16,6 +16,7 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { offerDiet } from '@/ui/panels/market/offerDietText';
 import { lifespanFacts } from '@/ui/common/lifespan';
 import { convertTempText } from '@/ui/common/format';
+import { illnessSeverityPct } from '@/ui/cards/conditionWords';
 
 const texts = (r: CompatReport) => r.reasons.map((x) => x.text).join('\n');
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Test', seed: 777 });
@@ -241,5 +242,15 @@ describe('D6: a rule about water or temperature never becomes an attack', () => 
       expect(['high_risk', 'incompatible'], small).toContain(ev.report.verdict);
       expect(ev.incidents.some((i) => /choke/.test(i.text ?? '')), small).toBe(false);
     }
+  });
+});
+
+describe('D12: an illness that is almost cured never reads “severity 99%”', () => {
+  it('severity is shown as the sim keeps it (0–100), at least 1 %', () => {
+    expect(illnessSeverityPct(40)).toBe(40);
+    expect(illnessSeverityPct(3.4)).toBe(3);
+    expect(illnessSeverityPct(0.99)).toBe(1);
+    expect(illnessSeverityPct(0.5)).toBe(1);
+    expect(illnessSeverityPct(1)).toBe(1);
   });
 });
