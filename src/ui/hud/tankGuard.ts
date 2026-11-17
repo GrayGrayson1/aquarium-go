@@ -23,7 +23,7 @@ export function ensureFocusedTank() {
   if (next === id) return;
   const patch: Parameters<typeof ui.set>[0] = { focusedTankId: next, selectedCreatureId: null, followCreatureId: null };
   if (ui.cameraMode === 'follow') patch.cameraMode = 'front';
-  if (ui.tool !== 'none' && ui.tool !== 'tank_place') patch.tool = 'none';
+  if (ui.tool !== 'none') patch.tool = 'none'; // (a tank placement returned above)
   if (!next) patch.view = 'facility';
   ui.set(patch);
   const shell = useShell.getState();
