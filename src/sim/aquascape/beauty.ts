@@ -454,9 +454,10 @@ export function beautyScoreImpl(state: GameState | null, tank: Tank): BeautyRepo
   if (state) {
     const residents = residentsOf(state, tank.id); // lane:perf2
     const seekers = residents.filter((c) => c.status === 'alive' && findSpecies(c.speciesId)?.anemoneRelationship === 'host_seeker');
-    // Audit 2026-11-17 (G12): a living anemone from the shop is a host too, as breeding counts it (habitatOf)
-    const hasHost = items.some((i) => i.def.anchors.some((a) => a.kind === 'host')) || residents.some((c) => c.status === 'alive' && findSpecies(c.speciesId)?.category === 'anemone');
-    if (seekers.length && !hasHost) {
+    // Audit 2026-11-17 (G12): a living anemone from the shop is a host too, as breeding counts it (habitatOf); looked
+    // for only when a clownfish wants one (a tank of thousands pays nothing extra)
+    const hasHost = () => items.some((i) => i.def.anchors.some((a) => a.kind === 'host')) || residents.some((c) => c.status === 'alive' && findSpecies(c.speciesId)?.category === 'anemone');
+    if (seekers.length && !hasHost()) {
       // the shop's Bubble-tip Anemone (the animal) needs no research: its water's keys and the tank its adult needs
       const bta = findSpecies('bubbletip_anemone');
       const inShop = !!bta && isUnlocked(state, tankKeyFor(bta)) && (bta.waterClasses ?? []).some((wc) => waterClassKeys(wc).every((k) => isUnlocked(state, k)));
