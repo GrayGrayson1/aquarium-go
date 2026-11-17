@@ -49,14 +49,14 @@ describe('A1: a step waiting on friends says why none can come', () => {
     expect(visits(g)).toBeGreaterThan(before);
   });
 
-  it('at night: friends visit between 9 am and 9 pm (and time is what helps)', () => {
+  it('at night: friends visit between 9:00 AM and 9:00 PM, in the clock’s own style (and time is what helps)', () => {
     const g = newGame({ starterId: 'axolotl', starterName: 'Mochi', seed: 4 });
     walkTo(g, 'first_money');
     advanceWorld(g, 3, { focusTankId: g.tankOrder[0] });
     expect(friendBlocker(g, 22)).toEqual({ kind: 'night' });
     expect(friendBlocker(g, 24 + 8.5)).toEqual({ kind: 'night' });
     g.clock.hour = 24 + 22; // 10 pm on day 2
-    expect(friendWait(g, 'first_goal')).toEqual({ text: 'Friends visit between 9 am and 9 pm.', time: true });
+    expect(friendWait(g, 'first_goal')).toEqual({ text: 'Friends visit between 9:00 AM and 9:00 PM.', time: true });
     expect(friendWait(g, 'feed')).toBeNull(); // only the steps that wait on friends
   });
 
@@ -122,6 +122,28 @@ describe('A1: the guide names an animal that is still there', () => {
     const lines = finaleLines(g);
     expect(lines.some((l) => /^Ember is|companion|settled|personality|one of a kind/.test(l))).toBe(false); // (the tank keeps its name)
     expect(lines.length).toBeGreaterThan(0);
+  });
+
+  it('with no animal left, the steps’ words stay grammatical (review of A1)', () => {
+    const step = (starter: string, id: string) => tutorialChain(starter).find((s) => s.id === id)!;
+    const none = (t: string) => fillGuide(t, null, 'animal', false);
+    expect(none(step('axolotl', 'habitat').body)).toBe('Axolotls dislike bright light. Add a cave or a plant from Build so your animals have a shady retreat.');
+    expect(none(step('lined_seahorse', 'feed').body)).toBe('Tap Target and offer frozen mysis right to your animals. Seahorses are slow, deliberate eaters — target feeding makes sure your animals get a full share before anything else can snatch it.');
+    expect(none(step('betta', 'feed').done!)).toBe('Your animals ate well.');
+    expect(none(step('betta', 'meet').done!)).toBe('Nice to meet you!');
+    expect(none(step('betta', 'observe').body)).toBe('Keep watching.'); // ("When {name} sees something new he…" is about that one fish)
+    expect(none(step('betta', 'meet').body)).toBe('Say hello.');
+    expect(none(step('pea_puffer', 'meet').body)).toBe('There’s no animal to show right now. Bring one home from the Market first.');
+    expect(none(step('axolotl', 'first_goal').body)).toMatch(/^Keep your animals’ tank looking lovely/);
+    // every step and line of every chain: no "{name}" left, no sentence starting in lower case, no "your animals is/has/gets"
+    for (const starter of ['axolotl', 'betta', 'pea_puffer', 'ocellaris_clownfish', 'lined_seahorse']) {
+      for (const s of tutorialChain(starter)) {
+        for (const t of [s.title, s.body, s.done ?? '']) {
+          const out = none(t);
+          expect(out, `${starter} ${s.id}`).not.toMatch(/\{name\}|your animals (is|has|gets|sees)\b|(^|[.!?]\s+)your animals/);
+        }
+      }
+    }
   });
 });
 
