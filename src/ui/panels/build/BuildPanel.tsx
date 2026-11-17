@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Hammer, Layers, Mountain, Wrench, Palette, Building2, Lock, Move, MapPin, Sprout, Flower2, Shell, Gem, Puzzle, Waves, Check, Power, Trash2, Package, TriangleAlert, Info, Zap, Sparkles, Thermometer, Snowflake, Fan, Lightbulb, Wind, Droplets, Droplet, Utensils, Sun, Leaf, Box } from 'lucide-react';
-import type { BackdropKind, DecorCategory, DecorDef, Environment, EquipmentKind, GameState, SubstrateKind, TankTier, WaterClass } from '@/types';
+import type { BackdropKind, DecorCategory, DecorDef, DecorInstance, Environment, EquipmentKind, GameState, SubstrateKind, TankTier, WaterClass } from '@/types';
 import { Button, Money, formatMoney, Toggle, Slider, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { TANK_TIERS } from '@/data/catalog/tanks';
@@ -20,11 +20,12 @@ import { tutorialChain, habitatPicks } from '@/data/quests';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { getFacilityLevel } from '@/data/facilities';
 import type { CommandOf } from '@/sim/commands';
-import { tankKitPrice, kitEquipmentFor, kitSwapNote, type KitEquipment } from '@/sim/economy';
+import { tankKitPrice, kitEquipmentFor, kitSwapNote, fragStoreOffer, type KitEquipment } from '@/sim/economy';
 import { findFreeSpot, waterClassLock, guideHoldLine } from '@/sim/facility';
 import { decorWaterNote } from './decorWater'; // Audit 2026-11-17 (G7)
 import { STRUGGLING_HEALTH } from '@/ui/common/notify'; // Audit 2026-11-17 (G8)
 import { SellStoredEquipment } from './SellBack'; // Audit 2026-11-17 (G22)
+import { decorSellValue } from '@/sim/aquascape'; // Audit 2026-11-17 (G14)
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { formatTemp } from '@/ui/common/format';
 import { usePanelGame, safe, useIsPhone, useTempText } from '../common/hooks';
@@ -597,7 +598,8 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
                     To storage
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => act({ k: 'removeDecor', tank: tankId, decor: inst.id, sell: true }, { sound: 'coin' })}>
-                    Sell
+                    {/* Audit 2026-11-17 (G14): what the sim will pay, as the decorating tool quotes it (B-121) */}
+                    Sell · {formatMoney(placedSellValue(g, def, inst))}
                   </Button>
                 </li>
               );
@@ -607,6 +609,11 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
       )}
     </div>
   );
+}
+
+/** Audit 2026-11-17 (G14): what selling a placed piece pays (a growing frag goes to the store as a frag). */
+export function placedSellValue(g: GameState, def: DecorDef | undefined, inst: DecorInstance): number {
+  return inst.frag && inst.frag.grownHour === undefined ? safe(() => fragStoreOffer(g, inst), 0) : decorSellValue(def, inst);
 }
 
 function DecorSwatch({ d, size = 56 }: { d?: DecorDef; size?: number }) {

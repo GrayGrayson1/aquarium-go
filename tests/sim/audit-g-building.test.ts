@@ -34,7 +34,8 @@ import { findNonFinite } from '@/dev/fixtures/core-testkit';
 import { lineFarm } from './support/production';
 import { UNLOCK_RULES, type Cond } from '@/data/unlocks';
 import { FacilityUpgradeCard } from '@/ui/panels/common/FacilityUpgrade';
-import { beautyScore } from '@/sim/aquascape';
+import { beautyScore, decorSellValue } from '@/sim/aquascape';
+import { placedSellValue } from '@/ui/panels/build/BuildPanel';
 import { textureFits } from '@/sim/aquascape/beauty';
 import { getDecorDef } from '@/data/catalog/decor';
 import { addCreature, createCreature } from '@/sim/life';
@@ -404,5 +405,16 @@ describe('G13: beauty tips name pieces the tank’s water takes', () => {
     const tips = beautyScore(g, t).tips.join(' ');
     expect(tips).not.toMatch(/hairgrass|rotala|stem plants/);
     expect(textureFits(g, t, 'fine')).toEqual(['java moss']);
+  });
+});
+
+describe('G14: Build’s Sell on a placed piece shows what it pays', () => {
+  it('half the price for a bought piece, the store’s frag offer for a growing frag', () => {
+    const g = game('betta');
+    const t = g.tanks[g.tankOrder[0]];
+    const inst = t.decor[0];
+    const def = getDecorDef(inst.defId)!;
+    expect(placedSellValue(g, def, inst)).toBe(decorSellValue(def, inst));
+    expect(placedSellValue(g, def, inst)).toBe(Math.round(def.price / 2));
   });
 });
