@@ -9,6 +9,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { useGame } from '@/state/game';
 import { GearTab, WaterTab } from '@/ui/cards/TankCard';
 import { useSettings } from '@/state/settings';
+import { Overview } from '@/ui/panels/operations/Overview';
+import { opsSnapshot, opsTier, type OpsSnapshot } from '@/ui/common/ops';
+import { unlock } from '@/sim/facility';
+import { facility } from './support/automation';
 import type { GameState } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { getWaterReport, tankDailyCost, STOCKING_WATCH, STOCKING_DANGER } from '@/sim/water';
@@ -633,5 +637,21 @@ describe('C19 (B-231 c, f, g): idle units before "Buy", no "too small" in a figh
     const html = renderToStaticMarkup(createElement(WaterTab, { game: s, tank: t }));
     useGame.setState({ game: null });
     expect((html.match(/class="ag-reason ag-reason--/g) ?? []).length).toBe(n);
+  });
+});
+
+describe('C20 (the wording, no decision needed): Operations’ all-clear says what it checks', () => {
+  it('reads "Automation is running smoothly.", not "Everything…", while a tank still needs a look', () => {
+    const f = facility({ fresh: 2, marine: 4, salt: 200, rosa: 1, hour: 24 * 3 + 8.5 });
+    unlock(f.g, 'operations_desk', { silent: true });
+    useGame.setState({ game: f.g });
+    Object.assign(useGame.getInitialState(), useGame.getState());
+    const snap = opsSnapshot(f.g);
+    const html = renderToStaticMarkup(createElement(Overview, { g: f.g, snap: { ...snap, problems: [] } as OpsSnapshot, tier: opsTier(f.g), nav: { tab: () => {}, view: () => {} }, small: false }));
+    useGame.setState({ game: null });
+    Object.assign(useGame.getInitialState(), { game: null });
+    expect(html).toContain('data-testid="ops-all-clear"');
+    expect(html).toContain('Automation is running smoothly.');
+    expect(html).not.toContain('Everything is running smoothly.');
   });
 });

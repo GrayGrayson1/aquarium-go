@@ -97,7 +97,7 @@ function ProblemsCard({ g, issues, counts, nav, small }: { g: GameState; issues:
       <div className="ops-card ops-card--good" data-testid="ops-all-clear">
         <div className="ops-row">
           <CircleCheck size={18} aria-hidden style={{ color: 'var(--c-good)' }} />
-          <span className="ops-row__title">Everything is running smoothly.</span>
+          <span className="ops-row__title">Automation is running smoothly.</span>{/* Audit 2026-11-17 C20: what this list checks (supplies and lines), as the bell says; tanks have their own alerts */}
         </div>
       </div>
     );
