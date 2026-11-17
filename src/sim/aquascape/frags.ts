@@ -99,7 +99,7 @@ export function fragEligibility(state: GameState, tank: Tank | undefined, inst: 
   if (growth < rule.minGrowth) {
     return no('growth', `Still growing — ${Math.round(growth * 100)}% of the ${Math.round(rule.minGrowth * 100)}% it needs before a cut.`, growth / rule.minGrowth);
   }
-  if (storedFrags(state).length >= MAX_STORED_FRAGS) return no('storage', `Your holding system is full (${MAX_STORED_FRAGS} frags). Plant or sell some first.`, 1);
+  if (storedFrags(state).length >= MAX_STORED_FRAGS) return no('storage', `Frag storage is full (${MAX_STORED_FRAGS} frags). Plant or sell some first.`, 1);
   return { ok: true, code: 'ok', rule, message: `Ready — cut ${fragNounWithArticle(rule)}.`, progress: 1 };
 }
 

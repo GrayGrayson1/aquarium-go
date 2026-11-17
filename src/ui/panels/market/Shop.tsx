@@ -229,7 +229,7 @@ function ClearFilters({ onClick }: { onClick: () => void }) {
 function SexMark({ c }: { c: Creature }) {
   if (c.sex === 'male') return <Mars size={13} className="pn-sex pn-sex--m" aria-label="Male" />;
   if (c.sex === 'female') return <Venus size={13} className="pn-sex pn-sex--f" aria-label="Female" />;
-  return <CircleDashed size={12} className="pn-sex" aria-label="Unsexed" />;
+  return <CircleDashed size={12} className="pn-sex" aria-label="Sex not known yet" />;
 }
 
 /** The card and hero title: the morph display name ("Royal Blue Butterfly Halfmoon Betta"); groups "10 × …". */
@@ -562,7 +562,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
 
       {offer.kind === 'group' && offer.creatures.length > 1 && (
         <section>
-          <SectionHead title={lot ? `Sold as one lot · ${offer.creatures.length} animals` : `Choose individuals · ${chosen.length} of ${offer.creatures.length}`} icon={<Users size={14} />} />
+          <SectionHead title={lot ? `Sold together · ${offer.creatures.length} animals` : `Choose individuals · ${chosen.length} of ${offer.creatures.length}`} icon={<Users size={14} />} />
           <div className="pn-pickgrid">
             {offer.creatures.map((c, i) => (
               <div key={c.id} className={clsx('pn-pick', picked.has(i) && 'is-on', active === i && 'is-active')}>

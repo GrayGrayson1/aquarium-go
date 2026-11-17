@@ -146,7 +146,7 @@ export function CatalogTree({ sp, groups, total, seenNames, seenTraits, initiall
     <section data-testid="enc-catalog">
       <SectionHead title={`Morph catalog · ${seen}/${total} seen`} icon={<Network size={14} />} />
       <p className="pn-tiny pn-muted" style={{ marginBottom: 6 }}>
-        Every colour and combination these genetics can produce, by base colour, rated by how often sellers stock it. Built from the gene table — nothing is typed in by hand.
+        Every colour and combination these genetics can produce, by base colour, rated by how often sellers stock it.
       </p>
       <div className="pn-catalog">
         {flat ? (

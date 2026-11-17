@@ -12,6 +12,7 @@ import { formatClock, dayOf } from '@/sim/time';
 import { SALT_PRICE_PER_KG } from '@/sim/economy';
 import { batchGal, batchSaltKg, prepRate, freshCap, tankChangeNeed, type Problem, type SupplyProblem } from '@/sim/automation';
 import { opsSnapshot } from '@/ui/common/ops';
+import { formatMoney } from '@/ui/kit';
 import { findLine } from '@/sim/production';
 import { lineView } from '@/sim/production/view';
 
@@ -33,12 +34,18 @@ export interface IssueView {
 }
 
 export const SALT_ORDER_KG = 40;
-export const saltBuyLabel = `Buy ${SALT_ORDER_KG} kg · $${SALT_ORDER_KG * SALT_PRICE_PER_KG}`;
+export const saltBuyLabel = `Buy ${SALT_ORDER_KG} kg · ${formatMoney(SALT_ORDER_KG * SALT_PRICE_PER_KG)}`;
 
 /** "10:00 AM", "tomorrow, 9:00 AM" (from `now`). */
 export function whenText(at: number, now: number): string {
   const d = dayOf(at) - dayOf(now);
   return d <= 0 ? formatClock(at) : d === 1 ? `tomorrow, ${formatClock(at)}` : `Day ${dayOf(at)}, ${formatClock(at)}`;
+}
+
+/** The same time inside a sentence: "at 9:00 AM", "tomorrow at 9:00 AM", "on Day 12 at 9:00 AM" (Audit 2026-11-17, J30). */
+export function whenPhrase(at: number, now: number): string {
+  const d = dayOf(at) - dayOf(now);
+  return d <= 0 ? `at ${formatClock(at)}` : d === 1 ? `tomorrow at ${formatClock(at)}` : `on Day ${dayOf(at)} at ${formatClock(at)}`;
 }
 
 /** The next 10 AM / 10 PM mixing check from `now`. */
@@ -53,7 +60,7 @@ export function nextMixHour(now: number): number {
 }
 
 const first = (name: string) => name.split(' ')[0];
-const money = (v: number) => `$${Math.round(v).toLocaleString('en-US')}`;
+const money = (v: number) => formatMoney(Math.round(v));
 
 /** chunk 6 (DES-013) — the salt tanks' morning water-change time (the earliest lights-on among them), or null. */
 export function saltChangeHour(g: GameState): number | null {
@@ -106,9 +113,9 @@ function saltIssue(g: GameState, p: SupplyProblem): IssueView {
       badge: 'Look soon',
       title: `Salt mix arrives ${dayOf(p.arrives ?? now) > dayOf(now) ? 'tomorrow, ' : 'at '}${formatClock(p.arrives ?? now)}`,
       // the design's "at her next check" describes its sample (Rosa); stock managers come from the whole name pool
-      reason: `${first(f?.m.name ?? 'Your stock manager')} buys ${buy?.kg ?? SALT_ORDER_KG} kg ($${buy?.price ?? SALT_ORDER_KG * SALT_PRICE_PER_KG}) at the next check now that the budget covers it.`,
+      reason: `${first(f?.m.name ?? 'Your stock manager')} buys ${buy?.kg ?? SALT_ORDER_KG} kg (${formatMoney(buy?.price ?? SALT_ORDER_KG * SALT_PRICE_PER_KG)}) at the next check now that the budget covers it.`,
       tab: 'water',
-      action: { id: 'buy-salt', label: `Buy now · $${SALT_ORDER_KG * SALT_PRICE_PER_KG}`, short: 'Buy' },
+      action: { id: 'buy-salt', label: `Buy now · ${formatMoney(SALT_ORDER_KG * SALT_PRICE_PER_KG)}`, short: 'Buy' },
       problem: p,
     };
   }
@@ -174,7 +181,7 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
           title: p.state === 'arriving' ? 'Brine shrimp eggs arrive at the next check' : p.state === 'out' ? 'Out of brine shrimp eggs' : 'Brine shrimp eggs are low', // ADR-0032
           reason: p.state === 'out' ? 'The hatchery cones wait for eggs.' : `${p.stock} ${p.stock === 1 ? 'scoop' : 'scoops'}: a cone takes one a day.`, // ADR-0032
           tab: 'feed',
-          action: { id: 'buy-eggs', label: `Buy · $${EGGS_SUPPLY.price}`, short: 'Buy' },
+          action: { id: 'buy-eggs', label: `Buy · ${formatMoney(EGGS_SUPPLY.price)}`, short: 'Buy' },
           problem: p,
         });
         break;
@@ -188,7 +195,7 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
           title: p.state === 'arriving' ? 'Vegetables arrive at the next check' : p.state === 'out' ? 'Out of vegetables for the jars' : 'Vegetables for the jars are low', // ADR-0032
           reason: p.state === 'out' ? 'The infusoria jars wait for Blanched Vegetables.' : `${p.stock} ${p.stock === 1 ? 'serving' : 'servings'}: a jar takes one every 3 days.`, // ADR-0032
           tab: 'feed',
-          action: { id: 'buy-veg', label: `Buy · $${veg?.price ?? 3}`, short: 'Buy' },
+          action: { id: 'buy-veg', label: `Buy · ${formatMoney(veg?.price ?? 3)}`, short: 'Buy' },
           problem: p,
         });
         break;
@@ -236,7 +243,7 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
           badge: 'Look soon',
           title: 'Salt water runs short',
           // Audit 2026-11-17 (H22): a forecast from a dry run, so "at this rate"
-          reason: `The salt tanks’ changes use ${Math.round(p.perDay)} gal of salt water a day, and the mixer makes up to ${Math.round(p.capacity ?? 0)}. At this rate, the changes it can’t cover are skipped, not done weak.`,
+          reason: `The salt tanks’ changes use ${Math.round(p.perDay)} gal of salt water a day, and the mixer makes up to ${Math.round(p.capacity ?? 0)} gal a day. At this rate, the changes it can’t cover are skipped, not done weak.`,
           tab: 'water',
           action: more ? { id: 'reservoirs', label: 'Reservoirs in Build', short: 'Build' } : { id: 'water-tab', label: 'Water tab', short: 'Water' },
           problem: p,
@@ -272,7 +279,7 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
           title: 'Fresh water runs short',
           reason: reserve
             ? `The tanks’ changes take ${Math.round(p.perDay)} gal of fresh water at lights-on, and the fresh reserve holds ${Math.round(p.capacity ?? 0)}. What it can’t cover waits: changes are skipped, not done weak.`
-            : `The tanks use ${Math.round(p.perDay)} gal of fresh water a day, and the prep station makes ${Math.round(p.capacity ?? 0)}. What it can’t cover waits: changes are skipped, not done weak.`,
+            : `The tanks use ${Math.round(p.perDay)} gal of fresh water a day, and the prep station makes ${Math.round(p.capacity ?? 0)} gal a day. What it can’t cover waits: changes are skipped, not done weak.`,
           tab: 'water',
           action: !more ? { id: 'water-tab', label: 'Water tab', short: 'Water' } : reserve ? { id: 'reservoirs', label: 'Reservoirs in Build', short: 'Build' } : { id: 'faster-prep', label: 'Faster prep in Build', short: 'Build' },
           problem: p,

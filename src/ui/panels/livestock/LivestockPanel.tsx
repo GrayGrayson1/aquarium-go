@@ -201,7 +201,7 @@ export function LivestockPanel() {
                     ['all', 'Everyone'],
                     ['attention', `Needs attention${attention ? ` (${attention})` : ''}`],
                     ['favorites', 'Favourites'],
-                    ['juveniles', 'Juveniles'],
+                    ['juveniles', 'Young'],
                     ['listed', 'Listed for sale'],
                   ] as [StatusFilter, string][]
                 ).map(([id, label]) => (
@@ -270,11 +270,11 @@ export function LivestockPanel() {
       <Modal
         open={confirmSell}
         onClose={() => setConfirmSell(false)}
-        title="Quick sell to the local shop?"
+        title="Quick sell to the local fish store?"
         subtitle="Instant cash, no auction"
         actions={
           <>
-            <Button onClick={() => setConfirmSell(false)}>Keep them</Button>
+            <Button onClick={() => setConfirmSell(false)}>{pickedList.length === 1 ? 'Don’t sell' : 'Keep them'}</Button>
             <Button
               variant="coral"
               silent

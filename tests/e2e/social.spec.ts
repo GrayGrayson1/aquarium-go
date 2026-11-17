@@ -171,7 +171,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await expect(tiles).toHaveCount(6);
     const xs = await tiles.evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().left)))]);
     expect(xs).toHaveLength(3);
-    await expect(tid(page, 'social-friends')).toContainText('Visits are read-only snapshots: friends see your tanks as they were when you last went online.');
+    await expect(tid(page, 'social-friends')).toContainText('Friends see your tanks as they were when you last went online.');
     await tid(page, 'social-friend-code').fill('hello');
     await tid(page, 'social-add-friend').click();
     await expect(tid(page, 'social-error')).toHaveText('That friend code didn’t match anyone. Check it and try again.');
@@ -488,7 +488,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await expect(dot).toHaveCount(0);
     await aq(page, 'social.pushTrade');
     await expect(dot).toBeVisible();
-    await expect(tid(page, 'dock-social')).toHaveAttribute('aria-label', 'Social — New trades and club news');
+    await expect(tid(page, 'dock-social')).toHaveAttribute('aria-label', 'Social — New friend requests, trades or club news');
     await tid(page, 'dock-social').click();
     await expect(panel(page)).toBeVisible();
     await tid(page, 'panel-close').click();

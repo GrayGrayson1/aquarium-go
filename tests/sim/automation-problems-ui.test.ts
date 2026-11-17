@@ -107,7 +107,7 @@ describe('ADR-0033: the Water room warnings in Problems and the alerts drawer', 
     room.salt = saltCap(room);
     const s = views(salt.g).find((v) => v.key === 'salt_rate')!;
     expect(s).toMatchObject({ title: 'Salt water runs short', badge: 'Look soon', tab: 'water', action: { label: 'Reservoirs in Build' } });
-    expect(s.reason).toMatch(/^The salt tanks’ changes use \d+ gal of salt water a day, and the mixer makes up to \d+\. At this rate, the changes it can’t cover are skipped, not done weak\.$/); // Audit 2026-11-17 (H22): a forecast
+    expect(s.reason).toMatch(/^The salt tanks’ changes use \d+ gal of salt water a day, and the mixer makes up to \d+ gal a day\. At this rate, the changes it can’t cover are skipped, not done weak\.$/); // Audit 2026-11-17 (H22): a forecast
     // eight big marine tanks (about 144 gal a day) with all three Reservoirs: no more space to buy
     const big = facility({ fresh: 0, marine: 8, salt: 2000, rosa: null });
     for (const t of big.marine) t.tierId = 'g180';

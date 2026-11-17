@@ -108,7 +108,7 @@ export const platy: SpeciesDefinition = {
         alleles: [
           { id: 'R', name: 'Red', dominance: 4, frequency: 0.35 },
           { id: 'B', name: 'Blue', dominance: 3, frequency: 0.1 },
-          { id: 'W', name: 'Wild grey', dominance: 2, frequency: 0.25 },
+          { id: 'W', name: 'Wild Grey', dominance: 2, frequency: 0.25 },
           { id: 'st', name: 'Gold', dominance: 1, frequency: 0.3 },
         ],
         note: 'Gold is the real autosomal recessive st (Gordon 1946). Red is several sex-linked genes in wild stocks and its make-up in trade fish is “virtually unknown”; blue is autosomal with disputed dominance. Simplified to one ladder.',

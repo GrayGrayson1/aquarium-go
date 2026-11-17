@@ -152,7 +152,7 @@ function ChampRow({ c }: { c: Creature }) {
         <span className="sh-champ__meta">
           {sp?.commonName ?? c.speciesId} · {totalWins(a)} win{totalWins(a) === 1 ? '' : 's'}
           {high > 0 ? ` (${high} at Regional+)` : ''} · {a.placings} placing{a.placings === 1 ? '' : 's'}
-          {gone ? ` · ${c.status === 'sold' ? 'sold' : 'in memoriam'}` : ''}
+          {gone ? ` · ${c.status === 'sold' ? 'sold' : 'in memory'}` : ''}
         </span>
         <CreatureRibbons c={c} max={8} />
       </span>

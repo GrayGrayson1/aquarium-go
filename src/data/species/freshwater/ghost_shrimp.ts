@@ -80,7 +80,7 @@ export const ghostShrimp: SpeciesDefinition = {
     predationWithoutNursery: 0.7,
     nurseryRequired: false,
     maxRaisedPerClutch: 6,
-    notes: 'The female mates within hours of a moult and carries 10–80 green eggs under her tail for two to three weeks. Unlike cherry shrimp, the young hatch as tiny swimming larvae — but they need no brackish water and live off their yolk, becoming miniature shrimp within about a week. Fish and filter intakes take most of them, so a planted tank with a sponge filter is the nursery. The game counts the larval week as part of rearing.',
+    notes: 'The female mates within hours of a moult and carries 10–80 green eggs under her tail for two to three weeks. Unlike cherry shrimp, the young hatch as tiny swimming larvae — but they need no brackish water and live off their yolk, becoming miniature shrimp within about a week. Fish and filter intakes take most of them, so a planted tank with a sponge filter is the nursery. In your tank, that larval week is part of raising the young.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'female',

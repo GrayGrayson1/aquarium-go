@@ -21,7 +21,7 @@ export const SOCIAL_COPY = {
   haveInvite: 'Have an invite?',
   // chunk 8 (the owner, 2026-10-19, ADR-0042 J1): the real codes' shape, a club's word and four letters
   invitePlaceholder: 'Invite code, e.g. FRIENDS-KDWX',
-  joinGroup: 'Join group',
+  joinGroup: 'Join club',
   errorCredentials: 'Enter your email and a password of at least 8 characters.',
   errorInvite: 'That invite code didn’t match a club. Check it and try again.',
   // audit 2026-11-17, I6: an outage can last (a paused project), so not "in a moment"; with a Try again button, the other line
@@ -92,7 +92,7 @@ export const SOCIAL_COPY = {
   offerTrade: 'Offer a trade',
   friendCodePlaceholder: 'Friend code, e.g. MYAQUA-7Q2',
   addFriend: 'Add friend',
-  snapshotsNote: 'Visits are read-only snapshots: friends see your tanks as they were when you last went online.',
+  snapshotsNote: 'Friends see your tanks as they were when you last went online.',
 
   // ADR-0034 decision 2
   soonTitle: 'Trades open later',
@@ -110,7 +110,7 @@ export const SOCIAL_COPY = {
   errorFriend: 'That friend code didn’t match anyone. Check it and try again.',
   noMatch: (search: string) => `No clubs match “${search}”. Check the spelling, or paste an invite code.`,
   dotNew: 'New',
-  dotNews: 'New trades and club news',
+  dotNews: 'New friend requests, trades or club news',
 
   // ADR-0034 decision 4 (dev-only reminder)
   reminderBody: (when: string, closes: string) => `Club show on ${when}. Entries close ${closes}.`,

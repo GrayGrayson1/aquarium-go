@@ -361,7 +361,7 @@ function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anythi
                   {isUnlocked ? (
                     <div className="pn-tier__btns">
                       <Button size="sm" variant="primary" disabled={!afford} data-testid={`build-tank-${tier.id}`} onClick={() => place(tier)} title="Choose where it goes on the floor">
-                        <MapPin size={13} /> {afford ? 'Buy & place' : 'Too pricey'}
+                        <MapPin size={13} /> {afford ? 'Buy & place' : `Need ${formatMoney(Math.ceil(kit.total - g.finance.money - 1e-6))} more`}
                       </Button>
                       <Button size="sm" variant="ghost" disabled={!afford} onClick={() => quick(tier)} title="Buy now and place it automatically">
                         Quick buy
@@ -948,7 +948,7 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
                       </div>
                       <div className="pn-tiny pn-muted">
                         {def ? `${titleCase(def.kind)} · ${formatMoney(def.upkeep, { cents: def.upkeep < 10 })}/day` : ''}
-                        {def?.stats.flowGph ? ` · ${def.stats.flowGph} gph` : ''}
+                        {def?.stats.flowGph ? ` · ${def.stats.flowGph} gallons an hour` : ''}
                         {def?.stats.power ? ` · ${def.stats.power} W` : ''}
                       </div>
                       <FitLine verdict={gearFit.get(inst.id)} testId={`build-equip-fit-${inst.id}`} />

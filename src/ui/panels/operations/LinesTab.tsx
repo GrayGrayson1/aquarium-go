@@ -20,11 +20,12 @@ import { Status, Kicker } from './parts';
 import { doLineSwitch } from './actions';
 import { eventLine } from '@/ui/common/notify'; // chunk 13: the member's name in a shared shop
 
-const STAGES: { id: StageId; label: string }[] = [
+/** `full`: the stage's whole name where the track's narrow label is short (Audit 2026-11-17, J22: screen readers said "QT"). */
+const STAGES: { id: StageId; label: string; full?: string }[] = [
   { id: 'breed', label: 'Breed' },
   { id: 'raise', label: 'Raise' },
   { id: 'sort', label: 'Sort' },
-  { id: 'quarantine', label: 'QT' },
+  { id: 'quarantine', label: 'QT', full: 'Quarantine' },
   { id: 'sell', label: 'Sell' },
 ];
 
@@ -51,9 +52,9 @@ function doing(g: GameState, line: ProductionLine, v: LineView): string {
 function Track({ v, held }: { v: LineView; held: boolean }) {
   const at = STAGES.findIndex((s) => s.id === v.active);
   return (
-    <div className="ops-track" aria-label={`Stage: ${STAGES[at]?.label ?? ''}`}>
+    <div className="ops-track" aria-label={`Stage: ${STAGES[at]?.full ?? STAGES[at]?.label ?? ''}`}>
       {STAGES.map((s, i) => (
-        <span key={s.id} className={`ops-track__seg${i < at ? ' is-done' : ''}${i === at ? ' is-on' : ''}${i === at && held ? ' is-held' : ''}`}>
+        <span key={s.id} title={s.full} className={`ops-track__seg${i < at ? ' is-done' : ''}${i === at ? ' is-on' : ''}${i === at && held ? ' is-held' : ''}`}>
           {s.label}
         </span>
       ))}
@@ -228,7 +229,7 @@ function ComingUp({ g, lines }: { g: GameState; lines: ProductionLine[] }) {
     const v = lineView(g, line);
     if (!v) continue;
     const short = line.name.replace(/ line$/, '');
-    if (v.quarantined.listsDay) events.push({ day: v.quarantined.listsDay, text: `${short} lists ${v.quarantined.count}` });
+    if (v.quarantined.listsDay) events.push({ day: v.quarantined.listsDay, text: `${short} lists ${v.quarantined.count} ${v.quarantined.word}` });
     if (v.next.days !== undefined && v.status === 'running') events.push({ day: today + v.next.days, text: `${short} spawns` });
     if (v.status === 'waiting' && v.next.restartDay) events.push({ day: v.next.restartDay, text: `${short} restarts` });
   }

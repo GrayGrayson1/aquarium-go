@@ -456,7 +456,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
 function SexIcon({ c }: { c: Creature }) {
   if (c.sex === 'male') return <Mars size={12} className="pn-sex pn-sex--m" aria-label="Male" />;
   if (c.sex === 'female') return <Venus size={12} className="pn-sex pn-sex--f" aria-label="Female" />;
-  return <CircleDashed size={11} className="pn-sex" aria-label="Unsexed" />;
+  return <CircleDashed size={11} className="pn-sex" aria-label="Sex not known yet" />;
 }
 
 function CreaturePicker({ g, kind, eligible, ids, setIds }: { g: GameState; kind: ListingKind; eligible: Creature[]; ids: string[]; setIds: (v: string[]) => void }) {

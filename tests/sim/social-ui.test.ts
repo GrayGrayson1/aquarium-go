@@ -50,7 +50,7 @@ describe('DES-010: every Social string as §13 and the owner’s answers write i
     expect(Object.values(C.tabs)).toEqual(['Overview', 'Clubs', 'Trading', 'Friends', 'Leaderboards']);
     expect(C.signInTitle).toBe('Bring your aquarium online');
     expect(C.signInText).toBe('Your game stays on this device and keeps working offline. An account adds clubs, trading circles, friends’ aquariums and weekly leaderboards.');
-    expect([C.emailPlaceholder, C.passwordPlaceholder, C.signIn, C.createAccount, C.haveInvite, C.invitePlaceholder, C.joinGroup]).toEqual(['you@example.com', 'At least 8 characters', 'Sign in', 'Create account', 'Have an invite?', 'Invite code, e.g. FRIENDS-KDWX', 'Join group']); // the example: ADR-0042 J1 (changed on purpose)
+    expect([C.emailPlaceholder, C.passwordPlaceholder, C.signIn, C.createAccount, C.haveInvite, C.invitePlaceholder, C.joinGroup]).toEqual(['you@example.com', 'At least 8 characters', 'Sign in', 'Create account', 'Have an invite?', 'Invite code, e.g. FRIENDS-KDWX', 'Join club']); // the example: ADR-0042 J1 (changed on purpose)
     expect(C.errorCredentials).toBe('Enter your email and a password of at least 8 characters.');
     expect(C.errorInvite).toBe('That invite code didn’t match a club. Check it and try again.');
     // audit 2026-11-17, I6: changed on purpose: an outage can last (a paused project), so not "in a moment"; beside a
@@ -83,13 +83,13 @@ describe('DES-010: every Social string as §13 and the owner’s answers write i
     expect([C.noTradesTitle, C.noTradesText, C.noFriendsTitle, C.noFriendsText]).toEqual(['No trades yet', 'Trades you start or accept appear here.', 'No friends yet', 'Friends you add appear here.']);
     expect([C.searchPlaceholder, C.suggested, C.join, C.joined]).toEqual(['Search clubs or paste an invite code', 'Suggested for you', 'Join', 'Joined']);
     expect([C.tradeHeroTitle, C.tradeHeroText, C.offerTrade]).toEqual(['Trade with your circle', 'Offer an animal, ask for one, or both. Trades settle the next time both games are online.', 'Offer a trade']);
-    expect([C.friendCodePlaceholder, C.addFriend, C.snapshotsNote]).toEqual(['Friend code, e.g. MYAQUA-7Q2', 'Add friend', 'Visits are read-only snapshots: friends see your tanks as they were when you last went online.']);
+    expect([C.friendCodePlaceholder, C.addFriend, C.snapshotsNote]).toEqual(['Friend code, e.g. MYAQUA-7Q2', 'Add friend', 'Friends see your tanks as they were when you last went online.']); // Audit 2026-11-17 (J33)
     // chunk 8 (ADR-0040 decision 4) — the trades note changed on purpose: Aquarium Go online exists now, trading doesn't
     expect([C.soonTitle, C.soonText, C.close]).toEqual(['Trades open later', 'Trading isn’t open yet. Nothing was offered, and your animals stay in your aquarium.', 'Close']);
     expect([C.requestSent, C.requestSentDetail, C.errorFriend]).toEqual(['Request sent', 'Their aquarium shows here once they accept.', 'That friend code didn’t match anyone. Check it and try again.']);
     expect(C.noMatch('reef')).toBe('No clubs match “reef”. Check the spelling, or paste an invite code.');
     expect([lbValue('collection_value', 214900), lbValue('prismatics', 4), lbValue('prismatics', 1), lbValue('show_wins', 1), lbValue('show_wins', 9)]).toEqual(['$214,900', '4 Prismatic', '1 Prismatic', '1 win', '9 wins']);
-    expect([C.dotNew, C.dotNews]).toEqual(['New', 'New trades and club news']);
+    expect([C.dotNew, C.dotNews]).toEqual(['New', 'New friend requests, trades or club news']); // Audit 2026-11-17: friend requests light it too (area I)
     expect(C.reminderBody('Saturday', 'Friday')).toBe('Club show on Saturday. Entries close Friday.');
     expect([monthName('2026-10'), monthName('2026-01'), monthName('2026-13'), monthName(undefined)]).toEqual(['October', 'January', null, null]);
   });
@@ -187,7 +187,7 @@ describe('the panel, server-rendered (SOC-003, SOC-005)', () => {
     expect(t).toContain('Create account');
     expect(t).toContain('Have an invite?');
     expect(out).toContain('placeholder="Invite code, e.g. FRIENDS-KDWX"');
-    expect(t).toContain('Join group');
+    expect(t).toContain('Join club');
     expect(t).toContain(C.devHint);
     expect(out).not.toContain('role="tablist"'); // no tabs signed out
   });
@@ -345,7 +345,7 @@ describe('the dock and More sheet (SOC-004, SOC-011; B-152; chunk 8, REL-025)', 
     });
     it('comes back for new trades or club news, and never in a showcase or where Social doesn’t exist', () => {
       g.progress.tutorial.flags.opened_social = true;
-      expect(navDots(g, dockItems(true), null, undefined, { social: C.dotNews }).social).toEqual({ level: 'new', label: 'New trades and club news', target: null });
+      expect(navDots(g, dockItems(true), null, undefined, { social: C.dotNews }).social).toEqual({ level: 'new', label: 'New friend requests, trades or club news', target: null });
       expect(navDots(g, dockItems(false), null, undefined, { social: C.dotNews }).social).toBeUndefined();
       const show = { ...g, isShowcase: true } as GameState;
       delete show.progress.tutorial.flags.opened_social;

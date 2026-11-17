@@ -77,6 +77,8 @@ export const SHARED_WORDS = {
   approve: 'Approve',
   decline: 'Decline',
   giveMoney: 'Give money',
+  /** Audit 2026-11-17 (J36): the member picker's own name (the section is already "Give money"). */
+  giveTo: 'Give money to',
   give: 'Give',
   spending: 'Spending:',
   spendsFreely: 'Spends freely',

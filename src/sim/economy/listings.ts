@@ -524,7 +524,7 @@ export function previewListing(state: GameState, spec: Omit<ListingSpec, 'reserv
     // lane:frags
     const fresh = contents.frags.filter((f) => isCoralDef(getDecorDef(f.defId)) && !(f.frag?.plantedHour !== undefined && state.clock.hour - f.frag.plantedHour >= FRAG_HEALED_HOURS)).length;
     if (fresh) warnings.push(`${fresh === contents.frags.length ? 'These are fresh cuts' : `${fresh} of these ${fresh === 1 ? 'is a fresh cut' : 'are fresh cuts'}`}. Buyers pay about a fifth more for a frag that has healed on its plug for a day — a frag rack is the place for that.`);
-    warnings.push('Listed frags wait in your holding system and don’t grow until the listing ends. Unsold ones come back to storage.');
+    warnings.push('Listed frags wait in storage and don’t grow until the listing ends. Unsold ones stay there.');
   }
   if (contents.tank && state.tankOrder.length === 1) warnings.push('This is your last aquarium. If it sells you will have an empty room — and the money to start a new build.');
   if (contents.tank) {
@@ -1245,7 +1245,7 @@ export function quickSell(state: GameState, creatureIds: string[]): ActionResult
   bumpCounter(state, 'animalsSold', sold.length);
   bumpCounter(state, 'salesRevenue', Math.round(q.total));
   addMastery(state, 'business', 2);
-  if (sick > 0) addReputation(state, -2 * sick, 'Sold unwell animals to the local store');
+  if (sick > 0) addReputation(state, -2 * sick, 'Sold unwell animals to the local fish store');
   emitEvent(state, { kind: 'info', text: `${LOCAL_FISH_STORE} bought ${names} for ${fmtMoney(q.total)}.${sick ? ' They noted the animals were unwell.' : ''}` });
   // lane:guide — say what the sale cost in reputation (it used to happen without a word)
   return { ok: true, message: `Sold ${names} to ${LOCAL_FISH_STORE} for ${fmtMoney(q.total)}.${sick ? ` Selling ${sick === 1 ? 'an unwell animal' : `${sick} unwell animals`} cost ${2 * sick} reputation.` : ''}` };

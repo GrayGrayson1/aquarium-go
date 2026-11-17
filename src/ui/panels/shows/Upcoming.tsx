@@ -32,13 +32,13 @@ export function UpcomingTab({ g, onEnter }: { g: GameState; onEnter: (showId: st
           </div>
           <div className="sh-note">
             <Info size={13} aria-hidden />
-            <span>Show day is a game abstraction: entries are benched at the hall for the judging and home by evening. They stay in your tank, and come back a little unsettled.</span>
+            <span>Your animal never leaves its tank: it’s judged on show day and may be a little unsettled afterwards.</span>
           </div>
         </div>
       ) : (
         <div className="sh-note">
           <Info size={13} aria-hidden />
-          <span>Only healthy, settled adults travel. Genes and care count, and a calm animal that trusts you shows better.</span>
+          <span>Only healthy, settled adults can enter. Genes and care count, and a calm animal that trusts you shows better.</span>
         </div>
       )}
       {stats && stats.entered > 0 && (
@@ -87,7 +87,7 @@ export function ShowCard({ g, show, onEnter }: { g: GameState; show: Show; onEnt
       <div>
         <h4 className="sh-show__name">{show.name}</h4>
         <div className="sh-show__host">
-          {show.tier === 'club' ? `A friendly table show · judge ${show.judge}` : `${tier.name} show · judge ${show.judge}`}
+          {show.tier === 'club' ? `A friendly club show · judge ${show.judge}` : `${tier.name} show · judge ${show.judge}`}
         </div>
       </div>
       <div className="sh-classes" aria-label="Classes">
@@ -100,14 +100,19 @@ export function ShowCard({ g, show, onEnter }: { g: GameState; show: Show; onEnt
             <span key={cl.classId} className={clsx('sh-class-chip', locked && 'is-locked', !locked && n === 0 && 'is-none')} title={locked ? 'Aquascape classes open with Aquascape Awards' : def.blurb}>
               {locked && <Lock size={11} aria-hidden />}
               {def.short}
-              {open && !locked && <b aria-label={`${n} of yours eligible`}>{n}</b>}
+              {open && !locked && (
+                <b>
+                  <span aria-hidden>{n}</span>
+                  <span className="pn-sr">{n} of yours eligible</span>
+                </b>
+              )}
             </span>
           );
         })}
       </div>
       <div className="sh-show__money">
         <span className="sh-purse">
-          Purse <strong>{purseRange(show.classes.map((c) => c.purse))}</strong> per class
+          Prizes <strong>{purseRange(show.classes.map((c) => c.purse))}</strong> per class
         </span>
         <span>
           Entry <strong>{money(show.fee)}</strong>

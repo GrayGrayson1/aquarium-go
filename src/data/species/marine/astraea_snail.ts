@@ -127,7 +127,7 @@ export const astraeaSnail: SpeciesDefinition = {
     variation: 0.25,
     notes: 'Colour slots for the snail renderer: body/body2 = olive cone and its patches; accent = algae film; fin/belly = grey-tan foot (unsourced). A flat-sided cone of about 6 whorls with slanting folds that stand out as knobs at each keel, a nearly flat base.',
   },
-  visualMorphs: ['Astraea (shell colour varies)'],
+  visualMorphs: ['Astraea (no morphs; shell colour varies)'],
 
   behaviorSet: 'snail',
   behaviorTraits: { cruiseSpeed: 0.03, burstSpeed: 0.04, turnRate: 0.5, hoverTendency: 0, schoolingTightness: 0, restOnBottom: 1, hitching: 0, burrowing: 0, glassSurfing: 0, curiosity: 0.1, nocturnal: 0.6, pickRadiusMul: 1.5 },

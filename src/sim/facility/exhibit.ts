@@ -208,7 +208,8 @@ export function exhibitInfo(state: GameState, tank: Tank): ExhibitInfo {
     if (c.illness || (st && (st.health < 45 || st.stress > 78))) sick++;
     // Same line as the tank status: a starving animal (hunger ≥ 90) is suffering, and visitors notice.
     if (st && (st.health < 25 || st.hunger >= 90)) suffering++;
-    if (sp?.conservation?.status && !/least concern|not evaluated|domesticated/i.test(sp.conservation.status)) conservation = Math.max(conservation, 0.8);
+    // Audit 2026-11-17 (J40): "not assessed" is the same as not evaluated, not a threatened species
+    if (sp?.conservation?.status && !/least concern|not evaluated|not assessed|domesticated/i.test(sp.conservation.status)) conservation = Math.max(conservation, 0.8);
     else conservation = Math.max(conservation, 0.35);
     const s = appeal * (0.6 + v) + (c.isStarter ? 0.15 : 0) + (c.visitorWows ?? 0) * 0.002 + (c.awards?.titles?.length ?? 0) * 0.1; // lane:shows: titled animals star
     if (s > starScore) {

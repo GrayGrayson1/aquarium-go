@@ -285,7 +285,7 @@ describe('DES-013 A: the design words chunk 6 built (ADR-0035 decision 3)', () =
     cl.stageSinceHour = f.g.clock.hour - 120;
     // Audit 2026-11-17 (H15): with nothing in stock the row says the young go hungry, so give it baby brine to dose
     f.g.inventory.foods.baby_brine_live = 20;
-    expect(ops(f.g).feed()).toMatch(/Fresh 1 betta [a-z -]+ · \d+ (brine|infusoria)/);
+    expect(ops(f.g).feed()).toMatch(/Fresh 1 betta [a-z -]+ · \d+ (baby brine|infusoria) servings a day/);
     f.g.inventory.foods.baby_brine_live = 0;
     f.g.inventory.foods.infusoria_culture = 0;
     expect(ops(f.g).feed()).toMatch(/Fresh 1 betta [a-z -]+ · no baby brine or infusoria in stock: the young go hungry Out of food/);
@@ -303,7 +303,7 @@ describe('DES-013 A: the design words chunk 6 built (ADR-0035 decision 3)', () =
     expect(ops(held).bell()).toMatch(/Manual mode since \d+:\d\d [AP]M · 5 of 5 systems held Open/); // C37
     const f = waitingLine();
     f.line.waiting = true;
-    expect(ops(f.g).bell()).toMatch(/Add a quarantine tank · \$\d+/); // C39 (phone: "Add QT tank · $95", useIsMobile)
+    expect(ops(f.g).bell()).toMatch(/Add a quarantine tank · \$\d+/); // C39 (phone: "Add quarantine tank · $95", useIsMobile)
     const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 5 });
     use(g);
     expect(render(createElement(AlertsPopover))).toMatch(/All tanks look healthy\./); // one tank keeps the 0.5 words
@@ -376,7 +376,7 @@ describe('DES-013 B: the strings chunk 5 shipped that the owner approved as ship
     expect(ops(low.g).water()).toMatch(/\d+ gal mixing · ready 10:00 PM/);
     const offLow = saltLow();
     offLow.g.staff!.ordersOff = true;
-    expect(ops(offLow.g).problems()).toContain('Rosa’s orders');
+    expect(ops(offLow.g).problems()).toContain('Turn on Rosa’s orders'); // Audit 2026-11-17 (J34): the button says what it's for
     holdAll(off);
     expect(ops(off).water()).toMatch(/Manual mode: .+ on hold\. Open/);
   });

@@ -84,7 +84,7 @@ export const ornateBichir: SpeciesDefinition = {
     predationWithoutNursery: 0.9,
     nurseryRequired: true,
     maxRaisedPerClutch: 8,
-    notes: 'The male chases and nudges the female, cups his anal fin to catch her eggs, fertilises them and scatters them into plants. The adults then eat eggs, so they come out. The eggs hatch in three or four days into tadpole-like larvae with feathery gills, which live on their yolk before taking baby brine shrimp. In the wild a soft-water rainy season sets it off; in tanks it is hard and slow.',
+    notes: 'The male chases and nudges the female, cups his anal fin to catch her eggs, fertilises them and scatters them into plants. The adults then eat the eggs, so take the adults out. The eggs hatch in three or four days into tadpole-like larvae with feathery gills, which live on their yolk before taking baby brine shrimp. In the wild a soft-water rainy season sets it off; in tanks it is hard and slow.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'none',

@@ -37,7 +37,7 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
     explain: (sp) =>
       viable
         ? `${sp.commonName} females carry their eggs under the tail until tiny shrimplets hatch.`
-        : `${sp.commonName} larvae drift as plankton and need special ${sp.environment === 'marine' ? 'marine' : 'brackish'} larval rearing — beyond this shop for now.`,
+        : `${sp.commonName} larvae drift as plankton and need special ${sp.environment === 'marine' ? 'marine' : 'brackish'} larval rearing, which Aquarium Go doesn’t include.`,
 
     step(env: StepEnv) {
       const { state, tank, species: sp, members, hour, ctx } = env;
@@ -104,10 +104,10 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
     check(cc) {
       const { tank, sp } = cc;
       if (!viable) {
-        const r = `${sp.commonName} larvae need specialised ${sp.environment === 'marine' ? 'marine' : 'brackish'} larval rearing that isn’t available yet.`;
+        const r = `${sp.commonName} larvae need specialised ${sp.environment === 'marine' ? 'marine' : 'brackish'} larval rearing, which Aquarium Go doesn’t include.`;
         cc.reasons.push(r);
         cc.startBlockers.push(r);
-        cc.steps.push('Females may still carry eggs — enjoy the sight, but the larvae can’t be raised in this shop yet.');
+        cc.steps.push('Females may still carry eggs — enjoy the sight, but the larvae can’t be raised in Aquarium Go.');
         return;
       }
       if (!tank) return;
@@ -182,7 +182,7 @@ export const shrimpLarvalMarineModule = makeShrimp(
     hatchAtNight: true,
     larvaeViable: false,
     nonViableText:
-      'The shrimp eggs hatched overnight into drifting larvae. They need weeks of specialised brackish or marine larval rearing — something this shop can’t offer yet — so they were lost to the current.',
+      'The shrimp eggs hatched overnight into drifting larvae. They need weeks of specialised brackish or marine larval rearing, which Aquarium Go doesn’t include, so they were lost to the current.',
     starveSeverity: 1,
     coverShelter: 0,
     yolkFrac: 0,

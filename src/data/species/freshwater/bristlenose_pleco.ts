@@ -102,7 +102,7 @@ export const bristlenosePleco: SpeciesDefinition = {
         mode: 'mendelian',
         alleles: [
           { id: 'N', name: 'Normal', dominance: 2, frequency: 0.72 },
-          { id: 'r', name: 'Super red', dominance: 1, frequency: 0.12 },
+          { id: 'r', name: 'Super Red', dominance: 1, frequency: 0.12 },
           { id: 'c', name: 'Calico', dominance: 1, frequency: 0.08 },
           { id: 'l', name: 'Lemon', dominance: 1, frequency: 0.08 },
         ],

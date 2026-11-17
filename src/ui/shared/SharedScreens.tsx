@@ -48,7 +48,7 @@ export function SharedOpening() {
         </div>
         {phase !== 'saving' && phase !== 'checking' && (
           <Button variant="ghost" size="sm" onClick={() => void leaveSharedShop()} data-testid="shared-opening-back">
-            <ArrowLeft size={14} aria-hidden /> {from === 'title' ? 'Title' : W.back}
+            <ArrowLeft size={14} aria-hidden /> {from === 'title' ? 'Back to the title screen' : W.back}
           </Button>
         )}
       </div>

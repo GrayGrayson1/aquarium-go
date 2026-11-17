@@ -84,7 +84,7 @@ export function AutomationSection({ game }: { game: GameState }) {
 function Item({ g, issue, desk, small, onAddQt, onDetails }: { g: GameState; issue: IssueView; desk: boolean; small: boolean; onAddQt: (lineId: string) => void; onDetails: () => void }) {
   const Icon = issue.tone === 'danger' ? OctagonAlert : TriangleAlert;
   const buy = issue.action && issue.action.id.startsWith('buy') ? issue.action : null;
-  // chunk 6 (DES-013, §8.3): with the Desk, a held-up line's main action is the fix (phone "Add QT tank · $95")
+  // chunk 6 (DES-013, §8.3): with the Desk, a held-up line's main action is the fix (phone "Add quarantine tank · $95")
   const lineId = desk && issue.problem.kind === 'line' ? issue.problem.lineId : null;
   const kit = lineId ? quarantineKit(g, lineId) : null;
   const tab = TAB[issue.tab];
@@ -111,7 +111,7 @@ function Item({ g, issue, desk, small, onAddQt, onDetails }: { g: GameState; iss
           )}
           {lineId && kit && (
             <Button size="sm" data-testid={`alerts-item-add-qt`} onClick={() => onAddQt(lineId)}>
-              {small ? 'Add QT tank' : 'Add a quarantine tank'} · {formatMoney(kit.price)}
+              {small ? 'Add quarantine tank' : 'Add a quarantine tank'} · {formatMoney(kit.price)}
             </Button>
           )}
           {desk ? (

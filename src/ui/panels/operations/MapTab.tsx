@@ -216,7 +216,7 @@ function TankTile({ ctx, t }: { ctx: Ctx; t: Tank }) {
   const autoFeed = t.equipment.some((e) => e.on && !e.failed && getEquipmentDef(e.defId)?.kind === 'autofeeder');
   let sub: string;
   if (L === 'water') sub = need ? `${g1(need.fresh + need.salt)} gal a day${t.equipment.some((e) => e.defId === 'ato') ? ' · top-off' : ''}` : 'By hand';
-  else if (L === 'food') sub = doser ? `Doser · ${doserNeeds(g, t).reduce((a, n) => a + n.servings, 0) * 3} a day` : feeder && animals > 0 ? 'Autofeeder' : kept ? 'Keepers’ rounds' : 'By hand'; // an Autofeeder never feeds fry (Audit 2026-11-17, H2)
+  else if (L === 'food') sub = doser ? `Doser · ${doserNeeds(g, t).reduce((a, n) => a + n.servings, 0) * 3} servings a day` : feeder && animals > 0 ? 'Autofeeder' : kept ? 'Keepers’ rounds' : 'By hand'; // an Autofeeder never feeds fry (Audit 2026-11-17, H2)
   else if (L === 'animals') sub = `${animals + young} ${animals + young === 1 ? 'animal' : 'animals'}${lines.length ? ` · ${lines.join(' · ')}` : ''}${waiting || pairWaits ? ' · waits' : ''}`;
   else if (waiting) sub = places ? `Full · ${places.used}/${places.cap}` : 'Full · waits';
   else if (pairWaits) sub = 'Pair waits';
@@ -259,13 +259,13 @@ function WaterArea({ ctx }: { ctx: Ctx }) {
   return (
     <Area ctx={ctx} id="water" title="Water room" dim={L === 'animals'} style={{ gridColumn: ctx.small ? undefined : 'span 2' }}>
       <div className="ops-area__tiles" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-        <Machine ctx={ctx} id="prep" name="Prep station" sub={`${prepRate(room)} gal an hour`} />
-        <Machine ctx={ctx} id="mixer" name="Salt mixer" sub={mixer} warn={salt?.state === 'out' && !held} />
+        <Machine ctx={ctx} id="prep" name="Water Prep Station" sub={`${prepRate(room)} gal an hour`} />
+        <Machine ctx={ctx} id="mixer" name="Salt Mixing Station" sub={mixer} warn={salt?.state === 'out' && !held} />
         <Machine ctx={ctx} id="fresh" name="Fresh reserve" sub={`${Math.floor(room.fresh)} / ${freshCap(room)} gal`}>
           <OpsBar value={room.fresh / freshCap(room)} label="Fresh reserve" />
         </Machine>
-        <Machine ctx={ctx} id="salt" name="Salt reserve" sub={!needed ? 'Not needed' : salt?.state === 'out' && salt.shortDay ? `Runs short about Day ${salt.shortDay}` : `${Math.floor(room.salt)} / ${saltCap(room)} gal`} warn={salt?.state === 'out'}>
-          <OpsBar value={room.salt / saltCap(room)} kind="salt" label="Salt reserve" />
+        <Machine ctx={ctx} id="salt" name="Salt water reserve" sub={!needed ? 'Not needed' : salt?.state === 'out' && salt.shortDay ? `Runs short on about Day ${salt.shortDay}` : `${Math.floor(room.salt)} / ${saltCap(room)} gal`} warn={salt?.state === 'out'}>
+          <OpsBar value={room.salt / saltCap(room)} kind="salt" label="Salt water reserve" />
         </Machine>
       </div>
     </Area>
@@ -297,7 +297,7 @@ function SuppliesArea({ ctx }: { ctx: Ctx }) {
   }
   const fed = [...byFood.entries()];
   return (
-    <Area ctx={ctx} id="supplies" title="Supplies" dim={L === 'animals' || L === 'water'}>
+    <Area ctx={ctx} id="supplies" title="Supplies shelf" dim={L === 'animals' || L === 'water'}>
       {(g.facility.water || g.inventory.salt > 0) && <Machine ctx={ctx} id="saltmix" name="Salt mix" sub={`${g1(g.inventory.salt)} kg${salt ? ` · ${saltWord(g, salt)}` : ''}`} warn={salt?.state === 'out'} />}
       {fed.length ? (
         fed.map(([id, k]) => <Machine key={id} ctx={ctx} id={`dry:${id}`} name={getFoodDef(id)?.name ?? id} sub={`${Math.floor(g.inventory.foods[id] ?? 0)} · ${k === 1 ? 'Autofeeder' : `${k} Autofeeders`}`} />)
@@ -339,8 +339,8 @@ function FoodArea({ ctx }: { ctx: Ctx }) {
   return (
     <Area ctx={ctx} id="food" title="Live food room" dim={L === 'water' || L === 'animals'} style={{ gridColumn: ctx.small ? undefined : 'span 2' }}>
       <div className="ops-area__tiles" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-        <Machine ctx={ctx} id="jars" name={`Infusoria jars · ${room.jars.length}`} sub={`${Math.round((room.jars.length * FOOD_ROOM.jarYield * 24) / FOOD_ROOM.jarHours)} a day${next('jar')}`} />
-        <Machine ctx={ctx} id="cones" name={`Brine shrimp hatchery · ${room.cones.length}`} sub={`${room.cones.length * FOOD_ROOM.coneYield} a day${next('cone')}`} />
+        <Machine ctx={ctx} id="jars" name={`Infusoria jars · ${room.jars.length}`} sub={`${Math.round((room.jars.length * FOOD_ROOM.jarYield * 24) / FOOD_ROOM.jarHours)} servings a day${next('jar')}`} />
+        <Machine ctx={ctx} id="cones" name={`Brine Shrimp Hatchery · ${room.cones.length}`} sub={`${room.cones.length * FOOD_ROOM.coneYield} servings a day${next('cone')}`} />
       </div>
     </Area>
   );
@@ -368,22 +368,22 @@ function Pipes({ ctx }: { ctx: Ctx }) {
   const show = L === 'all' || L === 'water' || L === 'food';
   if (!show) return null;
   return (
-    <div style={{ gridColumn: ctx.small ? undefined : '1 / -1', display: 'flex', flexDirection: 'column', gap: 4 }} aria-hidden>
+    <div style={{ gridColumn: ctx.small ? undefined : '1 / -1', display: 'flex', flexDirection: 'column', gap: 4 }}>
       {g.facility.water &&
         L !== 'food' &&
         rows.map((r) => (
           <div key={r.area} className="ops-pipe">
             <span style={{ minWidth: 150 }}>
-              {r.area} · {g1(r.f)} fresh + {g1(r.s)} salt
+              {r.area} · {g1(r.f)} gal fresh + {g1(r.s)} gal salt
             </span>
-            <span className={clsx('ops-pipe__line', held && isHeld(g, 'water') ? 'ops-pipe__line--held' : 'ops-pipe__line--fresh')} />
-            <span className={clsx('ops-pipe__line', held && isHeld(g, 'water') ? 'ops-pipe__line--held' : saltOut ? 'ops-pipe__line--short' : 'ops-pipe__line--salt')} />
+            <span aria-hidden className={clsx('ops-pipe__line', held && isHeld(g, 'water') ? 'ops-pipe__line--held' : 'ops-pipe__line--fresh')} />
+            <span aria-hidden className={clsx('ops-pipe__line', held && isHeld(g, 'water') ? 'ops-pipe__line--held' : saltOut ? 'ops-pipe__line--short' : 'ops-pipe__line--salt')} />
           </div>
         ))}
       {g.facility.food && L !== 'water' && (
         <div className="ops-pipe">
           <span style={{ minWidth: 150 }}>Live food · to the dosers</span>
-          <span className={clsx('ops-pipe__line', held && isHeld(g, 'food') ? 'ops-pipe__line--held' : 'ops-pipe__line--food')} />
+          <span aria-hidden className={clsx('ops-pipe__line', held && isHeld(g, 'food') ? 'ops-pipe__line--held' : 'ops-pipe__line--food')} />
         </div>
       )}
     </div>
@@ -577,7 +577,7 @@ function RoomDetails({ ctx, room, nav }: { ctx: Ctx; room: RoomId; nav: OpsNav }
       {room === 'water' && g.facility.water && (
         <div className="ops-rows">
           <Kv k="Fresh reserve" v={`${Math.floor(g.facility.water.fresh)} / ${freshCap(g.facility.water)} gal`} />
-          <Kv k="Salt reserve" v={`${Math.floor(g.facility.water.salt)} / ${saltCap(g.facility.water)} gal`} />
+          <Kv k="Salt water reserve" v={`${Math.floor(g.facility.water.salt)} / ${saltCap(g.facility.water)} gal`} />
         </div>
       )}
       {room === 'food' && g.facility.food && (

@@ -22,7 +22,7 @@ export function EntriesTab({ g, onBrowse }: { g: GameState; onBrowse: () => void
   const pending = (s?.entries ?? []).filter((e) => e.status === 'entered');
   if (!pending.length)
     return (
-      <EmptyState icon={<ClipboardList size={26} />} title="No entries waiting" action={<Button size="sm" onClick={onBrowse}>Browse the calendar</Button>}>
+      <EmptyState icon={<ClipboardList size={26} />} title="No entries waiting" action={<Button size="sm" onClick={onBrowse}>See upcoming shows</Button>}>
         Enter a healthy, settled adult — or one of your own aquascapes — in an upcoming show.
       </EmptyState>
     );
@@ -153,7 +153,7 @@ function ResultCard({ g, e, open, isNew, onToggle }: { g: GameState; e: ShowEntr
                 <li key={l}>{l}</li>
               ))}
             </ul>
-            <div className="sh-crit" aria-label="Points by criterion">
+            <div className="sh-crit" role="group" aria-label="Points by criterion">
               {e.card.criteria.map((c) =>
                 c.key === 'judge' ? (
                   <div key={c.key} className="sh-crit__row sh-crit__row--eye">

@@ -95,7 +95,7 @@ export const whiteCloudMinnow: SpeciesDefinition = {
   genetics: {
     loci: [
       { id: 'color', name: 'Colour', mode: 'mendelian', alleles: [{ id: 'W', name: 'Wild colour', dominance: 2, frequency: 0.9 }, { id: 'g', name: 'Golden', dominance: 1, frequency: 0.1 }] },
-      { id: 'fins', name: 'Fin length', mode: 'mendelian', alleles: [{ id: 's', name: 'Standard', dominance: 1, frequency: 0.93 }, { id: 'L', name: 'Long-fin (meteor)', dominance: 2, frequency: 0.04 }] },
+      { id: 'fins', name: 'Fin length', mode: 'mendelian', alleles: [{ id: 's', name: 'Standard', dominance: 1, frequency: 0.93 }, { id: 'L', name: 'Long-fin (Meteor)', dominance: 2, frequency: 0.04 }] },
     ],
     phenotypes: [
       { id: 'golden', name: 'Golden', layer: 'base', rarity: 0.25, when: [{ locus: 'color', allele: 'g', count: 'hom' }], visual: { bodyColor: '#e8b84a', bodyColor2: '#d9a038', bellyColor: '#f6e8c0', finColor: '#d9483a', finColor2: '#f7e6b0', accentColor: '#fff0c0', iridescence: 0.5 } },

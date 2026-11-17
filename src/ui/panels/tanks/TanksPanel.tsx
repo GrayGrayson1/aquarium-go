@@ -382,7 +382,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
         {convertGate.ok ? (
           <div className="pn-row pn-gap-2 pn-row--wrap">
             {/* lane:w2-ui — locked water types say so up front (same gates as Build › Tanks) instead of after a failed Convert */}
-            <Select<WaterClass> label="Water class" value={wc} onChange={setWc} options={PLAYABLE_WATER_CLASSES.map((w) => ({ id: w, label: wcLocked(g, w) && w !== tank.waterClass ? `${WATER_CLASS_LABEL[w]} (locked)` : WATER_CLASS_LABEL[w] }))} />
+            <Select<WaterClass> label="Water type" value={wc} onChange={setWc} options={PLAYABLE_WATER_CLASSES.map((w) => ({ id: w, label: wcLocked(g, w) && w !== tank.waterClass ? `${WATER_CLASS_LABEL[w]} (locked)` : WATER_CLASS_LABEL[w] }))} />
             <Button size="sm" data-testid="tank-convert" disabled={wc === tank.waterClass || (wcLocked(g, wc) && wc !== tank.waterClass)} title={wcLocked(g, wc) && wc !== tank.waterClass ? wcLockHint(g, wc) : undefined} onClick={() => act({ k: 'convertWaterClass', tank: tank.id, wc }, { sound: 'splash' })}>
               <Droplets size={14} /> Convert
             </Button>

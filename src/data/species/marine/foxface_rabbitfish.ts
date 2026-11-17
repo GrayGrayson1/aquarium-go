@@ -155,7 +155,7 @@ export const foxfaceRabbitfish: SpeciesDefinition = {
   sourceReferences: [
     { id: 'fishbase-siganus-vulpinus', title: 'FishBase — Siganus vulpinus (Foxface)', url: 'https://www.fishbase.se/summary/Siganus-vulpinus.html', tier: 1, facts: ['max 25 cm SL, common 20 cm TL', 'depth 1–30 m', 'coral-rich reefs, often among staghorn coral', 'singly or pairs; juveniles school', 'feeds on algae', 'stout venomous spines', 'IUCN Least Concern (2015)'] },
     { id: 'liveaquaria-foxface', title: 'LiveAquaria — Foxface Lo', url: 'https://www.liveaquaria.com/product/687/?pcatid=687', tier: 2, facts: ['min tank 125 gal', 'max 9 in', 'reef compatible with caution — may nip LPS and soft corals if underfed', 'venomous dorsal spines', 'eats undesirable algae', 'peaceful except with other rabbitfish', 'price ~$110'] },
-    { id: 'wikipedia-foxface', title: 'Wikipedia — Foxface rabbitfish (summarising FishBase and Australian Museum)', url: 'https://en.wikipedia.org/wiki/Foxface_rabbitfish', tier: 3, facts: ['changes to dark brown when threatened', 'duller mottled pattern at night or under stress', 'rabbitfish venom similar to stonefish venom'] },
+    { id: 'wikipedia-foxface', title: 'Wikipedia — Foxface rabbitfish', url: 'https://en.wikipedia.org/wiki/Foxface_rabbitfish', tier: 3, facts: ['changes to dark brown when threatened', 'duller mottled pattern at night or under stress', 'rabbitfish venom similar to stonefish venom'] },
   ],
   confidenceNotes: [
     'Reef safety: LiveAquaria says "with caution" (nips LPS/soft corals when hungry); the brief and hobby experience call it mostly reef-safe. Modelled as mostly_safe with coralRisk 0.15.',

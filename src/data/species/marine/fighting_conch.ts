@@ -141,7 +141,7 @@ export const fightingConch: SpeciesDefinition = {
     compatibilityNotes: 'Reef-safe but bulldozes loose frags. Large hermits may kill it for its shell; triggers, puffers and some wrasses eat snails; crabs and shrimp nip its eyes and snout.',
     breedingOverview: 'Females lay long, sand-coated egg strings; the larvae drift for about three weeks. Raised in aquaculture, not in home tanks.',
     conservationNote: 'Not assessed by the IUCN. Florida requires a licence to collect a live conch.',
-    funFact: 'The "fighting" is males sparring with their snouts over a female — and the way it thrashes its foot when picked up.',
+    funFact: 'The “fighting” is males sparring with their snouts over a female — and the way it thrashes its foot when picked up.',
     inGameBehavior: 'Lurches across the sand on its claw, ploughing as it goes, and settles half-buried with only its shell and eyestalks showing.',
     feedingNote: 'Sifts the sand for detritus, diatoms and algae, mostly at night. In a small or new tank add a sinking pellet or a bit of seaweed now and then.',
     keeperTip: 'Glue down your frags and guard the overflow — conchs wander and bulldoze anything loose.',

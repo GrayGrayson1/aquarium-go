@@ -280,7 +280,7 @@ export function PairPicker({ g, line, onClose }: { g: GameState; line: Productio
       testId="production-fix-pair-dialog"
       actions={
         <Button variant="primary" disabled={!picked} onClick={() => picked && act({ k: 'setLinePair', line: line.id, a: picked.motherId, b: picked.fatherId }, { quiet: true, after: (r) => r?.ok && onClose() })}>
-          Done
+          Use this pair
         </Button>
       }
     >

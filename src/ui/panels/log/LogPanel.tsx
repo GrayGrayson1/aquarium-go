@@ -84,7 +84,7 @@ export function LogPanel() {
 
   return (
     <PanelLayout
-      title="Log"
+      title="Event log"
       icon={<ScrollText size={20} />}
       subtitle={`${g.log.length} events · Day ${today}, ${formatClock(g.clock.hour)}`}
       toolbar={
