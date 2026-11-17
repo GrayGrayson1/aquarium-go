@@ -10,6 +10,8 @@ import { waterChange, waterChangeCost, dose } from '@/sim/care';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { fixForWaterIssue } from '@/ui/common/fixLinks';
 import { buyTank } from '@/sim/economy';
+import { addCreature, createCreature } from '@/sim/life';
+import { simRng } from '@/sim/rng';
 
 type Starter = 'betta' | 'ocellaris_clownfish' | 'axolotl' | 'lined_seahorse';
 const base = (starter: Starter = 'betta') => newGame({ starterId: starter, starterName: 'Test', seed: 99 });
@@ -183,5 +185,43 @@ describe('C5: a new tank’s advice says what to watch and how long, not "wait u
     const id = buyTank(s, 'g29', 'freshwater_tropical').tankId!;
     const p = getWaterReport(s, id).params.find((x) => x.key === 'cycle')!;
     expect(p.advice).toMatch(/about a week, or a few days with bottled bacteria or mature filter media\. Without food or animals the bacteria fade\.$/);
+  });
+});
+
+describe('C6: temperature advice aims at what suits the animals, and calls a split a compatibility problem', () => {
+  it('an axolotl in a tank with its heater at 25.5 °C is told to turn it down below the axolotl’s maximum', () => {
+    const s = base('axolotl');
+    const t = firstTank(s);
+    t.equipment = t.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'chiller');
+    t.equipment.push({ id: 'test_heater', defId: 'heater_50w', installedHour: 0, condition: 1, on: true, setting: 25.5 });
+    t.water.tempC = 25.5;
+    const advice = getWaterReport(s, t.id).params.find((p) => p.key === 'temp')!.advice!;
+    const m = /^Turn the heater down to about ([\d.]+) °C\.$/.exec(advice);
+    expect(m, advice).not.toBeNull();
+    expect(Number(m![1])).toBeLessThanOrEqual(18);
+  });
+
+  it('never says to turn the heater "down" to a warmer number', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    const heater = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'heater')!;
+    heater.setting = 24;
+    t.water.tempC = 29; // warmer than the betta likes, but not from this heater
+    const advice = getWaterReport(s, t.id).params.find((p) => p.key === 'temp')!.advice!;
+    expect(advice).not.toMatch(/Turn the heater down/);
+  });
+
+  it('too warm for one group and too cold for another: rehome, not "cool it" or "heat it"', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    const rng = simRng(s);
+    addCreature(s, createCreature(s, rng, 'axolotl', { ageDays: 200 }), t.id);
+    addCreature(s, createCreature(s, rng, 'discus', { ageDays: 200 }), t.id);
+    t.water.tempC = 26;
+    const rep = getWaterReport(s, t.id);
+    const p = rep.params.find((x) => x.key === 'temp')!;
+    expect(p.reason).toMatch(/No temperature suits all of these animals at once — a compatibility problem, not a care one\.$/);
+    expect(p.advice).toBe('Rehome one group to a tank with water that suits it.');
+    expect(fixForWaterIssue(t, { text: p.reason!, advice: p.advice, param: 'temp' })?.label).toBe('Open Livestock');
   });
 });

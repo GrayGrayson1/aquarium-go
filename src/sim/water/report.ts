@@ -386,17 +386,34 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
   {
     // lane:fix-water — up to TEMP_TOLERANCE_C past a limit is WATCH (stress, no harm), as for pH.
     const j = judgeRange(w.tempC, groups, (sp) => sp.tempC, d.temp, ' °C', 1, d.label, TEMP_TOLERANCE_C);
+    let reason = j.reason;
     let advice: string | undefined;
+    // Audit 2026-11-17 C6 — animals whose tolerated ranges don't meet (an axolotl with a betta), or water too warm for
+    // one group and too cold for another: no setting helps, as the pH row already says
+    const tRanges = species.map((sp) => sp.tempC);
+    const noCommon = tRanges.length > 1 && Math.max(...tRanges.map((r) => r.min)) > Math.min(...tRanges.map((r) => r.max));
+    const split = j.status !== 'good' && !s.stuckHeaters.length && (noCommon || (j.high && j.low));
     if (j.status !== 'good') {
       // Audit 2026-11-17 C3 — a heater or chiller that's installed but failed or switched off is the fix, not a new one
       const idleChiller = idleUnit(s, 'chiller');
       const idleHeater = idleUnit(s, 'heater');
+      // Audit 2026-11-17 C6 — the setting that suits them all (as the setpoint note says), never a warmer one: the middle
+      // of their shared ideal range, else of the range they all tolerate, else of the water class's
+      const iLo = Math.max(...tRanges.map((r) => r.idealMin));
+      const iHi = Math.min(...tRanges.map((r) => r.idealMax));
+      const tLo = Math.max(...tRanges.map((r) => r.min));
+      const tHi = Math.min(...tRanges.map((r) => r.max));
+      const mid = tRanges.length && iLo <= iHi ? (iLo + iHi) / 2 : tRanges.length && tLo <= tHi ? (tLo + tHi) / 2 : (d.temp.idealMin + d.temp.idealMax) / 2;
+      const aim = Math.round(mid * 2) / 2;
       if (s.stuckHeaters.length) advice = 'A heater thermostat has stuck on — switch that heater off now.';
-      else if (j.high)
+      else if (split) {
+        reason = `${reason ?? ''} No temperature suits all of these animals at once — a compatibility problem, not a care one.`.trim();
+        advice = 'Rehome one group to a tank with water that suits it.';
+      } else if (j.high)
         advice = s.chillers.length
           ? `Lower the chiller setting${s.heaterSet !== null ? ' and the heater' : ''}.`
-          : s.heaterSet !== null && s.heaterSet > w.tempC - 1
-            ? `Turn the heater down to about ${fmt(Math.max(...species.map((x) => x.tempC.idealMin), d.temp.idealMin) + 0.5, 0)} °C.`
+          : s.heaterSet !== null && s.heaterSet > w.tempC - 1 && aim < s.heaterSet - 0.25
+            ? `Turn the heater down to about ${fmt(aim, aim % 1 ? 1 : 0)} °C.`
             : idleChiller
               ? idleAdvice(idleChiller)
               : `The room keeps this tank near ${ROOM_TEMP_C} °C. Add a chiller, or a clip-on fan for 1–2 °C of evaporative cooling.`;
@@ -410,8 +427,8 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
             : 'Add a heater sized for this tank (about 3–5 W per gallon).';
     }
     add(
-      { key: 'temp', label: 'Temperature', value: w.tempC, unit: '°C', display: `${fmt(w.tempC, 1)} °C`, status: j.status, ideal: j.ideal, reason: j.reason, advice },
-      j.status === 'danger' ? (j.high ? 'Water is too warm' : 'Water is too cold') : j.high ? 'Water is a little warm' : 'Water is a little cool',
+      { key: 'temp', label: 'Temperature', value: w.tempC, unit: '°C', display: `${fmt(w.tempC, 1)} °C`, status: j.status, ideal: j.ideal, reason, advice },
+      split ? 'No temperature suits them all' : j.status === 'danger' ? (j.high ? 'Water is too warm' : 'Water is too cold') : j.high ? 'Water is a little warm' : 'Water is a little cool',
     );
   }
 
