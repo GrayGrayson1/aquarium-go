@@ -196,7 +196,7 @@ export function SharedClosingCard() {
       }
     >
       <p className="ag-shared-first" id="shared-closing-text" data-why={closing.why} data-testid="shared-closing-text">
-        {siteBehind ? W.siteBehind : closingText(closing.why, { club, until: closing.until, savedAt: closing.savedAt, now })}
+        {siteBehind ? W.siteBehind : closingText(closing.why, { club, until: closing.until, savedAt: closing.savedAt, now, onTitle })}
       </p>
     </Modal>
   );

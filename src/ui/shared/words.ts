@@ -25,7 +25,8 @@ export const SHARED_WORDS = {
   saving: 'Saving your aquarium…',
   waking: 'Waking the shared shop… This takes about a minute when nobody’s been in for a while.',
   catchingUpEmpty: 'Catching up on the time nobody was here…',
-  firstTime: (club: string) => `Your own aquarium is saved and waits for you. Everything here is shared with ${club}.`,
+  // audit 2026-11-17, I25: where the way back is (the top-left pill's menu: the shop's name, or "👥 2 ▾" on a phone)
+  firstTime: (club: string) => `Your own aquarium is saved and waits for you. Everything here is shared with ${club}. To go back, open the menu at the top left and choose “Back to my aquarium”.`,
   gotIt: 'Got it',
   // inside
   strip: (shop: string, names: string[]) => `Shared · ${shop} · Here: ${names.join(', ')}`,
@@ -101,10 +102,11 @@ function sentence(s: string): string {
 export type VisitEnd = ClosingReason | 'signedOut' | 'offline' | 'unreachable';
 
 /** What a `closing` says (§8), with the day shops open again, the last save and the club filled in. */
-export function closingText(why: VisitEnd, o: { club: string; until?: string; savedAt?: number; now?: number }): string {
+export function closingText(why: VisitEnd, o: { club: string; until?: string; savedAt?: number; now?: number; /** audit I24: shown over the title screen */ onTitle?: boolean }): string {
   switch (why) {
     case 'signedOut':
-      return 'You need to be signed in to play the shared shop. Sign in from Social and open it again.';
+      // audit 2026-11-17, I24: the title screen has no Social: say how to get there
+      return o.onTitle ? 'You need to be signed in to play the shared shop. Continue your game, then sign in from Social.' : 'You need to be signed in to play the shared shop. Sign in from Social and open it again.';
     case 'cap':
       return `Shared shops have used this month’s free data (2 GB). They open again on ${reopenDate(o.until, o.now)}.`;
     case 'hours':

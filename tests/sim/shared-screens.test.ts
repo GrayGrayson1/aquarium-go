@@ -121,7 +121,8 @@ describe('chunk 13: the words (§8, ADR-0045, ADR-0048)', () => {
     expect(formatBytes(1_250_000_000)).toBe('1.3 GB');
     expect(SHARED_WORDS.strip('Reef Club', ['Sam', 'Ann'])).toBe('Shared · Reef Club · Here: Sam, Ann');
     expect(SHARED_WORDS.titleButton('Reef Club')).toBe('Shared shop: Reef Club');
-    expect(SHARED_WORDS.firstTime('CalliClub')).toBe('Your own aquarium is saved and waits for you. Everything here is shared with CalliClub.');
+    // audit 2026-11-17, I25: changed on purpose: one more sentence, where the way back is
+    expect(SHARED_WORDS.firstTime('CalliClub')).toBe('Your own aquarium is saved and waits for you. Everything here is shared with CalliClub. To go back, open the menu at the top left and choose “Back to my aquarium”.');
     expect(SHARED_WORDS.savesHere('CalliClub')).toBe('This is CalliClub’s shared shop: it saves on the server. Your own aquarium is saved and waits for you.');
   });
 
@@ -248,6 +249,11 @@ describe('audit 2026-11-17: the closings the browser gives itself', () => {
     // I8: a newer shop server, but the site still serves this build (no Reload that never turns on)
     expect(SHARED_WORDS.siteBehind).toBe('The shared shop has been updated, but this site hasn’t caught up yet. Try again later.');
     expect(RELOAD_CLOSINGS.has('unreachable')).toBe(false);
+  });
+
+  it('I24: signed out on the title screen (no Social there), the line says to continue the game first', () => {
+    expect(closingText('signedOut', { club: 'C', onTitle: true })).toBe('You need to be signed in to play the shared shop. Continue your game, then sign in from Social.');
+    expect(closingText('signedOut', { club: 'C' })).toBe('You need to be signed in to play the shared shop. Sign in from Social and open it again.');
   });
 
   it('I19: the restart closing says how long ago in words that read right', () => {
