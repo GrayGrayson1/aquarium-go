@@ -283,7 +283,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
     : v.quarantined.busyTank
       ? { value: '—', hint: `${v.quarantined.busyTank.name} is busy to Day ${v.quarantined.busyUntilDay}` }
       : v.quarantined.uncycledTank
-        ? { value: '—', hint: `${v.quarantined.uncycledTank.name} isn’t cycled yet` }
+        ? { value: '—', hint: `${v.quarantined.uncycledTank.name} isn’t ready yet: its filter bacteria are still growing` } // Audit 2026-11-17 (J5)
       : v.quarantined.unsold > 0
         ? { value: `${v.quarantined.unsold} unsold`, hint: v.quarantined.fullTank ? `${v.quarantined.fullTank.name} is full` : v.quarantine?.name ?? 'Quarantine' }
       : { value: '—', hint: v.quarantine?.name ?? 'Quarantine' };
@@ -503,7 +503,7 @@ export function RouteStrip({ g, line, v }: { g: GameState; line: ProductionLine;
           : v.quarantined.busyTank
             ? `busy to Day ${v.quarantined.busyUntilDay}`
             : v.quarantined.uncycledTank
-              ? 'isn’t cycled yet'
+              ? 'isn’t ready yet: its filter bacteria are still growing' // Audit 2026-11-17 (J5)
               : v.quarantined.unsold > 0
                 ? `${v.quarantined.unsold} unsold`
                 : undefined,
@@ -584,7 +584,7 @@ export function AddQuarantine({ g, line, onClose, onAdded }: { g: GameState; lin
                     onClose();
                     useUI.getState().toast(`${r.tankName} · ${r.tierName}`, 'success', {
                       label: `Set up · ${formatMoney(r.price ?? total)}`,
-                      detail: r.restartDay ? `The ${short} juveniles move in on Day ${r.restartDay} and the line restarts.` : 'The juveniles move in once it has cycled.',
+                      detail: r.restartDay ? `The ${short} juveniles move in on Day ${r.restartDay} and the line restarts.` : 'The juveniles move in once its filter bacteria have grown.' /* Audit 2026-11-17 (J5) */,
                     });
                   },
                 },
@@ -602,7 +602,7 @@ export function AddQuarantine({ g, line, onClose, onAdded }: { g: GameState; lin
       <div className="pr-rule">
         <div className="pr-rule__text">
           <div className="pr-rule__title">Seeded filter media · +{formatMoney(kit.seededPrice - kit.price)}</div>
-          <div className="pr-rule__sub">Ready for the juveniles at once. Without it the tank has to cycle first.</div>
+          <div className="pr-rule__sub">Ready for the juveniles at once. Without it the tank’s filter bacteria have to grow first.{/* Audit 2026-11-17 (J5) */}</div>
         </div>
         <Toggle checked={seeded} onChange={setSeeded} label="Seeded filter media" testId="production-add-qt-seeded" />
       </div>

@@ -41,7 +41,7 @@ describe('default photoperiod follows the open hours', () => {
     g.facility.closeHour = 19;
     expect(setLighting(g, t.id, { onHour: 7, offHour: 21 }).message).toMatch(/after the doors close/);
     expect(getWaterReport(g, t.id).params.find((p) => p.key === 'light')?.status).toBe('watch');
-    expect(setLighting(g, t.id, { onHour: 6, offHour: 23 }).message).toMatch(/Long photoperiods feed algae/);
+    expect(setLighting(g, t.id, { onHour: 6, offHour: 23 }).message).toMatch(/Long days of light feed algae/); // Audit 2026-11-17 (J5): no "photoperiod"
   });
 
   it('a damaged lighting record is repaired to the same default', () => {

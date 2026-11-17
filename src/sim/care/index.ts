@@ -294,7 +294,7 @@ export function cleanTank(state: GameState, tankId: string, what: 'gravel' | 'gl
         : `Vacuumed the ${sub}: waste ${before.toFixed(0)} → ${w.detritus.toFixed(0)}.${soil ? ' (Gently — hard siphoning crushes aqua soil.)' : ''}`;
   } else if (what === 'glass') {
     const before = scrapeGlass(tank); // lane:automation — the core the Auto Water Changer shares (src/sim/water/change.ts)
-    message = before < 3 ? 'The glass was already spotless.' : `Scraped algae off the glass (${before.toFixed(0)}% → ${w.algae.toFixed(0)}%). Algae on rocks and plants needs grazers or a shorter photoperiod.`;
+    message = before < 3 ? 'The glass was already spotless.' : `Scraped algae off the glass (${before.toFixed(0)}% → ${w.algae.toFixed(0)}%). Algae on rocks and plants needs grazers or shorter days of light.`; // Audit 2026-11-17 (J5)
   } else {
     const filters = tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind === 'filter');
     if (!filters.length) return fail('There is no filter to clean.');
@@ -746,7 +746,7 @@ export function setLighting(
   const hh = (h: number) => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
   const notes = [`Lights ${hh(L.onHour)}–${hh(L.offHour)} (${Math.round(period)} h) at ${Math.round(L.intensity * 100)}%.`];
   if (photoperiodTooLong(L, state.facility?.closeHour)) {
-    notes.push(period > 15 ? 'Long photoperiods feed algae — keep the day to the open hours, or 8–10 hours if algae is a problem.' : 'The lights stay on after the doors close — that feeds algae without anyone seeing it.');
+    notes.push(period > 15 ? 'Long days of light feed algae — keep the day to the open hours, or 8–10 hours if algae is a problem.' /* Audit 2026-11-17 (J5) */ : 'The lights stay on after the doors close — that feeds algae without anyone seeing it.');
   }
   if (period < 6) notes.push('Plants and corals need at least 6–8 hours of light.');
   // lane:qa-r3 — a schedule change that leaves one of those problems is worth a toast (intensity drags are not: they

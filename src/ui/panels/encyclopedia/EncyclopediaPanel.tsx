@@ -414,6 +414,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
         sp.visualMorphs.length > 0 && (
           <section>
             <SectionHead title={`Morphs · ${morphsSeen.size}/${sp.visualMorphs.length} seen`} icon={<Palette size={14} />} />
+            <p className="pn-tiny pn-muted">A morph is a colour or fin form.{/* Audit 2026-11-17 (J5) */}</p>
             <div className="pn-chips" data-testid="enc-morph-chips">
               {sp.visualMorphs.map((m) => {
                 const seen = morphsSeen.has(m);

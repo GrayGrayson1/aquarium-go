@@ -8,6 +8,7 @@ import { Dna, Lock, Sparkles } from 'lucide-react';
 import type { Creature, SpeciesDefinition } from '@/types';
 import { SectionHead } from '../common/parts';
 import { geneRows, genesFooter, type GeneRow } from './offerGenetics';
+import { ScienceLink } from '@/ui/common/ScienceLink'; // Audit 2026-11-17 (J5)
 
 /** At most this many of the player's animals are tried for the lab advice's pairing forecast (each forecast enumerates
  *  up to 576 young genotypes for a betta). */
@@ -25,6 +26,8 @@ export function OfferGenes({ sp, creature, labOwned, partners }: { sp: SpeciesDe
   return (
     <section data-testid="offer-genes">
       <SectionHead title="Genes" icon={<Dna size={14} />} />
+      {/* Audit 2026-11-17 (J5): "Recessive to…", "Codominant", "(het)" are explained on this page */}
+      <ScienceLink article="how_genes_combine" label="How genes combine: dominant, recessive and additive">How genes combine</ScienceLink>
       <ul className="ag-genes" role="list">
         {rows.map((r) => (
           <li key={r.locusId} className="ag-gene" data-testid={`offer-gene-${r.locusId}`}>

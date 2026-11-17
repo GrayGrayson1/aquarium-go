@@ -65,6 +65,7 @@ import { safe, useGameThrottled } from '../common/safe';
 import { act, tutorialFlag } from '../common/actions';
 import { startTankMove } from './tankMove'; // lane:ui-shell (chunk 6, B-196)
 import { withFallback } from './waterFallback';
+import { ScienceLink } from '../common/ScienceLink'; // Audit 2026-11-17 (J5)
 import {
   WATER_CLASS_LABEL,
   LIGHT_PRESET_LABEL,
@@ -123,6 +124,21 @@ const FLOW_KINDS: EquipmentKind[] = ['filter', 'powerhead', 'wavemaker']; // Aud
 
 // ───────────────────── Water tab ─────────────────────
 
+/**
+ * Audit 2026-11-17 (J5): what a reading's short name means, said once in its open row, and the Aquarium science page
+ * that explains it.
+ */
+const PARAM_HELP: Partial<Record<string, { gloss: string; article?: string; label?: string }>> = {
+  ammonia: { gloss: 'Ammonia comes from waste and leftover food. ppm means parts per million.', article: 'nitrogen_cycle', label: 'What ammonia, nitrite and nitrate mean' },
+  nitrite: { gloss: 'Filter bacteria turn ammonia into nitrite, then into nitrate. ppm means parts per million.', article: 'nitrogen_cycle', label: 'What ammonia, nitrite and nitrate mean' },
+  nitrate: { gloss: 'The end of the nitrogen cycle: water changes and plants take it out. ppm means parts per million.', article: 'nitrogen_cycle', label: 'What ammonia, nitrite and nitrate mean' },
+  ph: { gloss: 'pH says how acid (low) or alkaline (high) the water is.' },
+  kh: { gloss: 'KH is the water’s buffer: it holds the pH steady.' },
+  gh: { gloss: 'GH is the minerals dissolved in the water.' },
+  salinity: { gloss: 'SG (specific gravity) says how salty the water is.', article: 'salinity', label: 'How salinity and topping off work' },
+  cycle: { gloss: 'The bacteria in the filter that clean the water.', article: 'cycling', label: 'What “cycling” means' },
+};
+
 /** Audit 2026-11-17 C15 — rows that aren't a range to be "in": with Exact off they show their own words ("30% established", "None"). */
 const NOT_A_RANGE = new Set(['cycle', 'light', 'stocking', 'filtration', 'flow', 'algae', 'clarity']);
 
@@ -146,6 +162,12 @@ function ParamRow({ p, exact, unit, open, onToggle }: { p: ParamStatus; exact: b
           {p.ideal && <div className="ag-small ag-muted">Ideal: {convertTempText(p.ideal, unit)}</div>}
           {p.reason && <div className="ag-small">{convertTempText(p.reason, unit)}</div>}
           {p.advice && <div className="ag-reason__fix">{convertTempText(p.advice, unit)}</div>}
+          {PARAM_HELP[p.key] && (
+            <div className="ag-small ag-muted" data-testid={`param-help-${p.key}`}>
+              {PARAM_HELP[p.key]!.gloss}{' '}
+              {PARAM_HELP[p.key]!.article && <ScienceLink article={PARAM_HELP[p.key]!.article!} label={PARAM_HELP[p.key]!.label ?? 'Read more'}>Read more</ScienceLink>}
+            </div>
+          )}
         </div>
       )}
     </li>
@@ -202,6 +224,8 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
         <Meter label="Stability" value={report.stability} tone="auto" display={`${stabilityWord(report.stability)} · ${Math.round(report.stability)}`} />
         <Meter label="Biological filter" value={report.cycleProgress * 100} tone="auto" display={report.cycleProgress >= CYCLE_READY ? 'Mature' : report.cycleProgress >= 0.4 ? 'Establishing' : 'New'} /* Audit 2026-11-17 C15: the report's line (it said 80%) */ />
       </div>
+      {/* Audit 2026-11-17 (J5): what the Biological filter is, where the player meets it */}
+      <ScienceLink article="cycling" label="What the Biological filter is: what “cycling” means">What’s the Biological filter?</ScienceLink>
 
       {report.issues.length > 0 && (
         <ul className="ag-issues">
@@ -222,7 +246,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
       )}
 
       <Section
-        title="Parameters"
+        title={<>Parameters <ScienceLink article="nitrogen_cycle" label="What ammonia, nitrite and nitrate mean" /></> /* Audit 2026-11-17 (J5) */}
         actions={
           <div className="ag-row" style={{ gap: 8 }}>
             <Segmented size="sm" label="Temperature unit" value={unit} onChange={(u) => useSettings.getState().update({ tempUnit: u })} items={[{ id: 'C', label: '°C' }, { id: 'F', label: '°F' }]} />

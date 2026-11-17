@@ -37,6 +37,7 @@ import {
 import type { CompatReport, CompatReason, CompatCategory, CompatVerdict } from '@/types';
 import { VERDICT_LABEL, VERDICT_STATUS, probabilityWord, speciesName, convertTempText } from './format';
 import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (D8)
+import { ScienceLink } from './ScienceLink'; // Audit 2026-11-17 (J5)
 
 type Icon = ComponentType<LucideProps>;
 
@@ -186,7 +187,9 @@ export function CompatView({ report, title, compact, limit = 6, emptyText, class
       {title && <div className="ag-compat__title">{title}</div>}
       <div className="ag-compat__head">
         <VerdictBadge verdict={report.verdict} score={report.score} size="lg" labels={labels} />
-        <span className="ag-compat__summary">{summaryFull}</span>
+        <span className="ag-compat__summary">
+          {summaryFull} <ScienceLink article="compatibility" label="How to read compatibility" /* Audit 2026-11-17 (J5) */ />
+        </span>
       </div>
       {total === 0 ? (
         <div className="ag-muted ag-small">{emptyText ?? 'Nothing to flag — these animals and this water suit each other.'}</div>

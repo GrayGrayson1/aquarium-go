@@ -73,7 +73,7 @@ export const ARTICLES: Article[] = [
           Beneficial bacteria living on filter media, rocks and substrate convert ammonia into <b>nitrite</b> (also toxic), and a second group converts nitrite into <b>nitrate</b>, which is far less harmful. Nitrate builds up slowly and is removed by water changes and by growing plants.
         </p>
         <p>
-          In Aquarium Go your filter’s bacteria are shown as <i>cycle progress</i>. A healthy, mature tank keeps ammonia and nitrite at zero.
+          In Aquarium Go your filter’s bacteria show as the <i>Biological filter</i> meter on the tank card’s Water tab. A healthy, mature tank keeps ammonia and nitrite at zero.{/* Audit 2026-11-17 (J5): the meter the game has */}
         </p>
       </>
     ),

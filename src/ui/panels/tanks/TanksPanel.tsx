@@ -94,7 +94,7 @@ export function TanksPanel() {
               </Button>
             }
           >
-            Every great collection starts with one well-cycled tank.
+            Every great collection starts with one tank whose filter bacteria have grown.{/* Audit 2026-11-17 (J5) */}
           </EmptyState>
         ) : (
           <div className="pn-col pn-gap-3">
@@ -397,8 +397,8 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
             {wcLocked(g, wc) ? wcLockHint(g, wc) /* lane:w2-ui */ : wc === 'brackish' || tank.waterClass === 'brackish'
               ? wc === 'brackish' && !g.progress.unlocked.includes('brackish')
                 ? 'Brackish water unlocks with the Brackish Estuaries research.'
-                : 'Changing to or from brackish water means new water, but the filter bacteria adapt and keep most of their cycle.'
-              : 'Switching between fresh and salt water means new water and re-cycling the filter.'}
+                : 'Changing to or from brackish water means new water, but the filter bacteria adapt and most of them survive.' /* Audit 2026-11-17 (J5) */
+              : 'Switching between fresh and salt water means new water, and the filter’s bacteria must grow again.' /* Audit 2026-11-17 (J5) */}
           </span>
         )}
       </div>

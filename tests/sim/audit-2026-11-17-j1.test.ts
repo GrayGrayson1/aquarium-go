@@ -33,6 +33,12 @@ import { CLASS_DEFAULTS } from '@/sim/water/constants';
 import { STARTER_SETUPS } from '@/sim/newGame';
 import { previewAddition } from '@/sim/compat';
 import { createTank } from '@/sim/tanks';
+import { WaterTab } from '@/ui/cards/TankCard';
+import { CompatView } from '@/ui/common/CompatView';
+import { useGame } from '@/state/game';
+import { useShell } from '@/ui/common/shellStore';
+import { ARTICLES } from '@/ui/panels/encyclopedia/science';
+import { getWaterReport } from '@/sim/water';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -194,5 +200,48 @@ describe('J4: one water type, one name (a label, and the same name inside a sent
     const r = previewAddition(g, t.id, { speciesId: 'axolotl', count: 1 });
     const line = r.reasons.map((x) => x.text).find((x) => /normally kept in/.test(x)) ?? '';
     expect(line).toMatch(/not a planted freshwater setup\./);
+  });
+});
+
+describe('J5: the water and genes words point to the pages that explain them', () => {
+  it('the Water tab links Parameters and the Biological filter to Aquarium science; an open row says what its short name means', () => {
+    const g = base();
+    const t = g.tanks[g.tankOrder[0]];
+    useGame.setState({ game: g });
+    useShell.getInitialState().openParam = 'ammonia'; // a server render reads the store's initial state
+    try {
+      const html = renderToStaticMarkup(createElement(WaterTab, { game: g, tank: t }));
+      expect(html).toMatch(/data-testid="science-link-nitrogen_cycle"/);
+      expect(html).toMatch(/data-testid="science-link-cycling"/);
+      expect(text(html)).toMatch(/What’s the Biological filter\?/);
+      expect(text(html)).toMatch(/Ammonia comes from waste and leftover food\. ppm means parts per million\. Read more/);
+    } finally {
+      useShell.getInitialState().openParam = null;
+      useGame.setState({ game: null });
+    }
+  });
+
+  it('a compatibility verdict links “Reading compatibility”', () => {
+    const g = base();
+    const t = createTank(g, 'g20L', 'freshwater_planted', { cycled: true });
+    const html = renderToStaticMarkup(createElement(CompatView, { report: previewAddition(g, t.id, { speciesId: 'axolotl', count: 1 }) }));
+    expect(html).toMatch(/data-testid="science-link-compatibility"/);
+    expect(html).toMatch(/aria-label="How to read compatibility"/);
+  });
+
+  it('the nitrogen-cycle page names the meter the game shows', () => {
+    const page = renderToStaticMarkup(createElement('div', null, ARTICLES.find((a) => a.id === 'nitrogen_cycle')!.body));
+    expect(text(page)).toMatch(/show as the Biological filter meter on the tank card’s Water tab/);
+    expect(text(page)).not.toMatch(/cycle progress/);
+  });
+
+  it('the light line says “long days of light”, not “photoperiods”', () => {
+    const g = base();
+    const t = g.tanks[g.tankOrder[0]];
+    t.lighting.onHour = 5;
+    t.lighting.offHour = 23;
+    t.water.algae = 40;
+    const light = getWaterReport(g, t.id).params.find((p) => p.key === 'light');
+    expect(light?.reason ?? '').toMatch(/long days of light feed algae/);
   });
 });

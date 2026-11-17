@@ -748,7 +748,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         unit: '×/h',
         display: `${fmt(turnover, 1)}× per hour`,
         status: st,
-        ideal: '4–10× per hour, capacity above the bioload',
+        ideal: '4–10× per hour, more capacity than the animals’ waste needs', // Audit 2026-11-17 (J5): no "bioload"
         reason,
         advice,
       },
@@ -847,7 +847,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     } else if (w.algae > 25 && photoperiodTooLong(tank.lighting, state.facility?.closeHour)) {
       // the same line setLighting draws (care/index.ts): a day that covers the open hours is fine; longer feeds algae
       st = 'watch';
-      reason = `Lights are on ${photoperiod} hours a day${lightsPastClose(tank.lighting, state.facility?.closeHour) ? ', past closing time' : ''} — long photoperiods feed algae.`;
+      reason = `Lights are on ${photoperiod} hours a day${lightsPastClose(tank.lighting, state.facility?.closeHour) ? ', past closing time' : ''} — long days of light feed algae.`; // Audit 2026-11-17 (J5): no "photoperiod"
       advice = 'Switch the lights off when the doors close, or shorten the day to about 8–10 hours while the algae clears.';
     }
     add(

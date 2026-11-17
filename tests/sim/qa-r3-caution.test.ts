@@ -103,6 +103,6 @@ describe('qa-r3: the lights schedule warns once, not on every intensity step', (
     expect(long.caution).toBe(true);
     const dim = setLighting(s, tankId, { intensity: 0.7 });
     expect(dim.caution).toBeFalsy();
-    expect(dim.message).toMatch(/Long photoperiods/); // still in the message where it is read
+    expect(dim.message).toMatch(/Long days of light/); // still in the message where it is read (Audit 2026-11-17 J5: the words)
   });
 });

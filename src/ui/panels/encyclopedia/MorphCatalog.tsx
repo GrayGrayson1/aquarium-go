@@ -14,6 +14,7 @@ import { Chip, SectionHead } from '../common/parts';
 import { RARITY_LABEL, RARITY_TONE, plural } from '../common/format';
 import { NEW_LOCI } from '../market/offerGenetics'; // lane:genetics (0.5)
 import { discoveredMorphNames } from './morphs';
+import { ScienceLink } from '@/ui/common/ScienceLink'; // Audit 2026-11-17 (J5)
 
 const ORIGIN_LABEL: Record<PrismaticFind['origin'], string> = { shop: 'bought', bred: 'bred from a Prismatic parent', spontaneous: 'bred in your shop' };
 
@@ -70,6 +71,8 @@ export function GenesLine({ sp }: { sp: SpeciesDefinition }) {
     <section data-testid="enc-genes">
       <SectionHead title={`Genes · ${sp.genetics.loci.length}`} icon={<Dna size={14} />} /> {/* chunk 6 (DES-011): the count, as desk-catalog.png draws it */}
       <div className="pn-chips">{chips}</div>
+      {/* Audit 2026-11-17 (J5): what dominance, ladders and "codominant" mean */}
+      <ScienceLink article="how_genes_combine" label="How genes combine: dominant, recessive and additive">How genes combine</ScienceLink>
       {sp.id === 'betta' && <p className="pn-tiny pn-muted" style={{ margin: '6px 0 0' }}>New in 0.5: Cambodian (recessive, shows on red bettas) and Metallic (additive — one copy adds a sheen, two make it Metallic).</p>}
     </section>
   );
