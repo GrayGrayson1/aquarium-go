@@ -33,6 +33,7 @@ import { applyCommand } from '@/sim/commands';
 import { removeEquipment } from '@/sim/care';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { equipmentSellValue, takeDownCheck } from '@/sim/economy/sellBack';
+import { takeDownText } from '@/ui/panels/build/SellBack';
 import { buyTank, kitEquipmentFor } from '@/sim/economy/purchases';
 import { MAX_PER_KIND } from '@/sim/care/tuning';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
@@ -196,13 +197,13 @@ describe('G8: a fading plant or coral is an alert', () => {
 });
 
 describe('G22 (the owner’s answer): the store buys stored equipment back at half price', () => {
-  it('sells one stored unit for half its price, by its condition, and takes it out of storage', () => {
+  it('sells one stored unit for half its price, whatever its condition, and takes it out of storage', () => {
     const g = game('betta');
     const t = g.tanks[g.tankOrder[0]];
     const unit = t.equipment[0];
     expect(removeEquipment(g, t.id, unit.id).ok).toBe(true);
     const def = getEquipmentDef(unit.defId)!;
-    g.inventory.equipment.find((e) => e.id === unit.id)!.condition = 1;
+    Object.assign(g.inventory.equipment.find((e) => e.id === unit.id)!, { condition: 0.3, failed: true }); // review: a flat half, as approved
     const money = g.finance.money;
     const half = Math.round(def.price / 2);
     const res = applyCommand(g, { k: 'sellEquipment', instance: unit.id });
@@ -214,12 +215,10 @@ describe('G22 (the owner’s answer): the store buys stored equipment back at ha
     expect(applyCommand(g, { k: 'sellEquipment', instance: unit.id }).ok).toBe(false);
     expect(g.finance.money).toBeCloseTo(money + half, 6);
   });
-  it('a worn unit fetches less, and a broken one half that again', () => {
-    const def = { price: 100 } as Parameters<typeof equipmentSellValue>[0];
-    expect(equipmentSellValue(def, { condition: 1 })).toBe(50);
-    expect(equipmentSellValue(def, { condition: 0.5 })).toBe(25);
-    expect(equipmentSellValue(def, { condition: 0.5, failed: true })).toBe(13);
-    expect(equipmentSellValue(undefined, { condition: 1 })).toBe(0);
+  it('the price is half the catalogue price, as the owner approved', () => {
+    const def = { price: 99 } as Parameters<typeof equipmentSellValue>[0];
+    expect(equipmentSellValue(def)).toBe(50);
+    expect(equipmentSellValue(undefined)).toBe(0);
   });
   it('in a shared shop the second member to sell the same unit is told who sold it', () => {
     const g = game('betta');
@@ -255,6 +254,7 @@ describe('G19 (the owner’s answer): an empty tank can be taken down', () => {
     const check = takeDownCheck(g, id);
     expect(check).toMatchObject({ ok: true, value: half, last: false });
     expect(check.stores).toMatch(/^its .*filter.* and 2 decor pieces$/);
+    expect(takeDownText(check)).toMatch(/^Its .* and 2 decor pieces go to storage\. You get \$\d+ back for the tank\.$/);
     const money = g.finance.money;
     const res = applyCommand(g, { k: 'takeDownTank', tank: id });
     expect(res.ok, res.message).toBe(true);
@@ -268,11 +268,28 @@ describe('G19 (the owner’s answer): an empty tank can be taken down', () => {
     expect(applyCommand(g, { k: 'takeDownTank', tank: id }).ok).toBe(false);
     expect(g.finance.money).toBeCloseTo(money + half, 6);
   });
+  it('the question reads right with one thing, one of each, or nothing (review fix)', () => {
+    const { g, id } = withEmptyTank();
+    const t = g.tanks[id];
+    const filter = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'filter')!;
+    const piece = t.decor[0];
+    t.equipment = [filter];
+    t.decor = [];
+    expect(takeDownText(takeDownCheck(g, id))).toMatch(/^Its filter goes to storage\. You get \$\d+ back for the tank\.$/);
+    t.equipment = [];
+    t.decor = [piece];
+    expect(takeDownText(takeDownCheck(g, id))).toMatch(/^Its decor piece goes to storage\./);
+    t.equipment = [filter];
+    expect(takeDownText(takeDownCheck(g, id))).toMatch(/^Its filter and decor piece go to storage\./);
+    t.decor = [];
+    t.equipment = [];
+    expect(takeDownText(takeDownCheck(g, id))).toMatch(/^You get \$\d+ back for the tank\.$/);
+  });
   it('refuses a tank with animals, eggs or young, a listing, or a production line, and says why', () => {
     const { g, id } = withEmptyTank();
     expect(takeDownCheck(g, g.tankOrder[0]).reason).toBe('Animals live in it. Move them to another tank first.');
     g.clutches.cl_probe = { id: 'cl_probe', tankId: id, count: 12 } as (typeof g.clutches)[string];
-    expect(takeDownCheck(g, id).reason).toMatch(/^Eggs or young are in it\./);
+    expect(takeDownCheck(g, id).reason).toBe('Eggs or young are in it. Move them to another tank first.');
     delete g.clutches.cl_probe;
     g.tanks[id].listingId = 'l_probe';
     expect(takeDownCheck(g, id).reason).toBe('It’s listed for sale. Withdraw the listing first.');
@@ -284,7 +301,9 @@ describe('G19 (the owner’s answer): an empty tank can be taken down', () => {
     const farm = lineFarm();
     const lineTank = Object.values(farm.tanks).find((t) => !Object.values(farm.g.creatures).some((c) => c.tankId === t.id && (c.status === 'alive' || c.status === 'listed')) && !Object.values(farm.g.clutches).some((cl) => cl.tankId === t.id && cl.count > 0));
     expect(lineTank, 'an empty line tank').toBeTruthy();
-    expect(takeDownCheck(farm.g, lineTank!.id).reason).toMatch(/line uses it\. Give the line another tank in Operations, or end the line, first\.$/);
+    const line = farm.g.production!.lines[0];
+    expect(takeDownCheck(farm.g, lineTank!.id).reason).toBe(`${line.name} uses it. Give the line another tank in Livestock › Production, or end the line there, first.`);
+    expect(line.name).toMatch(/line$/); // (so "The Betta line line" would have shown)
   });
   it('the world steps on for a game day after a take-down, and the last tank leaves an empty room as an auction does', () => {
     const { g, id } = withEmptyTank();
