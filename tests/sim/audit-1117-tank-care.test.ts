@@ -1,8 +1,13 @@
+// @vitest-environment node
 /**
  * Audit 2026-11-17, area C (keeping a tank healthy: water, equipment, feeding, dosing and the advice the game gives).
  * Each block pins one finding from that audit.
  */
 import { describe, it, expect } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { useGame } from '@/state/game';
+import { GearTab } from '@/ui/cards/TankCard';
 import type { GameState } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { getWaterReport, tankDailyCost } from '@/sim/water';
@@ -491,5 +496,24 @@ describe('C13: advice names only what the game can do', () => {
 
   it('Seiryu Stone no longer claims a hardness the game doesn’t model', () => {
     expect(DECOR.find((d) => d.id === 'seiryu_stone')!.description).not.toMatch(/raises hardness/);
+  });
+});
+
+describe('C14: one Intensity control for a tank’s lights', () => {
+  it('a light dimmed on its own is shown in Lighting with Full power, and "Buy a light" waits until it is back up', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    const light = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'light')!;
+    light.setting = 0.3;
+    t.lighting = { ...t.lighting, intensity: 1.5 };
+    const raise = { text: 'Corals need stronger light.', advice: 'Raise the intensity or install a stronger light.', param: 'light' as const };
+    expect(fixForWaterIssue(t, raise)?.label).toBe('Lighting');
+    useGame.setState({ game: s });
+    const html = renderToStaticMarkup(createElement(GearTab, { game: s, tank: t }));
+    expect(html).toContain(`data-testid="tank-light-dimmed-${light.id}"`);
+    expect(html.replace(/<[^>]+>/g, ' ')).toMatch(/is dimmed to 30% on its own\./);
+    useGame.setState({ game: null });
+    light.setting = 1;
+    expect(fixForWaterIssue(t, raise)?.label).toBe('Buy a light');
   });
 });

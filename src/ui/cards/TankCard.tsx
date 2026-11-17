@@ -429,6 +429,13 @@ function LightingBlock({ tank, readOnly }: { tank: Tank; readOnly: boolean }) {
         <Slider label="Light intensity" value={L.intensity} min={0} max={1.5} step={0.05} disabled={readOnly} onChange={(v) => set({ intensity: v })} />
         <span className="ag-small ag-tabular" style={{ minWidth: 38, textAlign: 'right' }}>{Math.round(L.intensity * 100)}%</span>
       </div>
+      {/* Audit 2026-11-17 C14 — a light dimmed on its own (Build › Equipment had a second Intensity) multiplies this one */}
+      {!readOnly && tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind === 'light' && (e.setting ?? 1) < 0.99).map((e) => (
+        <div key={e.id} className="ag-row" style={{ gap: 8 }} data-testid={`tank-light-dimmed-${e.id}`}>
+          <span className="ag-grow ag-small ag-muted">{getEquipmentDef(e.defId)?.name} is dimmed to {Math.round((e.setting ?? 1) * 100)}% on its own.</span>
+          <Chip size="sm" onClick={() => act({ k: 'setEquipment', tank: tank.id, equip: e.id, setting: 1 }, { sound: 'click', toast: 'caution' })}>Full power</Chip>
+        </div>
+      ))}
       <div className="ag-sched">
         <div className="ag-sched__item">
           <span className="ag-small ag-muted">Lights on</span>

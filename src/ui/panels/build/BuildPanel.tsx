@@ -738,7 +738,8 @@ function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameSta
 const SETTING_META: Record<string, { label: string; min: number; max: number; step: number; fmt: (v: number, unit: 'C' | 'F') => string }> = {
   heater: { label: 'Target', min: 18, max: 32, step: 0.5, fmt: (v, unit) => formatTemp(v, unit) },
   chiller: { label: 'Target', min: 12, max: 26, step: 0.5, fmt: (v, unit) => formatTemp(v, unit) },
-  light: { label: 'Intensity', min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
+  // (no light: Audit 2026-11-17 C14 — a light follows its tank's Lighting intensity on the tank card; a second
+  // per-light "Intensity" here multiplied it unseen)
   powerhead: { label: 'Flow', min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
   wavemaker: { label: 'Flow', min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
   filter: { label: 'Flow', min: 0.2, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },

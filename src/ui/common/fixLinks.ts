@@ -129,7 +129,9 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
     if (!light) return buyGear(tank, 'light', 'Buy a light');
     // "Raise the intensity or install a stronger light": the intensity first, a stronger light once it's at the
     // Lighting slider's top (1.5, TankCard)
-    if (/stronger light/.test(adv) && (tank.lighting?.intensity ?? 1) >= 1.49) return buyGear(tank, 'light', 'Buy a light');
+    // (Audit 2026-11-17 C14: a light dimmed on its own holds it back too — its Full power is in Lighting)
+    const dimmed = gearOf(tank, 'light').some((e) => e.on && !e.failed && (e.setting ?? 1) < 0.99);
+    if (/stronger light/.test(adv) && (tank.lighting?.intensity ?? 1) >= 1.49 && !dimmed) return buyGear(tank, 'light', 'Buy a light');
     return card(tank, 'gear', 'lighting', 'Lighting');
   }
   if (p === 'oxygen') {
