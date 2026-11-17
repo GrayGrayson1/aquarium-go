@@ -6,7 +6,7 @@
  * While the row runs past the left or right edge of the frame (useFacilityOverflow), a soft fade with a chevron marks
  * that edge: there is more of the hall that way. It is only a cue (no pointer events): drags reach the room under it.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, Map as MapIcon, Scan } from 'lucide-react';
 import { resetFacilityView } from '@/render/camera/CameraRig';
@@ -25,25 +25,51 @@ function hintSeen(): boolean {
   }
 }
 
+/**
+ * Is it really on screen? (audit B12: on a phone the guide card hides the room chips, `display: none`, and the one-time
+ * hint was used up there unseen.)
+ */
+export function onScreen(el: (Pick<Element, 'getClientRects'> & { checkVisibility?: (o?: { visibilityProperty?: boolean; checkVisibilityCSS?: boolean }) => boolean }) | null): boolean {
+  if (!el) return false;
+  // (hidden by `display: none` or, under an open sheet, `visibility: hidden`; older engines: laid out at all)
+  return typeof el.checkVisibility === 'function' ? el.checkVisibility({ visibilityProperty: true, checkVisibilityCSS: true }) : el.getClientRects().length > 0;
+}
+
 export function RoomViewChip() {
   const fine = useMedia('(hover: hover) and (pointer: fine)');
   const [hint, setHint] = useState(() => !hintSeen());
+  const hintRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!hint) return;
-    try {
-      localStorage.setItem(HINT_KEY, '1');
-    } catch {
-      /* per-viewer convenience only */
-    }
-    const t = window.setTimeout(() => setHint(false), 9000);
-    return () => window.clearTimeout(t);
+    // audit B12: the hint counts as seen (and its 9 s start) only once it is actually on screen
+    let t = 0;
+    const show = () => {
+      try {
+        localStorage.setItem(HINT_KEY, '1');
+      } catch {
+        /* per-viewer convenience only */
+      }
+      t = window.setTimeout(() => setHint(false), 9000);
+    };
+    let poll = 0;
+    if (onScreen(hintRef.current)) show();
+    else
+      poll = window.setInterval(() => {
+        if (!onScreen(hintRef.current)) return;
+        window.clearInterval(poll);
+        show();
+      }, 500);
+    return () => {
+      window.clearInterval(poll);
+      window.clearTimeout(t);
+    };
   }, [hint]);
   return (
     <div className="ag-roomcam">
       <RoomEdges />
       <AnimatePresence>
         {hint && (
-          <motion.div className="ag-roomcam__hint" role="note" initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+          <motion.div ref={hintRef} className="ag-roomcam__hint" role="note" initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
             {fine ? 'Drag to turn the room · right-drag pans · scroll zooms' : 'Drag to turn the room · two fingers pan and zoom'}
           </motion.div>
         )}

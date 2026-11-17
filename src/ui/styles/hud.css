@@ -677,6 +677,11 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 @media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   .ag-hud__cam.ag-hud__cam--room { display: block; right: var(--edge); bottom: calc(var(--dock-h) + var(--edge) + 8px); }
   .ag-roomcam__hint { white-space: normal; max-width: calc(100vw - 2 * var(--edge)); }
-  /* the guide card owns the band above the dock while it is open */
-  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-hud__cam--room { display: none; }
+  /* the guide card owns the band above the dock while it is open: the chips sit just above it (TutorialCoach publishes
+     --coach-clear). Audit B12: they were hidden, so a player lost in the room had no Reset view until the guide ended */
+  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-hud__cam--room { bottom: calc(var(--coach-clear, calc(var(--dock-h) + var(--edge) * 2 + 170px)) - var(--safe-b)); }
+}
+/* (held sideways the guide sits bottom-left and the room view has no tool rail: the chips keep their corner) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-hud__cam--room { bottom: calc(var(--dock-h) + var(--edge) + 8px); }
 }

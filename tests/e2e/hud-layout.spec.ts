@@ -169,6 +169,26 @@ test.describe('phone 390×844 (touch)', () => {
     expect(b.clockH).toBeLessThanOrEqual(48);
   });
 
+  test('audit B12: in the room view the guide card leaves Reset view on screen, just above it', async ({ page }) => {
+    await openApp(page);
+    await quickGame(page, 'betta');
+    await expect(tid(page, 'tutorial-card')).toBeVisible();
+    await aq(page, 'setUI', { view: 'facility' });
+    const reset = tid(page, 'camera-room-reset');
+    await expect(reset).toBeVisible();
+    await expect(page.locator('.ag-hud__coach .ag-coach')).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const chip = document.querySelector('[data-testid="camera-room-reset"]')!.getBoundingClientRect();
+          const coach = document.querySelector('.ag-hud__coach .ag-coach')!.getBoundingClientRect();
+          return chip.bottom <= coach.top + 1 && chip.top > 0;
+        }),
+      )
+      .toBe(true);
+    await reset.tap();
+  });
+
   test('audit B15: the pause segment puts “Paused” in the clock pill; 1× brings the day back', async ({ page }) => {
     await plainGame(page);
     await tid(page, 'hud-speed-0').tap();
