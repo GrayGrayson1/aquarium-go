@@ -136,6 +136,9 @@ describe('DES-010: every Social string as §13 and the owner’s answers write i
     expect(C.cardDevice('Coral Corner', 12, '$4,210', 'just now')).toBe('On this device · Coral Corner · Day 12 · $4,210 · saved just now');
     expect(C.cardOnline('Coral Corner', 15, '$5,880', '3 h ago')).toBe('Online · Coral Corner · Day 15 · $5,880 · saved 3 h ago');
     expect(C.cloudNote).toBe('If you load the online save, this device’s copy stays in Settings › Saves as Previous autosave.');
+    // audit 2026-11-17, I4: which copy of the same aquarium is further along
+    expect(C.cloudDeviceFurther(40)).toBe('This device’s copy is further along (Day 40).');
+    expect(C.cloudOnlineFurther(40)).toBe('The online copy is further along (Day 40). Keeping this device’s replaces it, and that can’t be undone.');
   });
 
   it('chunk 8: friend requests and the owner’s club controls (ADR-0040 decision 4, ADR-0041 decision 5)', () => {

@@ -184,7 +184,7 @@ const active = (): boolean => socialMode() !== 'off' && !!user();
 function deviceCopy(g: GameState | null): DeviceCopy | null {
   if (!g) return null;
   const local = readLinks().local;
-  return { saveId: g.saveId, savedAt: g.lastSavedRealMs, localAt: local?.saveId === g.saveId ? local.at : 0 };
+  return { saveId: g.saveId, savedAt: g.lastSavedRealMs, localAt: local?.saveId === g.saveId ? local.at : 0, hour: g.clock.hour };
 }
 
 const dayOf = (g: GameState): number => Math.floor(g.clock.hour / 24) + 1;

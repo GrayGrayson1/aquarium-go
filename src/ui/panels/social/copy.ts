@@ -156,6 +156,9 @@ export const SOCIAL_COPY = {
   cardDevice: (shop: string, day: number, money: string, ago: string) => `On this device · ${shop} · Day ${day} · ${money} · saved ${ago}`,
   cardOnline: (shop: string, day: number, money: string, ago: string) => `Online · ${shop} · Day ${day} · ${money} · saved ${ago}`,
   cloudNote: 'If you load the online save, this device’s copy stays in Settings › Saves as Previous autosave.',
+  // audit 2026-11-17, I4: which copy of the same aquarium is further along, and what Keep costs when it's the online one
+  cloudDeviceFurther: (day: number) => `This device’s copy is further along (Day ${day}).`,
+  cloudOnlineFurther: (day: number) => `The online copy is further along (Day ${day}). Keeping this device’s replaces it, and that can’t be undone.`,
 
   // chunk 8 — friend requests (ADR-0040 decision 4)
   friendRequests: 'Friend requests',
