@@ -445,3 +445,18 @@ describe('G17: a decor card never shows more hiding spots than the sim counts', 
     expect(hideWords(2.4)).toBe('2 hiding spots');
   });
 });
+
+describe('G18: new tanks of one size get their own names', () => {
+  it('“10 Gallon”, then “10 Gallon 2”, “10 Gallon 3”; a name the player gives is kept', () => {
+    const g = game('betta');
+    g.finance.money = 5000;
+    const names: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const r = buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true });
+      names.push(g.tanks[r.tankId!].name);
+    }
+    expect(names).toEqual(['10 Gallon', '10 Gallon 2', '10 Gallon 3']);
+    const named = buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true, name: 'Shrimp corner' });
+    expect(g.tanks[named.tankId!].name).toBe('Shrimp corner');
+  });
+});

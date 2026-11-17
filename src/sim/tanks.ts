@@ -53,6 +53,16 @@ export interface CreateTankOptions {
   substrate?: { kind: SubstrateKind; depthCm: number; color: string };
 }
 
+/**
+ * Audit 2026-11-17 (G18) — a new tank's name when the player gave none: the size's name, then "10 Gallon 2",
+ * "10 Gallon 3"…, so Build's picker and "Too close to the 10 Gallon." can tell same-size tanks apart.
+ */
+export function uniqueTankName(state: GameState, base: string): string {
+  const taken = new Set(Object.values(state.tanks ?? {}).map((t) => t?.name));
+  if (!taken.has(base)) return base;
+  for (let n = 2; ; n++) if (!taken.has(`${base} ${n}`)) return `${base} ${n}`;
+}
+
 /** Create a tank and insert it into state. Does NOT charge money (economy.buyTank does). */
 export function createTank(state: GameState, tierId: string, waterClass: WaterClass, opts: CreateTankOptions = {}): Tank {
   const tier = getTankTier(tierId);
@@ -60,7 +70,7 @@ export function createTank(state: GameState, tierId: string, waterClass: WaterCl
   const env = environmentOf(waterClass);
   const tank: Tank = {
     id,
-    name: opts.name ?? `${tier.name}`,
+    name: opts.name ?? uniqueTankName(state, tier.name), // Audit 2026-11-17 (G18)
     tierId,
     waterClass,
     environment: env,
