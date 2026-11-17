@@ -3,6 +3,7 @@
  * OWNER: lane "ui-shell".
  */
 import { useEffect, useMemo, useState } from 'react';
+import type { Creature, GameState } from '@/types';
 import clsx from 'clsx';
 import { ArrowRightLeft, Ban, Egg } from 'lucide-react';
 import { useGame } from '@/state/game';
@@ -21,14 +22,25 @@ import { pluralName } from '@/sim/economy/util'; // Audit 2026-11-17 (D2)
 import { Modal, Button, Empty } from '../kit';
 import { moveButton, moveNeedsAck } from './moveRisk'; // Audit 2026-11-17 (D15)
 
+// Audit 2026-11-17 (review of D2): a dialog left open over another save never moves that save's animals
+useGame.subscribe((s, prev) => {
+  if (s.game?.saveId !== prev.game?.saveId && (useShell.getState().moveCreatureId || useShell.getState().moveCreatureIds)) useShell.getState().set({ moveCreatureId: null, moveCreatureIds: null });
+});
+
+const isLiving = (k: Creature | undefined): boolean => !!k && k.status !== 'dead' && k.status !== 'sold';
+
 export function MoveCreatureModal() {
   // Audit 2026-11-17 (D2): a group (the Livestock selection, or "Move the group") or one animal
   const groupIds = useShell((s) => s.moveCreatureIds);
   const single = useShell((s) => s.moveCreatureId);
-  const id = groupIds?.length ? groupIds[0] : single;
-  const game = useGame((s) => (id ? s.game : null)); // lane:perf — follow the game only while the dialog is open
+  const open = !!groupIds?.length || !!single;
+  const game = useGame((s) => (open ? s.game : null)); // lane:perf — follow the game only while the dialog is open
+  // review: a group's animals still in your care (one lost while the dialog is open stays out, and is counted)
+  const liveKey = groupIds?.length ? groupIds.filter((x) => isLiving(game?.creatures[x])).join(',') : '';
+  const ids = useMemo(() => (groupIds?.length ? (liveKey ? liveKey.split(',') : []) : single ? [single] : []), [groupIds, liveKey, single]);
+  const dropped = groupIds?.length ? groupIds.length - ids.length : 0;
+  const id = ids[0] ?? null;
   const c = id && game ? game.creatures[id] : null;
-  const ids = useMemo(() => (groupIds?.length ? groupIds : id ? [id] : []), [groupIds, id]);
   const group = ids.length > 1;
   const groupKey = ids.join(',');
   const [target, setTarget] = useState<string | null>(null);
@@ -36,9 +48,15 @@ export function MoveCreatureModal() {
   // Audit 2026-11-17 (D15): a High risk or Incompatible move needs the same tick as buying into that tank
   const [ack, setAck] = useState(false);
   useEffect(() => setAck(false), [groupKey, target]);
-  // the tanks to choose from: all but the one every animal is already in
-  const homes = useMemo(() => new Set(ids.map((x) => game?.creatures[x]?.tankId ?? '')), [groupKey, game?.creatures]); // eslint-disable-line react-hooks/exhaustive-deps
-  const tanks = useMemo(() => (game && c ? game.tankOrder.filter((t) => !(homes.size === 1 && homes.has(t))).map((t) => game.tanks[t]).filter(Boolean) : []), [game?.tankOrder, c?.tankId, homes]); // eslint-disable-line react-hooks/exhaustive-deps
+  // review: the previews re-run only when what they depend on changes (the animals' tanks, the tanks' residents), not
+  // on every tick's new game object
+  const homesKey = ids.map((x) => game?.creatures[x]?.tankId ?? '').join(',');
+  const residentsKey = residentsKeyOf(open ? game : null);
+  const tanks = useMemo(() => {
+    if (!game || !c) return [];
+    const homes = new Set(homesKey.split(','));
+    return game.tankOrder.filter((t) => !(homes.size === 1 && homes.has(t))).map((t) => game.tanks[t]).filter(Boolean);
+  }, [game?.tankOrder, homesKey, !!c]); // eslint-disable-line react-hooks/exhaustive-deps
   const sp = c ? findSpecies(c.speciesId) : undefined;
 
   const rows = useMemo(() => {
@@ -48,7 +66,7 @@ export function MoveCreatureModal() {
       const report = gate.ok ? safe('previewAddition', () => previewAddition(game, t.id, group ? { speciesId: c.speciesId, creatureIds: ids } : { speciesId: c.speciesId, creatureIds: [c.id], sex: c.sex, sizeCm: c.sizeCm }), null) : null;
       return { t, gate, report, count: safe('creaturesInTank', () => creaturesInTank(game, t.id).length, 0) };
     });
-  }, [tanks, c?.id, groupKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tanks, c?.id, groupKey, residentsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // lane:qa-play — with a single water-compatible tank to go to, it is chosen already (one click fewer)
   // (runs after the reset above, so the queued null is what `t` sees when another animal's move opens)
@@ -117,6 +135,11 @@ export function MoveCreatureModal() {
         <Empty>You only have one tank. Buy another in Build to move or separate animals.</Empty>
       ) : (
         <>
+        {dropped > 0 && (
+          <div className="ag-small ag-muted" data-testid="move-group-dropped" style={{ marginBottom: 12 }}>
+            {dropped === 1 ? 'One of them is no longer in your care.' : `${dropped} of them are no longer in your care.`}
+          </div>
+        )}
         {broodWarning && (
           <div className="ag-callout" data-testid="brood-move-warning" style={{ marginBottom: 12 }}>
             <Egg size={16} aria-hidden /> <span>{broodWarning}</span>
@@ -169,4 +192,15 @@ export function MoveCreatureModal() {
       )}
     </Modal>
   );
+}
+
+/**
+ * Review of D2: a cheap key of who lives where (each tank's living residents, counted in one pass), so the dialog's
+ * previews follow a birth, a death or a move without re-running on every tick.
+ */
+function residentsKeyOf(game: GameState | null): string {
+  if (!game) return '';
+  const n = new Map<string, number>();
+  for (const k of Object.values(game.creatures)) if (k.tankId && isLiving(k)) n.set(k.tankId, (n.get(k.tankId) ?? 0) + 1);
+  return game.tankOrder.map((t) => `${t}:${n.get(t) ?? 0}`).join('|');
 }
