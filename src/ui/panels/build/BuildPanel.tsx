@@ -25,6 +25,7 @@ import { findFreeSpot, waterClassLock, guideHoldLine } from '@/sim/facility';
 import { decorWaterNote } from './decorWater'; // Audit 2026-11-17 (G7)
 import { isCave, isNestSite } from './decorRoles'; // Audit 2026-11-17 (G16)
 import { STRUGGLING_HEALTH } from '@/ui/common/notify'; // Audit 2026-11-17 (G8)
+import { usePlacementStore } from '@/render/facility/placementStore'; // Audit 2026-11-17 (G24)
 import { SellStoredEquipment } from './SellBack'; // Audit 2026-11-17 (G22)
 import { decorSellValue } from '@/sim/aquascape'; // Audit 2026-11-17 (G14)
 import { PanelLayout, useSheet } from '../common/PanelLayout';
@@ -243,9 +244,11 @@ function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anythi
   const [a, b] = WATER_CLASS_TINT[wc];
 
   const place = (tier: TankTier) => {
+    // Audit 2026-11-17 (G24): a turn left by a placement cancelled from the hint doesn't carry over to this tank
+    usePlacementStore.getState().reset();
     // chunk 19 (QOL-001) — Build stays open beside the room (computers) or steps aside and comes back (phones)
     startToolFromPanel({ tool: 'tank_place', placingTankTierId: tier.id, movingTankId: null, placingWaterClass: wc, placingSeeded: seeded, view: 'facility', panelTarget: null });
-    useUI.getState().toast(`Choose a spot for your ${tier.name}. Press Esc to cancel.`, 'info');
+    useUI.getState().toast(tankPlaceToast(tier.name, typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches), 'info');
   };
   const quick = (tier: TankTier) => {
     const spot = safe(() => findFreeSpot(g, tier.id), null);
@@ -379,6 +382,11 @@ function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anythi
       </section>
     </div>
   );
+}
+
+/** Audit 2026-11-17 (G24): the toast when a new tank's placement starts (a phone has no Esc key; its hint has Cancel). */
+export function tankPlaceToast(name: string, touch: boolean): string {
+  return `Choose a spot for your ${name}.${touch ? '' : ' Press Esc to cancel.'}`;
 }
 
 /** lane:fix-integrate-ui — the kit card's one-liner for locked default gear (S16-03); the sim's full note is the tooltip. */

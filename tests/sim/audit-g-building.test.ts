@@ -37,7 +37,7 @@ import { lineFarm } from './support/production';
 import { UNLOCK_RULES, type Cond } from '@/data/unlocks';
 import { FacilityUpgradeCard } from '@/ui/panels/common/FacilityUpgrade';
 import { beautyScore, decorSellValue } from '@/sim/aquascape';
-import { placedSellValue, hideWords } from '@/ui/panels/build/BuildPanel';
+import { placedSellValue, hideWords, tankPlaceToast } from '@/ui/panels/build/BuildPanel';
 import { textureFits } from '@/sim/aquascape/beauty';
 import { getDecorDef, DECOR } from '@/data/catalog/decor';
 import { isCave, isNestSite } from '@/ui/panels/build/decorRoles';
@@ -490,5 +490,12 @@ describe('G23: after a venue move, tanks without a spot are pointed at Move tank
     expect(upgradeFacility(g).ok).toBe(true);
     const note = g.log.find((e) => /could not find a good spot/.test(e.text));
     expect(note?.text).toMatch(/^\d+ tanks could not find a good spot\. Move them with Move tank on each tank’s card\.$/);
+  });
+});
+
+describe('G24: placing a tank on a phone', () => {
+  it('the start toast mentions Esc only where there is a keyboard', () => {
+    expect(tankPlaceToast('10 Gallon', true)).toBe('Choose a spot for your 10 Gallon.');
+    expect(tankPlaceToast('10 Gallon', false)).toBe('Choose a spot for your 10 Gallon. Press Esc to cancel.');
   });
 });
