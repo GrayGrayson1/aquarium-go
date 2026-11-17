@@ -28,7 +28,8 @@ export class PanelErrorBoundary extends Component<Props, State> {
         <div className="pn-crash">
           <div className="pn-empty__title">This panel hit a snag</div>
           <p className="pn-empty__text">Something unexpected happened while drawing it. Your aquarium is fine — try again.</p>
-          <pre className="pn-crash__msg">{String(this.state.error.message).slice(0, 240)}</pre>
+          {/* audit 2026-11-17, I17: the raw message is for a bug report: say so */}
+          <pre className="pn-crash__msg">Details to pass on: {String(this.state.error.message).slice(0, 240)}</pre>
           <div className="pn-row pn-gap-2">
             <button type="button" className="ag-btn ag-btn--primary" onClick={() => this.setState({ error: null })}>
               <RefreshCw size={15} /> Try again

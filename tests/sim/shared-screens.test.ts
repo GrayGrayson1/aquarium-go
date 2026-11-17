@@ -250,3 +250,19 @@ describe('audit 2026-11-17: the closings the browser gives itself', () => {
     expect(RELOAD_CLOSINGS.has('unreachable')).toBe(false);
   });
 });
+
+describe('audit 2026-11-17: the crash cards', () => {
+  it('I17: the raw error is labelled as details to pass on; I10: a "Save & reload" that couldn’t save says so', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { PanelErrorBoundary } = await import('@/ui/panels/common/ErrorBoundary');
+    useGame.getState().setGame(shop());
+    const b = new ErrorBoundary({ name: 'interface', children: null });
+    b.state = { error: new Error('Cannot read properties of undefined'), saveFailed: true };
+    const out = renderToStaticMarkup(b.render() as never);
+    expect(out).toContain('Details to pass on: Cannot read properties of undefined');
+    expect(out).toContain('Saving didn’t work, so a reload would lose your latest play.');
+    const p = new PanelErrorBoundary({ children: null, onClose: () => {} });
+    p.state = { error: new Error('boom') };
+    expect(renderToStaticMarkup(p.render() as never)).toContain('Details to pass on: boom');
+  });
+});

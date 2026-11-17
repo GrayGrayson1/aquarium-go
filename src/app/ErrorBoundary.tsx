@@ -66,7 +66,8 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div role="alert" data-testid={`error-boundary-${this.props.name.replace(/\s+/g, '-')}`} style={{ position: 'absolute', left: 16, bottom: 16, zIndex: 90, maxWidth: 420, padding: '12px 16px', borderRadius: 14, background: 'rgba(40,10,10,0.85)', border: '1px solid rgba(248,113,113,0.5)', color: '#ffe1e1', font: '13px Inter Variable, system-ui, sans-serif' }}>
         <strong>Something in the {this.props.name} hiccuped.</strong>
-        <div style={{ opacity: 0.8, margin: '4px 0 8px' }}>{this.state.error.message}</div>
+        {/* audit 2026-11-17, I17: the raw message is for a bug report: labelled, and smaller */}
+        <div style={{ opacity: 0.7, fontSize: 11, margin: '4px 0 8px' }}>Details to pass on: {this.state.error.message}</div>
         {this.props.name === 'interface' && !shared && <div style={{ opacity: 0.8, margin: '0 0 8px' }}>Your aquarium is paused. Try again, or save and reload the page.</div>}
         {this.state.saveFailed && (
           <div style={{ margin: '0 0 8px' }} data-testid="error-boundary-save-failed">
