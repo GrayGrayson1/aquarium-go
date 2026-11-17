@@ -35,6 +35,15 @@ type Tab = 'research' | 'unlocks' | 'quests' | 'achievements';
 const RESEARCH_TABS: readonly Tab[] = ['research', 'unlocks', 'quests', 'achievements'];
 
 const TRACK_LABEL: Record<MasteryTrack, string> = { husbandry: 'Husbandry', breeding: 'Breeding', aquascaping: 'Aquascaping', marine: 'Marine', business: 'Business', exhibition: 'Exhibition' };
+/** Audit 2026-11-17 (G10): what earns each track's points (src/sim: COUNTER_EFFECTS, the daily sample, sales, visitors, shows). */
+export const TRACK_HELP: Record<MasteryTrack, string> = {
+  husbandry: 'Feeding, water changes, cleaning and healthy tanks.',
+  breeding: 'Spawns and raising young.',
+  aquascaping: 'Placing decor and keeping beautiful tanks.',
+  marine: 'Caring for marine and reef tanks.',
+  business: 'Sales and claiming quests.',
+  exhibition: 'Visitors, friends’ visits and shows.',
+};
 const BRANCH_LABEL: Record<string, string> = { gear: 'Life support', freshwater: 'Freshwater', breeding: 'Breeding', marine: 'Marine', exhibition: 'Exhibition', facility: 'Facility' }; // facility: lane:automation (chunk 5, DESIGN-S3D §8.8)
 
 export function ResearchPanel() {
@@ -137,9 +146,11 @@ function StandingCard({ g }: { g: GameState }) {
             <div key={t} className="pn-mastery__row">
               <div className="pn-metric__row">
                 <span>{TRACK_LABEL[t]}</span>
-                <span className="pn-metric__val">Lv {lvl}</span>
+                {/* Audit 2026-11-17 (G10): the points requirements ask for, beside the level */}
+                <span className="pn-metric__val">Lv {lvl} · {Math.floor(xp).toLocaleString('en-US')} points</span>
               </div>
               <Bar value={((xp - lo) / Math.max(1, hi - lo)) * 100} tone="aqua" label={`${TRACK_LABEL[t]} mastery`} thin />
+              <span className="pn-tiny pn-muted">{TRACK_HELP[t]}</span>
             </div>
           );
         })}

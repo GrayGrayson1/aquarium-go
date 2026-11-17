@@ -416,7 +416,8 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
       return { met: p.reputation >= cond.min, current: Math.floor(p.reputation), target: cond.min, label: `${cond.min} reputation` };
     case 'mastery': {
       const v = p.mastery[cond.track] ?? 0;
-      return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `${cond.min} ${cond.track} mastery` };
+      // Audit 2026-11-17 (G10): points, as Research's standing card now shows them beside the level
+      return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `${cond.min} ${cond.track} mastery points` };
     }
     case 'counter': {
       const v = counterValue(state, cond.key);

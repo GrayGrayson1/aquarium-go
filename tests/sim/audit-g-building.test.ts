@@ -9,7 +9,7 @@ import type { GameState } from '@/types';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { newGame } from '@/sim/newGame';
 import type { StarterId } from '@/data/species';
-import { unlockProgress, guideHoldLine } from '@/sim/facility';
+import { unlockProgress, guideHoldLine, evalCond } from '@/sim/facility';
 import { marketAccess } from '@/sim/economy';
 import { lockViews, UnlockHelpBody } from '@/ui/panels/common/UnlockHelp';
 import { GROUPS, UnlocksTab, researchLockKeys, researchTankLine } from '@/ui/panels/research/ResearchPanel';
@@ -316,5 +316,17 @@ describe('G9: an unlock hint names every number its rule needs', () => {
     expect(hint('tank_800')).toBe('Research Grand Display Engineering, or reach 720 reputation with a 300-gallon exhibit at a destination aquarium.');
     expect(hint('tank_1000')).toBe('Research Grand Display Engineering, or reach 800 reputation in the Grand Hall.');
     expect(hint('nursery')).toBe('Raise a clutch, build 40 breeding mastery, reach 70 reputation, or research the Breeding Programme.');
+  });
+});
+
+describe('G10: mastery is shown in the points requirements ask for, with what earns them', () => {
+  it('the standing card shows level and points and what builds each track; a requirement says points', () => {
+    const g = game('betta');
+    g.progress.mastery.exhibition = 220;
+    use(g);
+    const html = renderToStaticMarkup(createElement(ResearchPanel));
+    expect(html).toContain('Lv 2 · 220 points');
+    expect(html).toContain('Visitors, friends’ visits and shows.');
+    expect(evalCond(g, { type: 'mastery', track: 'exhibition', min: 300 })).toMatchObject({ label: '300 exhibition mastery points', current: 220, target: 300 });
   });
 });
