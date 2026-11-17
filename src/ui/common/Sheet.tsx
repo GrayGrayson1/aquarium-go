@@ -8,10 +8,12 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useDragControls } from 'motion/react';
 import { X } from 'lucide-react';
 import { sfx } from '@/audio/sfx';
 import { isTextEntry, SHORT_LANDSCAPE_QUERY, useMedia } from './safe';
+import { startsDrag, swipedDown } from './dragClose'; // audit B18
+import { useSettings } from '@/state/settings';
 
 /** Phones (either way up), and tablets held upright, get bottom sheets so the tank stays visible above. */
 export const BOTTOM_SHEET_QUERY = `(max-width: 720px), (max-width: 1000px) and (orientation: portrait), ${SHORT_LANDSCAPE_QUERY}`;
@@ -36,6 +38,11 @@ export interface SheetProps {
 export function Sheet({ open, onClose, side = 'right', children, header, title, subtitle, testId, className, label, escToClose = true, footer }: SheetProps) {
   const mobile = useMedia(BOTTOM_SHEET_QUERY);
   const [expanded, setExpanded] = useState(false);
+  // audit B18: a bottom sheet's grab bar and header swipe it down: an expanded one shrinks, else it closes (PanelHost's
+  // rule; Settings and the tank card drew the bar but ignored the swipe). Not with reduced motion, as panels.
+  const dragControls = useDragControls();
+  const reduced = useSettings((s) => s.reducedMotion);
+  const canDrag = mobile && !reduced;
   useEffect(() => {
     if (!open) setExpanded(false);
   }, [open]);
@@ -100,6 +107,23 @@ export function Sheet({ open, onClose, side = 'right', children, header, title, 
           animate={{ x: 0, y: 0, opacity: 1 }}
           exit={from}
           transition={{ type: 'spring', stiffness: 360, damping: 36, mass: 0.9 }}
+          drag={canDrag ? 'y' : false}
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.6 }}
+          onDragEnd={(_, info) => {
+            if (!swipedDown(info)) return;
+            if (expanded) setExpanded(false);
+            else {
+              sfx('close');
+              onClose();
+            }
+          }}
+          onPointerDown={(e) => {
+            // (the drawn grabber takes no pointer events: a press on it reaches the sheet itself)
+            if (canDrag && (e.target === e.currentTarget || startsDrag(e.target, '.ag-sheet__head'))) dragControls.start(e);
+          }}
         >
           {mobile && <SheetHandle expanded={expanded} onToggle={() => setExpanded((v) => !v)} />}
           <div className="ag-sheet__head">

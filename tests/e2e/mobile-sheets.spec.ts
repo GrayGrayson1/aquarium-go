@@ -76,6 +76,41 @@ test.describe('phone 390×844 (touch)', () => {
     expect(await page.evaluate(() => location.hash)).toBe('#/settings');
   });
 
+  test('audit B18: More and Settings swipe closed from their header, as panels do', async ({ page }) => {
+    await phoneGame(page);
+    /** A downward swipe from the middle of `sel` (a mouse pointer: the drag is the same). */
+    const swipe = async (sel: string) => {
+      const r = (await rect(page, sel))!;
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x, y + 80, { steps: 4 });
+      await page.mouse.move(x, y + 240, { steps: 6 });
+      await page.mouse.up();
+    };
+    await tid(page, 'dock-more').tap();
+    await settled(page, '[data-testid="more-sheet"]');
+    await swipe('.ag-more__title');
+    await expect(tid(page, 'more-sheet')).toBeHidden();
+    await tid(page, 'dock-more').tap();
+    await tid(page, 'more-settings').tap();
+    await settled(page, '[data-testid="panel-settings"]');
+    await swipe('[data-testid="panel-settings"] .ag-sheet__title');
+    await expect(tid(page, 'panel-settings')).toBeHidden();
+    // a short drag leaves it open
+    await tid(page, 'dock-more').tap();
+    await settled(page, '[data-testid="more-sheet"]');
+    const r = (await rect(page, '.ag-more__title'))!;
+    await page.mouse.move(r.left + 10, r.top + 5);
+    await page.mouse.down();
+    await page.mouse.move(r.left + 10, r.top + 45, { steps: 8 });
+    await page.waitForTimeout(300);
+    await page.mouse.up();
+    await page.waitForTimeout(600);
+    await expect(tid(page, 'more-sheet')).toBeVisible();
+  });
+
   test('Settings › Notifications has no Save now footer, so with no notifications four of its six categories show before scrolling (ADR-0036)', async ({ page }) => {
     // the status card's height depends on the browser's notification state: pin it to an iPhone Safari tab's (none)
     await page.addInitScript(() => void delete (window as { Notification?: unknown }).Notification);
