@@ -17,7 +17,7 @@ import { useGame } from '@/state/game';
 import { createLine, setLineRunning } from '@/sim/production';
 import { slotsCaption } from '@/sim/production/view';
 import { ProductionTab } from '@/ui/panels/livestock/Production';
-import { NewLine } from '@/ui/panels/livestock/ProductionSetup';
+import { NewLine, StageRow } from '@/ui/panels/livestock/ProductionSetup';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const tag = (markup: string, testId: string) => new RegExp(`<[^>]*data-testid="${testId}"[^>]*>`).exec(markup)?.[0] ?? '';
@@ -201,6 +201,20 @@ describe('PROD-003, DES-008: the Production tab', () => {
     const t = text(render(s.g));
     expect(t).toContain('Grow-out Tub is full, so Cinder and Blaze are kept apart until there’s room.'); // chunk 6 (DES-013): curly, as the 0.5 copy rule and §7.6 write it
     expect(t).toMatch(/Add a quarantine tank · \$[\d,]+/);
+  });
+});
+
+describe('Audit 2026-11-17 (H10): set-up step 2 says when a stage has no tank', () => {
+  it('a stage no tank can take says each stage needs its own tank, with a way to Build', () => {
+    const s = shop();
+    const chosen = { breed: s.tanks.breed.id, quarantine: s.tanks.quarantine.id, keep: s.tanks.keep.id };
+    const row = () =>
+      renderToStaticMarkup(createElement(StageRow, { g: s.g, speciesId: 'betta', stage: { id: 'raise', word: 'Raise', icon: null, testId: 'raise' }, chosen, pair: { motherId: s.cinder.id, fatherId: s.blaze.id }, open: false, onToggle: () => {}, onPick: () => {} }));
+    expect(row()).not.toContain('production-new-nofit-raise');
+    for (const t of Object.values(s.g.tanks)) if (!Object.values(chosen).includes(t.id)) t.water.tempC = 12; // too cold for any of them
+    const m = row();
+    expect(m).toContain('data-testid="production-new-nofit-raise"');
+    expect(text(m)).toContain('No tank fits yet: each stage needs its own tank. Buy one in Build');
   });
 });
 

@@ -173,7 +173,7 @@ function TankChoices({ g, speciesId, stage, chosen, pair, onPick, ignoreLineId }
   );
 }
 
-function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, onPick }: { g: GameState; speciesId: string; stage: (typeof STAGES)[number]; chosen: Partial<Record<LineStage, string>>; pair: { motherId: string; fatherId: string } | null; open: boolean; onToggle: () => void; onPick: (id: string) => void }) {
+export function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, onPick }: { g: GameState; speciesId: string; stage: (typeof STAGES)[number]; chosen: Partial<Record<LineStage, string>>; pair: { motherId: string; fatherId: string } | null; open: boolean; onToggle: () => void; onPick: (id: string) => void }) {
   const id = chosen[stage.id];
   const fit = id ? tankFitFor(g, speciesId, stage.id, id, chosen, pair ? [pair.motherId, pair.fatherId] : []) : null;
   return (
@@ -190,6 +190,15 @@ function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, onPick }:
         {fit && <FitBadge fit={fit} />}
         <ChevronDown size={16} aria-hidden className="pr-tankrow__chev" />
       </button>
+      {/* Audit 2026-11-17 (H10): a stage no tank can take says why, and where to get one */}
+      {!id && !g.tankOrder.some((t) => tankFitFor(g, speciesId, stage.id, t, chosen, pair ? [pair.motherId, pair.fatherId] : []).ok) && (
+        <p className="pr-hint" data-testid={`production-new-nofit-${stage.testId}`}>
+          No tank fits yet: each stage needs its own tank.{' '}
+          <button type="button" className="pn-link" onClick={() => useUI.getState().set({ panel: 'build', panelTarget: 'tab:tanks' })}>
+            Buy one in Build
+          </button>
+        </p>
+      )}
       {open && <TankChoices g={g} speciesId={speciesId} stage={stage.id} chosen={chosen} pair={pair} onPick={onPick} />}
     </div>
   );
@@ -445,7 +454,7 @@ export function NewLine({ g, onStarted }: { g: GameState; onStarted: (lineId: st
           </Button>
         )}
         {step < 3 ? (
-          <Button variant="primary" data-testid="production-new-next" disabled={step === 1 ? !pair : !tanksOk} onClick={() => setStep((step + 1) as 2 | 3)}>
+          <Button variant="primary" data-testid="production-new-next" disabled={step === 1 ? !pair : !tanksOk} title={step === 2 && !tanksOk ? 'Choose a tank for every stage' : undefined} onClick={() => setStep((step + 1) as 2 | 3)}>
             <ArrowRight size={14} aria-hidden /> {step === 1 ? 'Next: choose tanks' : 'Next: rules'}
           </Button>
         ) : (
