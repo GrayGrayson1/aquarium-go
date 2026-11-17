@@ -373,7 +373,7 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
             title={busy ? 'Only one project runs at a time. Finish or stop the current one first.' : !r.affordable ? `You need ${formatMoney(Math.max(0, cost - g.finance.money))} more to start this.` : undefined}
             onClick={() => act({ k: 'startResearch', project: d.id }, { sound: 'confirm' })}
           >
-            {busy ? 'One at a time' : !r.affordable ? 'Can’t afford' : 'Start'}
+            {busy ? 'One at a time' : !r.affordable ? `Need ${formatMoney(Math.ceil(cost - g.finance.money - 1e-6))} more` : 'Start'}
           </Button>
         )}
         {status === 'locked' && (

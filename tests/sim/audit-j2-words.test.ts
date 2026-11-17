@@ -58,3 +58,30 @@ describe('Audit 2026-11-17 (J24, the part that needs no choice): one name for th
     expect(src('sim/economy/listings.ts')).toContain("'Sold unwell animals to the local fish store'");
   });
 });
+
+describe('Audit 2026-11-17 (J25): one word for one thing', () => {
+  it('the screens say the same thing the same way', () => {
+    const cases: [string, string, string][] = [
+      ['ui/hud/ToolRail.tsx', 'label="Watch"', 'label="Just watch"'],
+      ['ui/tutorial/tourStops.ts', 'Watch hides everything so you can just', 'Just watch hides everything'],
+      ['ui/panels/build/BuildPanel.tsx', 'Too pricey', '`Need ${formatMoney(Math.ceil(kit.total - g.finance.money - 1e-6))} more`'],
+      ['ui/panels/research/ResearchPanel.tsx', 'Can’t afford', '`Need ${formatMoney(Math.ceil(cost - g.finance.money - 1e-6))} more`'],
+      ['ui/panels/build/FragAction.tsx', 'holding system', 'Waiting in storage, where they don’t grow.'],
+      ['sim/economy/listings.ts', 'holding system', 'Listed frags wait in storage'],
+      ['sim/aquascape/frags.ts', 'Your holding system is full', 'Frag storage is full'],
+      ['ui/panels/log/LogPanel.tsx', 'title="Log"', 'title="Event log"'],
+      ['ui/panels/shows/EnterFlow.tsx', 'backLabel="Calendar"', 'backLabel="Upcoming"'],
+      ['ui/panels/shows/Results.tsx', 'Browse the calendar', 'See upcoming shows'],
+      ['ui/panels/social/copy.ts', "'Join group'", "joinGroup: 'Join club'"],
+      ['ui/panels/shows/TrophyCase.tsx', 'in memoriam', "'in memory'"],
+      ['ui/panels/finances/FinancesPanel.tsx', 'Spending', "label: 'Expenses'"],
+      ['ui/panels/livestock/LivestockPanel.tsx', "['juveniles', 'Juveniles']", "['juveniles', 'Young']"],
+      ['ui/shared/SharedScreens.tsx', "'Title'", "'Back to the title screen'"],
+    ];
+    for (const [file, gone, now] of cases) {
+      const s = src(file);
+      expect(s, `${file}: ${gone}`).not.toContain(gone);
+      expect(s, `${file}: ${now}`).toContain(now);
+    }
+  });
+});

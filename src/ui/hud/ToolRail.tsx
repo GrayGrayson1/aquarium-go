@@ -501,7 +501,8 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
       <CameraCycleTool />
       <ToolButton
         icon={Eye}
-        label="Watch"
+        label="Just watch"
+        shortLabel="Watch"
         testId="tool-watch"
         onClick={() => {
           sfx('close');

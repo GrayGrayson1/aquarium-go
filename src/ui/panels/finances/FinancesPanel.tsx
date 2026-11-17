@@ -171,7 +171,7 @@ export function FinancesPanel() {
 
         <div className="pn-grid pn-grid--2">
           <CategoryList title={`Income · ${data.truncated ? `last ${data.catDays} days` : '14 days'}`} icon={<TrendingUp size={14} />} rows={data.income} tone="income" />
-          <CategoryList title={`Spending · ${data.truncated ? `last ${data.catDays} days` : '14 days'}`} icon={<TrendingDown size={14} />} rows={data.expenses} tone="expense" />
+          <CategoryList title={`Expenses · ${data.truncated ? `last ${data.catDays} days` : '14 days'}`} icon={<TrendingDown size={14} />} rows={data.expenses} tone="expense" />
         </div>
         {data.truncated && (
           <p className="pn-tiny pn-muted" style={{ margin: '-6px 0 0' }}>
@@ -251,7 +251,7 @@ export function FinancesPanel() {
 
         <section>
           <SectionHead title="Ledger" icon={<HandCoins size={14} />}>
-            <Seg<LedgerFilter> size="sm" label="Ledger filter" value={filter} onChange={setFilter} items={[{ id: 'all', label: 'All' }, { id: 'income', label: 'Income' }, { id: 'expenses', label: 'Spending' }]} />
+            <Seg<LedgerFilter> size="sm" label="Ledger filter" value={filter} onChange={setFilter} items={[{ id: 'all', label: 'All' }, { id: 'income', label: 'Income' }, { id: 'expenses', label: 'Expenses' }]} />
           </SectionHead>
           {ledgerCats.length > 1 && (
             <div className="pn-chips pn-chips--scroll" style={{ marginBottom: 10 }}>
@@ -319,7 +319,7 @@ function CategoryList({ title, icon, rows, tone }: { title: string; icon: React.
         </span>
       </SectionHead>
       {rows.length === 0 ? (
-        <span className="pn-small pn-muted">{tone === 'income' ? 'No income yet.' : 'No spending yet.'}</span>
+        <span className="pn-small pn-muted">{tone === 'income' ? 'No income yet.' : 'No expenses yet.'}</span>
       ) : (
         <div className="pn-col pn-gap-2">
           {rows.slice(0, 6).map((r) => (

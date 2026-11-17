@@ -78,7 +78,7 @@ export function EnterFlow({ g, show, initialClass, onBack, onDone }: { g: GameSt
   };
 
   return (
-    <SubView onBack={onBack} backLabel="Calendar" title={<TierBadge tier={show.tier} />}>
+    <SubView onBack={onBack} backLabel="Upcoming" title={<TierBadge tier={show.tier} />}>
       <div className="sh-flow">
         <div className="sh-flowhead">
           <h4 className="sh-show__name">{show.name}</h4>

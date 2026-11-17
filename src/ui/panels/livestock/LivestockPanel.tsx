@@ -201,7 +201,7 @@ export function LivestockPanel() {
                     ['all', 'Everyone'],
                     ['attention', `Needs attention${attention ? ` (${attention})` : ''}`],
                     ['favorites', 'Favourites'],
-                    ['juveniles', 'Juveniles'],
+                    ['juveniles', 'Young'],
                     ['listed', 'Listed for sale'],
                   ] as [StatusFilter, string][]
                 ).map(([id, label]) => (

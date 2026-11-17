@@ -502,7 +502,7 @@ export function previewListing(state: GameState, spec: Omit<ListingSpec, 'reserv
     // lane:frags
     const fresh = contents.frags.filter((f) => isCoralDef(getDecorDef(f.defId)) && !(f.frag?.plantedHour !== undefined && state.clock.hour - f.frag.plantedHour >= FRAG_HEALED_HOURS)).length;
     if (fresh) warnings.push(`${fresh === contents.frags.length ? 'These are fresh cuts' : `${fresh} of these ${fresh === 1 ? 'is a fresh cut' : 'are fresh cuts'}`}. Buyers pay about a fifth more for a frag that has healed on its plug for a day — a frag rack is the place for that.`);
-    warnings.push('Listed frags wait in your holding system and don’t grow until the listing ends. Unsold ones come back to storage.');
+    warnings.push('Listed frags wait in storage and don’t grow until the listing ends. Unsold ones stay there.');
   }
   if (contents.tank && state.tankOrder.length === 1) warnings.push('This is your last aquarium. If it sells you will have an empty room — and the money to start a new build.');
   if (contents.tank) {

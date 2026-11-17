@@ -21,7 +21,7 @@ export const SOCIAL_COPY = {
   haveInvite: 'Have an invite?',
   // chunk 8 (the owner, 2026-10-19, ADR-0042 J1): the real codes' shape, a club's word and four letters
   invitePlaceholder: 'Invite code, e.g. FRIENDS-KDWX',
-  joinGroup: 'Join group',
+  joinGroup: 'Join club',
   errorCredentials: 'Enter your email and a password of at least 8 characters.',
   errorInvite: 'That invite code didn’t match a club. Check it and try again.',
   // audit 2026-11-17, I6: an outage can last (a paused project), so not "in a moment"; with a Try again button, the other line
