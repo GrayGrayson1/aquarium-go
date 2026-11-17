@@ -151,6 +151,7 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
     text: `${who} arrived in ${tank.name}.${uncycled ? ' This tank is not cycled yet — feed lightly and watch ammonia closely.' : ' Give them a little time to settle in.'}`,
     tankId,
     creatureId: bought[0]?.id,
+    ...(uncycled ? { toast: true } : {}), // audit 2026-11-17 (F4): said where the player sees it, not only in the log
   });
   return { ok: true, message: `${who} added to ${tank.name} for ${fmtMoney(price)}.` };
 }

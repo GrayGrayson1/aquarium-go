@@ -293,6 +293,14 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
   );
 }
 
+/** Audit 2026-11-17 (F4) — the water report's cycle lines: cycled from 75 % established, DANGER under 40 % with animals in. */
+const CYCLED = 0.75;
+const UNCYCLED = 0.4;
+const cycleOf = (t: Tank): number => {
+  const m = t.water?.bioMaturity;
+  return typeof m === 'number' && Number.isFinite(m) ? m : 1;
+};
+
 /** A destination tile's fit, from the same preview the selected tank's CompatPreview uses. */
 interface TileFit {
   verdict: CompatVerdict;
@@ -395,7 +403,10 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   }, [g, candidate, tankId, report]);
 
   if (!sp) return null;
-  const risky = !!report && VERDICT_RANK[report.verdict] >= VERDICT_RANK.high_risk;
+  // audit 2026-11-17 (F4) — a tank still cycling: watch under 75 % established (the water report's "cycling"), and
+  // under 40 % (its DANGER with animals in) the risk tick is needed, like any high-risk move
+  const cycle = tank ? cycleOf(tank) : 1;
+  const risky = (!!report && VERDICT_RANK[report.verdict] >= VERDICT_RANK.high_risk) || (gate.ok && cycle < UNCYCLED);
   const locked = !speciesUnlocked(g, sp);
   const afford = g.finance.money >= price;
   const tooSmall = tank ? gallonsOf(tank) < sp.recommendedMinTankGallons : false;
@@ -596,6 +607,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
                   ) : (
                     <>
                       <span className="pn-tiny pn-muted">{plural(n, 'resident')}</span>
+                      {cycleOf(t) < CYCLED && <span className={clsx('pn-tiny', cycleOf(t) < UNCYCLED ? 'pn-tone-danger' : 'pn-tone-watch')}>Cycling {Math.round(cycleOf(t) * 100)}%</span> /* F4 */}
                       {fit && (
                         <span className="ag-tilefit" data-verdict={fit.verdict}>
                           <StatusBadge status={verdictStatus(fit.verdict)} label={`${VERDICT_LABEL[fit.verdict]}${fit.reason ? ` — ${fit.reason}` : ''}`} />
@@ -622,6 +634,13 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
       {tank && (
         <section className="pn-col pn-gap-2">
           <CompatPreview report={report} gate={gate} title={`Compatibility with ${tank.name}`} focusSpeciesId={sp?.id} /* lane:qa-play */ labels={VERDICT_LABEL /* ADR-0020: long labels in the offer detail */} />
+          {gate.ok && cycle < CYCLED && (
+            <div data-testid="offer-cycling">
+              <Callout tone={cycle < UNCYCLED ? 'danger' : 'watch'} icon={<TriangleAlert size={15} />}>
+                {tank.name} is still cycling ({Math.round(cycle * 100)}% established). New animals here face ammonia spikes: add bottled bacteria, or pick a cycled tank.
+              </Callout>
+            </div>
+          )}
           {gate.ok && tooSmall && (
             <Callout tone="watch" icon={<TriangleAlert size={15} />}>
               {sp.commonName} need at least {sp.recommendedMinTankGallons} gallons as adults; {tank.name} is {gallonsOf(tank)} gallons.

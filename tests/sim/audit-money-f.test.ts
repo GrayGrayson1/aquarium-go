@@ -6,7 +6,9 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { GameState } from '@/types';
+import type { GameState, ShopOffer } from '@/types';
+import { useUI } from '@/state/ui';
+import { ShopTab } from '@/ui/panels/market/Shop';
 import { newGame } from '@/sim/newGame';
 import { useGame } from '@/state/game';
 import { refreshFoodStatus } from '@/sim/tankStatus';
@@ -329,5 +331,44 @@ describe('F3: the listing’s price advice matches what buyers in the code actua
     expect(reserveHint(100, o)).toBe('About half of first offers will be below this and turned down automatically.');
     expect(reserveHint(85, o)).toBe('Some first offers will be below this and turned down automatically.');
     expect(reserveHint(80, o)).toBe('Most first offers will reach this. You still choose which one to accept.');
+  });
+});
+
+describe('F4: buying animals into a tank that is still cycling says so first', () => {
+  function cyclingShop(bio: number) {
+    const g = game();
+    g.market.stock = [];
+    const t = g.tanks[g.tankOrder[0]];
+    t.water.bioMaturity = bio;
+    const rng = simRng(g);
+    const o: ShopOffer = { id: 'offer_f4', kind: 'creature', speciesId: 'mystery_snail', creatures: [createCreature(g, rng, 'mystery_snail')], price: 30, seller: 'Test Breeder', expiresHour: g.clock.hour + 48 };
+    g.market.stock.push(o);
+    useUI.setState({ focusedTankId: t.id });
+    const out = renderToStaticMarkup(createElement(ShopTab, { g, offerId: o.id, setOfferId: () => {} }));
+    return { g, t, o, out, txt: text(out) };
+  }
+
+  it('under 40 % established: the warning, the tile’s cycle and the risk tick', () => {
+    const { t, out, txt } = cyclingShop(0.2);
+    expect(out).toContain('data-testid="offer-cycling"');
+    expect(txt).toContain(`${t.name} is still cycling (20% established). New animals here face ammonia spikes: add bottled bacteria, or pick a cycled tank.`);
+    expect(txt).toContain('Cycling 20%');
+    expect(txt).toContain('I understand the risks and want to go ahead');
+  });
+
+  it('seeded media (60 %): the warning, no tick; a cycled tank: nothing', () => {
+    const seeded = cyclingShop(0.6);
+    expect(seeded.txt).toContain('is still cycling (60% established)');
+    expect(seeded.txt).not.toContain('I understand the risks');
+    const cycled = cyclingShop(0.9);
+    expect(cycled.out).not.toContain('offer-cycling');
+    expect(cycled.txt).not.toContain('Cycling 90%');
+  });
+
+  it('after paying, the not-cycled note is a toast, not only a log line', () => {
+    const { g, t, o } = cyclingShop(0.2);
+    expect(buyOffer(g, o.id, t.id).ok).toBe(true);
+    const e = g.log.find((x) => /not cycled yet/.test(x.text))!;
+    expect(e.toast).toBe(true);
   });
 });
