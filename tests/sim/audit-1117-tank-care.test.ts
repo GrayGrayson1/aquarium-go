@@ -342,7 +342,7 @@ describe('C8: a hungry animal’s tank line says which food, and broadcast feedi
     expect(fixForAttention(s, t, { source: 'animals', text: line }, null)?.label).toBe('Buy food');
   });
 
-  it('its food in stock: the line names it, and the link feeds that animal from its card', () => {
+  it('its food in stock: the line names it, and the link opens the food picker', () => {
     const { s, t, pleco, wafer } = setup();
     s.inventory.foods[wafer.id] = 20;
     pleco.stats.hunger = 95;
@@ -350,7 +350,18 @@ describe('C8: a hungry animal’s tank line says which food, and broadcast feedi
     const line = t.cache.statusReasons?.find((r) => r.startsWith(pleco.name))!;
     expect(line).toContain(`${pleco.name} is starving — feed it `);
     expect(line).toContain(wafer.name.toLowerCase());
-    expect(fixForAttention(s, t, { source: 'animals', text: line }, null)).toEqual({ label: `Feed ${pleco.name}`, to: { kind: 'creature', tankId: t.id, creatureId: pleco.id } });
+    expect(fixForAttention(s, t, { source: 'animals', text: line }, null)).toEqual({ label: 'Feed', to: { kind: 'feed', tankId: t.id } });
+  });
+
+  it('a target-fed seahorse: the line says target-feed, and the link is its card’s Feed', () => {
+    const s = base('lined_seahorse');
+    const t = firstTank(s);
+    const horse = Object.values(s.creatures).find((c) => c.tankId === t.id)!;
+    horse.stats.hunger = 75;
+    refreshTankCache(s, t);
+    const line = t.cache.statusReasons?.find((r) => r.startsWith(horse.name))!;
+    expect(line).toMatch(/target-feed it\.$/);
+    expect(fixForAttention(s, t, { source: 'animals', text: line }, null)).toEqual({ label: `Feed ${horse.name}`, to: { kind: 'creature', tankId: t.id, creatureId: horse.id } });
   });
 
   it('a broadcast feed the hungry pleco can’t eat says so', () => {

@@ -200,14 +200,15 @@ export function fixForAttention(g: GameState, tank: Tank, item: Pick<AttentionIt
       }
       const named = namedAnimal(g, tank.id, item.text);
       if (/starv|hungry|feed right away/i.test(item.text)) {
-        // Audit 2026-11-17 C8 — none of its food in stock: the shop; one animal named: its card, whose Feed row
-        // target-feeds a food it eats (broadcast flakes never reach a pleco or an outpaced seahorse); else the picker
+        // Audit 2026-11-17 C8 — none of its food in stock: the shop. Target feeding (an outpaced or target-fed
+        // animal, which broadcast food never reaches): one named animal's card, whose Feed row target-feeds a food it
+        // eats, or the Target feed picker for a group. Otherwise the food picker, as before (the line names the food)
         if (/none of (its|their) food is in stock/.test(item.text)) {
           const id = tankFoodOutlook(g, tank.id)?.restockId;
           return id ? { label: 'Buy food', to: { kind: 'panel', panel: 'market', target: `food:${id}` } } : { label: 'Open Supplies', to: { kind: 'panel', panel: 'market', target: 'tab:supplies' } };
         }
-        if (named) return { label: `Feed ${named.name}`, to: { kind: 'creature', tankId: tank.id, creatureId: named.id } };
-        return { label: 'Feed', to: { kind: 'feed', tankId: tank.id, ...(/target/i.test(item.text) ? { target: true } : {}) } };
+        if (/target/i.test(item.text)) return named ? { label: `Feed ${named.name}`, to: { kind: 'creature', tankId: tank.id, creatureId: named.id } } : { label: 'Target feed', to: { kind: 'feed', tankId: tank.id, target: true } };
+        return { label: 'Feed', to: { kind: 'feed', tankId: tank.id } };
       }
       return named ? { label: `See ${named.name}`, to: { kind: 'creature', tankId: tank.id, creatureId: named.id } } : card(tank, 'life', 'residents', 'See the animals');
     }
