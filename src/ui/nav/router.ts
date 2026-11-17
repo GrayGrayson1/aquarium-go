@@ -391,7 +391,10 @@ function onHashChange(): void {
   const tank = entryTank();
   const refocus = () => {
     const g = useGame.getState().game;
-    if (tank && g?.tanks[tank] && useUI.getState().focusedTankId !== tank) useUI.getState().set({ focusedTankId: tank });
+    const ui = useUI.getState();
+    // (as the tank switcher does, TankBar's cycleTank: the animal and the follow camera stay with the old tank)
+    if (tank && g?.tanks[tank] && ui.focusedTankId !== tank)
+      ui.set({ focusedTankId: tank, selectedCreatureId: null, followCreatureId: null, cameraMode: ui.cameraMode === 'follow' ? 'front' : ui.cameraMode });
   };
   if (!parsed) {
     guardLeave(() => {

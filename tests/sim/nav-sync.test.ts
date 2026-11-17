@@ -496,6 +496,21 @@ describe('audit B22: Back returns to the tank it was showing', () => {
     expect(fakeHistory.state).toMatchObject({ aqTank: first });
   });
 
+  it('review: Back to the other tank drops the follow camera as the tank switcher does', async () => {
+    const { createTank } = await import('@/sim/tanks');
+    const other = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true, placement: { x: 4, z: 0, rotY: 0 } });
+    const first = g.tankOrder[0];
+    await flush();
+    gesture();
+    useUI.getState().set({ focusedTankId: other.id, view: 'tank', panel: null });
+    useShell.getState().set({ tankCardOpen: true });
+    await flush();
+    useUI.getState().set({ followCreatureId: 'cr_x', cameraMode: 'follow' });
+    browserBack();
+    await flush();
+    expect(useUI.getState()).toMatchObject({ focusedTankId: first, followCreatureId: null, selectedCreatureId: null, cameraMode: 'front' });
+  });
+
   it('switching tanks at #/ keeps the entry’s tank current (no new entry)', async () => {
     const { createTank } = await import('@/sim/tanks');
     const other = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true, placement: { x: 4, z: 0, rotY: 0 } });
