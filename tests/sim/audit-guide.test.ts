@@ -17,7 +17,7 @@ import { quickSell } from '@/sim/economy/listings';
 import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { tutorialChain } from '@/data/quests';
-import { currentCoachStep, friendWait } from '@/ui/tutorial/guideText';
+import { currentCoachStep, friendWait, guideOnForNewGame } from '@/ui/tutorial/guideText';
 import { finaleLines, finaleNext } from '@/ui/tutorial/TutorialCoach';
 import { guideAim, type GuideScreen } from '@/ui/tutorial/guideTargets';
 import { tourStops } from '@/ui/tutorial/tourStops';
@@ -210,6 +210,21 @@ describe('A8: the phone tour’s money stop has no star to point at', () => {
     expect(phone.body).toMatch(/top of Research, under More/);
     const desk = tourStops({ mobile: false, social: false, unlocked: () => true }).find((s) => s.id === 'money')!;
     expect(desk.body).toMatch(/\(the star\)/);
+  });
+});
+
+describe('A4: a new game always starts with its guide showing', () => {
+  it('turns the device’s "Guide hints" back on (and leaves it on)', () => {
+    const was = useSettings.getState().showTutorialHints;
+    try {
+      useSettings.getState().update({ showTutorialHints: false });
+      guideOnForNewGame();
+      expect(useSettings.getState().showTutorialHints).toBe(true);
+      guideOnForNewGame();
+      expect(useSettings.getState().showTutorialHints).toBe(true);
+    } finally {
+      useSettings.getState().update({ showTutorialHints: was });
+    }
   });
 });
 

@@ -87,6 +87,16 @@ export function currentCoachStep(g: GameState | null, fine = false): CoachStep |
   };
 }
 
+/**
+ * Audit 2026-11-17 (A4) — "Guide hints" is one switch for the whole device (a family shares a browser): a new game
+ * turns it back on, so a new aquarium never starts with its guide (and the guide's Skip) out of sight. Loading or
+ * continuing a game leaves the switch as the player set it.
+ */
+export function guideOnForNewGame(): void {
+  const s = useSettings.getState();
+  if (!s.showTutorialHints) s.update({ showTutorialHints: true });
+}
+
 /** Steps that wait on friend visits (or the reputation they bring). */
 const FRIEND_STEPS = new Set(['first_money', 'first_goal', 'upgrade']);
 

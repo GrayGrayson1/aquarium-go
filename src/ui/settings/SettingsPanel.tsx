@@ -188,7 +188,7 @@ function DisplayTab() {
         <Row label="Autosave" description="Saves quietly every few minutes and when you leave." icon={<Save size={16} />}>
           <Toggle label="Autosave" checked={s.autosave} onChange={(v) => up({ autosave: v })} />
         </Row>
-        <Row label="Guide hints" description="Show the tutorial coach card." icon={<Lightbulb size={16} />}>
+        <Row label="Guide hints" description="Show the guide card. A new game always starts with it on." icon={<Lightbulb size={16} />}>
           <Toggle label="Guide hints" checked={s.showTutorialHints} onChange={(v) => up({ showTutorialHints: v })} />
         </Row>
         {inGameNow() && (
