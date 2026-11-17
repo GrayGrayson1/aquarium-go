@@ -198,7 +198,7 @@ export function naturalFood(state: GameState, tank: Tank, kinds: readonly Natura
   return clamp01(best);
 }
 
-interface PredationInfo {
+export interface PredationInfo {
   /** 0..1 fraction of the young lost over the current stage to predators (after cover shelter). */
   p: number;
   /** Adult conspecifics eating them (excluding a tending parent). */
@@ -209,7 +209,8 @@ interface PredationInfo {
   others: Map<string, Creature[]>;
 }
 
-function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, mod: BreedingModule, hour: number, info: TankInfo): PredationInfo {
+/** Who eats this clutch here, and how much of it over the current stage. Pure (audit E2: the clutch card reads it too). */
+export function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, mod: BreedingModule, hour: number, info: TankInfo): PredationInfo {
   const out: PredationInfo = { p: 0, conspecific: [], guardianEating: null, others: new Map() };
   if (isCarried(cl)) return out;
   const plan = mod.plan;
@@ -756,6 +757,8 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
     text = `${plural(n, `young ${spName(sp)}`, `young ${young}`)} from ${parents} ${n === 1 ? 'is' : 'are'} ready to meet you!`;
     if (rehomed > 0) text += ` ${rehomed.toLocaleString('en-US')} more ${rehomed === 1 ? 'was' : 'were'} rehomed to local hobbyists.`;
     if (capLimited) text += ` ${tank.name} is at capacity — a bigger nursery would let you keep more.`;
+    // audit E3: the per-clutch cap, not the tank, sent the rest away: say so (it was never explained)
+    else if (rehomed > 0 && n >= sp.breeding.maxRaisedPerClutch) text += ` You keep up to ${sp.breeding.maxRaisedPerClutch} young from each clutch.`;
   } else if (cl.count > 0) {
     text = `${parentName(state, cl)} young are grown, but ${tank.name} has no room for more animals — all ${cl.count.toLocaleString('en-US')} were rehomed to local hobbyists.`;
   } else text = `${parentName(state, cl)} brood has grown up.`;

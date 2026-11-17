@@ -10,6 +10,10 @@ import { createCreature, addCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { advanceWorld } from '@/sim/world';
 import { devForceBreeding, separateCreature } from '@/sim/life/breeding/actions';
+import { clutchStatus } from '@/sim/life/breeding';
+import { createClutch, mintJuveniles } from '@/sim/life/breeding/clutch';
+import { getSpecies } from '@/data/species';
+import { makeContext } from '@/sim/context';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -65,6 +69,11 @@ describe('E1: a parent moved into the nursery with its young', () => {
     run(state, 12, 24, () => logFrom(state, from).some((t) => /eating/.test(t)));
     const eat = logFrom(state, from).find((t) => /eating/.test(t));
     expect(eat).toBe('Atlas is eating his own fry! Move him out of Nursery now.');
+    // the Eggs & fry card no longer calls a nursery with the father in it safe
+    const cl = Object.values(state.clutches).find((c) => c.tankId === nursery.id)!;
+    const st = clutchStatus(state, cl.id)!;
+    expect(st.safe).toBe(false);
+    expect(st.warnings).toContain('Atlas eats the young here — move him out');
   });
 
   it('a guppy mother who drops her fry in the nursery is told to leave', () => {
@@ -78,5 +87,43 @@ describe('E1: a parent moved into the nursery with its young', () => {
     const from = state.log.length;
     run(state, 6, 25, () => logFrom(state, from).some((t) => /dropped/.test(t)));
     expect(logFrom(state, from).find((t) => /dropped/.test(t))).toMatch(/Move Bella back out — adults eat fry\.$/);
+  });
+});
+
+describe('E2/E3: the clutch card shows the room, the eaters and the per-clutch cap before the end', () => {
+  it('eggs in a small tank say how many will fit, and that only so many of a clutch are kept', () => {
+    const state = newGame({ starterId: 'axolotl', starterName: 'Mochi', seed: 902 });
+    const mochi = starter(state);
+    const tiny = createTank(state, 'g5', 'freshwater_cool', { cycled: true, purpose: 'nursery', name: 'Tiny' });
+    const sp = getSpecies('axolotl');
+    const cl = createClutch(state, { sp, tank: tiny, mother: mochi, father: null, hour: state.clock.hour, stage: 'eggs', count: 600, visual: 'eggs_scattered', nextStageHour: state.clock.hour + 100 });
+    const st = clutchStatus(state, cl.id)!;
+    expect(st.safe).toBe(true);
+    expect(st.warnings.join(' ')).toMatch(/^(Room for only \d+ of these|No room in Tiny for these young) when they grow up — move them to a bigger or emptier tank/);
+    expect(st.keepNote).toBe('You can keep up to 8 young from this clutch; the rest go to local hobbyists.');
+  });
+
+  it('a discus pair alone with its eggs is not called a danger to them', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 31 });
+    const home = createTank(state, 'g55', 'freshwater_tropical', { cycled: true, name: 'Discus' });
+    const rng = simRng(state);
+    const m = addCreature(state, createCreature(state, rng, 'discus', { sex: 'male', ageDays: 400, name: 'Rio' }), home.id);
+    const f = addCreature(state, createCreature(state, rng, 'discus', { sex: 'female', ageDays: 400, name: 'Sol' }), home.id);
+    const cl = createClutch(state, { sp: getSpecies('discus'), tank: home, mother: f, father: m, hour: state.clock.hour, stage: 'eggs', count: 120, visual: 'eggs_adhesive', nextStageHour: state.clock.hour + 60, guardedById: m.id });
+    const st = clutchStatus(state, cl.id)!;
+    expect(st.safe).toBe(true);
+    expect(st.warnings.join(' ')).not.toMatch(/eat|nursery/);
+  });
+
+  it('when the per-clutch cap, not the tank, sends young away, the line says so', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 33 });
+    const big = createTank(state, 'g75', 'freshwater_planted', { cycled: true, purpose: 'nursery', name: 'Big' });
+    const sp = getSpecies('fancy_guppy');
+    const rng = simRng(state);
+    const mom = addCreature(state, createCreature(state, rng, 'fancy_guppy', { sex: 'female', ageDays: 90, name: 'Bella' }), createTank(state, 'g10', 'freshwater_planted', { cycled: true }).id);
+    const cl = createClutch(state, { sp, tank: big, mother: mom, father: null, hour: state.clock.hour, stage: 'fry', count: 30, visual: 'fry_cloud', nextStageHour: state.clock.hour });
+    const from = state.log.length;
+    mintJuveniles(state, cl, big, sp, state.clock.hour, makeContext(state, 1));
+    expect(logFrom(state, from).join(' ')).toMatch(/10 young fancy guppies .* 20 more were rehomed to local hobbyists\. You keep up to 10 young from each clutch\./);
   });
 });

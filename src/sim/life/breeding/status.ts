@@ -6,7 +6,8 @@ import type { GameState } from '@/types';
 import { findSpecies } from '@/data/species';
 import { moduleFor } from './registry';
 import type { StatusOut } from './types';
-import { currentPhase, isCarried, youngLabel } from './clutch';
+import { incidentRisks } from '@/sim/compat';
+import { currentPhase, isCarried, predationInfo, youngLabel } from './clutch';
 import {
   READY,
   SURFACE_CALM_MAX,
@@ -19,7 +20,9 @@ import {
   isMature,
   isNurseryFor,
   juvenileSlots,
+  makeTankInfo,
   plural,
+  spPlural,
   stageProgress,
   surfaceAgitation,
 } from './common';
@@ -119,6 +122,22 @@ export interface ClutchStatus {
   warnings: string[];
   /** Juveniles that will fit when these young grow up. */
   nurserySlots: number;
+  /**
+   * audit E1/E2: nothing here eats these young or sweeps them away (a nursery with the parent still in it isn't safe;
+   * a cichlid pair alone with its brood is).
+   */
+  safe: boolean;
+  /** audit E3: "You can keep up to N young from this clutch…", when the clutch is bigger than that. */
+  keepNote?: string;
+  /** audit E25: due, but waits for the dark (a clownfish's or shark's eggs, a seahorse's birth). */
+  waitsForDark: boolean;
+}
+
+/** Short list of names: "Atlas", "Atlas and Coral", "Atlas, Coral and 2 more". */
+function nameList(n: string[]): string {
+  if (n.length <= 1) return n[0] ?? '';
+  if (n.length === 2) return `${n[0]} and ${n[1]}`;
+  return `${n[0]}, ${n[1]} and ${n.length - 2} more`;
 }
 
 /**
@@ -148,7 +167,8 @@ export function clutchStatus(state: GameState, clutchId: string): ClutchStatus |
   const remaining = cl.nextStageHour - hour;
   let detail: string;
   if (cl.infertile) detail = cl.notes ?? 'These eggs won’t hatch here.';
-  else if (cl.stage === 'in_pouch') detail = `Due in ${approxDuration(remaining)}`;
+  // audit E25: a seahorse gives birth only after lights-out or at first light; a mouthbrooder releases them at once
+  else if (cl.stage === 'in_pouch') detail = remaining > 0 ? `Due in ${approxDuration(remaining)}` : mod.id === 'seahorse_pouch' ? 'Due after lights-out or at first light' : 'Due any moment';
   else if (cl.stage === 'eggs' && cl.visual === 'egg_case' && remaining > 0) detail = `${candled(clutchProgress(state, cl.id))}. Hatching in ${approxDuration(remaining)}`;
   else if (cl.stage === 'eggs') detail = cl.pendingEggs ? 'Still being laid' : remaining > 0 ? `Hatching in ${approxDuration(remaining)}` : mod.plan.hatchAtNight ? 'Hatching tonight after lights-out' : 'Hatching any moment';
   else {
@@ -157,14 +177,55 @@ export function clutchStatus(state: GameState, clutchId: string): ClutchStatus |
     detail = last ? `Juveniles in ${approxDuration(remaining)}` : `Next stage in ${approxDuration(remaining)}`;
     if (ph && ph.foods.length && foodRecency(tank, ph.foods, hour, 10, 14) < 0.5 && (cl.fed ?? 1) < 0.6) warnings.push(`Hungry — offer ${ph.foods.slice(0, 2).map((f) => f.replace(/_/g, ' ')).join(' or ')}`);
   }
-  if (!isCarried(cl) && !isNurseryFor(state, tank, hour) && sp.breeding.nurseryRequired) warnings.push('Adults share this tank — a nursery would save more of them');
+  // audit E1/E2/E12: who actually eats them here (the sim's own rule: a cichlid pair spares its brood, a parent moved
+  // into the nursery doesn't), not the tank's Nursery label or a head count of tank mates
+  const carried = isCarried(cl);
+  const nursery = isNurseryFor(state, tank, hour);
+  let safe = true;
+  if (!carried && !cl.infertile) {
+    const info = makeTankInfo(state, tank, hour, () => {
+      try {
+        return (incidentRisks(state, tank.id) ?? []).filter((r) => r.youngOnly);
+      } catch {
+        return [];
+      }
+    });
+    const pred = predationInfo(state, cl, tank, sp, mod, hour, info);
+    const others = [...pred.others.keys()].map((id) => findSpecies(id)).filter((x): x is NonNullable<typeof x> => !!x);
+    if (pred.guardianEating) {
+      safe = false;
+      warnings.push(`${pred.guardianEating.name} has started eating them — move ${pred.guardianEating.sex === 'female' ? 'her' : 'him'} out`);
+    } else if (pred.p >= 0.05 && (pred.conspecific.length || others.length)) {
+      safe = false;
+      const who = [...pred.conspecific.map((c) => c.name), ...others.map((o) => `the ${spPlural(o)}`)];
+      const one = who.length === 1 && pred.conspecific.length === 1;
+      const what = cl.stage === 'eggs' ? 'the eggs' : 'the young';
+      // in a nursery the eater was moved in with them: move it out; elsewhere the young go to a nursery
+      const fix = nursery ? `move ${pred.conspecific.length === 1 && !others.length ? (pred.conspecific[0].sex === 'female' || pred.conspecific[0].reproRole === 'female' ? 'her' : 'him') : 'them'} out` : 'a nursery tank would keep them safe';
+      warnings.push(`${nameList(who).replace(/^./, (ch) => ch.toUpperCase())} ${one ? 'eats' : 'eat'} ${what} here — ${fix}`);
+    }
+    if (mod.plan.planktonic && cl.stage !== 'eggs' && !nursery) {
+      safe = false;
+      warnings.push('They drift into the filter and tank mates’ mouths here — move them to a nursery tank');
+    }
+  }
+  // audit E2: the room check, before it matters: the young that don't fit when they grow up are rehomed
   const slots = juvenileSlots(state, tank, sp, hour);
-  if (cl.stage !== 'eggs' && cl.stage !== 'in_pouch' && slots < Math.min(cl.count, sp.breeding.maxRaisedPerClutch)) warnings.push(slots <= 0 ? 'No room left in this tank for juveniles' : `Room for only ${plural(slots, 'juvenile')} here`);
+  if (!carried && !cl.infertile && slots < Math.min(cl.count, sp.breeding.maxRaisedPerClutch)) {
+    warnings.push(slots <= 0 ? `No room in ${tank.name} for these young when they grow up — move them to a bigger or emptier tank` : `Room for only ${slots} of these when they grow up — move them to a bigger or emptier tank`);
+  }
+  // audit E3: the per-clutch cap (a game rule no screen showed): say it while the clutch is bigger than it
+  const max = sp.breeding.maxRaisedPerClutch;
+  const keepNote = !cl.infertile && cl.count > max ? `You can keep up to ${max} young from this clutch; the rest go to local hobbyists.` : undefined;
+  const waitsForDark = remaining <= 0 && ((cl.stage === 'eggs' && !!mod.plan.hatchAtNight) || (cl.stage === 'in_pouch' && mod.id === 'seahorse_pouch'));
   return {
     label: `${plural(cl.count, label.replace(/s$/, ''), label)}`,
     detail,
     progress: clutchProgress(state, cl.id),
     warnings,
     nurserySlots: slots,
+    safe,
+    ...(keepNote ? { keepNote } : {}),
+    waitsForDark,
   };
 }
