@@ -152,6 +152,23 @@ test.describe('phone 390×844 (touch)', () => {
     await crowdedBell(page, true);
   });
 
+  test('audit B9: the clock pill shows the day over the time, and the top bar still fits with a five-digit balance', async ({ page }) => {
+    await plainGame(page);
+    await aq(page, 'dev.addMoney', 54_000);
+    await expect(tid(page, 'hud-day')).toHaveText(/^Day \d+$/);
+    await expect(tid(page, 'hud-clock')).toHaveText(/\d{1,2}:\d\d/);
+    const b = await page.evaluate(() => {
+      const r = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
+      const clock = r('.ag-topbar .ag-clock-pill');
+      const speed = r('.ag-topbar .ag-speed');
+      return { clock: clock.right, clockH: clock.height, speedL: speed.left, speedR: speed.right, money: r('[data-testid="hud-money"]').left, bell: r('[data-testid="hud-alerts"]').right };
+    });
+    expect(b.clock).toBeLessThanOrEqual(b.speedL);
+    expect(b.speedR).toBeLessThanOrEqual(b.money);
+    expect(b.bell).toBeLessThanOrEqual(390);
+    expect(b.clockH).toBeLessThanOrEqual(48);
+  });
+
   test('a calm HUD: the first tap on the hidden dock only wakes it, the quick retry lands, the drawn bell acts at once', async ({ page }) => {
     await plainGame(page);
     const m = (await tid(page, 'dock-market').boundingBox())!;

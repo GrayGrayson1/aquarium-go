@@ -140,10 +140,17 @@ function ClockPill({ compact }: { compact?: boolean }) {
   const manual = useManual();
   const h = hourOfDay(hour);
   const night = h < 6.5 || h >= 20;
+  // audit B9: phones have no room for the shop's name, so the day sits above the time (Operations and notices count in days)
+  const dayLine = compact ? (
+    <span className="ag-clock-pill__day" data-testid="hud-day">
+      Day {dayOf(hour)}
+    </span>
+  ) : null;
   // lane:automation (chunk 5, AUTO-042) — phones turn the time pill amber with the Hand icon; it opens Manual mode
   if (compact && manual)
     return (
       <button type="button" className="ag-hudpill ag-clock-pill is-manual" data-testid="hud-manual-mode" aria-label="Manual mode is on. Open it" onClick={openManual}>
+        {dayLine}
         <div className="ag-clock-pill__time" data-testid="hud-clock">
           <Hand size={13} aria-hidden className="ag-clock-pill__icon" />
           <span className="ag-tabular">{formatClock(hour)}</span>
@@ -152,11 +159,11 @@ function ClockPill({ compact }: { compact?: boolean }) {
     );
   return (
     <div className="ag-hudpill ag-clock-pill">
-      {!compact && <div className="ag-clock-pill__shop" title={shop}>{shop}</div>}
+      {compact ? dayLine : <div className="ag-clock-pill__shop" title={shop}>{shop}</div>}
       <div className="ag-clock-pill__time" data-testid="hud-clock">
         {night ? <Moon size={13} aria-hidden className="ag-clock-pill__icon is-night" /> : <Sun size={13} aria-hidden className="ag-clock-pill__icon" />}
-        <span>Day {dayOf(hour)}</span>
-        <span className="ag-clock-pill__sep" aria-hidden>·</span>
+        {!compact && <span>Day {dayOf(hour)}</span>}
+        {!compact && <span className="ag-clock-pill__sep" aria-hidden>·</span>}
         <span className="ag-tabular">{formatClock(hour)}</span>
       </div>
     </div>

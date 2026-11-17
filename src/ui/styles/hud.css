@@ -40,6 +40,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-clock-pill__icon { color: var(--c-gold); }
 .ag-clock-pill__icon.is-night { color: var(--c-blue); }
 .ag-clock-pill__sep { color: var(--c-ink-4); }
+/* audit B9: phones (TopBar `compact`) put the day where the shop's name goes, over the time */
+.ag-clock-pill__day { display: block; font-size: calc(10.5px * var(--text-scale)); font-weight: 650; line-height: 1.15; color: var(--c-ink-2); white-space: nowrap; }
+.ag-clock-pill.is-manual .ag-clock-pill__day { color: inherit; }
 
 .ag-speed { padding: 0 12px 0 4px; gap: 10px; min-height: 48px; }
 .ag-speed .ag-seg { background: transparent; border: 0; padding: 0; }
@@ -391,9 +394,6 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-clock-pill { padding: 4px 10px; min-height: 40px; }
   .ag-clock-pill__time { font-size: calc(11px * var(--text-scale)); gap: 4px; }
   .ag-clock-pill__sep { display: none; }
-  /* ("Day N" in the ordinary pill; the amber manual-mode pill's only span is its time: audit B3. shared.css shows the
-     shared pill's) */
-  .ag-clock-pill:not(.is-manual):not(.ag-shared-pill) .ag-clock-pill__time span:first-of-type { display: none; }
   .ag-speed { padding: 0 2px; min-height: 40px; }
   .ag-speed__label { display: none; }
   /* the four segments fill the pill's height with a seam between them (28×34 edge-to-edge buttons mis-tapped Pause vs 1×) */
