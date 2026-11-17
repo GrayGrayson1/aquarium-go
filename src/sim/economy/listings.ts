@@ -1651,7 +1651,11 @@ function expireListing(state: GameState, l: Listing): void {
   const sid = l.snapshot.speciesIds?.[0];
   let advice: string;
   if (received === 0) {
-    const tips = [l.reserve > 0 ? 'a lower reserve' : '', 'a longer listing', l.snapshot.photo ? '' : 'a listing photo', demand < 0.95 && sid ? `waiting until demand for ${speciesPlural(sid)} recovers (now ${demand.toFixed(2)}×)` : '', l.snapshot.beautyScore < 50 && l.kind === 'tank' ? 'improving the aquascape first' : '']
+    // audit 2026-11-17 (F18) — advice that fits this listing: a lower reserve only when it was well above fair value, a
+    // longer listing only when a longer one exists, and demand in plain words (not "0.83×")
+    const ran = l.endsHour - l.createdHour;
+    const longest = Math.max(...LISTING_DURATION_PRESETS.map((p) => p.hours));
+    const tips = [l.reserve > l.snapshot.valuation * 1.1 ? 'a lower reserve' : '', ran < longest - 1e-6 ? 'a longer listing' : '', l.snapshot.photo ? '' : 'a listing photo', demand < 0.95 && sid ? `waiting until prices for ${speciesPlural(sid)} recover (they are ${Math.round((1 - demand) * 100)}% below normal)` : '', l.snapshot.beautyScore < 50 && l.kind === 'tank' ? 'improving the aquascape first' : '']
       .filter(Boolean)
       .join(', ');
     advice = `No bids arrived. Try ${tips || 'listing again when buyers are more active'}.`;

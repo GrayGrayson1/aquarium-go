@@ -552,6 +552,30 @@ describe('F17: "Fits my tanks" checks temperature and size, not only the water t
   });
 });
 
+describe('F18: "ended without a sale" advice fits the listing', () => {
+  it('no "lower reserve" under fair value, no "longer listing" after the longest, demand in plain words', () => {
+    const g = game();
+    devOpenMarket(g);
+    for (const b of g.market.buyers) b.budget = 1; // nobody can afford a serious offer
+    const c = addCreature(g, createCreature(g, simRng(g), 'betta', { ageDays: 120 }), g.tankOrder[0]);
+    g.market.demand.betta = 0.8;
+    const r = createListing(g, { kind: 'creature', creatureIds: [c.id], reserve: 1, durationHours: 120, photo: 'data:image/jpeg;base64,AAAA' });
+    const l = g.market.listings.find((x) => x.id === r.listingId)!;
+    // no buyer comes (budgets kept at $1 through the daily rotation; any delegation's bid is cleared)
+    for (let h = 0; h < 122 && l.status === 'active'; h++) {
+      for (const b of g.market.buyers) b.budget = 1;
+      if (l.endsHour - g.clock.hour > 1) l.bids = [];
+      devStepEconomy(g, 1);
+    }
+    expect(l.bids.length).toBe(0);
+    expect(l.advice).toMatch(/^No bids arrived\./);
+    expect(l.advice).not.toContain('a lower reserve');
+    expect(l.advice).not.toContain('a longer listing');
+    expect(l.advice).toMatch(/waiting until prices for bettas recover \(they are \d+% below normal\)/);
+    expect(l.advice).not.toMatch(/\d\.\d\d×/);
+  });
+});
+
 describe('F7: an empty room quotes (and the restart loan covers) a whole kit, not the glass alone', () => {
   it('the cheapest kit is glass + gear + substrate, and the restart need counts it', () => {
     const g = game(0);
