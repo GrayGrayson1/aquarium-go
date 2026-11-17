@@ -33,7 +33,7 @@ export function guideAnimal(g: GameState, focusedTankId: string | null = null): 
 
 /**
  * A guide text as the player reads it. `name` null: the animals are gone ("Keep your animals’ tank looking lovely").
- * `fine`: a mouse ("Click Feed", "scroll to lean in").
+ * `fine`: a mouse ("Click Feed", "scroll to lean in", "Bring the pointer near the glass").
  */
 export function fillGuide(t: string, name: string | null, species: string, fine: boolean, g?: GameState): string {
   // {temp} / {salinity}: the sim's own wording of the starter's ideal band (same numbers as the tank card), shown in
@@ -42,7 +42,7 @@ export function fillGuide(t: string, name: string | null, species: string, fine:
   t = convertTempText(t, useSettings.getState().tempUnit) ?? t;
   let s = name == null ? t.replace(/\{name\}’s/g, `${NO_ANIMAL}’`).replace(/\{name\}/g, NO_ANIMAL) : t.replace(/\{name\}/g, name);
   s = s.replace(/\{species\}/g, species);
-  if (fine) s = s.replace(/\bTap\b/g, 'Click').replace(/\btap\b/g, 'click').replace(/ or pinch/g, '');
+  if (fine) s = s.replace(/\bTap\b/g, 'Click').replace(/\btap\b/g, 'click').replace(/ or pinch/g, '').replace(/\byour finger\b/g, 'the pointer');
   return s;
 }
 

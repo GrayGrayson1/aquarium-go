@@ -17,7 +17,7 @@ import { quickSell } from '@/sim/economy/listings';
 import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { tutorialChain } from '@/data/quests';
-import { currentCoachStep, friendWait, guideOnForNewGame } from '@/ui/tutorial/guideText';
+import { currentCoachStep, fillGuide, friendWait, guideOnForNewGame } from '@/ui/tutorial/guideText';
 import { finaleLines, finaleNext, guideFold } from '@/ui/tutorial/TutorialCoach';
 import { guideAim, type GuideScreen } from '@/ui/tutorial/guideTargets';
 import { tourStops } from '@/ui/tutorial/tourStops';
@@ -144,6 +144,16 @@ describe('A5, A10: the finale says where the quests and the guide’s reward are
     tutorialAdvance(g, 'opened_research');
     expect(navDots(g, DOCK_ITEMS).research).toEqual({ level: 'new', label: '1 quest reward to claim', target: 'tab:quests' });
     expect(eventLink({ kind: 'celebrate', text: 'Quest complete: Feeding routine — claim your reward!' })).toEqual({ panel: 'research', target: 'tab:quests', where: 'Claim it in Research › Quests.', label: 'Claim it' });
+  });
+});
+
+describe('P2: the guide’s words follow the player’s pointer', () => {
+  it('mouse players click and use the pointer; touch players tap and use a finger', () => {
+    const camera = tutorialChain('betta').find((s) => s.id === 'camera')!.body;
+    expect(fillGuide(camera, 'Ember', 'betta', true)).toBe('Drag to orbit and scroll to lean in. Bring the pointer near the glass and bettas will often follow it.');
+    expect(fillGuide(camera, 'Ember', 'betta', false)).toBe(camera);
+    const feed = tutorialChain('betta').find((s) => s.id === 'feed')!.body;
+    expect(fillGuide(feed, 'Ember', 'betta', true)).toMatch(/^Click Feed, pick micro pellets and click the water once — one click is a small meal\./);
   });
 });
 
