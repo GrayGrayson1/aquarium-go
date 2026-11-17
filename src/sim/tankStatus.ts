@@ -394,7 +394,7 @@ const WATER_CONSEQUENCES = new Set<AnimalIssue | null>(['dying', 'failing', 'bad
  * whole band while every card in the tank was red. The water report lists who it is harming; this folds that into the
  * animals' status ahead of everything but starvation, with the water headline as the explanation.
  */
-function withWaterHarm(tank: Tank, animals: AnimalStatus, water: { status?: StatusLevel; headline: string; residents?: WaterResidents[] }): AnimalStatus {
+export function withWaterHarm(tank: Tank, animals: AnimalStatus, water: { status?: StatusLevel; headline: string; residents?: WaterResidents[] }): AnimalStatus {
   if (!water.residents?.length || animals.issue === 'starving') return animals;
   let causeText: string | null = null;
   const hurt = water.residents.filter((r) => {
