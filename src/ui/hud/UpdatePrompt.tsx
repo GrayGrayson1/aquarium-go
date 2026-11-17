@@ -9,7 +9,8 @@ import { motion } from 'motion/react';
 import { RefreshCw } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { saveCurrentGame } from '@/persistence';
-import { autosaveAllowed } from '@/game/useAutosave';
+import { allowLeave, autosaveAllowed, leaveWouldLose } from '@/game/useAutosave';
+import { guardedReload } from '../common/reload'; // the review of I2
 import { Button } from '@/ui/kit';
 import { BUILD_ID, CHECK_EVERY_MS, FIRST_CHECK_MS, checkGate, fetchLiveBuild, isNewBuild, type LiveBuild } from './updateCheck';
 import { versionLabel } from '../common/version';
@@ -62,6 +63,8 @@ export function UpdatePrompt({ version = null }: { version?: string | null }) {
   if (quiet) return null;
 
   const reload = async () => {
+    // the review of I2: Autosave off and play since the last save: the game asks (iPhone and iPad never show "Leave site?")
+    if (!saveFailed && leaveWouldLose()) return guardedReload();
     setBusy(true);
     if (!saveFailed && autosaveAllowed()) {
       let ok = false;
@@ -77,7 +80,9 @@ export function UpdatePrompt({ version = null }: { version?: string | null }) {
         return;
       }
     }
+    if (saveFailed) allowLeave(); // "Reload anyway": chosen here, the browser needn't ask again
     window.location.reload();
+    setBusy(false); // the review: a reload the browser's "Leave site?" kept (Stay) leaves the button usable
   };
 
   return (

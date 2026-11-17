@@ -13,6 +13,8 @@ import { saveCurrentGame } from '@/persistence/session';
 import { inSharedShop } from '@/state/sharedMode';
 import { leaveSharedShop } from '@/ui/shared/session';
 import { SHARED_WORDS } from '@/ui/shared/words';
+import { allowLeave, leaveWouldLose } from '@/game/useAutosave'; // the review of I2
+import { RELOAD_WORDS } from '@/ui/common/reload';
 
 interface Props {
   name: string;
@@ -23,6 +25,8 @@ interface State {
   error: Error | null;
   /** Audit I10: "Save & reload" couldn't save: say so, and keep the buttons (Reload is the choice to lose it). */
   saveFailed?: boolean;
+  /** The review of I2: Reload with Autosave off and unsaved play: the card says so first (Reload anyway, or Save & reload). */
+  askReload?: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -42,8 +46,13 @@ export class ErrorBoundary extends Component<Props, State> {
       }
     }
   }
-  retry = () => this.setState({ error: null, saveFailed: false });
-  reload = () => location.reload();
+  retry = () => this.setState({ error: null, saveFailed: false, askReload: false });
+  reload = () => {
+    // the review of I2: iPhone and iPad never show "Leave site?": with Autosave off, say what a reload loses first
+    if (!this.state.askReload && !this.state.saveFailed && leaveWouldLose()) return this.setState({ askReload: true });
+    allowLeave();
+    location.reload();
+  };
   saveAndReload = async () => {
     // audit I10 (B-123): reload only once the save landed (or was refused on purpose: a scenario, a further tab);
     // otherwise say so, with the update prompt's approved line, and keep the buttons
@@ -71,7 +80,12 @@ export class ErrorBoundary extends Component<Props, State> {
         {this.props.name === 'interface' && !shared && <div style={{ opacity: 0.8, margin: '0 0 8px' }}>Your aquarium is paused. Try again, or save and reload the page.</div>}
         {this.state.saveFailed && (
           <div style={{ margin: '0 0 8px' }} data-testid="error-boundary-save-failed">
-            Saving didn’t work, so a reload would lose your latest play.
+            {RELOAD_WORDS.saveFailed}
+          </div>
+        )}
+        {this.state.askReload && !this.state.saveFailed && (
+          <div style={{ margin: '0 0 8px' }} data-testid="error-boundary-reload-off">
+            {RELOAD_WORDS.offLine}
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -89,7 +103,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </button>
           )}
           <button type="button" onClick={this.reload} style={btn}>
-            Reload
+            {this.state.askReload || this.state.saveFailed ? RELOAD_WORDS.reloadAnyway : 'Reload'}
           </button>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useSharedMode } from '@/state/sharedMode';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
+import { guardedReload } from '../common/reload'; // the review of I2
 import { Button, Modal, Toggle } from '../kit';
 import { Wordmark } from '../screens/TitleScreen';
 import { BUILD_ID, parseBuildId, versionUrl } from '../hud/updateCheck';
@@ -176,7 +177,7 @@ export function SharedClosingCard() {
       labelledBy="shared-closing-text"
       actions={
         reload ? (
-          <Button variant="primary" disabled={closing.why === 'build' && newBuild !== 'new'} onClick={() => location.reload()} data-testid="shared-closing-reload">
+          <Button variant="primary" disabled={closing.why === 'build' && newBuild !== 'new'} onClick={guardedReload} data-testid="shared-closing-reload">
             {W.reload}
           </Button>
         ) : retry ? (

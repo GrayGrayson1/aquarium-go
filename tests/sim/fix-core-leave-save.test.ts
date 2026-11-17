@@ -129,3 +129,66 @@ describe('audit 2026-11-17, I10 (B-123): a save that didn’t land is never igno
     }
   });
 });
+
+describe('the review of I2: every in-app Reload asks first when Autosave is off and play would be lost', () => {
+  it('guardedReload asks in the game’s words; "Save now and reload" saves first; a save that fails reloads nothing', async () => {
+    const { vi } = await import('vitest');
+    const { noteGameChange } = await import('@/game/useAutosave');
+    const { useSettings } = await import('@/state/settings');
+    const { guardedReload, saveThenReload, reloadAnyway, useReloadAsk, RELOAD_WORDS } = await import('@/ui/common/reload');
+    const { ErrorBoundary } = await import('@/app/ErrorBoundary');
+    const reload = vi.fn();
+    (globalThis as { location?: unknown }).location = { reload };
+    const off = useGame.subscribe((s, p) => noteGameChange(s.game, p.game));
+    const was = useSettings.getState().autosave;
+    const mem = createMemoryBackend();
+    setStorageBackend(mem);
+    try {
+      useSettings.setState({ autosave: false });
+      const g = newGame({ starterId: 'betta', starterName: 'Reload', seed: 37 });
+      useGame.getState().setGame(g);
+      useUI.getState().set({ screen: 'game' });
+      useGame.getState().mutate((d) => {
+        d.finance.money += 10;
+      });
+      guardedReload();
+      expect(reload).not.toHaveBeenCalled();
+      expect(useReloadAsk.getState()).toMatchObject({ open: true, failed: false });
+      // the crash card asks inline, then its Reload is "Reload anyway"
+      const b = new ErrorBoundary({ name: 'interface', children: null });
+      b.state = { error: new Error('boom') };
+      b.setState = ((p: object) => Object.assign(b.state, p)) as never;
+      b.reload();
+      expect(reload).not.toHaveBeenCalled();
+      expect(b.state.askReload).toBe(true);
+      // the storage refusing: "Save now and reload" reloads nothing (the box then says so)
+      setStorageBackend({ ...mem, set: async () => Promise.reject(new Error('refused')) });
+      expect(await saveThenReload()).toBe(false);
+      expect(reload).not.toHaveBeenCalled();
+      setStorageBackend(mem);
+      expect(await saveThenReload()).toBe(true);
+      expect(reload).toHaveBeenCalledTimes(1);
+      expect((await loadGameDetailed('auto')).state?.saveId).toBe(g.saveId);
+      reloadAnyway();
+      expect(reload).toHaveBeenCalledTimes(2);
+      // with Autosave on, nothing to ask
+      useReloadAsk.setState({ open: false });
+      useSettings.setState({ autosave: true });
+      guardedReload();
+      expect(useReloadAsk.getState().open).toBe(false);
+      expect(reload).toHaveBeenCalledTimes(3);
+      expect(RELOAD_WORDS).toEqual({
+        offLine: 'Autosave is off, so reloading loses your play since the last save.',
+        saveAndReload: 'Save now and reload',
+        reloadAnyway: 'Reload anyway',
+        saveFailed: 'Saving didn’t work, so a reload would lose your latest play.',
+      });
+    } finally {
+      off();
+      useSettings.setState({ autosave: was });
+      useReloadAsk.setState({ open: false, failed: false, busy: false });
+      delete (globalThis as { location?: unknown }).location;
+      useUI.getState().set({ screen: 'boot' });
+    }
+  });
+});
