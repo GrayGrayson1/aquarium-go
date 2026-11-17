@@ -329,15 +329,17 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
   );
 }
 
-const GROUPS: { id: string; label: string; test: (k: string) => boolean }[] = [
-  { id: 'livestock', label: 'Livestock', test: (k) => k.startsWith('fw_') || k.startsWith('marine_') || k === 'reef' || k === 'predators' || k === 'brackish' },
+// Audit 2026-11-17 (G2): every unlock key lands in exactly one group (tests/sim/audit-g-building.test.ts); sharks and
+// rays and the three Facility-research rooms were in none, so the map hid them
+export const GROUPS: { id: string; label: string; test: (k: string) => boolean }[] = [
+  { id: 'livestock', label: 'Livestock', test: (k) => k.startsWith('fw_') || k.startsWith('marine_') || k === 'reef' || k === 'predators' || k === 'brackish' || k === 'elasmobranchs' },
   { id: 'tanks', label: 'Tanks', test: (k) => k.startsWith('tank_') && k !== 'tank_auctions' },
   { id: 'gear', label: 'Equipment', test: (k) => k.startsWith('gear_') },
-  { id: 'facility', label: 'Venue & features', test: (k) => k.startsWith('facility_') || k.startsWith('shows') || ['market_listings', 'tank_auctions', 'visitors', 'signage', 'nursery', 'genetics_lab', 'photo_contests', 'party_mode', 'staff'].includes(k) },
+  { id: 'facility', label: 'Venue & features', test: (k) => k.startsWith('facility_') || k.startsWith('shows') || ['market_listings', 'tank_auctions', 'visitors', 'signage', 'nursery', 'genetics_lab', 'photo_contests', 'party_mode', 'staff', 'water_room', 'live_food_room', 'operations_desk'].includes(k) },
   { id: 'decor', label: 'Decor & corals', test: (k) => k.startsWith('decor_') },
 ];
 
-function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: string) => void }) {
+export function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: string) => void }) {
   const locked = useMemo(() => safe<UnlockProgressView[]>(() => unlockProgress(g), []), [g]);
   const byKey = new Map(locked.map((u) => [u.key, u]));
   const keys = Object.keys(UNLOCK_KEYS);
@@ -365,6 +367,12 @@ function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: string)
         )}
       </div>
       <SearchField value={q} onChange={setQ} placeholder="Search unlocks" label="Search the unlock map" testId="unlocks-search" />
+      {/* Audit 2026-11-17 (G2): a search that hides every group says so, as the Research tab does */}
+      {!!q.trim() && !keys.some((k) => GROUPS.some((grp) => grp.test(k)) && hit(k)) && (
+        <EmptyState icon={<MapIcon size={24} />} title="Nothing matches" action={<Button onClick={() => setQ('')} data-testid="unlocks-clear">Clear filters</Button>}>
+          Try other words.
+        </EmptyState>
+      )}
       {GROUPS.map((grp) => {
         const gk = keys.filter((k) => grp.test(k) && hit(k));
         if (q.trim() && !gk.length) return null;

@@ -3,11 +3,15 @@
  * unlocks): each finding's fix, pinned.
  */
 import { describe, expect, it } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import type { GameState } from '@/types';
+import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { newGame } from '@/sim/newGame';
 import { unlockProgress, guideHoldLine } from '@/sim/facility';
 import { marketAccess } from '@/sim/economy';
 import { lockViews } from '@/ui/panels/common/UnlockHelp';
+import { GROUPS, UnlocksTab } from '@/ui/panels/research/ResearchPanel';
 
 const game = (starterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
 
@@ -39,5 +43,21 @@ describe('G1: an unlock the guide holds back says so', () => {
     g.progress.tutorial.skipped = true;
     g.progress.tutorial.done = true;
     expect(marketAccess(g).hint).toMatch(/^Listings open after your first visit to the Market/);
+  });
+});
+
+describe('G2: the Unlock map shows every unlock, and an empty search says so', () => {
+  it('puts every unlock key in exactly one group', () => {
+    for (const k of Object.keys(UNLOCK_KEYS)) expect(GROUPS.filter((grp) => grp.test(k)).map((grp) => grp.id), k).toHaveLength(1);
+  });
+  it('finds sharks and rays and the rooms by name, and a search with no hits offers Clear filters', () => {
+    const g = game('betta');
+    const tab = (q: string) => renderToStaticMarkup(createElement(UnlocksTab, { g, q, setQ: () => {} }));
+    expect(tab('Sharks and rays')).toContain('Sharks and rays');
+    expect(tab('Water room')).toContain('Water room');
+    const none = tab('zzzz nothing');
+    expect(none).toContain('Nothing matches');
+    expect(none).toContain('data-testid="unlocks-clear"');
+    expect(tab('')).not.toContain('Nothing matches');
   });
 });
