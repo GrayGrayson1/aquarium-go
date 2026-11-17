@@ -175,7 +175,8 @@ function tidyCelsius(text: string): string {
 /** A temperature *difference* ("by ~2 °C", "1 °C below the chiller", "1–2 °C of cooling", "~2 °C cooler") scales by
  *  1.8 with no +32 offset. Only "by …" before the value or a comparison word right after "°C" marks one: a bare "~"
  *  does not ("breeding slows below ~21 °C" is a real temperature). */
-const TEMP_DELTA_BEFORE = /(?:\bby\s+(?:~\s*|about\s+|around\s+)?|±\s*)$/i;
+// Audit 2026-11-17 (review of D8): "Cools 1–2 °C by evaporation", "Cools about 2 °C", "Cools only about 2 °C" (care/fit.ts)
+const TEMP_DELTA_BEFORE = /(?:\bby\s+(?:~\s*|about\s+|around\s+)?|±\s*|\b(?:cools?|warms?)\s+(?:only\s+)?(?:~\s*|about\s+|around\s+)?)$/i;
 const TEMP_DELTA_AFTER = /^\s+(?:below|above|cooler|warmer|colder|hotter|lower|higher|of|per)\b/i;
 
 function fDelta(c: number): string {
