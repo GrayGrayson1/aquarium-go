@@ -26,6 +26,7 @@ import { ResearchPanel } from '@/ui/panels/research/ResearchPanel';
 import { decorWaterNote } from '@/ui/panels/build/decorWater';
 import { WATER_CLASS_BLURB } from '@/ui/panels/common/format';
 import { tankAttention, tankAttentionLevel } from '@/ui/common/notify';
+import { fixForAttention } from '@/ui/common/fixLinks';
 import { tierLadder } from '@/ui/common/ops';
 import { Rooms } from '@/ui/panels/build/FacilityRooms';
 import { RESEARCH_BY_ID } from '@/data/research';
@@ -190,6 +191,14 @@ describe('G8: a fading plant or coral is an alert', () => {
     t.decor.push({ id: 'd-test', defId: 'hammer_coral', x: 0, y: 0, z: 0, rotY: 0, scale: 1, seed: 1, health: 12, growth: 0.3 });
     const item = tankAttention(g, t.id).items.find((i) => /hammer coral/.test(i.text));
     expect(item).toMatchObject({ level: 'watch', tab: 'life', text: 'Your hammer coral is struggling (12% health): it needs stronger light than this tank provides.' }); // (a bright-light coral: the tip’s reason)
+    // review fix: its fix link is the lights, never "Water care"
+    const fix = fixForAttention(g, t, item!, null);
+    expect(fix?.label).toMatch(/^(Lighting|Buy a light|Buy a brighter light|Switch it on|Repair)$/);
+    t.lighting.intensity = 1;
+    for (const e of t.equipment) if (getEquipmentDef(e.defId)?.kind === 'light') Object.assign(e, { on: true, failed: false, setting: 1 });
+    expect(fixForAttention(g, t, item!, null)?.label).toBe('Lighting');
+    t.lighting.intensity = 1.5;
+    expect(fixForAttention(g, t, item!, null)?.label).toBe('Buy a brighter light');
     expect(tankAttentionLevel(g, t.id)).not.toBe('good');
     t.decor.find((d) => d.id === 'd-test')!.health = 60;
     expect(tankAttention(g, t.id).items.some((i) => /hammer coral/.test(i.text))).toBe(false);

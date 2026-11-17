@@ -171,6 +171,20 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
 }
 
 /**
+ * Audit 2026-11-17 (G8 review) — a plant or coral that "needs stronger light than this tank provides": a light that's
+ * failed or off first, then the Lighting controls, and a brighter light once the intensity is at the slider's top and
+ * no unit is dimmed (as the water report's "stronger light" advice is answered above).
+ */
+function strongerLight(tank: Tank): FixLink {
+  const idle = idleOf(tank, 'light');
+  if (idle) return idleLink(tank, idle);
+  if (!gearOf(tank, 'light').length) return buyGear(tank, 'light', 'Buy a light');
+  const dimmed = gearOf(tank, 'light').some((e) => e.on && !e.failed && (e.setting ?? 1) < 0.99);
+  if ((tank.lighting?.intensity ?? 1) >= 1.49 && !dimmed) return buyGear(tank, 'light', 'Buy a brighter light');
+  return card(tank, 'gear', 'lighting', 'Lighting');
+}
+
+/**
  * The link for one attention item (the card's header, the alerts drawer). `report`: the tank's water report, for a
  * water line (its first issue is the line's headline).
  */
@@ -183,6 +197,7 @@ export function fixForAttention(g: GameState, tank: Tank, item: Pick<AttentionIt
     }
     case 'gear':
       if (unit) return unit.failed ? repairLink(tank, unit) : gearRow(tank, unit, 'Repair');
+      if (/needs stronger light than this tank provides/.test(item.text)) return strongerLight(tank); // Audit 2026-11-17 (G8 review)
       if (/auto-feed/i.test(item.text)) return card(tank, 'gear', 'automation', 'Auto-feed');
       return card(tank, 'gear', 'equipment', 'Open Equipment');
     case 'fit':

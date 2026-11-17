@@ -290,7 +290,8 @@ export function tankAttention(g: GameState, tankId: string): TankAttention {
   if (paused) items.push({ level: 'watch', source: 'gear', text: autofeedPausedText(paused), tab: 'gear' });
   // 6. Audit 2026-11-17 (G8) — a plant or coral fading toward 0% (no toast, no dot before this)
   const fading = strugglingDecor(t);
-  if (fading) items.push({ level: 'watch', source: 'water', text: strugglingDecorText(fading.def, fading.inst.health ?? 0), short: `Your ${fading.def.name.toLowerCase()} is struggling.`, tab: 'life' });
+  // (review fix: a piece that needs stronger light is a lights problem, so its fix link is the lights, not water care)
+  if (fading) items.push({ level: 'watch', source: (fading.def.lightNeed ?? 0.3) >= 0.5 ? 'gear' : 'water', text: strugglingDecorText(fading.def, fading.inst.health ?? 0), short: `Your ${fading.def.name.toLowerCase()} is struggling.`, tab: 'life' });
   if (!items.length) return GOOD;
   items.sort((a, b) => RANK[b.level] - RANK[a.level]);
   const lvl = items.reduce<AttentionLevel>((w, it) => worseLevel(w, it.level), 'good');
