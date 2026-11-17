@@ -107,6 +107,17 @@ test.describe('desktop 1440×900', () => {
     await crowdedBell(page);
   });
 
+  test('audit B20: with a panel just opened, Space is the panel’s (it scrolls) and doesn’t pause the game', async ({ page }) => {
+    await plainGame(page);
+    const speed = () => page.evaluate(() => (window as unknown as { __AQ: { game(): { clock: { speed: number } } } }).__AQ.game().clock.speed);
+    expect(await speed()).toBeGreaterThan(0);
+    await tid(page, 'dock-market').click();
+    await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('[data-testid="panel-market"]'))).toBe(true);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+    expect(await speed()).toBeGreaterThan(0);
+  });
+
   test('a calm HUD still takes the click of a mouse resting on a control', async ({ page }) => {
     await plainGame(page);
     const b = (await tid(page, 'dock-build').boundingBox())!;
