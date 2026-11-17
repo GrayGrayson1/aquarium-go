@@ -231,3 +231,16 @@ describe('E12: a cichlid pair’s lines match the pair rule (either parent tends
     expect(res.message).not.toMatch(/may eat them|airstone/);
   });
 });
+
+describe('E14: the seasonal cue names the button and says it takes two', () => {
+  it('a corydoras pair waiting for the cue is told to press Cool 25% twice in a row', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 81 });
+    const tank = createTank(state, 'g20L', 'freshwater_tropical', { cycled: true, name: 'Cory' });
+    const rng = simRng(state);
+    const m = addCreature(state, createCreature(state, rng, 'panda_corydoras', { sex: 'male', ageDays: 300, name: 'Pan' }), tank.id);
+    const f = addCreature(state, createCreature(state, rng, 'panda_corydoras', { sex: 'female', ageDays: 300, name: 'Da' }), tank.id);
+    const chk = breedingCheck(state, m.id, f.id);
+    expect(chk.reasons).toContain('They are waiting for a seasonal cue.');
+    expect(chk.nextStep).toBe('Press Cool 25% twice in a row (tank card › Care) — the water needs to drop about 2 °C to feel like the first cool rains.');
+  });
+});

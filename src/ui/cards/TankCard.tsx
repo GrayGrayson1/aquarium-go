@@ -264,6 +264,8 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
                 </Button>
               )}
             </div>
+            {/* audit E14: the button's tip, visible (a title never shows on touch) */}
+            {coolCue && <div className="ag-small ag-muted">Two Cool 25% changes in a row give the ~2 °C chill that sets off spawning.</div>}
           </div>
           <div className="ag-carebtns">
             <CareBtn icon={Droplet} label="Top off" hint={`Level ${Math.round(tank.water.level * 100)}%`} testId="action-top-off" fix="top-off" onClick={() => care({ k: 'topOff', tank: tank.id }, 'topped_off', 'bubble')} />
