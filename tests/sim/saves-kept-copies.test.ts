@@ -737,3 +737,14 @@ describe('the review of I3: a newer build’s record in the autosave slot (PERSI
     }
   });
 });
+
+describe('the review of I3: the Load box says what is true now', () => {
+  it('an aquarium only in the autosave stays as “Previous autosave”, and nothing deletes it without asking', async () => {
+    const { loadKeepAdvice } = await import('@/ui/common/saves');
+    const a = aquarium('Only Auto', 124);
+    expect((await saveGame(onDay(a, 3), 'auto')).ok).toBe(true);
+    const advice = loadKeepAdvice(await listSaves(), onDay(a, 3));
+    expect(advice.text).toBe('Only Auto is only in the autosave. It stays as “Previous autosave” after you switch, and nothing deletes it without asking you first.');
+    expect(advice.freeSlot).toBe('slot1');
+  });
+});

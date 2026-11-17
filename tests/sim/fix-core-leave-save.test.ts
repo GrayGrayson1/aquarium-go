@@ -4,7 +4,7 @@
  * from page load, so a welcome-back catch-up applied by Continue was never stored and the next visit replayed it.
  * The gap now runs only between real saves.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { newGame } from '@/sim/newGame';
 import { loadAndResume, saveGame, setStorageBackend, createMemoryBackend, resetSaveSession, useResume, loadGameDetailed } from '@/persistence';
 import { useGame } from '@/state/game';
@@ -118,6 +118,19 @@ describe('audit 2026-11-17, I10 (B-123): a save that didn’t land is never igno
       expect(await loadIntoGame('slot1')).toBeNull();
       expect(useUI.getState().toasts.map((t) => t.text)).toContain("Couldn't save — browser storage refused the write.");
       expect(useGame.getState().game!.saveId).toBe(a.saveId); // still the game on screen
+      // the review: a save that throws (not only one that answers "no") stops the load too
+      useUI.setState({ toasts: [] });
+      const { useResume } = await import('@/persistence');
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      useResume.setState({ summary: { resumeSpeed: 1 } as never }); // stateForSaving reads it: make it throw
+      Object.defineProperty(useResume.getState().summary!, 'resumeSpeed', { get: () => { throw new Error('boom'); } });
+      setStorageBackend(mem);
+      expect(await loadIntoGame('slot1')).toBeNull();
+      expect(useUI.getState().toasts.map((t) => t.text)).toContain('Saving failed — please try again.');
+      expect(useGame.getState().game!.saveId).toBe(a.saveId);
+      useResume.setState({ summary: null });
+      vi.restoreAllMocks();
+      setStorageBackend({ ...mem, set: async () => Promise.reject(new Error('refused')) });
       useUI.setState({ toasts: [] });
       expect(await saveBeforeLeaving()).toBe(false);
       expect(useUI.getState().toasts.map((t) => t.text)).toContain("Couldn't save — browser storage refused the write.");

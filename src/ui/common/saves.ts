@@ -145,7 +145,11 @@ export async function loadIntoGame(slot: string): Promise<GameState | null> {
           }
         }
       } catch (e) {
+        // the review of I10: a save that threw is a save that didn't land: stop, and say so (it used to load anyway)
         console.warn('[ui] autosave before load failed', e);
+        showParked();
+        useUI.getState().toast('Saving failed — please try again.', 'danger');
+        return null;
       }
     }
     resumeState(r.state);
@@ -183,7 +187,8 @@ export function loadKeepAdvice(saves: SaveMeta[], g: GameState | null): { text: 
   const freeSlot = SAVE_SLOTS.find((s) => s !== 'auto' && !taken.has(s)) ?? null;
   if (kept) return { text: `${g.shopName} is also saved in ${slotLabel(kept.slot)} (${timeAgo(kept.savedAt)}), so you can come back to it any time.`, freeSlot: null, keptIn: kept.slot };
   return {
-    text: `${g.shopName} is only in the autosave. It stays available as “Previous autosave” after you switch, until you switch again — save it to a slot to keep it for good.`,
+    // the review of I3: a later switch saves it to a free slot first, or asks: say what is true now
+    text: `${g.shopName} is only in the autosave. It stays as “Previous autosave” after you switch, and nothing deletes it without asking you first.`,
     freeSlot,
     keptIn: null,
   };
