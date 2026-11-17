@@ -110,14 +110,18 @@ test.describe('desktop 1440×900', () => {
     await crowdedBell(page);
   });
 
-  test('audit B20: with a panel just opened, Space is the panel’s (it scrolls) and doesn’t pause the game', async ({ page }) => {
+  test('audit B20: with a panel just opened, Space scrolls its list and doesn’t pause the game', async ({ page }) => {
     await plainGame(page);
+    for (let i = 0; i < 10; i++) await aq(page, 'dev.addShopOffer', 'mystery_snail'); // a list long enough to scroll
     const speed = () => page.evaluate(() => (window as unknown as { __AQ: { game(): { clock: { speed: number } } } }).__AQ.game().clock.speed);
     expect(await speed()).toBeGreaterThan(0);
     await tid(page, 'dock-market').click();
+    // focus lands on the panel's title, in its header (outside the scrolling body)
     await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('[data-testid="panel-market"]'))).toBe(true);
+    const body = tid(page, 'panel-market').locator('.pn-body');
+    expect(await body.evaluate((el) => el.scrollHeight > el.clientHeight + 50)).toBe(true);
     await page.keyboard.press('Space');
-    await page.waitForTimeout(300);
+    await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(50);
     expect(await speed()).toBeGreaterThan(0);
   });
 
