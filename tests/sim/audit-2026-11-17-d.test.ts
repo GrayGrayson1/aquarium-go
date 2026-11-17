@@ -362,3 +362,17 @@ describe('D18: “What you’ll see in Aquarium Go” promises only what the gam
     expect(getSpecies('hermit_crab').encyclopedia.inGameBehavior).not.toMatch(/empty shell/);
   });
 });
+
+describe('D19: a species is listed only for water that suits it by default, and a recommended pair fits', () => {
+  it('amano shrimp aren’t listed for cool tanks; white clouds aren’t listed for planted (heated) tanks', () => {
+    expect(getSpecies('amano_shrimp').waterClasses).not.toContain('freshwater_cool');
+    expect(getSpecies('white_cloud_minnow').waterClasses).not.toContain('freshwater_planted');
+  });
+
+  it('a pair of clown gobies in a 10-gallon reef is not “too many”', () => {
+    const s = newGame({ starterId: 'ocellaris_clownfish', starterName: 'Tango', seed: 5 });
+    const t = createTank(s, 'g10', 'reef', { cycled: true });
+    const r = previewAddition(s, t.id, { speciesId: 'clown_goby', count: 2 });
+    expect(texts(r)).not.toMatch(/Too many clown gobies/);
+  });
+});

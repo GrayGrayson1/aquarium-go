@@ -12,7 +12,7 @@ export const whiteCloudMinnow: SpeciesDefinition = {
   group: 'cyprinid',
   genus: 'Tanichthys',
   environment: 'freshwater',
-  waterClasses: ['freshwater_cool', 'freshwater_planted'],
+  waterClasses: ['freshwater_cool'], // Audit 2026-11-17 (D19): a planted tank's heater starts at 26 °C, over its 25 °C limit
   nativeRegion: 'Southern China — White Cloud (Baiyun) Mountain near Guangzhou and relict sites in Guangdong and Hainan — plus Quang Ninh, northern Vietnam',
   isStarter: false,
 
