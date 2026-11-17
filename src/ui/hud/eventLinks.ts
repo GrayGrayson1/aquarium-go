@@ -39,12 +39,22 @@ const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
   decor_corals_soft: { panel: 'build', target: findDecor('decor_corals_soft'), where: 'Corals need a reef tank. Find them in Build › Decor.' },
   decor_corals_lps: { panel: 'build', target: findDecor('decor_corals_lps'), where: 'Corals need a reef tank. Find them in Build › Decor.' },
   decor_anemones: { panel: 'build', target: findDecor('decor_anemones'), where: 'Anemones need a reef or live-rock tank. Find them in Build › Decor.' },
+  // Audit 2026-11-17 (G20): the unlocks whose toast pointed nowhere
+  water_room: { panel: 'build', target: 'room:water', where: 'See it in Build › Facility › Water room.' },
+  live_food_room: { panel: 'build', target: 'room:food', where: 'See it in Build › Facility › Live food room.' },
+  operations_desk: { panel: 'operations', target: null, where: 'Its tools are in Operations.' },
+  signage: { panel: 'visitors', target: 'tab:visitors', where: 'Add a sign in Visitors, or from a tank card’s Value tab.' },
+  genetics_lab: { panel: 'livestock', target: null, where: 'Open an animal’s card to see its genes.' },
   // Audit 2026-11-17 (G5): the shop also waits for a tank big enough for these animals (ADR-0053 decision 4)
   fw_large: { panel: 'market', target: 'tab:shop', where: 'They come into Market › Shop once you have a tank big enough for them.' },
   elasmobranchs: { panel: 'market', target: 'tab:shop', where: 'They come into Market › Shop once you have a tank big enough for them.' },
 };
 
-const PANEL_WORD: Partial<Record<PanelId, string>> = { shows: 'Shows', visitors: 'Visitors', build: 'Build', market: 'Market', tanks: 'Tanks', research: 'Research' };
+/** Audit 2026-11-17 (G20): where an unlock with no panel of its own lives (its toast's line; no link). */
+const UNLOCK_WHERE: Record<string, string> = { party_mode: 'Tap Party in the tank tools: the lights dance to music.' };
+export const unlockWhere = (key: string): string | undefined => UNLOCK_WHERE[key];
+
+const PANEL_WORD: Partial<Record<PanelId, string>> = { shows: 'Shows', visitors: 'Visitors', build: 'Build', market: 'Market', tanks: 'Tanks', research: 'Research', operations: 'Operations', livestock: 'Livestock' }; // Audit 2026-11-17 (G20): + Operations, Livestock
 const withLabel = (l: Omit<EventLink, 'label'>, label?: string): EventLink => ({ ...l, label: label ?? `Open ${PANEL_WORD[l.panel] ?? 'it'}` });
 
 /** Where an unlock key lives (feature keys above; tanks, gear, livestock and venues by family). */

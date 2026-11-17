@@ -14,7 +14,7 @@ import { marketAccess } from '@/sim/economy';
 import { lockViews, UnlockHelpBody } from '@/ui/panels/common/UnlockHelp';
 import { GROUPS, UnlocksTab, researchLockKeys, researchTankLine } from '@/ui/panels/research/ResearchPanel';
 import { RESEARCH } from '@/data/research';
-import { unlockLink } from '@/ui/hud/eventLinks';
+import { unlockLink, unlockWhere } from '@/ui/hud/eventLinks';
 import { useGame } from '@/state/game';
 import { TopBar } from '@/ui/hud/TopBar';
 import { MoreSheetBody } from '@/ui/hud/MoreSheet';
@@ -458,5 +458,14 @@ describe('G18: new tanks of one size get their own names', () => {
     expect(names).toEqual(['10 Gallon', '10 Gallon 2', '10 Gallon 3']);
     const named = buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true, name: 'Shrimp corner' });
     expect(g.tanks[named.tankId!].name).toBe('Shrimp corner');
+  });
+});
+
+describe('G20: every unlock’s toast says where it lives', () => {
+  it('each unlock key has a link or, with no panel of its own, a where-line', () => {
+    for (const k of Object.keys(UNLOCK_KEYS)) expect(unlockLink(k)?.where || unlockWhere(k), k).toBeTruthy();
+    expect(unlockLink('water_room')).toMatchObject({ panel: 'build', target: 'room:water', label: 'Open Build' });
+    expect(unlockLink('operations_desk')).toMatchObject({ panel: 'operations', label: 'Open Operations' });
+    expect(unlockWhere('party_mode')).toBe('Tap Party in the tank tools: the lights dance to music.');
   });
 });

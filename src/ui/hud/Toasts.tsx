@@ -29,7 +29,7 @@ import { MOBILE_QUERY, SHORT_LANDSCAPE_QUERY, safe, useMedia } from '../common/s
 import { tutorialChain } from '@/data/quests';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { useDockedCard } from './cardDock';
-import { SHOW_RESULT_TEXT, UNLOCK_KEY_BY_LABEL, eventLink, unlockLink, type EventLink } from './eventLinks'; // lane:notify
+import { SHOW_RESULT_TEXT, UNLOCK_KEY_BY_LABEL, eventLink, unlockLink, unlockWhere, type EventLink } from './eventLinks'; // lane:notify
 import { convertTempText } from '../common/format';
 import { isExpired, pickShown, prio, ttlOf, PREEMPT_AFTER_MS, URGENT_PRIO } from './toastQueue';
 import { UpdatePrompt, useNewBuildAvailable } from './UpdatePrompt';
@@ -116,7 +116,7 @@ function parse(text: string): View {
     const key = UNLOCK_KEY_BY_LABEL[m[1]];
     const link = key ? unlockLink(key) : null;
     const headline = key ? HEADLINE_UNLOCKS.indexOf(key) : -1;
-    return { label: 'Unlocked', title: m[1], detail: link?.where, link: link ?? undefined, ...(headline >= 0 ? { headline } : {}) };
+    return { label: 'Unlocked', title: m[1], detail: link?.where ?? (key ? unlockWhere(key) : undefined) /* Audit 2026-11-17 (G20) */, link: link ?? undefined, ...(headline >= 0 ? { headline } : {}) };
   }
   // lane:w2-ui — show results: "The judge’s cards are in Shows." → open Shows › Results (lane:notify: and entries the
   // club sent home — "… The club refunded the fee." — which the Results tab lists too)
