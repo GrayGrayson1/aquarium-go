@@ -398,6 +398,22 @@ describe('Audit 2026-11-17 (H9): the tank card shows the exhibit factors with th
   });
 });
 
+describe('Audit 2026-11-17 (H21): a broken good-water streak says which tank broke it', () => {
+  it('once, naming the tank, and only while there is a streak to lose', () => {
+    const g = shop(9, 2);
+    const t = Object.values(g.tanks).find((x) => x.name === 'Puffer Patch')!;
+    g.progress.counters.water_good_streak = 4;
+    for (let i = 0; i < 3; i++) tick(g);
+    expect(g.log.some((e) => /good-water streak/.test(e.text))).toBe(false);
+    t.cache.waterStatus = 'watch';
+    for (let i = 0; i < 3; i++) tick(g);
+    const said = g.log.filter((e) => /good-water streak/.test(e.text));
+    expect(said.length).toBe(1);
+    expect(said[0].text).toBe(`Your good-water streak (${g.progress.counters.water_good_streak} days) ends today: Puffer Patch’s water needs a look.`);
+    expect(said[0].tankId).toBe(t.id);
+  });
+});
+
 // ───────────────────────────── moments ─────────────────────────────
 
 describe('S04-04: visitor moments are noun phrases', () => {
@@ -562,7 +578,7 @@ describe('S04-07: repeat quest bodies', () => {
     const views = F.activeQuests(g);
     expect(views.find((v) => v.id === 'q_sell_creature')?.body).toBe('Sell 2 animals to buyers who will care for them.');
     expect(views.find((v) => v.id === 'q_show_ribbon')?.body).toBe('Place 1st, 2nd or 3rd in 3 show classes.');
-    expect(views.find((v) => v.id === 'q_feed_routine')?.body).toMatch(/^Feed your animals 15 times/);
+    expect(views.find((v) => v.id === 'q_feed_routine')?.body).toMatch(/^Feed your animals yourself 15 times/); // Audit 2026-11-17 (H23): keepers' rounds don't count
     for (const v of views) expect(v.body).not.toMatch(/\{n\}|\d+st\b(?<!1st)/);
   });
 });

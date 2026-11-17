@@ -6,7 +6,7 @@
  * (the max over the aliases other lanes may bump plus what this module derives from the market history and the
  * creature records), so an activity is never rewarded twice even if two lanes both count it.
  */
-import type { GameState, MasteryTrack, QuestState, SpeciesDefinition, TankTier, WaterClass } from '@/types';
+import type { GameState, MasteryTrack, QuestState, SpeciesDefinition, Tank, TankTier, WaterClass } from '@/types';
 import type { SimContext } from '../context';
 import type { ActionResult } from '../care';
 import type { Rng } from '../rng';
@@ -1139,7 +1139,7 @@ export function settleStartingProgress(state: GameState): void {
 
 function sampleDay(state: GameState): void {
   const c = state.progress.counters;
-  let bad = false;
+  let bad: Tank | null = null;
   let signs = 0;
   for (const id of state.tankOrder) {
     const t = state.tanks[id];
@@ -1147,7 +1147,12 @@ function sampleDay(state: GameState): void {
     if (t.signage) signs++;
     // "Keep every tank's WATER good": the water part only (animal welfare shows in the tank status separately).
     const water = t.cache?.waterStatus ?? t.cache?.status;
-    if (water && water !== 'good') bad = true;
+    if (water && water !== 'good') bad ??= t;
+  }
+  if (bad && !c._badToday && (c.water_good_streak ?? 0) >= 1 && !state.isShowcase) {
+    // Audit 2026-11-17 (H21): the streak goals reset without a word; say which tank broke it, once
+    const n = c.water_good_streak ?? 0;
+    emitEvent(state, { kind: 'info', text: `Your good-water streak (${n} ${n === 1 ? 'day' : 'days'}) ends today: ${bad.name}’s water needs a look.`, tankId: bad.id });
   }
   if (bad) c._badToday = 1;
   c.signs_active = signs;
