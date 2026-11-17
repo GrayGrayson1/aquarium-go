@@ -81,6 +81,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
   const [flash, setFlash] = useState<string | null>(null);
   useEffect(() => {
     if (!focusFood) return;
+    setQ(''); // audit B11: a search typed earlier ("pellet") hid the food the bell or Find asked for
     setFlash(focusFood.id);
     const t1 = window.setTimeout(() => {
       document.querySelector<HTMLElement>(`[data-food-row="${CSS.escape(focusFood.id)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });

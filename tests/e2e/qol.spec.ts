@@ -339,6 +339,26 @@ test.describe('QOL-003 and QOL-004: search, filters and Find anything', () => {
     await expect.poll(() => page.evaluate(() => location.hash)).toBe('#/encyclopedia/science/nitrogen_cycle');
   });
 
+  test('audit B11: a project or a food asked for by name is never hidden by a search or filter left in its list', async ({ page }) => {
+    await start(page);
+    const id = await probe<string>(page, 'g.progress.research.completed.includes("marine_systems") ? "" : "marine_systems"');
+    test.skip(!id, 'this start has already researched it');
+    await aq(page, 'setUI', { panel: 'research', panelTarget: 'tab:research' });
+    await tid(page, 'research-status-done').click();
+    await tid(page, 'research-search').fill('zzz');
+    await expect(tid(page, `research-${id}`)).toHaveCount(0);
+    await aq(page, 'setUI', { panel: 'research', panelTarget: `research:${id}` }); // "Open in Research", Find, How to unlock
+    await expect(tid(page, `research-${id}`)).toBeVisible();
+    await expect(tid(page, 'research-search')).toHaveValue('');
+    await expect(tid(page, 'research-status-all')).toHaveAttribute('aria-pressed', 'true');
+
+    await aq(page, 'setUI', { panel: 'market', panelTarget: 'tab:supplies' });
+    await tid(page, 'supplies-search').fill('zzz');
+    await aq(page, 'setUI', { panel: 'market', panelTarget: 'food:flake_tropical' }); // the bell's "Low food" row
+    await expect(tid(page, 'supplies-search')).toHaveValue('');
+    await expect(page.locator('[data-food-row="flake_tropical"]')).toBeVisible();
+  });
+
   test('Find anything opens a screen with the keyboard alone', async ({ page }) => {
     await start(page);
     await page.locator('canvas').first().click({ position: { x: 5, y: 5 }, force: true }).catch(() => {});
