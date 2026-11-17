@@ -298,17 +298,27 @@ const KIT_WATER: WaterClass[] = ['freshwater_cool', 'freshwater_tropical', 'fres
  * substrate, as Build prices it), over the tank sizes and water types open to them; null when none is. The empty-room
  * message and the restart loan quote this, not the glass alone.
  */
-export function cheapestKit(state: GameState): { tierId: string; name: string; waterClass: WaterClass; total: number } | null {
-  let best: { tierId: string; name: string; waterClass: WaterClass; total: number } | null = null;
+export function cheapestKit(state: GameState, opts: { seeded?: boolean } = {}): { tierId: string; name: string; waterClass: WaterClass; total: number; daily: number } | null {
+  let best: { tierId: string; name: string; waterClass: WaterClass; total: number; daily: number } | null = null;
   for (const tier of TANK_TIERS) {
     if (!isUnlocked(state, tier.unlock)) continue;
     for (const wc of KIT_WATER) {
       if (waterClassLock(state, wc)) continue;
-      const total = tankKitPrice(tier.id, wc, false, state).total;
-      if (total > 0 && (!best || total < best.total)) best = { tierId: tier.id, name: tier.name, waterClass: wc, total };
+      const total = tankKitPrice(tier.id, wc, !!opts.seeded, state).total;
+      if (total > 0 && (!best || total < best.total)) best = { tierId: tier.id, name: tier.name, waterClass: wc, total, daily: kitDailyCost(state, tier.id, wc) };
     }
   }
   return best;
+}
+
+/**
+ * Review fix (F7) — what a kit costs a day to run before it exists: the glass's base upkeep plus each piece of its gear
+ * at full duty (an upper bound: a heater rarely runs flat out), so the restart loan never falls short of two days.
+ */
+export function kitDailyCost(state: GameState, tierId: string, waterClass: WaterClass): number {
+  const base = TANK_TIER_BY_ID[tierId]?.baseUpkeep ?? 0.5;
+  const gear = kitEquipmentFor(state, tierId, waterClass).ids.reduce((a, id) => a + (getEquipmentDef(id)?.upkeep ?? 0), 0);
+  return roundCents(base + gear);
 }
 
 export interface BuyTankOptions {

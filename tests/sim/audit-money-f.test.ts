@@ -732,6 +732,23 @@ describe('F7: an empty room quotes (and the restart loan covers) a whole kit, no
     g.tankOrder = [];
     const need = restartNeed(g)!;
     expect(need).toBeGreaterThanOrEqual(kit.total + 40);
+    // review fix: the kit Build's Quick buy offers by default (seeded media), and two days of that tank's running costs
+    const seeded = cheapestKit(g, { seeded: true })!;
+    expect(seeded.total).toBe(tankKitPrice(seeded.tierId, seeded.waterClass, true, g).total);
+    expect(seeded.daily).toBeGreaterThan(0);
+    expect(need).toBeGreaterThanOrEqual(seeded.total + seeded.daily * 2 + 40);
+  });
+
+  it('the restart loan leaves enough for the default kit, an animal and two days of its bills', () => {
+    const g = game(0);
+    for (const c of Object.values(g.creatures)) c.status = 'dead';
+    g.tanks = {};
+    g.tankOrder = [];
+    const kit = cheapestKit(g, { seeded: true })!;
+    devStepEconomy(g, 24 - (g.clock.hour % 24) + 0.25, { finance: true, market: true });
+    devStepEconomy(g, 24.5, { finance: true, market: true });
+    expect(g.finance.loan).toBeDefined();
+    expect(g.finance.money - kit.total).toBeGreaterThanOrEqual(40 + kit.daily * 2);
   });
 
   it('selling the last aquarium names the cheapest whole kit and its price', () => {

@@ -202,10 +202,12 @@ export function restartNeed(state: GameState): number | null {
   let need = Math.max(RESTART_FLOOR, Number.isFinite(cheapest) ? cheapest : 0);
   if (!tanks.length) {
     // No tank either: the cheapest whole kit the player can buy (glass, gear and substrate, as Build prices it;
-    // audit 2026-11-17, F7: it used to count 1.5× the glass, and the loan fell short of the kit's real price)
-    const kit = cheapestKit(state);
+    // audit 2026-11-17, F7: it used to count 1.5× the glass, and the loan fell short of the kit's real price), with
+    // seeded media as Build's Quick buy offers it by default (review fix), and two days of that tank's running costs
+    // (the room's own bills alone come to nothing when it is empty)
+    const kit = cheapestKit(state, { seeded: true });
     const tier = TANK_TIERS.filter((t) => isUnlocked(state, t.unlock)).sort((a, b) => a.price - b.price)[0];
-    need += kit ? kit.total : Math.round((tier?.price ?? 60) * 1.5);
+    need += kit ? kit.total + kit.daily * 2 : Math.round((tier?.price ?? 60) * 1.5);
   }
   need += dailyOperatingCost(state).total * 2;
   return state.finance.money < need ? Math.ceil(need) : null;
