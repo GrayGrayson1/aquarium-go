@@ -15,7 +15,7 @@ import { lightsOn } from '../time';
 import { feedingPersonalityMul } from './personality';
 import { canAutofeed, handFoodPhrase } from '../care/autofeed'; // lane:fit — text only (no RNG)
 import { getEquipmentDef } from '@/data/catalog/equipment'; // lane:fit
-import { ageDaysOf, gallonsNeededNow, lifeStageFor, observableSex, sexVisible, sizeAtAge } from './growth';
+import { ageDaysOf, gallonsNeededNow, lifeStageFor, observableSex, sexVisible, sizeAtAge, SLIGHTLY_SMALL_TANK } from './growth';
 import { ILLNESSES, eligibleIllnesses, illnessDef, type IllnessKind } from './illness';
 import {
   buildTankEnv,
@@ -85,6 +85,19 @@ export function pushHistory(c: Creature, ev: Creature['history'][number]): void 
   if (!Array.isArray(c.history)) c.history = [];
   c.history.push(ev);
   if (c.history.length > HISTORY_CAP) c.history.splice(0, c.history.length - HISTORY_CAP);
+}
+
+/**
+ * Audit 2026-11-17 (D11): the tank mate that last hurt this animal, from its History ("Hurt by Rex the tiger barb (fin
+ * nip)."), so a death or a healing note can name it without a new save field. Null when nothing hurt it.
+ */
+export function lastHurtBy(c: Creature): { label: string; verb: 'nipping' | 'chasing' | 'attacking' } | null {
+  const h = Array.isArray(c.history) ? c.history : [];
+  for (let i = h.length - 1; i >= 0; i--) {
+    const m = h[i]?.kind === 'note' ? /^Hurt by (.+) \(([a-z ]+)\)\.$/.exec(h[i].text ?? '') : null;
+    if (m) return { label: m[1], verb: /nip/.test(m[2]) ? 'nipping' : m[2] === 'harassment' ? 'chasing' : 'attacking' };
+  }
+  return null;
 }
 
 export function lifeMeta(c: Creature): NonNullable<Creature['life']> {
@@ -258,8 +271,16 @@ function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
       const f = stressFactors(state, env, c, sp, hour)[0];
       return { kind: 'stress', cause: 'long-term stress', text: `${name} has passed away after a long period of stress${f ? ` (${f.label})` : ''}.` };
     }
-    case 'injury':
+    case 'injury': {
+      // Audit 2026-11-17 (D11): name the tank mate that kept hurting it (its History has the last one)
+      const by = lastHurtBy(c);
+      if (by) {
+        const p = pronoun(c);
+        const obj = p.they === 'she' ? 'her' : p.they === 'he' ? 'him' : 'them';
+        return { kind: 'injury', cause: `injuries from ${by.label}`, text: `${name} has passed away from injuries — ${by.label} kept ${by.verb} ${obj}. Keep them apart.` };
+      }
       return { kind: 'injury', cause: 'injuries from tank mates', text: `${name} has passed away from injuries caused by tank mates. Some animals simply can't share a tank.` };
+    }
     case 'harassment': {
       const p = pronoun(c);
       return { kind: 'injury', cause: 'harassment by a tank mate', text: `${name} has passed away after being chased and bitten by a tank mate. A female must be moved out of a male's tank as soon as spawning is over, and ${p.they === 'they' ? 'harassed animals need' : 'a harassed animal needs'} a tank of ${p.their} own to recover.` };
@@ -1061,7 +1082,8 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
 
   // ── Tank size warnings (a juvenile growing beyond its tank)
   const need = gallonsNeededNow(sp, c.sizeCm, c.reproRole);
-  if (env.gallons < need && throttleGroup(state, ids, 'tank_small', hour, 48)) {
+  // Audit 2026-11-17 (D4): a tank only a little small (SLIGHTLY_SMALL_TANK) raises no alarm; compatibility notes it
+  if (env.gallons < need * SLIGHTLY_SMALL_TANK && throttleGroup(state, ids, 'tank_small', hour, 48)) {
     const adultNeed = sp.recommendedMinTankGallons;
     const text =
       c.lifeStage === 'juvenile'
@@ -1117,7 +1139,9 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   const life = Math.max(1, sp.lifecycle.lifespanDays);
   if (age > life * 0.9 && !state.offlineGrace) {
     const pDay = clamp(0.01 * dmath.exp((age / life - 0.9) * 25) * (1.3 - 0.6 * hardy), 0, 0.9);
-    if (ctx.rng.chance(perStep(pDay, h))) {
+    // Audit 2026-11-17 (D20, the owner's decision): old age never takes the first companion. The draw is still made
+    // (and its result ignored for the companion), so every other animal's draws keep their order.
+    if (ctx.rng.chance(perStep(pDay, h)) && !c.isStarter) {
       m.damage.age = (m.damage.age ?? 0) + 1000;
       killCreature(state, c, explainDeath(state, env, c, sp, hour), hour, ctx.emit);
     }

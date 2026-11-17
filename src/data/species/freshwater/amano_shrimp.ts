@@ -12,7 +12,7 @@ export const amanoShrimp: SpeciesDefinition = {
   group: 'freshwater_shrimp',
   genus: 'Caridina',
   environment: 'freshwater',
-  waterClasses: ['freshwater_tropical', 'freshwater_planted', 'freshwater_cool'],
+  waterClasses: ['freshwater_tropical', 'freshwater_planted'], // Audit 2026-11-17 (D19): a cool tank runs at 17 °C, under its 18 °C minimum
   nativeRegion: 'Southern Japan and Taiwan — fast-flowing coastal streams',
   isStarter: false,
 

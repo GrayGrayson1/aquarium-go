@@ -205,6 +205,11 @@ export function composition(sp: SpeciesDefinition, rng: Rng): Composition {
       note: colony ? 'Colonies settle and breed more readily together.' : 'Schooling fish feel safest in numbers.',
     };
   }
+  // Audit 2026-11-17 (D3, the owner's decision): a group animal that needs just one companion (goldfish, koi, African
+  // dwarf frogs: minGroup 2) comes as a pair, so the first purchase isn't a lone animal. No draw here, as before.
+  if (kind === 'group' && minG === 2) {
+    return { count: 2, sexes: [undefined, undefined], label: (pl) => `Pair of ${pl}`, note: 'Sold as a pair, so neither one is kept alone.' };
+  }
   const gonochoristic = sp.sexSystem === 'gonochoristic';
   if ((kind === 'pair' || kind === 'pair_hierarchy') && rng.chance(PAIR_OFFER_CHANCE)) {
     const note =

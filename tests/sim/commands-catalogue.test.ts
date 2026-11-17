@@ -23,6 +23,7 @@ import { checkPlacement, moveDecor, placeDecor, removeDecor } from '@/sim/aquasc
 import { plantFrag, takeFrag } from '@/sim/aquascape/frags';
 import { moveCreature, notePhoto, noteInteraction, registerGlassTap, renameCreature, toggleFavorite } from '@/sim/life/actions';
 import { liftOutClutch, moveClutch, separateCreature, startBreeding } from '@/sim/life/breeding/actions';
+import { moveCreatures } from '@/sim/life/groupMove';
 import { addCulture, addReservoir, setStockOrders, upgradePrep, waitForLine } from '@/sim/automation';
 import { holdAll, resumeAll, setHold } from '@/sim/automation/hold';
 import { assignTank, autoAssignAll, fireStaff, hireStaff, setStockBudget } from '@/sim/staff/roster';
@@ -390,6 +391,17 @@ const C: Record<CommandKind, Case | Case[]> = {
       return { k: 'separateCreature', creature: c.id, to: otherTank(g, c.tankId!), from: c.tankId! };
     },
     direct: (d, c: Command & { k: 'separateCreature' }) => separateCreature(d, c.creature, c.to),
+    ok: true,
+  },
+  // Audit 2026-11-17 (D2): a group (all of one species in one tank, the Livestock footer's case) in one command
+  moveCreatures: {
+    w: 'big',
+    cmd: (g) => {
+      const c = fishIn(g);
+      const mates = Object.values(g.creatures).filter((x) => x.status === 'alive' && x.tankId === c.tankId && x.speciesId === c.speciesId && !x.isStarter);
+      return { k: 'moveCreatures', creatures: mates.map((x) => x.id), to: otherTank(g, c.tankId!), from: mates.map((x) => x.tankId!) };
+    },
+    direct: (d, c: Command & { k: 'moveCreatures' }) => moveCreatures(d, c.creatures, c.to),
     ok: true,
   },
   moveClutch: {

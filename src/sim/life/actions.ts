@@ -8,7 +8,7 @@ import { environmentGate } from '../compat';
 import { emitEvent } from '../context';
 import { applyAgeing, lifeMeta, pushHistory, throttle } from './step';
 import { tapSensitivityMul } from './personality';
-import { ageDaysOf, gallonsNeededNow } from './growth';
+import { ageDaysOf, gallonsNeededNow, SLIGHTLY_SMALL_TANK } from './growth';
 import { livingIn, tankGallons } from './welfare';
 import { touchResidents } from '../residents'; // lane:perf2
 import { settleTanks } from '../settle'; // B-127
@@ -62,7 +62,7 @@ export function moveCreature(state: GameState, creatureId: string, tankId: strin
   delete m.targetFedUntil;
   pushHistory(c, { hour, kind: 'moved', text: `Moved from ${from} to ${tank.name}.` });
   const need = gallonsNeededNow(sp, sp.adultSizeCm);
-  const small = tankGallons(tank) < need;
+  const small = tankGallons(tank) < need * SLIGHTLY_SMALL_TANK; // Audit 2026-11-17 (D4): a little small isn't a heads-up
   return {
     ok: true,
     message: `Moved ${c.name} to ${tank.name}.${small ? ` Heads up: an adult ${sp.commonName.toLowerCase()} needs at least ${sp.recommendedMinTankGallons} gallons.` : ' Give it a little while to settle in.'}`,

@@ -201,6 +201,9 @@
 .ag-resident { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 74px; padding: 8px 4px; border-radius: 14px; border: 1px solid transparent; background: transparent; color: var(--c-ink-2); cursor: pointer; }
 .ag-resident:hover { background: var(--c-fill); color: var(--c-ink); }
 .ag-resident.is-selected { border-color: rgba(94, 234, 212, 0.5); background: rgba(94, 234, 212, 0.1); color: var(--c-ink); }
+/* Audit 2026-11-17 (D16): the animals behind the tank's animal line */
+.ag-resident.is-flag-watch .ag-resident__art { box-shadow: 0 0 0 2px var(--c-watch); border-radius: 50%; }
+.ag-resident.is-flag-danger .ag-resident__art { box-shadow: 0 0 0 2px var(--c-danger); border-radius: 50%; }
 .ag-resident__art { width: 46px; }
 .ag-resident__name { max-width: 100%; font-size: calc(12px * var(--text-scale)); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ag-scoreblock { display: flex; gap: 16px; align-items: flex-start; }
@@ -238,6 +241,9 @@
 .ag-moverow__name { display: block; font-family: var(--font-display); font-size: calc(16px * var(--text-scale)); font-weight: 520; }
 .ag-moverow__meta { display: block; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); }
 .ag-movepreview { min-width: 0; }
+/* Audit 2026-11-17 (D15): the risk tick before a High risk or Incompatible move, as the shop asks */
+.ag-moveack { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: calc(13px * var(--text-scale)); color: var(--c-ink); cursor: pointer; }
+.ag-moveack input { width: 18px; height: 18px; margin: 0; accent-color: var(--c-coral); }
 
 /* ───────── Settings ───────── */
 .ag-quality { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }

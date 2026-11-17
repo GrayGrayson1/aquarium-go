@@ -55,6 +55,8 @@ type Kinds =
   // ── animals ──
   | { k: 'moveCreature'; creature: string; to: string; from?: string }
   | { k: 'separateCreature'; creature: string; to: string; from?: string }
+  // Audit 2026-11-17 (D2): several animals at once; `from`, when given, is each one's tank as the sender saw it ('' for holding)
+  | { k: 'moveCreatures'; creatures: string[]; to: string; from?: string[] }
   | { k: 'moveClutch'; clutch: string; to: string; from?: string }
   // chunk 17: lift a dud (an empty shark egg case) out before it rots
   | { k: 'liftOutClutch'; clutch: string; from?: string }

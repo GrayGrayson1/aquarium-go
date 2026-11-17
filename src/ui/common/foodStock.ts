@@ -2,7 +2,7 @@
  * Food stock from the player's point of view — thin UI wrappers over the sim's food outlook (src/sim/tankStatus.ts:
  * `tankFoodOutlook`, `cache.foodLevel`), plus the restock shortcuts the HUD offers. OWNER: lane "ui-shell".
  */
-import type { GameState } from '@/types';
+import type { Environment, GameState, SpeciesDefinition } from '@/types';
 import { tankFoodOutlook } from '@/sim/tankStatus';
 import { findSpecies } from '@/data/species'; // lane:qa-play
 import { FOODS, getFoodDef, madeForOtherSpecies, madeForOtherWater, foodTagNames } from '@/data/catalog/foods'; // lane:qa-play
@@ -116,6 +116,11 @@ export function creatureFoodChoice(g: GameState, creatureId: string): CreatureFo
   const c = g.creatures[creatureId];
   const sp = c ? findSpecies(c.speciesId) : null;
   if (!c || !sp) return null;
+  return speciesFoodChoice(g, sp, c.tankId ? g.tanks[c.tankId]?.environment : undefined);
+}
+
+/** The same choice for a species not yet bought (a shop offer, Audit 2026-11-17 D5), in water of `env` when known. */
+export function speciesFoodChoice(g: GameState, sp: SpeciesDefinition, env: Environment | undefined): CreatureFoodChoice {
   const rank = (tags: readonly string[] | undefined) => {
     let best = Infinity;
     for (const t of tags ?? []) {
@@ -126,7 +131,6 @@ export function creatureFoodChoice(g: GameState, creatureId: string): CreatureFo
   };
   // lane:qa-final — made for this animal, as the keepers choose (src/sim/staff/work.ts pickStaffFood): goldfish or axolotl
   // pellets for a reef chromis, or marine pellets in fresh water, go to the back of the list (still offered if nothing else).
-  const env = c.tankId ? g.tanks[c.tankId]?.environment : undefined;
   const wrongKind = (id: string) => (madeForOtherWater(getFoodDef(id), env) ? 1 : 0) + (madeForOtherSpecies(getFoodDef(id), sp.id) ? 1 : 0); // the catalog's madeFor (B-170)
   const inStock = Object.entries(g.inventory.foods ?? {})
     .map(([id, n]) => ({ id, count: Math.floor(n ?? 0), rank: rank(getFoodDef(id)?.tags), wrong: wrongKind(id) }))

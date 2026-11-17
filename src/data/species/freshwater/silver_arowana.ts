@@ -191,8 +191,11 @@ export const silverArowana: SpeciesDefinition = {
     { other: 'fahaka_puffer', verdictFloor: 'incompatible', reason: 'The fahaka bites chunks out of tankmates and must live alone.', incidentRisk: 0.3 },
     { other: 'silver_arowana', verdictFloor: 'high_risk', reason: 'Arowanas fight their own kind in all but the biggest tanks.', incidentRisk: 0.1 },
     { other: 'oscar', verdictFloor: 'conditional', reason: 'Big cichlids harass a young arowana: add the arowana grown, to a large tank.', incidentRisk: 0.03, mitigatedBy: ['tank_size'] },
-    { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an arowana needs tropical water.', incidentRisk: 0.1 },
-    { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an arowana needs tropical water.', incidentRisk: 0.1 },
+    // Audit 2026-11-17 (D6): the eating and the water told apart (the water rule rolls no incident)
+    { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'An arowana swallows goldfish small enough to fit its mouth.', incidentRisk: 0.1 },
+    { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'An arowana swallows goldfish small enough to fit its mouth.', incidentRisk: 0.1 },
+    { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an arowana needs tropical water.', incident: 'none' },
+    { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an arowana needs tropical water.', incident: 'none' },
   ],
   special: { escapeArtist: true, outgrowsSmallTanks: true, heavyWaste: true },
   visualLane: 'fish',

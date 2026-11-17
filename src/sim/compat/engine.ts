@@ -32,6 +32,8 @@ import { youngKindOf } from '@/data/species';
 import { withArticle } from '../economy/util'; // lane:w2-ui ("An ocellaris clownfish was stung…")
 import { fitsEnvironment, offIdealEnvironmentNote, sharedEnvironments, waterNeedPhrase } from './salinity'; // lane:brackish
 import * as dmath from '../dmath';
+import { SLIGHTLY_SMALL_TANK } from '../life/growth'; // Audit 2026-11-17 (D4)
+import { TEMP_TOLERANCE_C } from '../water/constants'; // Audit 2026-11-17 (D13)
 
 // ───────────────────────────── contracts ─────────────────────────────
 
@@ -386,7 +388,12 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
     const t = ctx.expectedTempC;
     const r = sp.tempC;
     if (t > r.max + 0.2 || t < r.min - 0.2) {
-      add('warning', 'temperature', `This tank runs at about ${t.toFixed(0)} °C — too ${t > r.max ? 'warm' : 'cold'} for ${name} (${r.min}–${r.max}\u00a0°C).` /* lane:ui-panels (0.5 §7.5) — the range stays on one line */, {
+      // Audit 2026-11-17 (D13): like pH, the water report's bands: up to TEMP_TOLERANCE_C past the limit the sim only
+      // adds stress (Conditional); beyond it, harm (High risk). Near the limit the reading keeps a decimal, so 25.5 °C
+      // never reads as "about 26 °C — too cold" for a 26 °C minimum.
+      const past = t > r.max ? t - r.max : r.min - t;
+      const shown = past < 1 ? Number(t.toFixed(1)).toString() : t.toFixed(0);
+      add(past > TEMP_TOLERANCE_C ? 'warning' : 'caution', 'temperature', `This tank runs at about ${shown} °C — too ${t > r.max ? 'warm' : 'cold'} for ${name} (${r.min}–${r.max}\u00a0°C).` /* lane:ui-panels (0.5 §7.5) — the range stays on one line */, {
         // lane:guide — name the setting to aim for, and that a warm room needs cooling, not a lower heater
         mitigation:
           t > r.max
@@ -425,16 +432,19 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
   const juvNote = m.adults === 0 && m.count > 0 ? ' Juveniles fit for now, but they grow.' : '';
   if (ctx.gallons < minGal * 0.5) {
     add('critical', 'size', `This tank is far too small for an adult ${lower(sp.commonName)} (${sp.adultSizeCm} cm) — it needs at least ${minGal} gallons.${juvNote}`);
-  } else if (ctx.gallons < minGal) {
+  } else if (ctx.gallons < minGal * SLIGHTLY_SMALL_TANK) {
     add('warning', 'size', `An adult ${lower(sp.commonName)} (${sp.adultSizeCm} cm) needs at least ${minGal} gallons; this tank holds ${ctx.gallons}.${juvNote}`, {
       mitigation: 'Plan a larger tank before it reaches adult size.',
     });
+  } else if (ctx.gallons < minGal) {
+    // Audit 2026-11-17 (D4, the owner's decision): only a little small (see SLIGHTLY_SMALL_TANK) is a note
+    add('info', 'size', `This tank is a little under the ${minGal} gallons an adult ${lower(sp.commonName)} likes (it holds ${ctx.gallons}). Fine with good care.`);
   } else if (sp.special?.outgrowsSmallTanks && ctx.gallons < minGal * 1.5) {
     add('info', 'size', `${cap(name)} grow large quickly — this tank is at the lower limit.`);
   }
   const fp = sp.recommendedFootprint;
   if (fp && ctx.dimsIn.l < fp.minLengthIn - 0.5) {
-    add(sp.activeSwimmer ? 'warning' : 'caution', 'size', sp.activeSwimmer ? 'This fish requires more swimming length than this tank provides.' : `${cap(name)} need a tank at least ${fp.minLengthIn} in long.`, {
+    add(sp.activeSwimmer ? 'warning' : 'caution', 'size', sp.activeSwimmer ? `${cap(name)} need more swimming length than this tank provides: a tank at least ${fp.minLengthIn} in long.` /* Audit 2026-11-17 (D21) */ : `${cap(name)} need a tank at least ${fp.minLengthIn} in long.`, {
       mitigation: `Choose a tank at least ${fp.minLengthIn} in long.`,
     });
   } else if (fp && ctx.dimsIn.w < fp.minWidthIn - 0.5) {
@@ -605,8 +615,9 @@ function conspecific(m: CompatMember, ctx: CompatContext, out: Collector): void 
     if (o === 'tension' && (ctx.habitat.sightBreak ?? 0) >= 0.6) sev = 'info';
     let text: string;
     if (who === 'juvenile') text = o === 'tension' ? `Young ${name} squabble when crowded.` : `Young ${name} bite each other when crowded or hungry.`;
-    else if (o === 'lethal') text = who === 'male' ? (selfRule?.reason ?? 'Two adult males are likely to fight — often to serious injury.') : `Two adult females are likely to fight — often to serious injury.`;
-    else if (o === 'fight') text = who === 'male' ? 'Two adult males are likely to fight.' : 'Two adult females are likely to fight.';
+    // Audit 2026-11-17 (D21): say whose males (the meta line lists the species twice)
+    else if (o === 'lethal') text = who === 'male' ? (selfRule?.reason ?? `Two adult male ${name} are likely to fight — often to serious injury.`) : `Two adult female ${name} are likely to fight — often to serious injury.`;
+    else if (o === 'fight') text = who === 'male' ? `Two adult male ${name} are likely to fight.` : `Two adult female ${name} are likely to fight.`;
     else text = who === 'male' ? `Male ${name} spar and chase each other.` : `Female ${name} squabble over space.`;
     out.add({
       severity: sev,
@@ -739,7 +750,8 @@ function mutual(A: CompatMember, B: CompatMember, ctx: CompatContext, out: Colle
   else if (iov < 0) add('caution', 'temperature', `Their ideal temperatures don't overlap — one of them will always be a little outside its comfort zone.`);
   // pH
   const pov = Math.min(a.pH.max, b.pH.max) - Math.max(a.pH.min, b.pH.min);
-  if (pov < -0.3) add('warning', 'chemistry', `Their pH needs don't overlap (${a.pH.min}–${a.pH.max} vs ${b.pH.min}–${b.pH.max}).`);
+  // Audit 2026-11-17 (D21): these three name which species wants what
+  if (pov < -0.3) add('warning', 'chemistry', `Their pH needs don't overlap: ${plural(a)} need pH ${a.pH.min}–${a.pH.max}, ${plural(b)} pH ${b.pH.min}–${b.pH.max}.`);
   else if (pov < 0.1) add('caution', 'chemistry', `pH ranges barely overlap.`);
   // Salinity
   if (a.salinitySG && b.salinitySG) {
@@ -751,9 +763,12 @@ function mutual(A: CompatMember, B: CompatMember, ctx: CompatContext, out: Colle
   // Flow & light preferences
   const fd = Math.abs((FLOW_INDEX[a.flowPreference] ?? 1) - (FLOW_INDEX[b.flowPreference] ?? 1));
   if (fd >= 3) add('warning', 'flow', `They need very different water flow (${lower(a.commonName)}: ${FLOW_NAMES[FLOW_INDEX[a.flowPreference]]}, ${lower(b.commonName)}: ${FLOW_NAMES[FLOW_INDEX[b.flowPreference]]}).`);
-  else if (fd === 2) add('caution', 'flow', `Their flow preferences differ — one wants ${FLOW_NAMES[FLOW_INDEX[a.flowPreference]]} water, the other ${FLOW_NAMES[FLOW_INDEX[b.flowPreference]]}.`);
+  else if (fd === 2) add('caution', 'flow', `Their flow preferences differ: ${plural(a)} want ${FLOW_NAMES[FLOW_INDEX[a.flowPreference]]} water, ${plural(b)} ${FLOW_NAMES[FLOW_INDEX[b.flowPreference]]}.`);
   const ld = Math.abs((LIGHT_INDEX[a.lightPreference] ?? 1) - (LIGHT_INDEX[b.lightPreference] ?? 1));
-  if (ld >= 2) add('caution', 'light', `One wants dim, shaded water and the other bright light.`, { mitigation: 'Provide shaded areas under floating plants or overhangs.' });
+  if (ld >= 2) {
+    const [dim, bright] = (LIGHT_INDEX[a.lightPreference] ?? 1) < (LIGHT_INDEX[b.lightPreference] ?? 1) ? [a, b] : [b, a];
+    add('caution', 'light', `${cap(plural(dim))} want dim, shaded water; ${plural(bright)} want bright light.`, { mitigation: 'Provide shaded areas under floating plants or overhangs.' });
+  }
   // Same group / genus territorial conflict
   if (a.id !== b.id && !out.has(`rule:${key}`) && (a.group === b.group || a.genus === b.genus) && Math.max(a.territoriality, b.territoriality) >= 0.5) {
     const sameGenus = a.genus === b.genus;
@@ -790,6 +805,13 @@ function applyExceptionRules(A: CompatMember, B: CompatMember, ctx: CompatContex
     // environmental 'sting' incident above, so this pairwise rule would sting a second time, as 'harassment'; it stays
     // for an anemone the tank doesn't count yet (a purchase, a move from another tank, a species check)
     if (rule.other === 'tag:stinging_cnidarian' && (ctx.stinging ?? ctx.anemones) > 0) continue;
+    if (rule.incident === 'none') {
+      // Audit 2026-11-17 (D6): a mismatch of needs: the reason and its floor only (no incident, no attack or predation
+      // flag, so the pair's own predation check still speaks for itself)
+      out.add({ severity: SEV_OF_FLOOR(rule.verdictFloor) ?? 'caution', category: 'temperature', text: rule.reason, speciesIds: [a.id, b.id], key, floor: rule.verdictFloor });
+      out.flag(`rule:${key}`);
+      continue;
+    }
     let kind: IncidentRisk['kind'];
     let actor = A;
     let target = B;

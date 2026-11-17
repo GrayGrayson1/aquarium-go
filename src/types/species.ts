@@ -427,6 +427,12 @@ export interface CompatExceptionRule {
   /** Probability-ish per game-day of an incident if kept together (predation, fights). */
   incidentRisk?: number;
   mitigatedBy?: ('cover' | 'hides' | 'tank_size' | 'target_feeding' | 'nursery' | 'sight_breaks')[];
+  /**
+   * Audit 2026-11-17 (D6): 'none' — a mismatch of needs (water, temperature), not something one animal does to the
+   * other: it sets the verdict and explains it (under Temperature), but no incident is rolled and no attack or predation
+   * is implied.
+   */
+  incident?: 'none';
 }
 
 export type CompatVerdict = 'excellent' | 'usually_compatible' | 'conditional' | 'high_risk' | 'incompatible';

@@ -142,7 +142,7 @@ export const astraeaSnail: SpeciesDefinition = {
     breedingOverview: 'Spawns into the water now and then in tanks; the eggs are eaten and young are rare.',
     conservationNote: 'Not assessed by the IUCN. Collected by the hundreds of thousands for the trade.',
     funFact: 'Its shell is a near-perfect pyramid — the knobbed folds on each whorl make a star when you look down on it.',
-    inGameBehavior: 'Creeps over the rock and glass grazing, busiest at dusk — and if it tumbles onto its back, it stays there until you help.',
+    inGameBehavior: 'Creeps over the rock and glass grazing, busiest at dusk.',
     feedingNote: 'Grazes film algae, diatoms, some hair algae and cyanobacteria. When the algae runs short, add a little seaweed or an algae wafer.',
     keeperTip: 'Check every day for snails on their backs and turn them over — an upturned Astraea starves or gets eaten.',
   },

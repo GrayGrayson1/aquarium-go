@@ -16,25 +16,38 @@ import { CompatView, VerdictBadge } from '../common/CompatView';
 import { safe } from '../common/safe';
 import { act } from '../common/actions';
 import { WATER_CLASS_LABEL } from '../common/format';
+import { pluralName } from '@/sim/economy/util'; // Audit 2026-11-17 (D2)
 import { Modal, Button, Empty } from '../kit';
+import { moveButton, moveNeedsAck } from './moveRisk'; // Audit 2026-11-17 (D15)
 
 export function MoveCreatureModal() {
-  const id = useShell((s) => s.moveCreatureId);
+  // Audit 2026-11-17 (D2): a group (the Livestock selection, or "Move the group") or one animal
+  const groupIds = useShell((s) => s.moveCreatureIds);
+  const single = useShell((s) => s.moveCreatureId);
+  const id = groupIds?.length ? groupIds[0] : single;
   const game = useGame((s) => (id ? s.game : null)); // lane:perf — follow the game only while the dialog is open
   const c = id && game ? game.creatures[id] : null;
+  const ids = useMemo(() => (groupIds?.length ? groupIds : id ? [id] : []), [groupIds, id]);
+  const group = ids.length > 1;
+  const groupKey = ids.join(',');
   const [target, setTarget] = useState<string | null>(null);
-  useEffect(() => setTarget(null), [id]);
-  const tanks = useMemo(() => (game && c ? game.tankOrder.filter((t) => t !== c.tankId).map((t) => game.tanks[t]).filter(Boolean) : []), [game?.tankOrder, c?.tankId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setTarget(null), [groupKey]);
+  // Audit 2026-11-17 (D15): a High risk or Incompatible move needs the same tick as buying into that tank
+  const [ack, setAck] = useState(false);
+  useEffect(() => setAck(false), [groupKey, target]);
+  // the tanks to choose from: all but the one every animal is already in
+  const homes = useMemo(() => new Set(ids.map((x) => game?.creatures[x]?.tankId ?? '')), [groupKey, game?.creatures]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tanks = useMemo(() => (game && c ? game.tankOrder.filter((t) => !(homes.size === 1 && homes.has(t))).map((t) => game.tanks[t]).filter(Boolean) : []), [game?.tankOrder, c?.tankId, homes]); // eslint-disable-line react-hooks/exhaustive-deps
   const sp = c ? findSpecies(c.speciesId) : undefined;
 
   const rows = useMemo(() => {
     if (!game || !c || !sp) return [];
     return tanks.map((t) => {
       const gate = safe('environmentGate', () => environmentGate(sp, t), { ok: true });
-      const report = gate.ok ? safe('previewAddition', () => previewAddition(game, t.id, { speciesId: c.speciesId, creatureIds: [c.id], sex: c.sex, sizeCm: c.sizeCm }), null) : null;
+      const report = gate.ok ? safe('previewAddition', () => previewAddition(game, t.id, group ? { speciesId: c.speciesId, creatureIds: ids } : { speciesId: c.speciesId, creatureIds: [c.id], sex: c.sex, sizeCm: c.sizeCm }), null) : null;
       return { t, gate, report, count: safe('creaturesInTank', () => creaturesInTank(game, t.id).length, 0) };
     });
-  }, [tanks, c?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tanks, c?.id, groupKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // lane:qa-play — with a single water-compatible tank to go to, it is chosen already (one click fewer)
   // (runs after the reset above, so the queued null is what `t` sees when another animal's move opens)
@@ -43,13 +56,29 @@ export function MoveCreatureModal() {
     setTarget((t) => (t !== null ? t : ok.length === 1 ? ok[0].t.id : null));
   }, [rows]);
 
-  const close = () => useShell.getState().set({ moveCreatureId: null });
+  const close = () => useShell.getState().set({ moveCreatureId: null, moveCreatureIds: null });
   const sel = rows.find((r) => r.t.id === target);
+  const risky = moveNeedsAck(sel?.report?.verdict);
+  const button = moveButton({ tankName: sel?.t.name ?? null, gateOk: !!sel?.gate.ok, verdict: sel?.report?.verdict, acknowledged: ack });
   const inBreeding = c && game ? !!safe('breedingStatus', () => breedingStatus(game, c.id), null) : false;
+  const groupName = sp ? pluralName(sp.commonName) : 'animals';
 
   const confirm = () => {
     if (!c || !sel) return;
     const toId = sel.t.id;
+    if (group) {
+      // Audit 2026-11-17 (D2): one command; each animal's tank as this screen saw it (first one wins in a shared shop)
+      act({ k: 'moveCreatures', creatures: ids, to: toId, from: ids.map((x) => game?.creatures[x]?.tankId ?? '') }, {
+        flag: 'moved_creature',
+        kindFor: (res) => (/Heads up|fungus|fall from the nest|stay behind|interrupted/i.test(res.message) ? 'warning' : 'success'),
+        after: (r) => {
+          if (!r?.ok) return;
+          close();
+          useUI.getState().set({ focusedTankId: toId });
+        },
+      });
+      return;
+    }
     // lane:guide — show the sim's own message: it names the tank and carries the warnings that matter (an adult
     // needs a bigger tank, eggs left without a parent, courtship interrupted), which a fixed "moved" text used to hide
     const from = c.tankId ?? '';
@@ -68,15 +97,15 @@ export function MoveCreatureModal() {
     <Modal
       open={!!c}
       onClose={close}
-      title={c ? `Move ${c.name}` : 'Move'}
+      title={c ? (group ? `Move ${ids.length} ${groupName}` : `Move ${c.name}`) : 'Move'}
       subtitle="Every move is checked for water, space, temperament and predators first."
       width={880}
       testId="move-modal"
       actions={
         <>
           <Button variant="ghost" onClick={close}>Cancel</Button>
-          <Button variant={sel?.report && (sel.report.verdict === 'high_risk' || sel.report.verdict === 'incompatible') ? 'coral' : 'primary'} disabled={!sel || !sel.gate.ok} onClick={confirm}>
-            <ArrowRightLeft size={16} /> {sel ? `Move to ${sel.t.name}` : 'Choose a tank'}
+          <Button variant={risky ? 'coral' : 'primary'} disabled={!button.enabled} onClick={confirm}>
+            <ArrowRightLeft size={16} /> {button.label}
           </Button>
         </>
       }
@@ -109,9 +138,17 @@ export function MoveCreatureModal() {
         </div>
         <div className="ag-movepreview">
           {!sel ? (
-            <div className="ag-movepreview__empty">Choose a tank to see how {c?.name} would get on there — and why.</div>
+            <div className="ag-movepreview__empty">Choose a tank to see how {group ? 'they' : c?.name} would get on there — and why.</div>
           ) : sel.gate.ok ? (
-            <CompatView report={sel.report} focusSpeciesId={c?.speciesId} title={<>If {c?.name} joins <strong>{sel.t.name}</strong>:</>} />
+            <>
+              <CompatView report={sel.report} focusSpeciesId={c?.speciesId} title={group ? <>If the {ids.length} {groupName} join <strong>{sel.t.name}</strong>:</> : <>If {c?.name} joins <strong>{sel.t.name}</strong>:</>} />
+              {risky && (
+                <label className="ag-moveack">
+                  <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} data-testid="move-risk-ack" />
+                  I understand the risks and want to go ahead
+                </label>
+              )}
+            </>
           ) : (
             <div className="ag-callout ag-callout--danger">
               <Ban size={16} aria-hidden /> <span>{sel.gate.reason}</span>

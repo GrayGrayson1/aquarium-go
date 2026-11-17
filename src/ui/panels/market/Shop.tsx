@@ -30,6 +30,9 @@ import { expressedNewGenes, labPartners, rareCarried, speciesPlural, strainOrMor
 import { buyState, NO_TANK_BADGE, NO_TANK_CALLOUT, tileTempReason } from './buyState';
 import { OfferGenes } from './OfferGenes';
 import { OfferTemperament } from './OfferTemperament';
+import { OfferDiet } from './OfferDiet'; // Audit 2026-11-17 (D5)
+import { SLIGHTLY_SMALL_TANK } from '@/sim/life/growth'; // Audit 2026-11-17 (D4)
+import { capitalPlural } from './offerWords'; // Audit 2026-11-17 (D21)
 import { Chip, Card, EmptyState, Callout, SectionHead, Checkbox } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
 import { CompatPreview } from '../common/CompatPreview';
@@ -352,8 +355,8 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   const labOwned = geneticsRevealLevel(g, lead) >= 1; // lane:genetics (0.5 §9.1) — the one reveal rule
   const candidate = useMemo(() => {
     if (!sp || chosen.length === 0) return null;
-    const sexes = new Set(chosen.map((c) => c.sex));
-    return { speciesId: sp.id, count: chosen.length, sex: sexes.size === 1 ? chosen[0].sex : undefined, sizeCm: Math.max(...chosen.map((c) => c.sizeCm)) };
+    // Audit 2026-11-17 (D1): the offer's own animals, so a "Male & female" pair is previewed as one
+    return { speciesId: sp.id, creatures: chosen };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sp?.id, picked]);
 
@@ -383,7 +386,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   const risky = !!report && VERDICT_RANK[report.verdict] >= VERDICT_RANK.high_risk;
   const locked = !speciesUnlocked(g, sp);
   const afford = g.finance.money >= price;
-  const tooSmall = tank ? gallonsOf(tank) < sp.recommendedMinTankGallons : false;
+  const tooSmall = tank ? gallonsOf(tank) < sp.recommendedMinTankGallons * SLIGHTLY_SMALL_TANK : false; // Audit 2026-11-17 (D4): a little small is the preview's note
   const noSuitable = suitable.length === 0;
   const state = buyState({ locked, picked: chosen.length, noSuitableTank: noSuitable, environment: sp.environment, affordable: afford, gateOk: !!tank && gate.ok, risky, acknowledged: ack, price });
   const coolSpecies = !!sp.special?.coolWater || sp.waterClasses.includes('freshwater_cool');
@@ -477,6 +480,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             ))}
           </div>
           <CareChips sp={sp} />
+          <OfferDiet g={g} sp={sp} env={tank?.environment} /* Audit 2026-11-17 (D5) */ />
           {safe(() => describePersonality(lead), '') && <p className="pn-small pn-dim" style={{ margin: 0 }}>{safe(() => describePersonality(lead), '')}</p>}
           {offer.note && <p className="pn-quote" style={{ margin: 0 }}>“{offer.note}”</p>}
         </div>
@@ -512,7 +516,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
           </div>
           {sp.social.minGroup > 1 && chosen.length < sp.social.minGroup && (
             <Callout tone="watch" icon={<Users size={15} />}>
-              {sp.commonName} feel safest in groups of {sp.social.minGroup} or more.
+              {capitalPlural(sp)} feel safest in groups of {sp.social.minGroup} or more.
             </Callout>
           )}
         </section>
@@ -609,7 +613,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
           <CompatPreview report={report} gate={gate} title={`Compatibility with ${tank.name}`} focusSpeciesId={sp?.id} /* lane:qa-play */ labels={VERDICT_LABEL /* ADR-0020: long labels in the offer detail */} />
           {gate.ok && tooSmall && (
             <Callout tone="watch" icon={<TriangleAlert size={15} />}>
-              {sp.commonName} need at least {sp.recommendedMinTankGallons} gallons as adults; {tank.name} is {gallonsOf(tank)} gallons.
+              {capitalPlural(sp)} need at least {sp.recommendedMinTankGallons} gallons as adults; {tank.name} is {gallonsOf(tank)} gallons.
             </Callout>
           )}
           {!sp.waterClasses.includes(tank.waterClass) && gate.ok && (
@@ -624,7 +628,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
                 ) : undefined
               }
             >
-              {sp.commonName} usually live in {sp.waterClasses.map((w) => WATER_CLASS_LABEL[w].toLowerCase()).join(' or ')} setups.
+              {capitalPlural(sp)} usually live in {sp.waterClasses.map((w) => WATER_CLASS_LABEL[w].toLowerCase()).join(' or ')} setups.
             </Callout>
           )}
         </section>

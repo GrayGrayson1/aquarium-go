@@ -97,6 +97,13 @@ export function observableSex(species: SpeciesDefinition, role: ReproRole, ageDa
   return 'unknown';
 }
 
+/**
+ * Audit 2026-11-17 (D4, the owner's decision): a tank at least this share of the gallons an animal needs is only a
+ * little small. The sim's tank-size stress there is at most (1 − 0.9) × 45 = 4.5 points (welfare.ts), under the 5 points
+ * the card names as a cause, so compatibility says it with a note, not a warning, and the sim doesn't raise the alarm.
+ */
+export const SLIGHTLY_SMALL_TANK = 0.9;
+
 /** Gallons this individual needs right now (scales with current size against its sex's adult size; adults need the species minimum). */
 export function gallonsNeededNow(species: SpeciesDefinition, sizeCm: number, role?: ReproRole | Sex): number {
   const frac = clamp(sizeCm / Math.max(0.1, adultSizeOf(species, role)), 0.05, 1.3);

@@ -46,7 +46,7 @@ export const clownGoby: SpeciesDefinition = {
   aggression: 0.02,
   finNipper: 0,
   hasLongFins: false,
-  social: { kind: 'solitary_or_pair', minGroup: 1, idealGroup: 2, maxPer10Gallons: 1, note: 'Wild fish live in small groups within one coral colony. In small aquaria keep one or a pair; unrelated adults may fight over the best branch.' },
+  social: { kind: 'solitary_or_pair', minGroup: 1, idealGroup: 2, maxPer10Gallons: 2 /* Audit 2026-11-17 (D19): its own advice, a pair in a 10-gallon */, note: 'Wild fish live in small groups within one coral colony. In small aquaria keep one or a pair; unrelated adults may fight over the best branch.' },
   sameSpeciesRule: {
     maleMale: 'tension',
     femaleFemale: 'tension',
