@@ -3,10 +3,10 @@
  * Priority: "what is wrong and why", judged against the actual inhabitants' ranges (intersection) and water class.
  */
 import { pluralPhrase } from '../economy/util';
-import type { GameState, ParamStatus, SpeciesDefinition, StatusLevel, Tank, WaterResidents, WaterIssue, WaterParamKey, WaterReport } from '@/types';
+import type { EquipmentKind, GameState, ParamStatus, SpeciesDefinition, StatusLevel, Tank, WaterResidents, WaterIssue, WaterParamKey, WaterReport } from '@/types';
 import { clamp, fmt, ammoniaToxicityWeight, nitrateThresholds, nitrifierTempFactor } from './chem';
 import { CLASS_DEFAULTS, ROOM_TEMP_C, TEMP_TOLERANCE_C } from './constants';
-import { computeTankEnv, flowInfo, flowMismatch, FLOW_LABEL, type Inhabitant, type TankEnv, expectedTempC } from './env';
+import { computeTankEnv, flowInfo, flowMismatch, FLOW_LABEL, type Inhabitant, type TankEnv, expectedTempC, type EqEntry, type EquipmentSummary } from './env';
 import { tankDailyCostImpl } from './kits';
 import { idealBand } from '../care/tuning';
 import { lightsPastClose, photoperiodTooLong } from '../time';
@@ -36,6 +36,15 @@ function whoOf(group: Inhabitant[]): string {
   }
   return `your ${pluralName(sp.commonName)}`;
 }
+
+/**
+ * Audit 2026-11-17 C3 — an installed unit of this kind that isn't running: failed first, then switched off.
+ * `equipmentSummary` lists only running heaters, chillers and lights, so with the only one down the advice said "add one".
+ */
+function idleUnit(s: EquipmentSummary, kind: EquipmentKind): EqEntry | undefined {
+  return s.failed.find((e) => e.def.kind === kind) ?? s.entries.find((e) => e.def.kind === kind && !e.inst.on);
+}
+const idleAdvice = (e: EqEntry): string => (e.inst.failed ? `Repair the ${e.def.name}.` : `The ${e.def.name} is switched off — switch it on.`);
 
 function groupBySpecies(inh: Inhabitant[]): Inhabitant[][] {
   const m = new Map<string, Inhabitant[]>();
@@ -370,19 +379,26 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     const j = judgeRange(w.tempC, groups, (sp) => sp.tempC, d.temp, ' °C', 1, d.label, TEMP_TOLERANCE_C);
     let advice: string | undefined;
     if (j.status !== 'good') {
+      // Audit 2026-11-17 C3 — a heater or chiller that's installed but failed or switched off is the fix, not a new one
+      const idleChiller = idleUnit(s, 'chiller');
+      const idleHeater = idleUnit(s, 'heater');
       if (s.stuckHeaters.length) advice = 'A heater thermostat has stuck on — switch that heater off now.';
       else if (j.high)
         advice = s.chillers.length
           ? `Lower the chiller setting${s.heaterSet !== null ? ' and the heater' : ''}.`
           : s.heaterSet !== null && s.heaterSet > w.tempC - 1
             ? `Turn the heater down to about ${fmt(Math.max(...species.map((x) => x.tempC.idealMin), d.temp.idealMin) + 0.5, 0)} °C.`
-            : `The room keeps this tank near ${ROOM_TEMP_C} °C. Add a chiller, or a clip-on fan for 1–2 °C of evaporative cooling.`;
+            : idleChiller
+              ? idleAdvice(idleChiller)
+              : `The room keeps this tank near ${ROOM_TEMP_C} °C. Add a chiller, or a clip-on fan for 1–2 °C of evaporative cooling.`;
       else
         advice = s.heaters.length
           ? s.failed.some((e) => e.def.kind === 'heater')
             ? 'A heater has failed — repair or replace it.'
             : 'Raise the heater setting (or add a second heater if it cannot keep up).'
-          : 'Add a heater sized for this tank (about 3–5 W per gallon).';
+          : idleHeater
+            ? idleAdvice(idleHeater)
+            : 'Add a heater sized for this tank (about 3–5 W per gallon).';
     }
     add(
       { key: 'temp', label: 'Temperature', value: w.tempC, unit: '°C', display: `${fmt(w.tempC, 1)} °C`, status: j.status, ideal: j.ideal, reason: j.reason, advice },
@@ -746,10 +762,25 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     const lightLevel = par < 0.35 ? 0 : par < 0.75 ? 1 : 2;
     const dimLovers = groups.filter((g) => g[0].species.lightPreference === 'dim');
     const brightLovers = groups.filter((g) => g[0].species.lightPreference === 'bright');
+    // Audit 2026-11-17 C3 — a light that's installed but burned out or switched off: its Repair or its switch
+    const idleLight = s.lights.length === 0 ? idleUnit(s, 'light') : undefined;
+    let headline = 'Lighting is a poor match';
     if (s.lights.length === 0) {
       st = hasAnimals || env.habitat.nitrateUptake > 0 || env.corals > 0 ? 'watch' : 'good';
-      reason = s.failed.some((e) => e.def.kind === 'light') ? 'The light has burned out.' : 'No light is installed.';
-      advice = 'Install a light — animals need a day/night rhythm, and plants and corals need light to live.';
+      const why = 'animals need a day/night rhythm, and plants and corals need light to live.';
+      if (idleLight?.inst.failed) {
+        reason = `The ${idleLight.def.name} has burned out.`;
+        advice = `Repair the ${idleLight.def.name} — ${why}`;
+        headline = 'The light has burned out';
+      } else if (idleLight) {
+        reason = `The ${idleLight.def.name} is switched off.`;
+        advice = `Switch it on — ${why}`;
+        headline = 'The light is switched off';
+      } else {
+        reason = 'No light is installed.';
+        advice = `Install a light — ${why}`;
+        headline = 'No light installed';
+      }
     } else if (lightLevel === 2 && dimLovers.length) {
       st = 'watch';
       reason = `This light is bright for ${joinNames(dimLovers.map(whoOf))}, which prefer dim, shaded water.`;
@@ -776,7 +807,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         reason,
         advice,
       },
-      'Lighting is a poor match',
+      headline,
     );
   }
 
@@ -886,16 +917,22 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     }
   }
   // Tropical animals without any heater (room is cool)
-  if (hasAnimals && s.heaterSet === null && !s.stuckHeaters.length) {
+  // Audit 2026-11-17 C3 — a heater that's installed but failed has its own "has failed" line above; one that's switched
+  // off is named, with its switch (this line used to say "There is no heater" either way).
+  const idleHeater = s.entries.find((e) => e.def.kind === 'heater' && !e.inst.on && !e.inst.failed);
+  if (hasAnimals && s.heaterSet === null && !s.stuckHeaters.length && (idleHeater || !s.failed.some((e) => e.def.kind === 'heater'))) {
     const cold = species.filter((sp) => sp.tempC.idealMin > ROOM_TEMP_C + 1);
     if (cold.length && w.tempC < Math.max(...cold.map((sp) => sp.tempC.idealMin))) {
+      const who = joinNames(cold.map((sp) => pluralName(sp.commonName)));
       issues.push({
         // DANGER only where the temperature row is DANGER too (more than TEMP_TOLERANCE_C below a species' minimum)
         status: w.tempC < Math.max(...cold.map((sp) => sp.tempC.min)) - TEMP_TOLERANCE_C ? 'danger' : 'watch',
         param: 'temp',
-        text: `There is no heater, and the room keeps this tank near ${ROOM_TEMP_C} °C — too cool for ${joinNames(cold.map((sp) => pluralName(sp.commonName)))}.`,
-        advice: 'Install a heater set to the middle of their range.',
-        headline: 'Tank needs a heater',
+        text: idleHeater
+          ? `The ${idleHeater.def.name} is switched off, and the room keeps this tank near ${ROOM_TEMP_C} °C — too cool for ${who}.`
+          : `There is no heater, and the room keeps this tank near ${ROOM_TEMP_C} °C — too cool for ${who}.`,
+        advice: idleHeater ? 'Switch it on.' : 'Install a heater set to the middle of their range.',
+        headline: idleHeater ? 'The heater is switched off' : 'Tank needs a heater',
         weight: 160,
       });
     }

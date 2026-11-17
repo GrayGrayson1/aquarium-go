@@ -45,7 +45,7 @@ const idleOf = (tank: Tank, ...kinds: EquipmentKind[]): EquipmentInstance | unde
 /** The unit of these kinds that's running (on and working), else the first installed. */
 const runningOf = (tank: Tank, ...kinds: EquipmentKind[]): EquipmentInstance | undefined => gearOf(tank, ...kinds).find((e) => e.on && !e.failed) ?? gearOf(tank, ...kinds)[0];
 /** An idle unit's link: a failed one's Repair (or Switch it off when stuck on), an off one's row (its switch). */
-const idleLink = (tank: Tank, e: EquipmentInstance): FixLink => (e.failed ? repairLink(tank, e) : gearRow(tank, e, 'Open Equipment'));
+const idleLink = (tank: Tank, e: EquipmentInstance): FixLink => (e.failed ? repairLink(tank, e) : gearRow(tank, e, 'Switch it on')); // Audit 2026-11-17 C3: say what to do there
 
 const card = (tank: Tank, tab: TankCardTabId, fix: string, label: string): FixLink => ({ label, to: { kind: 'card', tankId: tank.id, tab, fix } });
 /** Build › Equipment for this tank, showing one kind of gear to buy. */
@@ -64,6 +64,9 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
   // a unit the issue names (a failed pump, a stuck heater) comes first
   const failed = (tank.equipment ?? []).find((e) => e.failed && say.includes(nameOf(e)));
   if (failed) return repairLink(tank, failed);
+  // Audit 2026-11-17 C3 — a unit the issue says is switched off ("The 50 W Aquarium Heater is switched off…"): its switch
+  const off = /switched off/.test(say) ? (tank.equipment ?? []).find((e) => !e.on && !e.failed && say.includes(nameOf(e))) : undefined;
+  if (off) return gearRow(tank, off, 'Switch it on');
   const adv = (issue.advice ?? '').toLowerCase();
   const p = issue.param;
   // (the advice words are the sim's, src/sim/water/report.ts: a setting to change goes to the unit's own row, gear to
@@ -103,11 +106,11 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
   if (p === 'filtration') {
     // "Repair or replace the filter." (none running), "Repair or replace it." (one of several down), and "Add a second
     // filter…" while one is broken or off: that one first
-    if (/repair or replace|second filter|larger one/.test(adv)) {
+    if (/repair or replace|second filter|larger one|switch the filter back on/.test(adv)) {
       const idle = idleOf(tank, 'filter');
       if (idle) return idleLink(tank, idle);
     }
-    // "Switch the filter back on." goes to that filter's row (its switch)
+    // ("Switch the filter back on." goes to that filter's row, its switch, above: Audit 2026-11-17 C3)
     const filter = runningOf(tank, 'filter');
     if (/install a filter|second filter|larger one|add a filter/.test(adv) || !filter) return buyGear(tank, 'filter', 'Buy a filter');
     return gearRow(tank, filter, 'Open Equipment');

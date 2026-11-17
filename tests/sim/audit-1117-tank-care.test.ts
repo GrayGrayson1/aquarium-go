@@ -7,6 +7,8 @@ import type { GameState } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { getWaterReport } from '@/sim/water';
 import { waterChange, waterChangeCost, dose } from '@/sim/care';
+import { getEquipmentDef } from '@/data/catalog/equipment';
+import { fixForWaterIssue } from '@/ui/common/fixLinks';
 
 type Starter = 'betta' | 'ocellaris_clownfish' | 'axolotl' | 'lined_seahorse';
 const base = (starter: Starter = 'betta') => newGame({ starterId: starter, starterName: 'Test', seed: 99 });
@@ -61,5 +63,65 @@ describe('C1: a water change the salt can’t cover is refused, as the keepers�
     expect(r.ok).toBe(true);
     expect(r.message).toMatch(/Dose again until it reads at least 1\.023\.$/);
     expect(r.message).not.toMatch(/0\.001 a day/);
+  });
+});
+
+describe('C3: an installed heater, chiller or light that is failed or switched off is named, not "add one"', () => {
+  const unitOf = (s: GameState, kind: string) => firstTank(s).equipment.find((e) => getEquipmentDef(e.defId)?.kind === kind)!;
+  const all = (s: GameState) => getWaterReport(s, firstTank(s).id).issues.map((i) => `${i.text} ${i.advice ?? ''}`).join(' ');
+
+  it('the betta’s only heater failed: "Repair the …", never "There is no heater" or "Add a heater"', () => {
+    const s = base('betta');
+    const heater = unitOf(s, 'heater');
+    heater.failed = true;
+    heater.failMode = 'off';
+    firstTank(s).water.tempC = 22;
+    const name = getEquipmentDef(heater.defId)!.name;
+    const temp = getWaterReport(s, firstTank(s).id).params.find((p) => p.key === 'temp')!;
+    expect(temp.advice).toBe(`Repair the ${name}.`);
+    expect(all(s)).not.toMatch(/There is no heater|Add a heater|Install a heater/);
+  });
+
+  it('the betta’s only heater switched off: says so, and its link is "Switch it on"', () => {
+    const s = base('betta');
+    const heater = unitOf(s, 'heater');
+    heater.on = false;
+    firstTank(s).water.tempC = 22;
+    const name = getEquipmentDef(heater.defId)!.name;
+    const rep = getWaterReport(s, firstTank(s).id);
+    expect(rep.params.find((p) => p.key === 'temp')!.advice).toBe(`The ${name} is switched off — switch it on.`);
+    const line = rep.issues.find((i) => i.text.startsWith(`The ${name} is switched off, and the room keeps this tank near`))!;
+    expect(line.advice).toBe('Switch it on.');
+    expect(all(s)).not.toMatch(/There is no heater|Add a heater/);
+    expect(fixForWaterIssue(firstTank(s), line)?.label).toBe('Switch it on');
+  });
+
+  it('the axolotl’s chiller failed on a warm day: "Repair the …", not "Add a chiller"', () => {
+    const s = base('axolotl');
+    const chiller = unitOf(s, 'chiller');
+    expect(chiller).toBeDefined();
+    chiller.failed = true;
+    chiller.failMode = 'off';
+    firstTank(s).water.tempC = 24;
+    const temp = getWaterReport(s, firstTank(s).id).params.find((p) => p.key === 'temp')!;
+    expect(temp.advice).toBe(`Repair the ${getEquipmentDef(chiller.defId)!.name}.`);
+  });
+
+  it('a light switched off or burned out is named, with its own headline', () => {
+    const s = base('betta');
+    const light = unitOf(s, 'light');
+    const name = getEquipmentDef(light.defId)!.name;
+    light.on = false;
+    let p = getWaterReport(s, firstTank(s).id).params.find((x) => x.key === 'light')!;
+    expect(p.reason).toBe(`The ${name} is switched off.`);
+    expect(p.advice).toMatch(/^Switch it on — /);
+    expect(fixForWaterIssue(firstTank(s), { text: p.reason!, advice: p.advice, param: 'light' })?.label).toBe('Switch it on');
+    light.on = true;
+    light.failed = true;
+    light.failMode = 'off';
+    p = getWaterReport(s, firstTank(s).id).params.find((x) => x.key === 'light')!;
+    expect(p.reason).toBe(`The ${name} has burned out.`);
+    expect(p.advice).toMatch(new RegExp(`^Repair the ${name} — `));
+    expect(fixForWaterIssue(firstTank(s), { text: p.reason!, advice: p.advice, param: 'light' })?.label).toBe('Repair');
   });
 });
