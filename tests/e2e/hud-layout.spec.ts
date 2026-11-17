@@ -40,14 +40,17 @@ const panel = (page: Page) => page.evaluate(() => (window as unknown as { __AQ: 
  */
 async function crowdedBell(page: Page, touch = false) {
   await plainGame(page);
-  await aq(page, 'dev.fillTestFacility', 8);
-  type Api = { __AQ: { mutate(fn: (s: { tankOrder: string[]; inventory: { foods: Record<string, number> }; tanks: Record<string, { equipment: { condition?: number; failed?: boolean }[] }> }) => void): void } };
-  await page.evaluate(() => (window as unknown as Api).__AQ.mutate((s) => void (s.inventory.foods = {})));
-  await aq(page, 'advance', 0.25);
   await aq(page, 'dev.setSpeed', 0);
+  await aq(page, 'dev.fillTestFacility', 8);
+  type Api = { __AQ: { mutate(fn: (s: { tankOrder: string[]; inventory: { foods: Record<string, number> }; tanks: Record<string, { cache: { foodLevel?: string }; equipment: { condition?: number; failed?: boolean }[] }> }) => void): void } };
+  // (paused: the sim never steps, so the cupboard and the cached food levels stay as set here)
   await page.evaluate(() =>
     (window as unknown as Api).__AQ.mutate((s) => {
-      for (const id of s.tankOrder) for (const e of s.tanks[id].equipment) if (!e.failed) e.condition = 0.1;
+      s.inventory.foods = {};
+      for (const id of s.tankOrder) {
+        s.tanks[id].cache.foodLevel = 'out';
+        for (const e of s.tanks[id].equipment) if (!e.failed) e.condition = 0.1;
+      }
     }),
   );
   const bell = tid(page, 'hud-alerts');
