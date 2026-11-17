@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Hammer, Layers, Mountain, Wrench, Palette, Building2, Lock, Move, MapPin, Sprout, Flower2, Shell, Gem, Puzzle, Waves, Check, Power, Trash2, Package, TriangleAlert, Info, Zap, Sparkles, Thermometer, Snowflake, Fan, Lightbulb, Wind, Droplets, Droplet, Utensils, Sun, Leaf, Box } from 'lucide-react';
-import type { BackdropKind, DecorCategory, DecorDef, Environment, EquipmentKind, GameState, SubstrateKind, TankTier, WaterClass } from '@/types';
+import type { BackdropKind, DecorCategory, DecorDef, Environment, EquipmentInstance, EquipmentKind, GameState, SubstrateKind, Tank, TankTier, WaterClass } from '@/types';
 import { Button, Money, formatMoney, Toggle, Slider, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { TANK_TIERS } from '@/data/catalog/tanks';
@@ -787,12 +787,26 @@ const EQUIP_CHIP: Record<EquipmentKind, string> = {
   water_changer: 'Water changers',
 };
 
+/**
+ * Audit 2026-11-17 C11 — every unit in storage, the ones that can go in this tank first. Gear moved off a converted
+ * reef was listed only from a tank of its own water type, so from a freshwater tank it was out of sight; now it shows,
+ * saying what kind of tank it needs.
+ */
+export function storedEquipmentList(g: GameState, tank: Pick<Tank, 'environment'>): { inst: EquipmentInstance; needs: string | null }[] {
+  const rows = g.inventory.equipment.map((inst) => {
+    const envs = getEquipmentDef(inst.defId)?.environments ?? [];
+    const fits = !envs.length || envs.includes(tank.environment);
+    return { inst, needs: fits ? null : envs.includes('freshwater') ? 'Needs a freshwater tank' : envs.includes('brackish') ? 'Needs a salt tank' : 'Needs a marine tank' };
+  });
+  return [...rows.filter((r) => !r.needs), ...rows.filter((r) => r.needs)];
+}
+
 function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tankId: string; q: string; setQ: (v: string) => void; kind: EquipmentKind | 'all'; setKind: (k: EquipmentKind | 'all') => void }) {
   const { unit: tempUnit } = useTempText();
   const tank = g.tanks[tankId];
   const gal = gallonsOf(tank);
   const installed = tank.equipment;
-  const storage = g.inventory.equipment.filter((e) => getEquipmentDef(e.defId)?.environments.includes(tank.environment));
+  const storage = storedEquipmentList(g, tank); // Audit 2026-11-17 C11: every stored unit, fitting ones first
   const shopAll = EQUIPMENT.filter((e) => e.environments.includes(tank.environment)).map((e) => ({ e, fits: gal >= e.gallonsRange.min * 0.6 && gal <= e.gallonsRange.max * 1.4, installed: installed.some((x) => x.defId === e.id) }));
   // chunk 19 (ADR-0055 decision 3, QOL-003) — what to buy, searched and by kind (a tank card's "Buy a heater" opens on Heaters)
   const kinds = [...new Set(shopAll.map(({ e }) => e.kind))].filter((k) => EQUIP_CHIP[k]);
@@ -877,7 +891,7 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
         <section>
           <SectionHead title="In storage" icon={<Package size={14} />} />
           <div className="pn-col pn-gap-2">
-            {storage.map((e) => {
+            {storage.map(({ inst: e, needs }) => {
               const def = getEquipmentDef(e.defId);
               const fit = storedFit(e.defId);
               return (
@@ -891,7 +905,7 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
                     <FitLine verdict={fit} />
                   </div>
                   <Button size="sm" disabled={!!fit?.blocked} title={fit?.blocked ? fit.text : undefined} onClick={() => act({ k: 'installEquipment', tank: tankId, def: e.defId, instance: e.id }, { sound: 'place', kind: fit && fit.level !== 'ok' && !fit.general && !fit.soft ? 'warning' : undefined })}>
-                    <Check size={14} /> {fit?.blocked ? fit.label : 'Install'}
+                    <Check size={14} /> {needs ?? (fit?.blocked ? fit.label : 'Install')}
                   </Button>
                 </div>
               );

@@ -7,6 +7,7 @@ import type { GameState } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { getWaterReport, tankDailyCost } from '@/sim/water';
 import { waterChange, waterChangeCost, dose, installEquipment, feedTank } from '@/sim/care';
+import { storedEquipmentList } from '@/ui/panels/build/BuildPanel';
 import { convertWaterClass, convertWaterClassCost } from '@/sim/tankOps';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { fixForWaterIssue, fixForAttention } from '@/ui/common/fixLinks';
@@ -399,5 +400,18 @@ describe('C10: low-oxygen advice and its link point at what helps', () => {
     t.equipment = t.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'airstone');
     t.equipment.push({ id: 'test_air', defId: 'airstone', installedHour: 0, condition: 1, on: true });
     expect(fixForWaterIssue(t, { text: 'x', advice: advice(), param: 'oxygen' })?.label).toBe('Buy an airstone');
+  });
+});
+
+describe('C11: stored gear shows from any tank, saying what tank it needs', () => {
+  it('a reef light in storage is listed for a freshwater tank, last, with what it needs', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    s.inventory.equipment.push({ id: 'st_reef', defId: 'light_reef', installedHour: 0, condition: 1, on: false });
+    s.inventory.equipment.push({ id: 'st_air', defId: 'airstone', installedHour: 0, condition: 1, on: false });
+    const rows = storedEquipmentList(s, t);
+    expect(rows.map((r) => r.inst.id)).toEqual(['st_air', 'st_reef']);
+    expect(rows[0].needs).toBeNull();
+    expect(rows[1].needs).toMatch(/^Needs a (salt|marine) tank$/);
   });
 });
