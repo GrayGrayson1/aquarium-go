@@ -169,3 +169,11 @@ describe('Audit 2026-11-17 (J30): numbers say what they count', () => {
     expect(showMoney(1234.4)).toBe('$1,234');
   });
 });
+
+describe('Audit 2026-11-17 (J31, the part that needs no choice): a hobbyist is a fishkeeper', () => {
+  it('the encyclopedia’s release note doesn’t use “keeper”, the staff role’s word', () => {
+    const s = src('ui/panels/encyclopedia/EncyclopediaPanel.tsx');
+    expect(s).not.toContain('goes to another keeper');
+    expect(s).toContain('goes to another fishkeeper. Aquarium animals should never be released into the wild.');
+  });
+});

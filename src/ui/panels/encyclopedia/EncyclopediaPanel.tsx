@@ -183,7 +183,7 @@ function SpeciesGrid({ g, known, onOpen }: { g: GameState; known: Set<string>; o
         </section>
       ))}
       <Callout tone="good" icon={<Leaf size={16} />}>
-        Every animal here stays in your care or goes to another keeper. Aquarium animals should never be released into the wild.
+        Every animal here stays in your care or goes to another fishkeeper. Aquarium animals should never be released into the wild.
       </Callout>
     </div>
   );
