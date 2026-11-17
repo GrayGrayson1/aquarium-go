@@ -40,6 +40,9 @@ import { useShell } from '@/ui/common/shellStore';
 import { ARTICLES } from '@/ui/panels/encyclopedia/science';
 import { getWaterReport } from '@/sim/water';
 import { socialWord } from '@/ui/panels/common/Profile';
+import { TANK_STATUS_WORD } from '@/ui/common/tankStatus';
+import { ATTENTION_WORD } from '@/ui/common/notify';
+import { ACHIEVEMENTS } from '@/data/achievements';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -271,5 +274,30 @@ describe('J9: species pages give advice their own numbers and diets agree with',
     expect(getSpecies('flame_hawkfish').encyclopedia.keeperTip).not.toMatch(/seafood/);
     expect(getSpecies('dwarf_gourami').encyclopedia.feedingNote).not.toMatch(/floating pellets/);
     expect(getSpecies('figure_eight_puffer').encyclopedia.funFact).toMatch(/Its old name, biocellatus/);
+  });
+});
+
+describe('J10: a tank’s status has one set of words (B-157)', () => {
+  it('the tank bar’s words are the only ones: the Water tab’s head, Tanks and the achievement agree', () => {
+    expect(TANK_STATUS_WORD).toEqual({ good: 'Healthy', watch: 'Watch', danger: 'Danger' });
+    expect(ATTENTION_WORD).toBe(TANK_STATUS_WORD);
+    const g = base();
+    const t = g.tanks[g.tankOrder[0]];
+    t.water.ammonia = 4;
+    useGame.setState({ game: g });
+    try {
+      const html = text(renderToStaticMarkup(createElement(WaterTab, { game: g, tank: t })));
+      expect(html).toMatch(/Water in danger|Watch the water/);
+      expect(html).not.toMatch(/Act soon|Keep an eye on it/);
+    } finally {
+      useGame.setState({ game: null });
+    }
+    expect(ACHIEVEMENTS.find((a) => a.id === 'steady_hands')?.description).toBe('Keep every tank’s water healthy for 7 days in a row.');
+  });
+
+  it('two source facts no longer read “in in”', () => {
+    const facts = (id: string) => getSpecies(id).sourceReferences.flatMap((s) => s.facts ?? []).join(' | ');
+    expect(facts('miniatus_grouper')).toMatch(/max 14 inches in aquaria \(18 in the wild\)/);
+    expect(facts('chocolate_tang')).toMatch(/7–10 inches in aquaria/);
   });
 });

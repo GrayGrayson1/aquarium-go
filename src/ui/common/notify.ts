@@ -26,7 +26,7 @@ import { unseenResults } from '@/sim/shows';
 import { tankGearIssues, FIT_TONE } from '@/sim/care/fit'; // lane "fit" verdicts
 import { autofeedPause, type AutofeedPause } from '@/sim/care/autofeed'; // lane:automation (AUTO-005)
 import { inhabitantsOf } from '@/sim/water/env';
-import { tankStatusReason } from './tankStatus';
+import { tankStatusReason, TANK_STATUS_WORD } from './tankStatus'; // Audit 2026-11-17 (J10): TANK_STATUS_WORD
 import { convertTempText } from './format'; // Audit 2026-11-17 (J1)
 import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
 import { findSpecies } from '@/data/species';
@@ -76,7 +76,7 @@ export interface TankAttention {
 const RANK: Record<AttentionLevel, number> = { good: 0, watch: 1, danger: 2 };
 export const worseLevel = <T extends AttentionLevel>(a: T, b: T): T => (RANK[b] > RANK[a] ? b : a);
 const level = (v: unknown): AttentionLevel => (v === 'danger' || v === 'watch' ? v : 'good');
-export const ATTENTION_WORD: Record<AttentionLevel, string> = { good: 'Healthy', watch: 'Watch', danger: 'Danger' };
+export const ATTENTION_WORD: Record<AttentionLevel, string> = TANK_STATUS_WORD; // Audit 2026-11-17 (J10): one table
 
 const GOOD: TankAttention = { level: 'good', items: [], tabs: {}, label: '' };
 

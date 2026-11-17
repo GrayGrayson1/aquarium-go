@@ -146,10 +146,10 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
               </div>
             </div>
             <span className="pn-tankcard__status" title={[...statusWhy, ...extraWhy].join('\n') || undefined}>
-              <StatusBadge status={c.status} label={c.status === 'good' ? 'Healthy' : c.status === 'watch' ? 'Watch' : 'Act now'} />
+              <StatusBadge status={c.status} label={ATTENTION_WORD[c.status] /* Audit 2026-11-17 (J10): "Danger", as the tank bar says (was "Act now") */} />
             </span>
           </div>
-          {/* why the tank is Watch / Act now — water, animal welfare or food (sim: cache.statusReasons) */}
+          {/* why the tank is Watch / Danger — water, animal welfare or food (sim: cache.statusReasons) */}
           {c.status !== 'good' && statusWhy.length > 0 && (
             <div className={clsx('pn-tankcard__why', `pn-tone-${c.status}`)} role="note">
               {statusWhy.map((line) => (
@@ -348,7 +348,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
         <div className="pn-field">
           <span className="pn-field__label">Water</span>
           <div className="pn-row pn-gap-2 pn-row--wrap">
-            <StatusBadge status={report.status} />
+            <StatusBadge status={report.status} label={ATTENTION_WORD[report.status] /* Audit 2026-11-17 (J10): the water's status, as the tank's ("Good" was a reading's word) */} />
             <span className="pn-dim pn-small">{tempText(report.headline)}</span>
           </div>
           {report.issues.slice(0, 2).map((i, k) => (

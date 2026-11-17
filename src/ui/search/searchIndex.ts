@@ -15,6 +15,7 @@ import { TANK_TIERS } from '@/data/catalog/tanks';
 import { RESEARCH } from '@/data/research';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { WATER_CLASS_WORDS } from '@/data/tankLabels'; // Audit 2026-11-17 (J4)
+import { TANK_STATUS_WORD } from '../common/tankStatus'; // Audit 2026-11-17 (J10)
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { ALL_SPECIES, findSpecies } from '@/data/species';
 import { isFoodAvailable, isSpeciesAvailable } from '@/sim/economy';
@@ -103,7 +104,7 @@ export function findAnything(g: GameState, q: string, opts: { social?: boolean; 
   for (const id of g.tankOrder) {
     const t = g.tanks[id];
     if (!t) continue;
-    push({ key: `tank:${id}`, group: 'Your tanks', title: t.name, detail: `${tierGallons(t.tierId)} gal · ${t.cache.status === 'good' ? 'Healthy' : t.cache.status === 'danger' ? 'Danger' : 'Watch'}`, go: { kind: 'tank', tankId: id } }, t.name, 'tank');
+    push({ key: `tank:${id}`, group: 'Your tanks', title: t.name, detail: `${tierGallons(t.tierId)} gal · ${TANK_STATUS_WORD[t.cache.status] ?? TANK_STATUS_WORD.watch}`, go: { kind: 'tank', tankId: id } }, t.name, 'tank');
   }
   for (const c of Object.values(g.creatures)) {
     if (c.status !== 'alive' && c.status !== 'listed') continue;

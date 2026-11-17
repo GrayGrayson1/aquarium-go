@@ -90,6 +90,7 @@ import { fixForAttention, fixForWaterIssue } from '../common/fixLinks'; // chunk
 import { isWorn } from '../common/notify'; // chunk 19 (QOL-002)
 import { FixButton } from './FixButton'; // chunk 19 (QOL-002)
 import { animalStatus } from '@/sim/tankStatus'; // Audit 2026-11-17 (D16)
+import { TANK_STATUS_WORD } from '../common/tankStatus'; // Audit 2026-11-17 (J10)
 
 /** A switch flips what the game holds now, not this card's throttled copy (a quick second click turns it back, as before). */
 const liveSignage = (tankId: string): boolean => !!useGame.getState().game?.tanks[tankId]?.signage;
@@ -213,7 +214,8 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
       <div className={clsx('ag-waterhead', `is-${report.status}`)} data-testid="water-status">
         <HeadIcon size={22} aria-hidden className="ag-waterhead__icon" />
         <div className="ag-grow">
-          <div className="ag-waterhead__word">{report.status === 'good' ? 'Healthy water' : report.status === 'watch' ? 'Keep an eye on it' : 'Act soon'}</div>
+          {/* Audit 2026-11-17 (J10): the status words the tank bar uses ("Keep an eye on it" / "Act soon" were a third set) */}
+          <div className="ag-waterhead__word">{report.status === 'good' ? 'Healthy water' : report.status === 'watch' ? 'Watch the water' : 'Water in danger'}</div>
           <div className="ag-waterhead__line">{convertTempText(report.headline, unit)}</div>
         </div>
       </div>
@@ -726,7 +728,7 @@ export function TankCard() {
       <h2 className="ag-thead__name">{tank.name}</h2>
       <div className="ag-row ag-wrap" style={{ gap: 6 }}>
         <WaterChip wc={tank.waterClass} size="sm" />
-        <StatusBadge status={tank.cache.status} label={tank.cache.status === 'good' ? 'Healthy' : undefined} />
+        <StatusBadge status={tank.cache.status} label={TANK_STATUS_WORD[tank.cache.status] /* Audit 2026-11-17 (J10) */} />
         {/* back-of-house tanks are skipped by visitors (sim/facility/visitors.ts onDisplay), as the Visitors panel says */}
         {(tank.purpose ?? 'display') !== 'display' && <Badge tone="violet">{titleCase(tank.purpose)}</Badge>}
         {(tank.purpose ?? 'display') !== 'display' && <Badge title="Back of house — not shown to visitors">Off display</Badge>}

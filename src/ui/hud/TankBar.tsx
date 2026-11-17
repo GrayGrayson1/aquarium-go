@@ -17,7 +17,7 @@ import { useShell } from '../common/shellStore';
 import { safe } from '../common/safe';
 import { tutorialFlag } from '../common/actions';
 import { PLACEMENT_TOOLS, useDockedCard } from './cardDock';
-import { tankStatusReason } from '../common/tankStatus';
+import { tankStatusReason, TANK_STATUS_WORD } from '../common/tankStatus'; // Audit 2026-11-17 (J10): TANK_STATUS_WORD
 import { nearestAttention, tankAttention, ATTENTION_WORD } from '../common/notify'; // lane:notify
 import { AttnDot, useTankAttentionLevel } from './AttnDot'; // lane:notify
 import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
@@ -116,7 +116,7 @@ function useOtherTankCue(focused: string | null): { dir: 1 | -1; level: 'watch' 
 }
 
 const STATUS_ICON = { good: CircleCheck, watch: TriangleAlert, danger: OctagonAlert } as const;
-const STATUS_WORD = { good: 'Healthy', watch: 'Watch', danger: 'Danger' } as const;
+const STATUS_WORD = TANK_STATUS_WORD; // Audit 2026-11-17 (J10): one table
 
 export function TankBar() {
   const focused = useUI((s) => s.focusedTankId);

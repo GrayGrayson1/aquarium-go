@@ -14,7 +14,7 @@ import { useUI } from '@/state/ui';
 import { sfx } from '@/audio/sfx';
 import { useShell } from '../common/shellStore';
 import { safe, useMedia, TOUCH_FIRST_QUERY } from '../common/safe';
-import { tankStatusReason } from '../common/tankStatus';
+import { tankStatusReason, TANK_STATUS_WORD } from '../common/tankStatus'; // Audit 2026-11-17 (J10): TANK_STATUS_WORD
 import { agoText, foodName, convertTempText } from '../common/format'; // Audit 2026-11-17 (J1): convertTempText
 import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
 import { buyFoodPack, openFoodInSupplies, tankFoodAlert, tankFoodLevel, type TankFoodAlert } from '../common/foodStock';
@@ -279,7 +279,7 @@ function TankAlerts({ game }: { game: GameState }) {
           <span className="ag-grow">
             <span className="ag-alert-row__title">{t.name}</span>
             <span className="ag-alert-row__text">
-              <strong>{t.cache.status === 'danger' ? 'Danger' : 'Watch'}</strong> — {reason || 'Needs attention'}
+              <strong>{TANK_STATUS_WORD[t.cache.status]}</strong> — {reason || 'Needs attention'}
             </span>
           </span>
           <ChevronRight size={16} aria-hidden />
