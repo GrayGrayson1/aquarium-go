@@ -249,7 +249,9 @@ describe('chunk 13: the connection against the server', () => {
     ann.disp.dispatch({ k: 'feedTank', tank, food: foodOf(ann) }, (res) => (got = res));
     (ann.conn as unknown as { ws: SocketLike | null }).ws?.close();
     await pump(x.time, () => got !== undefined, { step: 50, what: 'the lost command to settle' });
-    expect(got).toBeNull();
+    // audit 2026-11-17, I12: changed on purpose: it may have happened, so its own words (not a null result, which every
+    // action words as "nothing was changed")
+    expect(got).toEqual({ ok: false, message: 'The connection dropped before the shop answered. Check whether it went through before trying again.' });
     await pump(x.time, () => ann.welcomes >= 2, { step: 250, timeout: 15_000, what: 'the reconnect' });
     expect(ann.conn.open).toBe(true);
   });

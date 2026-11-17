@@ -38,7 +38,7 @@ import { sfx } from '@/audio/sfx';
 import { Sheet } from '../common/Sheet';
 import { Button, Row, Segmented, Slider, Tabs, Toggle, Section, Modal } from '../kit';
 import { usePrefs } from '../common/prefs';
-import { listSlots, saveNow, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, timeAgo, isSameGame, loadKeepAdvice, freeSaveSlot, type SaveMeta } from '../common/saves';
+import { listSlots, saveNow, saveBeforeLeaving, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, timeAgo, isSameGame, loadKeepAdvice, freeSaveSlot, type SaveMeta } from '../common/saves';
 import { SaveRow } from '../screens/LoadDialog';
 import { useShell } from '../common/shellStore';
 import { buildDetail, versionLabel } from '../common/version';
@@ -185,7 +185,8 @@ function DisplayTab() {
         <Row label="Exact water values" description="Show numbers, not just Good / Watch / Danger." icon={<FlaskConical size={16} />}>
           <Toggle label="Exact water values" checked={s.advancedWater} onChange={(v) => up({ advancedWater: v })} />
         </Row>
-        <Row label="Autosave" description="Saves quietly every few minutes and when you leave." icon={<Save size={16} />}>
+        {/* audit 2026-11-17, I2: off, nothing saves on leaving either (the browser asks first), so the words say so */}
+        <Row label="Autosave" description={s.autosave ? 'Saves quietly every few minutes and when you leave.' : 'Off: nothing saves on its own. Use Save now to keep your progress.'} icon={<Save size={16} />}>
           <Toggle label="Autosave" checked={s.autosave} onChange={(v) => up({ autosave: v })} />
         </Row>
         <Row label="Guide hints" description="Show the guide card. A new game always starts with it on." icon={<Lightbulb size={16} />}>
@@ -362,10 +363,11 @@ function SoloSavesTab() {
               <Download size={14} /> Export save file
             </Button>
           )}
-          <Button size="sm" onClick={() => fileRef.current?.click()}>
-            <Upload size={14} /> Import into
-          </Button>
+          {/* audit 2026-11-17, I22: the slot is chosen first, and the button names it (the picker opened before the choice) */}
           <Segmented size="sm" label="Import slot" value={importSlot} onChange={setImportSlot} items={SAVE_SLOTS.filter((s) => s !== 'auto').map((s) => ({ id: s, label: slotLabel(s).replace('Slot ', '#') }))} />
+          <Button size="sm" onClick={() => fileRef.current?.click()}>
+            <Upload size={14} /> Import into {slotLabel(importSlot)}
+          </Button>
           <input
             ref={fileRef}
             type="file"
@@ -389,7 +391,8 @@ function SoloSavesTab() {
           <Button
             variant="danger"
             onClick={async () => {
-              await saveNow('auto', false);
+              // audit I10: a save that didn't land keeps the player here, and the toast says why
+              if (!(await saveBeforeLeaving())) return;
               sfx('close');
               useUI.getState().set({ panel: null, screen: 'title', selectedCreatureId: null, photoMode: false, partyMode: false, hudHidden: false, tool: 'none' });
             }}
@@ -578,11 +581,12 @@ function AboutTab() {
 
 function SaveNowFooter() {
   const game = useGame((s) => s.game);
+  const autosave = useSettings((s) => s.autosave);
   const [busy, setBusy] = useState(false);
   if (!game || game.isShowcase) return null;
   return (
     <div className="ag-row" style={{ gap: 10 }}>
-      <span className="ag-grow ag-small ag-muted">Autosave keeps your progress. Save now any time.</span>
+      <span className="ag-grow ag-small ag-muted">{autosave ? 'Autosave keeps your progress. Save now any time.' : 'Autosave is off. Save now to keep your progress.'}</span>
       <Button
         variant="primary"
         size="sm"

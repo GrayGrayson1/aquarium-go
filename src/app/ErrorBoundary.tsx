@@ -21,6 +21,8 @@ interface Props {
 }
 interface State {
   error: Error | null;
+  /** Audit I10: "Save & reload" couldn't save: say so, and keep the buttons (Reload is the choice to lose it). */
+  saveFailed?: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -40,14 +42,19 @@ export class ErrorBoundary extends Component<Props, State> {
       }
     }
   }
-  retry = () => this.setState({ error: null });
+  retry = () => this.setState({ error: null, saveFailed: false });
   reload = () => location.reload();
   saveAndReload = async () => {
+    // audit I10 (B-123): reload only once the save landed (or was refused on purpose: a scenario, a further tab);
+    // otherwise say so, with the update prompt's approved line, and keep the buttons
+    let ok = false;
     try {
-      await saveCurrentGame('auto', { flush: true, toast: false });
+      const r = await saveCurrentGame('auto', { flush: true, toast: false });
+      ok = r.ok || r.code === 'scenario' || r.code === 'stale';
     } catch {
-      /* reload anyway — the autosave on pagehide gets another chance */
+      ok = false;
     }
+    if (!ok) return this.setState({ saveFailed: true });
     location.reload();
   };
   render() {
@@ -59,8 +66,14 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div role="alert" data-testid={`error-boundary-${this.props.name.replace(/\s+/g, '-')}`} style={{ position: 'absolute', left: 16, bottom: 16, zIndex: 90, maxWidth: 420, padding: '12px 16px', borderRadius: 14, background: 'rgba(40,10,10,0.85)', border: '1px solid rgba(248,113,113,0.5)', color: '#ffe1e1', font: '13px Inter Variable, system-ui, sans-serif' }}>
         <strong>Something in the {this.props.name} hiccuped.</strong>
-        <div style={{ opacity: 0.8, margin: '4px 0 8px' }}>{this.state.error.message}</div>
+        {/* audit 2026-11-17, I17: the raw message is for a bug report: labelled, and smaller */}
+        <div style={{ opacity: 0.7, fontSize: 11, margin: '4px 0 8px' }}>Details to pass on: {this.state.error.message}</div>
         {this.props.name === 'interface' && !shared && <div style={{ opacity: 0.8, margin: '0 0 8px' }}>Your aquarium is paused. Try again, or save and reload the page.</div>}
+        {this.state.saveFailed && (
+          <div style={{ margin: '0 0 8px' }} data-testid="error-boundary-save-failed">
+            Saving didn’t work, so a reload would lose your latest play.
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" onClick={this.retry} style={btn}>
             Try again

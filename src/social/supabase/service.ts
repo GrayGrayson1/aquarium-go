@@ -77,11 +77,31 @@ export interface SupabaseServiceOptions {
 
 const fail = (code: SocialError['code']): SocialError => ({ code });
 
+/** The server errors supabase-js's auth already treats as the network (it keeps the session through them). */
+const AUTH_RETRYABLE = new Set([500, 501, 502, 503, 504, 520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530]);
+
+/**
+ * Audit 2026-11-17, I7: any other server error (a paused project may answer 540) would read to supabase-js's auth as a
+ * refusal, which signs the device out once the hour's token has expired: fail it as a network failure instead, as the
+ * known ones are. (A 5xx was the network message for the database calls already; their answers are unchanged.)
+ */
+export function serverDownFetch(f: typeof fetch = (...a) => globalThis.fetch(...a)): typeof fetch {
+  return async (input, init) => {
+    const res = await f(input, init);
+    if (res.status >= 500 && !AUTH_RETRYABLE.has(res.status)) {
+      await res.body?.cancel().catch(() => {});
+      throw new TypeError(`Failed to fetch (HTTP ${res.status})`);
+    }
+    return res;
+  };
+}
+
 /** The supabase-js client for a project (its own chunk). */
 export async function loadSupabaseClient(project: OnlineProject, storage?: SupabaseServiceOptions['storage']): Promise<SupabaseLike> {
   const { createClient } = await import('@supabase/supabase-js');
   return createClient(project.url, project.publishableKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: AUTH_STORAGE_KEY, ...(storage ? { storage } : {}) },
+    global: { fetch: serverDownFetch() },
   }) as unknown as SupabaseLike;
 }
 
@@ -105,7 +125,9 @@ export function mapAuthError(e: SupabaseErrorLike, during: 'signIn' | 'signUp'):
   if (code === 'weak_password' || code === 'email_address_invalid' || code === 'validation_failed') return fail('invalid');
   if (code === 'over_request_rate_limit' || code === 'over_email_send_rate_limit') return fail('network');
   if (isNetworkFailure(e)) return fail('network');
-  return fail(during === 'signIn' ? 'credentials' : 'network');
+  // audit I7: only an answer that refused the request (4xx) is the email and password; anything else unknown (no status,
+  // an answer that isn't the server's own) is the network message, never "That email and password don't match"
+  return fail(during === 'signIn' && typeof e.status === 'number' && e.status >= 400 && e.status < 500 ? 'credentials' : 'network');
 }
 
 /** A database function's error → the game's code (the functions raise invalid, forbidden or not_signed_in). */
@@ -293,10 +315,11 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
       if (!u) throw fail('network');
       return u;
     },
+    // audit 2026-11-17, I6: this device only. With no answer from the server, supabase-js has already removed the session
+    // here before it says so (auth-js _signOut), and `forget` removes it itself when the call can't be made at all: so
+    // the device is signed out either way, and says so (it used to show "Can't reach…" and stay signed in on screen)
     signOut: async () => {
-      const c = await client();
-      const { error } = await timed(c.auth.signOut({ scope: 'local' })); // this device only
-      if (error && isNetworkFailure(error)) throw fail('network');
+      await forget();
     },
     clubs: async () => {
       const d = await rpc('my_clubs');

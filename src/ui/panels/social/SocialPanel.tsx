@@ -10,7 +10,7 @@
  * states; while one shows, Clubs is highlighted (the approved screen phone-join). Panel targets: `tab:<id>` and
  * `join:<code>`. Nothing here touches the game state or the save (SOC-009 A3).
  */
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Globe, LogIn, Ticket, UserPlus, Users } from 'lucide-react';
 import { Button } from '@/ui/kit';
 import { useUI } from '@/state/ui';
@@ -93,6 +93,10 @@ export function SocialPanel() {
       <div className="so-panel" data-testid="social-body">
         {user === undefined ? (
           <Skeleton rows={4} tall />
+        ) : !user && offline ? (
+          // audit I6: a session this device holds couldn't be checked (or nothing can be reached): not the sign-in form,
+          // which would read as signed out and could only fail again; one notice, with Try again
+          <NetworkError onRetry={() => void loadSocialUser(true)} />
         ) : !user ? (
           <SignedOut invite={join} offline={offline} />
         ) : join ? (
@@ -124,7 +128,15 @@ export function SocialPanel() {
 function SignedOut({ invite, offline }: { invite: string | null; offline: boolean }) {
   const [inv] = useSocialQuery(() => (invite ? socialService().resolveInvite(invite) : Promise.resolve(null)), [invite]);
   if (invite && inv.state === 'loading') return <Skeleton rows={4} tall />;
-  if (invite && inv.state === 'ok' && !inv.data) return <Expired />;
+  // audit I9: signed out, no Find clubs (Clubs is this form, and signing up needs a working code); the form below is
+  // for someone who already has an account
+  if (invite && inv.state === 'ok' && !inv.data)
+    return (
+      <>
+        <Expired signedOut />
+        <SignInForm initialError={null} inviteCode={null} />
+      </>
+    );
   return (
     <>
       {invite && inv.state === 'ok' && inv.data && (
@@ -138,19 +150,21 @@ function SignedOut({ invite, offline }: { invite: string | null; offline: boolea
       )}
       {/* chunk 8: an invite that couldn't be checked (no connection, or the server's brake on wrong codes) still fills
           in the sign-up code: signing up checks it on the server */}
-      <SignInForm initialError={offline || (invite && inv.state === 'error' && inv.network) ? 'network' : null} inviteCode={invite && ((inv.state === 'ok' && inv.data) || inv.state === 'error') ? invite : null} />
+      {/* audit I14: an invite link is mostly for someone new, so its form opens on Create account */}
+      <SignInForm initialError={offline || (invite && inv.state === 'error' && inv.network) ? 'network' : null} inviteCode={invite && ((inv.state === 'ok' && inv.data) || inv.state === 'error') ? invite : null} startInSignUp={!!invite} />
     </>
   );
 }
 
 /** What the form says went wrong (chunk 8: `wrong` is a real account check; `signUpInvite` the sign-up code). */
-type FormError = 'credentials' | 'wrong' | 'invite' | 'signUpInvite' | 'age' | 'name' | 'taken' | 'network' | null;
+type FormError = 'credentials' | 'wrong' | 'invite' | 'signUpInvite' | 'noCode' | 'age' | 'name' | 'taken' | 'network' | null;
 
 const FORM_ERRORS: Record<Exclude<FormError, null>, string> = {
   credentials: C.errorCredentials,
   wrong: C.errorWrongPassword,
   invite: C.errorInvite,
   signUpInvite: C.errorSignUpInvite,
+  noCode: C.errorNoCode,
   age: C.errorAge,
   name: C.errorName,
   taken: C.errorTaken,
@@ -167,7 +181,7 @@ function formErrorOf(e: unknown, signUp: boolean): Exclude<FormError, null> {
   return 'credentials';
 }
 
-/** The signed-out form. `startInSignUp`: open in sign-up mode (tests; the panel always starts on sign-in). */
+/** The signed-out form. `startInSignUp`: open in sign-up mode (audit I14: an invite link's form; tests). */
 export function SignInForm({ initialError, inviteCode, startInSignUp = false }: { initialError: FormError; inviteCode: string | null; startInSignUp?: boolean }) {
   const devAllowed = useDevTools((s) => s.allowed);
   const stub = useSocialStub(); // chunk 8 — the dev hint describes the stub only
@@ -188,6 +202,13 @@ export function SignInForm({ initialError, inviteCode, startInSignUp = false }: 
   useEffect(() => {
     if (initialError) setError(initialError);
   }, [initialError]);
+  // audit 2026-11-17, I15: the message shows above the form; after a submit at the bottom of the long sign-up form (a
+  // phone, the keyboard up) it was off screen and nothing seemed to happen: bring it into view
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!error) return;
+    rootRef.current?.querySelector<HTMLElement>('[data-testid="social-error"]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [error]);
 
   const submitSignIn = async () => {
     if (!validCredentials(email, password)) {
@@ -210,7 +231,7 @@ export function SignInForm({ initialError, inviteCode, startInSignUp = false }: 
 
   const submitSignUp = async () => {
     // the form's own checks first, in its order; the server checks the code, the box and the name again
-    const local: FormError = !validCredentials(email, password) ? 'credentials' : !validDisplayName(name) ? 'name' : !ageOk ? 'age' : !signUpCode.trim() ? 'signUpInvite' : null;
+    const local: FormError = !validCredentials(email, password) ? 'credentials' : !validDisplayName(name) ? 'name' : !ageOk ? 'age' : !signUpCode.trim() ? 'noCode' : null;
     if (local) {
       setError(local);
       return;
@@ -254,7 +275,7 @@ export function SignInForm({ initialError, inviteCode, startInSignUp = false }: 
   };
 
   return (
-    <div className="so-signin">
+    <div className="so-signin" ref={rootRef}>
       <h3 className="so-signin__title">{C.signInTitle}</h3>
       <p className="so-signin__text">{C.signInText}</p>
       {error && <ErrorNote>{FORM_ERRORS[error]}</ErrorNote>}
@@ -323,20 +344,20 @@ export function SignInForm({ initialError, inviteCode, startInSignUp = false }: 
 
 // ───────────────────────────── invites (§13.3) ─────────────────────────────
 
-function Expired() {
+function Expired({ signedOut = false }: { signedOut?: boolean }) {
   return (
     <div data-testid="social-invite-expired">
-      <EmptyState icon={<Ticket size={28} />} title={C.expiredTitle} action={<Button variant="primary" onClick={() => go({ kind: 'panel', panel: 'social', tab: 'clubs' })}>{C.findClubs}</Button>}>
-        {C.expiredText}
+      <EmptyState icon={<Ticket size={28} />} title={C.expiredTitle} action={signedOut ? undefined : <Button variant="primary" onClick={() => go({ kind: 'panel', panel: 'social', tab: 'clubs' })}>{C.findClubs}</Button>}>
+        {signedOut ? C.expiredTextOut : C.expiredText}
       </EmptyState>
     </div>
   );
 }
 
 function InviteView({ code }: { code: string }) {
-  const [q] = useSocialQuery(() => socialService().resolveInvite(code), [code]);
+  const [q, reload] = useSocialQuery(() => socialService().resolveInvite(code), [code]);
   if (q.state === 'loading') return <Skeleton rows={3} tall />;
-  if (q.state === 'error') return q.network ? <NetworkError /> : <Expired />;
+  if (q.state === 'error') return q.network ? <NetworkError onRetry={reload} /> : <Expired />;
   if (!q.data) return <Expired />;
   const { club, alreadyMember } = q.data;
   if (alreadyMember)

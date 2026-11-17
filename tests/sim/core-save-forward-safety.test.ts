@@ -46,7 +46,8 @@ import { RARE_VARIANT_KINDS, RARE_VARIANT_ORIGINS } from '@/data/rarity';
 import type { GameState } from '@/types';
 
 const NEWER = SCHEMA_VERSION + 1;
-const MESSAGE = `This save comes from a newer version of Aquarium Go (save format v${NEWER}; this game reads up to v${SCHEMA_VERSION}). Refresh the page to get the latest version.`;
+// audit 2026-11-17, I21: changed on purpose: the save formats went to the console; the player's words name none
+const MESSAGE = 'This save comes from a newer version of Aquarium Go. Refresh the page to get the latest version.';
 const SAVE = 'aquarium-go.save.auto';
 const BACKUP = 'aquarium-go.save.auto.backup';
 const META = 'aquarium-go.meta.auto';

@@ -33,7 +33,7 @@ import {
   sharedAwayHeartbeat,
   useResume,
 } from '@/persistence';
-import { SHARED_SHOP_SERVER, STUB_SHOP_SERVER, socialService } from '@/social';
+import { SHARED_SHOP_SERVER, STUB_SHOP_SERVER, isSocialError, socialService } from '@/social';
 import type { ClosingMessage } from '@/types/shared';
 import { socialMode } from '../online/mode';
 import { sendNow, useCloud } from '../online/cloudSync';
@@ -194,11 +194,14 @@ async function mayOpen(club: { id: string; name: string }, from: 'game' | 'title
   const token = svc.accessToken ? await svc.accessToken().then((t) => t, () => undefined) : null;
   let closing: SharedClosing | null = token === null ? { why: 'signedOut' } : null;
   if (!closing) {
-    const shops = await cachedShops(() => svc.sharedShops()).catch(() => null);
-    if (shops?.closed) closing = { why: shops.closed, ...(shops.reopens ? { until: shops.reopens } : {}) };
+    // B-230 (audit I1): the database didn't answer at all, so the shop's server couldn't check the sign-in either: say so
+    // now rather than wake the server for a visit that can't open. Any other failed check goes on, as before
+    const shops = await cachedShops(() => svc.sharedShops()).catch((e: unknown) => (isSocialError(e) && e.code === 'network' ? 'offline' : null));
+    if (shops === 'offline') closing = { why: 'offline' };
+    else if (shops?.closed) closing = { why: shops.closed, ...(shops.reopens ? { until: shops.reopens } : {}) };
   }
   if (!closing) return true;
-  patchShared({ ...INITIAL_VISIT, club, from, closing, phase: 'closed' });
+  patchShared({ ...INITIAL_VISIT, club, from, shopName: useShared.getState().shopName, closing, phase: 'closed' });
   if (parked) await returnToOwnGame(from);
   return false;
 }
@@ -301,6 +304,8 @@ async function open(club: { id: string; name: string }, opts: OpenOptions, base:
       members: (members) => patchShared({ members }),
       closing: (m) => void closed(m),
       signedOut: () => void leaveSharedShop({ closing: { why: 'signedOut' } }),
+      // B-230: an owner's create that never got in may not have made the shop, so Try again (a join) isn't offered
+      unreachable: (why) => void leaveSharedShop({ closing: { why: why === 'online' ? 'offline' : 'unreachable', ...(useShared.getState().creating ? { noRetry: true } : {}) } }),
       photo: photoArrived,
       notice: (n) => patchShared({ notice: n }),
       stillHere: (on) => patchShared({ stillHere: on }),
@@ -439,8 +444,7 @@ export function leaveSharedShop(o: { closing?: SharedClosing } = {}): Promise<vo
 
 async function leave(o: { closing?: SharedClosing }): Promise<void> {
   const v = visit;
-  const from = useShared.getState().from;
-  const club = useShared.getState().club;
+  const { from, club, shopName } = useShared.getState();
   if (v) {
     visit = null;
     v.conn.close();
@@ -455,8 +459,20 @@ async function leave(o: { closing?: SharedClosing }): Promise<void> {
   useGame.getState().installDispatch(soloDispatch);
   if (isSharedShop(useGame.getState().game)) useGame.getState().setGame(null);
   setSharedMode(null);
-  patchShared({ ...INITIAL_VISIT, club: o.closing ? club : null, closing: o.closing ?? null, phase: o.closing ? 'closed' : 'idle' });
+  // a closing keeps the club and the shop's name: the closing card names the club, and its Try again opens the shop again
+  patchShared({ ...INITIAL_VISIT, club: o.closing ? club : null, shopName: o.closing ? shopName : '', closing: o.closing ?? null, phase: o.closing ? 'closed' : 'idle' });
   await returnToOwnGame(from);
+}
+
+/**
+ * B-230 (audit I1): the closing card's Try again, for a shop that couldn't be reached: open it again from where the
+ * player is now (their own aquarium, or the title screen when they came from there or it couldn't load).
+ */
+export function tryAgainShared(): void {
+  const { club, shopName } = useShared.getState();
+  if (!club) return;
+  patchShared({ ...INITIAL_VISIT });
+  void openSharedShop(club, { from: useUI.getState().screen === 'title' ? 'title' : 'game', ...(shopName ? { shopName } : {}) });
 }
 
 /** Your own aquarium again, as it was when you left it (or the title screen). */

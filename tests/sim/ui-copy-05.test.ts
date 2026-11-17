@@ -65,11 +65,12 @@ describe('§16 Links and boot', () => {
     expect(BROKEN_LINK).toEqual({ title: 'That link doesn’t go anywhere', detail: 'Opened your aquarium instead.' });
   });
 
-  it('the loading card: “Loading your save · catching up {duration}…”, or just “Loading your save…”', () => {
-    expect(bootLine(3 * 3_600_000 + 12 * 60_000)).toBe('Loading your save · catching up 3 h 12 min…');
-    expect(bootLine(40 * 60_000)).toBe('Loading your save · catching up 40 min…');
-    expect(bootLine(5 * 3_600_000)).toBe('Loading your save · catching up 5 h…');
-    expect(bootLine(3 * 86_400_000)).toBe('Loading your save · catching up 3 days…');
+  // audit 2026-11-17, I18: changed on purpose: "catching up 30 days" against a 12-game-hour cap; it's the time away
+  it('the loading card: “Loading your save · away {duration}…”, or just “Loading your save…”', () => {
+    expect(bootLine(3 * 3_600_000 + 12 * 60_000)).toBe('Loading your save · away 3 h 12 min…');
+    expect(bootLine(40 * 60_000)).toBe('Loading your save · away 40 min…');
+    expect(bootLine(5 * 3_600_000)).toBe('Loading your save · away 5 h…');
+    expect(bootLine(3 * 86_400_000)).toBe('Loading your save · away 3 days…');
     expect(bootLine(30_000)).toBe('Loading your save…');
     expect(bootLine(null)).toBe('Loading your save…');
     expect(awayText(59_999)).toBeNull();
@@ -78,7 +79,7 @@ describe('§16 Links and boot', () => {
   it('the card renders its line and “Then: {destination}” with the › separator', () => {
     const card = (boot: Parameters<typeof BootCardView>[0]['boot']) => html(createElement(BootCardView, { boot }));
     const out = text(card({ dest: routeLabel(parseRoute('#/livestock/eggs')!.route), awayMs: 3 * 3_600_000 + 12 * 60_000 }));
-    expect(out).toContain('Loading your save · catching up 3 h 12 min…');
+    expect(out).toContain('Loading your save · away 3 h 12 min…'); // audit I18: changed on purpose (see above)
     expect(out).toContain('Then: Livestock › Eggs & fry');
     expect(card({ dest: null, awayMs: 1000 })).toContain('data-testid="boot-deeplink"');
     expect(card({ dest: null, awayMs: 1000 })).not.toContain('boot-deeplink-dest');
@@ -118,7 +119,8 @@ describe('ADR-0019 decision 4: links to things that no longer exist, and a newer
     expect(NOT_FOUND.listing).toMatchObject({ title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' });
     expect(NOT_FOUND.species).toMatchObject({ title: 'There’s no page for that species', detail: 'Showing every species instead.' });
     expect(NOT_FOUND.line).toMatchObject({ title: 'This line isn’t here any more', detail: 'See your lines' }); // ADR-0026 decision 9
-    expect(tooNewMessage(2)).toMatch(/newer version of Aquarium Go .* Refresh the page to get the latest version\.$/);
+    // audit 2026-11-17, I21: changed on purpose: no save formats in the player's words
+    expect(tooNewMessage(2)).toBe('This save comes from a newer version of Aquarium Go. Refresh the page to get the latest version.');
   });
 });
 

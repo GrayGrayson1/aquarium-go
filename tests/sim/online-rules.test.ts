@@ -36,6 +36,12 @@ describe('decideOnline: §6, row by row', () => {
     expect(decideOnline(online({ revision: 6 }), link(), device({ localAt: 0 }), V, NOW)).toEqual({ kind: 'prompt', reason: 'newer' });
   });
 
+  it('audit I4: an online copy behind this device in game time is never "newer": the two-devices box', () => {
+    expect(decideOnline(online({ revision: 6, hour: 100 }), link(), device({ localAt: 900, hour: 40 * 24 }), V, NOW)).toEqual({ kind: 'prompt', reason: 'both' });
+    expect(decideOnline(online({ revision: 6, hour: 40 * 24 }), link(), device({ localAt: 900, hour: 100 }), V, NOW)).toEqual({ kind: 'prompt', reason: 'newer' });
+    expect(decideOnline(online({ revision: 6, hour: 100 }), link(), device({ localAt: 900, hour: 100 }), V, NOW)).toEqual({ kind: 'prompt', reason: 'newer' });
+  });
+
   it('changed online and changed here too: "Your aquarium changed on two devices"', () => {
     expect(decideOnline(online({ revision: 6 }), link(), device({ localAt: 901 }), V, NOW)).toEqual({ kind: 'prompt', reason: 'both' });
   });

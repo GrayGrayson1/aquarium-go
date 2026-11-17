@@ -27,6 +27,8 @@ export interface DeviceCopy {
   savedAt: number;
   /** This device's clock when a local save of this aquarium last landed (0: none seen). */
   localAt: number;
+  /** Audit 2026-11-17, I4: the game's hour (how far along it is), so an online copy behind it isn't called newer. */
+  hour?: number;
 }
 
 export type CloudPromptKind = 'newer' | 'both' | 'other';
@@ -58,5 +60,8 @@ export function decideOnline(online: CloudSaveMeta | null, link: CloudLink | nul
     // this aquarium, but no link to it on this device: the very same copy links up, anything else asks
     return online.savedAt === device.savedAt ? { kind: 'inStep', link: { revision: online.revision, saveId: online.saveId, savedAt: online.savedAt, sentAt: now } } : { kind: 'prompt', reason: 'both' };
   }
-  return deviceChanged(link, device) ? { kind: 'prompt', reason: 'both' } : { kind: 'prompt', reason: 'newer' };
+  // audit I4: an online copy behind this device in game time isn't "newer", whatever its revision (another device sent
+  // an older copy): the two-devices box, whose cards say which is further along
+  const behind = typeof device.hour === 'number' && Number.isFinite(online.hour) && online.hour < device.hour - 1e-6;
+  return deviceChanged(link, device) || behind ? { kind: 'prompt', reason: 'both' } : { kind: 'prompt', reason: 'newer' };
 }

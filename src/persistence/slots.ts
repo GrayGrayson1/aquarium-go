@@ -302,6 +302,11 @@ export interface SaveGameOptions {
    * tab's further copy out.
    */
   staleAs?: string;
+  /**
+   * Audit 2026-11-17, I22: the copy's own save time (copySave: a copy parked in a free slot keeps when it was last
+   * played; it read "just now"). Only ever earlier than now.
+   */
+  savedAt?: number;
 }
 
 /**
@@ -329,7 +334,8 @@ export async function saveGame(state: GameState, slot = 'auto', opts: SaveGameOp
       const newer = (await slotCopies(slot)).copies.find((c) => c.tooNew);
       if (newer) return tooNewRefusal(slot, newer.tooNew!);
     }
-    const { text, header, stats } = encodeRecord(state, slot);
+    const at = Date.now();
+    const { text, header, stats } = encodeRecord(state, slot, typeof opts.savedAt === 'number' && Number.isFinite(opts.savedAt) && opts.savedAt > 0 ? Math.min(opts.savedAt, at) : at);
     try {
       const prev = await storage.get(saveKey(slot));
       const ph = readHeader(prev);
@@ -585,7 +591,7 @@ export async function loadGameDetailed(ref = 'auto'): Promise<LoadResult> {
 export async function copySave(fromRef: string, toSlot: string): Promise<SaveResult> {
   const r = await loadGameDetailed(fromRef);
   if (!r.ok || !r.state) return { ok: false, slot: toSlot, message: r.error ?? 'No save in this slot.' };
-  return saveGame(r.state, toSlot);
+  return saveGame(r.state, toSlot, { savedAt: r.state.lastSavedRealMs });
 }
 
 /** Mark a result as restored from the backup (callers — the UI's loadIntoGame — tell the player). */

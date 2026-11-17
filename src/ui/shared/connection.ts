@@ -99,6 +99,12 @@ export interface ConnectionEvents {
   stillHere?(on: boolean): void;
   /** A connection ended: commands sent on it that no step settled are lost. */
   dropped?(): void;
+  /**
+   * B-230 (audit 2026-11-17, I1): tries that kept failing for GIVE_UP_MS, before the first welcome or after a drop, ended
+   * the visit: `online`, the sign-in couldn't be checked (Aquarium Go online can't be reached); `server`, anything else
+   * (the shop's server didn't answer, or a blocker stopped it). The connection is over.
+   */
+  unreachable?(why: 'server' | 'online'): void;
   /** This copy asked the server for the shop again (out of step, or behind): what it sent so far lands in that snapshot. */
   resync?(): void;
 }
@@ -112,6 +118,8 @@ export const STILL_HERE_ANSWER_MS = 60_000;
 export const BEHIND_MS = 10_000;
 export const RECONNECT_FIRST_MS = 1_000;
 export const RECONNECT_MAX_MS = 30_000;
+/** B-230: failed tries for this long (the opening's, or the reconnects after a drop) and the visit gives up. */
+export const GIVE_UP_MS = 90_000;
 /** Ask for a fresh token this often anyway (Supabase's lasts an hour; the server allows 10 minutes' grace). */
 export const TOKEN_EVERY_MS = 45 * 60_000;
 const IDLE_CHECK_MS = 15_000;
@@ -160,6 +168,8 @@ export class SharedConnection {
   /** The last re-sync was for falling behind: its line stays a while after the snapshot. */
   private slowAsked = false;
   private cancelSlow: (() => void) | null = null;
+  /** B-230: when the current run of failed tries began (the opening counts from the start); null while connected. */
+  private troubleSince: number | null = null;
   private nextId = 1;
   private viewSent: string | null | undefined = undefined;
   private viewWanted: string | null = null;
@@ -189,6 +199,7 @@ export class SharedConnection {
     this.offToken = this.deps.onToken?.((token) => this.tell({ t: 'token', token })) ?? null;
     this.scheduleIdleCheck();
     this.scheduleToken();
+    this.troubleSince = this.deps.now();
     await this.wake();
   }
 
@@ -286,6 +297,8 @@ export class SharedConnection {
       this.rejoin = this.hiddenDropped || this.awayDropped;
       this.hiddenDropped = false;
       this.awayDropped = false;
+      // nothing was tried while the tab was hidden: the give-up's clock starts again (B-230)
+      if (this.troubleSince !== null) this.troubleSince = this.deps.now();
       this.reconnectSoon(0);
       return;
     }
@@ -307,7 +320,8 @@ export class SharedConnection {
     const h = await this.deps.health(`${this.deps.base.replace(/\/+$/, '')}/health`).catch(() => null);
     if (this.ended) return;
     if (!h) {
-      // asleep, or unreachable: keep knocking, with the usual growing waits and never from a hidden tab
+      // asleep, or unreachable: keep knocking, with the usual growing waits and never from a hidden tab, until GIVE_UP_MS
+      if (this.gaveUp('server')) return;
       const wait = this.retryMs;
       this.retryMs = Math.min(RECONNECT_MAX_MS, this.retryMs * 2);
       this.reconnectSoon(wait);
@@ -327,7 +341,7 @@ export class SharedConnection {
       () => undefined,
     );
     if (this.ended) return;
-    if (token === undefined) return this.lost();
+    if (token === undefined) return this.lost('online');
     if (!token) return this.signedOut();
     this.refreshNext = false;
     const first: ClientMessage =
@@ -392,6 +406,7 @@ export class SharedConnection {
       const first = !this.everWelcomed;
       this.welcomed = true;
       this.everWelcomed = true;
+      this.troubleSince = null;
       this.retryMs = RECONNECT_FIRST_MS;
       this.signInRetried = false;
       this.rejoin = false;
@@ -502,18 +517,36 @@ export class SharedConnection {
     }
   }
 
-  /** The socket ended without a closing: reconnect with growing waits, never while the tab is hidden. */
-  private lost(): void {
+  /**
+   * The socket ended without a closing (or the token couldn't be fetched: `online`): reconnect with growing waits, never
+   * while the tab is hidden, until GIVE_UP_MS.
+   */
+  private lost(kind: 'server' | 'online' = 'server'): void {
     this.ws = null;
     this.welcomed = false;
     this.rejoin = false;
     this.events.dropped?.();
     if (this.ended || this.hiddenDropped || this.awayDropped) return;
-    // before the first welcome the opening card stays (the shop isn't on screen yet: the review's note 2)
-    this.events.phase?.(this.joiningPhase('joining'));
+    if (this.gaveUp(kind)) return;
+    // before the first welcome the opening card stays (the shop isn't on screen yet: the review's note 2), saying it is
+    // waking the shop while it waits to try again (not "catching up", which only the server's answer means)
+    this.events.phase?.(this.joiningPhase('waking'));
     const wait = this.retryMs;
     this.retryMs = Math.min(RECONNECT_MAX_MS, this.retryMs * 2);
     this.reconnectSoon(wait);
+  }
+
+  /**
+   * B-230: a failed try. The first after a welcome starts the clock; once tries have failed for GIVE_UP_MS the visit is
+   * over (`unreachable`), so neither the opening card nor "Reconnecting…" spins for ever. True when it gave up.
+   */
+  private gaveUp(kind: 'server' | 'online'): boolean {
+    const now = this.deps.now();
+    this.troubleSince ??= now;
+    if (now - this.troubleSince < GIVE_UP_MS) return false;
+    this.close();
+    this.events.unreachable?.(kind);
+    return true;
   }
 
   private reconnectSoon(ms: number): void {

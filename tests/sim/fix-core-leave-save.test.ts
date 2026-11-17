@@ -62,3 +62,70 @@ describe('the save on leaving a freshly loaded game', () => {
     expect(await autosaveNow('pagehide')).toBe(false);
   });
 });
+
+describe('audit 2026-11-17, I2: Autosave off, leaving with unsaved play', () => {
+  it('the browser is asked to warn only when Autosave is off and the aquarium changed since its last save', async () => {
+    const { noteGameChange, leaveWouldLose } = await import('@/game/useAutosave');
+    const { useSettings } = await import('@/state/settings');
+    const { saveCurrentGame } = await import('@/persistence');
+    const off = useGame.subscribe((s, p) => noteGameChange(s.game, p.game));
+    const was = useSettings.getState().autosave;
+    try {
+      useSettings.setState({ autosave: false });
+      useGame.getState().setGame(newGame({ starterId: 'betta', starterName: 'Off', seed: 33 }));
+      useUI.getState().set({ screen: 'game' });
+      expect(leaveWouldLose()).toBe(false); // just loaded or started: nothing to lose yet
+      useGame.getState().mutate((d) => {
+        d.finance.money += 10;
+      });
+      expect(leaveWouldLose()).toBe(true);
+      useSettings.setState({ autosave: true });
+      expect(leaveWouldLose()).toBe(false); // on, leaving saves
+      useSettings.setState({ autosave: false });
+      expect((await saveCurrentGame('slot1', { toast: false })).ok).toBe(true);
+      expect(leaveWouldLose()).toBe(false); // Save now (any slot) makes it safe
+      useGame.getState().mutate((d) => {
+        d.finance.money += 10;
+      });
+      expect(leaveWouldLose()).toBe(true);
+      useUI.getState().set({ screen: 'title' });
+      expect(leaveWouldLose()).toBe(false); // nothing on screen to save
+    } finally {
+      off();
+      useSettings.setState({ autosave: was });
+    }
+  });
+});
+
+describe('audit 2026-11-17, I10 (B-123): a save that didn’t land is never ignored', () => {
+  it('Load stops and says why; "Save and return to title" says why and keeps the player in the game', async () => {
+    const { loadIntoGame, saveBeforeLeaving } = await import('@/ui/common/saves');
+    const { useSettings } = await import('@/state/settings');
+    const mem = createMemoryBackend();
+    setStorageBackend(mem);
+    const a = newGame({ starterId: 'betta', starterName: 'Here', seed: 34 });
+    const b = newGame({ starterId: 'betta', starterName: 'There', seed: 35 });
+    expect((await saveGame(a, 'auto')).ok).toBe(true);
+    expect((await saveGame(b, 'slot1')).ok).toBe(true);
+    const shown = structuredClone(a);
+    shown.clock.hour += 24;
+    useSettings.setState({ autosave: true });
+    useGame.getState().setGame(shown);
+    useUI.setState({ screen: 'game', toasts: [] });
+    try {
+      // the storage now refuses every write (full, or a wedged database), with nothing to fall back to
+      setStorageBackend({ ...mem, set: async () => Promise.reject(new Error('refused')) });
+      expect(await loadIntoGame('slot1')).toBeNull();
+      expect(useUI.getState().toasts.map((t) => t.text)).toContain("Couldn't save — browser storage refused the write.");
+      expect(useGame.getState().game!.saveId).toBe(a.saveId); // still the game on screen
+      useUI.setState({ toasts: [] });
+      expect(await saveBeforeLeaving()).toBe(false);
+      expect(useUI.getState().toasts.map((t) => t.text)).toContain("Couldn't save — browser storage refused the write.");
+      // a save that lands lets the player go
+      setStorageBackend(mem);
+      expect(await saveBeforeLeaving()).toBe(true);
+    } finally {
+      useUI.setState({ screen: 'boot', toasts: [] });
+    }
+  });
+});

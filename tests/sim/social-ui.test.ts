@@ -53,7 +53,10 @@ describe('DES-010: every Social string as §13 and the owner’s answers write i
     expect([C.emailPlaceholder, C.passwordPlaceholder, C.signIn, C.createAccount, C.haveInvite, C.invitePlaceholder, C.joinGroup]).toEqual(['you@example.com', 'At least 8 characters', 'Sign in', 'Create account', 'Have an invite?', 'Invite code, e.g. FRIENDS-KDWX', 'Join group']); // the example: ADR-0042 J1 (changed on purpose)
     expect(C.errorCredentials).toBe('Enter your email and a password of at least 8 characters.');
     expect(C.errorInvite).toBe('That invite code didn’t match a club. Check it and try again.');
-    expect(C.errorNetwork).toBe('Can’t reach Aquarium Go online right now. Your game is fine — try again in a moment.');
+    // audit 2026-11-17, I6: changed on purpose: an outage can last (a paused project), so not "in a moment"; beside a
+    // Try again button, the line says the game keeps saving instead
+    expect(C.errorNetwork).toBe('Can’t reach Aquarium Go online right now. Your game is fine — try again later.');
+    expect([C.errorNetworkRetry, C.tryAgain]).toEqual(['Can’t reach Aquarium Go online right now. Your game is fine and keeps saving on this device.', 'Try again']);
     expect([C.toastSignedIn, C.toastCreated, C.toastSavesHere]).toEqual(['Signed in', 'Account created', 'Your aquarium still saves on this device.']);
     expect(C.devHint).toBe('Prototype: any email with an @ and a password of 8+ characters signs you in.');
   });
@@ -65,7 +68,10 @@ describe('DES-010: every Social string as §13 and the owner’s answers write i
     expect(C.joinText).toBe('Members see each other’s aquariums and share a leaderboard.');
     expect([C.joinClub, C.notNow, C.welcome, C.youJoined('Highland Betta Club'), C.welcomeDetail]).toEqual(['Join club', 'Not now', 'Welcome', 'You joined Highland Betta Club', 'Club show on Saturday — entries close Friday.']);
     expect([C.memberTitle('Highland Betta Club'), C.memberText, C.openClub]).toEqual(['You’re in Highland Betta Club', 'This invite has already been used on your account.', 'Open club']);
-    expect([C.expiredTitle, C.expiredText, C.findClubs]).toEqual(['This invite has expired', 'Ask the club for a new code, or browse clubs you can join right away.', 'Find clubs']);
+    // audit 2026-11-17, I9: changed on purpose: codes don't expire (the club was removed, or the code mistyped), and
+    // signed out there is no Find clubs (Clubs is the sign-in form; signing up needs a working code)
+    expect([C.expiredTitle, C.expiredText, C.findClubs]).toEqual(['This invite link doesn’t work', 'The club may have been removed, or the code mistyped. Ask the club for a new link, or browse clubs you can join right away.', 'Find clubs']);
+    expect(C.expiredTextOut).toBe('The club may have been removed, or the code mistyped. Ask whoever invited you for a new link.');
   });
 
   it('§13.4–§13.5, ADR-0028 and ADR-0034: overview, tabs, empty lists, the note, Add friend, search, units, dots', () => {
@@ -136,6 +142,9 @@ describe('DES-010: every Social string as §13 and the owner’s answers write i
     expect(C.cardDevice('Coral Corner', 12, '$4,210', 'just now')).toBe('On this device · Coral Corner · Day 12 · $4,210 · saved just now');
     expect(C.cardOnline('Coral Corner', 15, '$5,880', '3 h ago')).toBe('Online · Coral Corner · Day 15 · $5,880 · saved 3 h ago');
     expect(C.cloudNote).toBe('If you load the online save, this device’s copy stays in Settings › Saves as Previous autosave.');
+    // audit 2026-11-17, I4: which copy of the same aquarium is further along
+    expect(C.cloudDeviceFurther(40)).toBe('This device’s copy is further along (Day 40).');
+    expect(C.cloudOnlineFurther(40)).toBe('The online copy is further along (Day 40). Keeping this device’s replaces it, and that can’t be undone.');
   });
 
   it('chunk 8: friend requests and the owner’s club controls (ADR-0040 decision 4, ADR-0041 decision 5)', () => {
@@ -422,5 +431,47 @@ describe('chunk 8: Settings › Account, server-rendered (REL-031)', () => {
     expect(onlineLine('idle', null).text).toBe('Not saved online yet');
     expect(onlineLine('unreachable', now)).toEqual({ text: 'Can’t reach Aquarium Go online. Your game still saves on this device.', warn: true });
     expect(onlineLine('blocked', now)).toEqual({ text: 'Your online save comes from a newer version of Aquarium Go. Refresh the page to update.', warn: true });
+    // audit I20: a save over the online limit isn't a connection that failed
+    expect(onlineLine('tooBig', now)).toEqual({ text: 'Your save is too big to put online (listing photos take the most room). It still saves on this device.', warn: true });
+  });
+});
+
+describe('audit 2026-11-17, I13: friends', () => {
+  it('a friend request waiting lights the Social dot until it is answered (opening Social keeps it)', async () => {
+    const { provideSocialService } = await import('@/social');
+    const { refreshSocialNews, markSocialSeen, hasSocialNews } = await import('@/ui/panels/social/socialStore');
+    let waiting = [{ id: 'u_b', name: 'Bea' }];
+    provideSocialService({ news: async () => ({ trades: 0, clubs: 0 }), friendRequests: async () => waiting, markSeen: async () => {} } as never);
+    try {
+      await refreshSocialNews();
+      expect(useSocial.getState().news).toEqual({ trades: 0, clubs: 0, requests: 1 });
+      expect(hasSocialNews(useSocial.getState().news)).toBe(true);
+      await markSocialSeen();
+      expect(hasSocialNews(useSocial.getState().news)).toBe(true);
+      waiting = [];
+      await refreshSocialNews();
+      expect(hasSocialNews(useSocial.getState().news)).toBe(false);
+    } finally {
+      provideSocialService(null);
+      useSocial.setState({ news: { trades: 0, clubs: 0 } });
+    }
+  });
+
+  it('the words: your own code, and adding someone who had added you already', () => {
+    expect([C.myFriendCode('SAM-7Q2'), C.copyCode, C.codeCopied]).toEqual(['Your friend code: SAM-7Q2', 'Copy', 'Friend code copied']);
+    expect([C.nowFriends, C.nowFriendsDetail]).toEqual(['You’re now friends', 'They had added you too. Their aquarium shows below.']);
+  });
+});
+
+describe('audit 2026-11-17, I14: an invite for someone new', () => {
+  it('the words: an empty sign-up code, and the title while an invite waits for a first game', () => {
+    expect(C.errorNoCode).toBe('Enter the invite code from your invite link.');
+    expect(C.titleInvited).toBe('You’re invited to a club: start a game to join.');
+  });
+
+  it('the form opens on Create account when asked (an invite link asks)', () => {
+    const out = renderToStaticMarkup(createElement(SignInForm, { initialError: null, inviteCode: 'HIGHLAND-4821', startInSignUp: true }));
+    expect(out).toContain('data-testid="social-signup-form"');
+    expect(out).toContain('value="HIGHLAND-4821"');
   });
 });

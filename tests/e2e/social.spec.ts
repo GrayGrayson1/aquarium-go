@@ -41,6 +41,9 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await expect(panel(page).getByText('Bring your aquarium online')).toBeVisible();
     await expect(panel(page).getByRole('tablist')).toHaveCount(0);
     expect(await hash(page)).toBe('#/social/join/HIGHLAND-4821');
+    // audit 2026-11-17, I14 (changed on purpose): an invite's form opens on Create account; this player has an account
+    await expect(tid(page, 'social-signup-form')).toBeVisible();
+    await tid(page, 'social-back-signin').click();
 
     // the validation error (§13.2), announced
     await tid(page, 'social-email').fill('you@example');
@@ -90,11 +93,11 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
   test('expired codes, the invite field and Not now', async ({ page }) => {
     await go(page, '#/social/join/NOPE-0000');
     const expired = tid(page, 'social-invite-expired');
-    await expect(expired).toContainText('This invite has expired');
-    await expect(expired).toContainText('Ask the club for a new code, or browse clubs you can join right away.');
-    await expired.getByRole('button', { name: 'Find clubs' }).click();
-    await expect.poll(() => hash(page)).toBe('#/social/clubs');
-    // signed out, Clubs is the sign-in form; its invite field rejects an unknown code and opens a good one
+    // audit 2026-11-17, I9 (changed on purpose): signed out, the words say what is true and there is no Find clubs
+    await expect(expired).toContainText('This invite link doesn’t work');
+    await expect(expired).toContainText('The club may have been removed, or the code mistyped. Ask whoever invited you for a new link.');
+    await expect(expired.getByRole('button', { name: 'Find clubs' })).toHaveCount(0);
+    // signed out, the sign-in form is below it; its invite field rejects an unknown code and opens a good one
     await tid(page, 'social-invite-code').fill('REEF-1234');
     await tid(page, 'social-invite-join').click();
     await expect(tid(page, 'social-error')).toHaveText('That invite code didn’t match a club. Check it and try again.');
@@ -102,13 +105,15 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await tid(page, 'social-invite-join').click();
     await expect.poll(() => hash(page)).toBe('#/social/join/HIGHLAND-4821');
     await expect(tid(page, 'social-invite-callout')).toBeVisible();
+    await tid(page, 'social-back-signin').click(); // audit I14: the invite's form opens on Create account
     await signIn(page);
     await tid(page, 'social-not-now').click();
     await expect.poll(() => hash(page)).toBe('#/social');
     await expect(tid(page, 'social-overview')).toBeVisible();
-    // signed in, an expired code is the same empty state
+    // signed in, a code that doesn't work is the same empty state, with Find clubs
     await go(page, '#/social/join/OLD-1999');
     await expect(tid(page, 'social-invite-expired')).toBeVisible();
+    await expect(tid(page, 'social-invite-expired').getByRole('button', { name: 'Find clubs' })).toBeVisible();
   });
 
   test('the tabs, their routes, the trade note, Add friend, leaderboards and Sign out', async ({ page }) => {
@@ -229,8 +234,15 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
   test('the network error, while the game keeps running', async ({ page }) => {
     await aq(page, 'social.offline', true);
     await go(page, '#/social');
-    await expect(tid(page, 'social-error')).toHaveText('Can’t reach Aquarium Go online right now. Your game is fine — try again in a moment.');
+    // audit 2026-11-17, I6: one notice instead of the sign-in form, with Try again (the words changed on purpose)
+    await expect(tid(page, 'social-error')).toContainText('Can’t reach Aquarium Go online right now. Your game is fine and keeps saving on this device.');
+    await expect(tid(page, 'net-retry')).toHaveText('Try again');
     await expect(tid(page, 'social-error')).toHaveAttribute('role', 'alert');
+    await expect(tid(page, 'social-email')).toHaveCount(0);
+    await aq(page, 'social.offline', false);
+    await tid(page, 'net-retry').click();
+    await expect(tid(page, 'social-error')).toHaveCount(0);
+    await aq(page, 'social.offline', true);
     await aq(page, 'social.offline', false);
     await signIn(page);
     await aq(page, 'social.offline', true);
@@ -269,9 +281,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     const errors = collectErrors(page);
     await go(page, '#/social/join/HIGHLAND-4821');
     await expect(tid(page, 'social-invite-callout')).toBeVisible();
-    await expect(tid(page, 'social-forgot')).toHaveText('Forgot your password? Ask whoever invited you.');
-    // "Create account" opens sign-up mode, the invite link's code filled in
-    await tid(page, 'social-signup').click();
+    // audit 2026-11-17, I14 (changed on purpose): an invite link opens sign-up mode, the invite link's code filled in
     await expect(tid(page, 'social-signup-form')).toBeVisible();
     await expect(tid(page, 'social-signup-code')).toHaveValue('HIGHLAND-4821');
     await expect(tid(page, 'social-name')).toHaveAttribute('placeholder', 'e.g. Sam');
@@ -281,6 +291,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     // Back to sign in, and back again
     await tid(page, 'social-back-signin').click();
     await expect(tid(page, 'social-signin')).toBeVisible();
+    await expect(tid(page, 'social-forgot')).toHaveText('Forgot your password? Ask whoever invited you.');
     await tid(page, 'social-signup').click();
 
     // each missing piece has its approved message (ADR-0040 decision 3)
@@ -293,6 +304,10 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await expect(tid(page, 'social-error')).toHaveText('Tick the box to confirm your age.');
     await expect(page.getByText('I’m 13 or older, or I’m a parent or guardian signing up for my child.')).toBeVisible();
     await tid(page, 'social-age').check();
+    // audit I14: an empty code asks for one (it isn't one that "didn't work")
+    await tid(page, 'social-signup-code').fill('');
+    await tid(page, 'social-signup-submit').click();
+    await expect(tid(page, 'social-error')).toHaveText('Enter the invite code from your invite link.');
     await tid(page, 'social-signup-code').fill('NOPE-0000');
     await tid(page, 'social-signup-submit').click();
     await expect(tid(page, 'social-error')).toHaveText('That invite code didn’t work. Ask whoever invited you for their link.');

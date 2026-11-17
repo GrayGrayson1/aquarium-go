@@ -24,6 +24,15 @@ export function CloudPrompt() {
   // chunk 13: never over a shared shop (a check that answered after it opened; both choices refuse in one)
   const shared = useSharedMode((s) => s.club !== null);
   const open = !!prompt && inGame && hasGame && !shared;
+  // audit I4: the same aquarium in both cards: which is further along (its button is the primary one)
+  // (a string, so the box re-renders only when the answer or the device's day changes, never on every tick)
+  const furtherKey = useGame((s) => {
+    const h = s.game?.clock.hour;
+    if (!prompt || prompt.kind === 'other' || typeof h !== 'number' || !Number.isFinite(prompt.online.hour) || Math.abs(prompt.online.hour - h) <= 1e-6) return null;
+    return prompt.online.hour > h ? 'online' : `device:${Math.floor(h / 24) + 1}`;
+  });
+  const further = furtherKey === null ? null : furtherKey === 'online' ? 'online' : 'device';
+  const deviceDay = furtherKey?.startsWith('device:') ? Number(furtherKey.slice(7)) : 0;
   return (
     <Modal open={open} onClose={() => {}} dismissible={false} title={prompt ? TITLES[prompt.kind] : ''} testId="cloud-prompt" width={460}>
       {prompt && open && (
@@ -33,12 +42,17 @@ export function CloudPrompt() {
             <Cloud size={16} aria-hidden className="cl-card__icon" />
             <span>{C.cardOnline(prompt.online.shopName, prompt.online.day, formatMoney(prompt.online.money), timeAgo(prompt.online.savedAt))}</span>
           </div>
+          {further && (
+            <p className="cl-note" data-testid="cloud-further" data-further={further}>
+              {further === 'online' ? C.cloudOnlineFurther(prompt.online.day) : C.cloudDeviceFurther(deviceDay)}
+            </p>
+          )}
           <p className="cl-note">{C.cloudNote}</p>
           <div className="cl-actions">
-            <Button disabled={choosing} onClick={() => void keepDeviceCopy()} data-testid="cloud-keep">
+            <Button variant={further === 'device' ? 'primary' : undefined} disabled={choosing} onClick={() => void keepDeviceCopy()} data-testid="cloud-keep">
               <Upload size={15} aria-hidden /> {C.keepDevice}
             </Button>
-            <Button variant="primary" disabled={choosing} onClick={() => void loadOnlineCopy()} data-testid="cloud-load">
+            <Button variant={further === 'device' ? undefined : 'primary'} disabled={choosing} onClick={() => void loadOnlineCopy()} data-testid="cloud-load">
               <CloudDownload size={15} aria-hidden /> {C.loadOnline}
             </Button>
           </div>

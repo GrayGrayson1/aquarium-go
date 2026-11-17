@@ -259,8 +259,14 @@ export function detectVersion(raw: Json): number {
  * (`too_new`, save format `v`). The slot layer uses it too, for a stored record it leaves alone.
  */
 export function tooNewMessage(v: number): string {
-  return `This save comes from a newer version of Aquarium Go (save format v${v}; this game reads up to v${SCHEMA_VERSION}). Refresh the page to get the latest version.`;
+  // audit 2026-11-17, I21: the save formats are for a bug report (the console, once each), not the player's words
+  if (!toldNewer.has(v) && typeof console !== 'undefined') {
+    toldNewer.add(v);
+    console.warn(`[aquarium-go] a save in format v${v}; this game reads up to v${SCHEMA_VERSION}`);
+  }
+  return 'This save comes from a newer version of Aquarium Go. Refresh the page to get the latest version.';
 }
+const toldNewer = new Set<number>();
 
 /**
  * Structural validation before migrating. Returns a friendly error string, or null when it looks like a save.

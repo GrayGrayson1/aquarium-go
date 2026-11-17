@@ -179,18 +179,24 @@ export class SharedDispatcher {
     settleAll(dones, notApplied(message));
   }
 
-  /** The connection dropped: what it carried and no step settled may or may not have happened; it settles as not applied. */
+  /**
+   * The connection dropped: what it carried and no step settled may or may not have happened. Audit 2026-11-17, I12: it
+   * settles with words of its own (not "nothing was changed", which may be untrue); what was never sent (a control's
+   * waiting value) settles as not applied, which it wasn't.
+   */
   dropped(): void {
-    const all = [...this.pending.values()].flat();
+    const sent = [...this.pending.values()].flat();
+    const unsent: Done[] = [];
     this.pending.clear();
     this.kinds.clear();
     for (const c of this.controls.values()) {
       c.cancel?.();
-      if (c.waiting) all.push(...c.waiting.done);
+      if (c.waiting) unsent.push(...c.waiting.done);
     }
     this.controls.clear();
     this.beforeResync = null;
-    settleAll(all, null);
+    settleAll(sent, notApplied(W.dropped));
+    settleAll(unsent, null);
   }
 
   /** Leaving the shop: nothing more will settle. */

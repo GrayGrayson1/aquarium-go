@@ -115,23 +115,26 @@ export function WelcomeBack() {
     (!!happened?.rows.some((r) => r.key === 'shows') && /judge’s card/.test(e.text));
   const highlights = (summary?.highlights ?? []).filter((e) => !covered(e));
   // only lines with something to say: no lone "$0", no "0 bids"
-  const stats: { key: string; icon: ReactNode; text: string }[] = [];
+  // audit 2026-11-17, I18: arrivals, clutches and sales open where they are (they were counts with no way to see which)
+  const stats: { key: string; icon: ReactNode; text: string; go?: { panel: PanelId; target: string | null } }[] = [];
   if (summary) {
     const money = Math.round(summary.moneyDelta ?? 0);
     if (money !== 0) stats.push({ key: 'money', icon: <Coins size={14} aria-hidden />, text: `${formatMoney(money, { sign: true })} ${money > 0 ? 'earned' : 'spent'}` });
     // births are animals; a clutch is eggs / a brood on the way (not "1 new arrival" for 45 eggs)
-    if ((summary.births ?? 0) > 0) stats.push({ key: 'born', icon: <Egg size={14} aria-hidden />, text: plural(summary.births, 'new arrival') });
-    if ((summary.newClutches ?? 0) > 0) stats.push({ key: 'clutch', icon: <Egg size={14} aria-hidden />, text: plural(summary.newClutches, 'new clutch', 'new clutches') });
-    if (summary.sales > 0) stats.push({ key: 'sales', icon: <Store size={14} aria-hidden />, text: plural(summary.sales, 'sale') });
+    if ((summary.births ?? 0) > 0) stats.push({ key: 'born', icon: <Egg size={14} aria-hidden />, text: plural(summary.births, 'new arrival'), go: { panel: 'livestock', target: null } });
+    if ((summary.newClutches ?? 0) > 0) stats.push({ key: 'clutch', icon: <Egg size={14} aria-hidden />, text: plural(summary.newClutches, 'new clutch', 'new clutches'), go: { panel: 'livestock', target: null } });
+    if (summary.sales > 0) stats.push({ key: 'sales', icon: <Store size={14} aria-hidden />, text: plural(summary.sales, 'sale'), go: { panel: 'market', target: 'tab:listings' } });
     else if (summary.bidsReceived > 0 && !happened?.rows.some((r) => r.key === 'bids')) stats.push({ key: 'bidsin', icon: <Store size={14} aria-hidden />, text: `${plural(summary.bidsReceived, 'new bid')}` });
   }
   const away = summary ? awayText(summary.realElapsedMs) : null;
   const ran = summary ? hoursText(summary.hours) : '';
-  const go = (r: Row) => {
-    if (!r.go) return;
+  const open = (to: { panel: PanelId; target: string | null }) => {
     sfx('open');
     clear();
-    useUI.getState().set({ panel: r.go.panel, panelTarget: r.go.target });
+    useUI.getState().set({ panel: to.panel, panelTarget: to.target });
+  };
+  const go = (r: Row) => {
+    if (r.go) open(r.go);
   };
   const rows = happened?.rows ?? [];
   const quiet = stats.length === 0 && highlights.length === 0 && rows.length === 0;
@@ -181,11 +184,17 @@ export function WelcomeBack() {
           )}
           {stats.length > 0 && (
             <div className="ag-welcome__stats">
-              {stats.map((st) => (
-                <span key={st.key}>
-                  {st.icon} {st.text}
-                </span>
-              ))}
+              {stats.map((st) =>
+                st.go ? (
+                  <button key={st.key} type="button" className="ag-welcome__stat" data-testid={`welcome-stat-${st.key}`} onClick={() => open(st.go!)}>
+                    {st.icon} {st.text}
+                  </button>
+                ) : (
+                  <span key={st.key}>
+                    {st.icon} {st.text}
+                  </span>
+                ),
+              )}
             </div>
           )}
           {rows.length > 0 && (

@@ -25,7 +25,8 @@ export const SHARED_WORDS = {
   saving: 'Saving your aquarium…',
   waking: 'Waking the shared shop… This takes about a minute when nobody’s been in for a while.',
   catchingUpEmpty: 'Catching up on the time nobody was here…',
-  firstTime: (club: string) => `Your own aquarium is saved and waits for you. Everything here is shared with ${club}.`,
+  // audit 2026-11-17, I25: where the way back is (the top-left pill's menu: the shop's name, or "👥 2 ▾" on a phone)
+  firstTime: (club: string) => `Your own aquarium is saved and waits for you. Everything here is shared with ${club}. To go back, open the menu at the top left and choose “Back to my aquarium”.`,
   gotIt: 'Got it',
   // inside
   strip: (shop: string, names: string[]) => `Shared · ${shop} · Here: ${names.join(', ')}`,
@@ -45,8 +46,14 @@ export const SHARED_WORDS = {
   slow: 'Your device can’t keep up with the shared shop at this speed, so it keeps catching up. Someone who can change the speed could slow it down.',
   tooFast: 'Slow down a little: that was a lot of actions at once.',
   failed: 'That didn’t work, and nothing was changed. Please try again.',
+  /** Audit I12: a command in flight when the connection dropped may have happened. */
+  dropped: 'The connection dropped before the shop answered. Check whether it went through before trying again.',
   savesHere: (club: string) => `This is ${club}’s shared shop: it saves on the server. Your own aquarium is saved and waits for you.`,
   reload: 'Reload',
+  /** B-230 (audit I1): the closing card's button when the shop couldn't be reached. */
+  tryAgain: 'Try again',
+  /** Audit I8: `build`, but the site still serves this very build (not redeployed yet): a reload can't help. */
+  siteBehind: 'The shared shop has been updated, but this site hasn’t caught up yet. Try again later.',
   // chunk 14 — the money pool and its tiers (ADR-0050 decision 6: as previewed). Money as the game writes it (fmtMoney).
   money: 'Money',
   moneyToSpend: (can: number) => `Money: ${$(can)} to spend`,
@@ -57,6 +64,8 @@ export const SHARED_WORDS = {
   allowanceLeft: (left: number, allowance: number) => `Allowance: ${$(left)} of ${$(allowance)} left today.`,
   approvedForYou: (extra: number) => `Approved for you: ${$(extra)}.`,
   askForMoney: 'Ask for money',
+  /** Audit I23: why "Ask for money" is off. */
+  asksLimit: (n: number) => `You can have ${n} requests waiting. Cancel one to ask again.`,
   howMuch: 'How much?',
   whatFor: 'What for? (optional)',
   sendRequest: 'Send request',
@@ -89,14 +98,15 @@ function sentence(s: string): string {
   return /[.!?…]$/.test(s) ? s : `${s}.`;
 }
 
-/** Why a visit ended: the server's closings (§8), or this player's sign-in (ADR-0049). */
-export type VisitEnd = ClosingReason | 'signedOut';
+/** Why a visit ended: the server's closings (§8), this player's sign-in (ADR-0049), or no way through (B-230). */
+export type VisitEnd = ClosingReason | 'signedOut' | 'offline' | 'unreachable';
 
 /** What a `closing` says (§8), with the day shops open again, the last save and the club filled in. */
-export function closingText(why: VisitEnd, o: { club: string; until?: string; savedAt?: number; now?: number }): string {
+export function closingText(why: VisitEnd, o: { club: string; until?: string; savedAt?: number; now?: number; /** audit I24: shown over the title screen */ onTitle?: boolean }): string {
   switch (why) {
     case 'signedOut':
-      return 'You need to be signed in to play the shared shop. Sign in from Social and open it again.';
+      // audit 2026-11-17, I24: the title screen has no Social: say how to get there
+      return o.onTitle ? 'You need to be signed in to play the shared shop. Continue your game, then sign in from Social.' : 'You need to be signed in to play the shared shop. Sign in from Social and open it again.';
     case 'cap':
       return `Shared shops have used this month’s free data (2 GB). They open again on ${reopenDate(o.until, o.now)}.`;
     case 'hours':
@@ -114,16 +124,28 @@ export function closingText(why: VisitEnd, o: { club: string; until?: string; sa
     case 'fault':
       return `The shared shop hit a problem and stopped. It’s saved as of ${clockTime(o.savedAt)}.`;
     case 'restart':
-      return `The shared shop’s server restarted, so it went back to its last save (${minutesAgo(o.savedAt, o.now)} minutes ago).`;
+      return `The shared shop’s server restarted, so it went back to its last save (${minutesAgo(o.savedAt, o.now)}).`;
     case 'outofstep':
-      return 'Your game keeps falling out of step with the shared shop, so it stopped. Reload to try again.';
+      // audit I11: what helps, as the slow device's line says it
+      return 'Your game keeps falling out of step with the shared shop, so it stopped. Someone who can change the speed could slow it down. Reload to try again.';
+    case 'busy':
+      // audit I11: the join limit (20 an hour); no Reload, which can't help
+      return 'You’ve joined the shared shop a lot in the last hour. Try again in a little while.';
     case 'gone':
       return `${o.club} has no shared shop any more.`;
+    // B-230 (audit 2026-11-17, I1): the opening (or the reconnects after a drop) gave up
+    case 'offline':
+      return 'Can’t reach Aquarium Go online right now, so the shared shop can’t open. Your own aquarium is safe. Try again later.';
+    case 'unreachable':
+      return 'Can’t reach the shared shop right now. Your own aquarium is safe. Aquarium Go online may be down, or a browser blocker (such as Brave Shields) may be stopping the connection. Try again in a little while.';
   }
 }
 
 /** The closings that offer Reload (§8). */
 export const RELOAD_CLOSINGS: ReadonlySet<VisitEnd> = new Set(['build', 'outofstep']);
+
+/** B-230: the closings that offer Try again (the shop couldn't be reached; nothing is wrong with the visit itself). */
+export const RETRY_CLOSINGS: ReadonlySet<VisitEnd> = new Set(['offline', 'unreachable']);
 
 /** "1 November" from `YYYY-MM-DD` (the server's day, UTC); without one, the 1st of next month (when caps reset). */
 export function reopenDate(until: string | undefined, now = Date.now()): string {
@@ -138,9 +160,12 @@ function clockTime(at: number | undefined): string {
   return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-function minutesAgo(at: number | undefined, now = Date.now()): number {
-  if (typeof at !== 'number' || !Number.isFinite(at)) return 0;
-  return Math.max(0, Math.round((now - at) / 60_000));
+/** Audit 2026-11-17, I19: "just now", "1 minute ago", "7 minutes ago" (it said "0 minutes ago", "1 minutes ago"). */
+function minutesAgo(at: number | undefined, now = Date.now()): string {
+  const ms = typeof at === 'number' && Number.isFinite(at) ? Math.max(0, now - at) : 0;
+  if (ms < 60_000) return 'just now';
+  const n = Math.round(ms / 60_000);
+  return n === 1 ? '1 minute ago' : `${n} minutes ago`;
 }
 
 /** "1.2 GB", "340 MB" for the owner's meter. */

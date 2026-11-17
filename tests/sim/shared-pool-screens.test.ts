@@ -89,6 +89,8 @@ describe('chunk 14: the words, as approved (ADR-0050 decision 6)', () => {
       'Give',
     ]);
     expect([W.spending, W.spendsFreely, W.allowance, W.eachGameDay, W.asksFirst, W.canApprove]).toEqual(['Spending:', 'Spends freely', 'Allowance', 'each game day', 'Asks first', 'Can approve requests and give money']);
+    // audit 2026-11-17, I23: why "Ask for money" is off at the limit
+    expect(W.asksLimit(3)).toBe('You can have 3 requests waiting. Cancel one to ask again.');
   });
 
   it('amounts as typed: whole dollars from 1 to 10,000,000', () => {
