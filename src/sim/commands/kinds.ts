@@ -29,6 +29,8 @@ type Kinds =
   | { k: 'installEquipment'; tank: string; def: string; instance: string }
   | { k: 'repairEquipment'; tank: string; equip: string }
   | { k: 'removeEquipment'; tank: string; equip: string }
+  // Audit 2026-11-17 (G22, the owner's answer): the local store buys a stored unit back
+  | { k: 'sellEquipment'; instance: string }
   | { k: 'setLighting'; tank: string; preset?: LightPreset; intensity?: number; onHour?: number; offHour?: number; moonlight?: boolean }
   | { k: 'setSignage'; tank: string; on: boolean }
   | { k: 'renameTank'; tank: string; name: string }
@@ -38,6 +40,8 @@ type Kinds =
   | { k: 'setBackdrop'; tank: string; backdrop: BackdropKind }
   | { k: 'buyTank'; tier: string; wc: WaterClass; seeded: boolean; x?: number; z?: number; rotY?: number }
   | { k: 'placeTank'; tank: string; x: number; z: number; rotY: number }
+  // Audit 2026-11-17 (G19, the owner's answer): an empty tank comes down, its gear and decor to storage
+  | { k: 'takeDownTank'; tank: string }
   // `fromStorage`: the sender saw a piece in storage (it's placed from there, else bought; first one wins on the last)
   | { k: 'placeDecor'; tank: string; def: string; x: number; z: number; rotY?: number; scale?: number; fromStorage?: boolean }
   | { k: 'moveDecor'; tank: string; decor: string; x: number; z: number; rotY?: number; scale?: number }

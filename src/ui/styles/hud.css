@@ -130,6 +130,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-switcher__arrow:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 1px; }
 .ag-switcher__label { display: grid; gap: 1px; padding: 0 6px; min-width: 150px; max-width: 240px; }
 .ag-switcher__name { font-family: var(--font-display); font-size: calc(15.5px * var(--text-scale)); font-weight: 540; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variation-settings: 'opsz' 30, 'SOFT' 60; }
+/* Audit 2026-11-17 (G28): "No tank · Buy one" opens Build › Tanks */
+.ag-switcher__buy { padding: 0; border: 0; background: none; font: inherit; color: var(--c-aqua); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ag-switcher__buy:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; border-radius: 4px; }
 .ag-switcher__status { display: inline-flex; align-items: center; gap: 5px; font-size: calc(11.5px * var(--text-scale)); font-weight: 620; white-space: nowrap; }
 .ag-switcher__status.is-good { color: var(--c-good); }
 .ag-switcher__status.is-watch { color: var(--c-watch); }

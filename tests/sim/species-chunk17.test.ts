@@ -54,7 +54,7 @@ describe('BIG-008: Big-water Freshwater', () => {
   });
 
   it('the silver arowana’s locked card says what the owner approved', () => {
-    expect(speciesLockHint(game(), findSpecies('silver_arowana')!)).toBe('Research Big-water Freshwater. It also waits for the 500 Gallon Showpiece: research Acrylic Engineering, or grow into a destination aquarium.');
+    expect(speciesLockHint(game(), findSpecies('silver_arowana')!)).toBe('Research Big-water Freshwater. It also waits for the 500 Gallon Showpiece: research Acrylic Engineering, or reach 560 reputation at a destination aquarium.');
   });
 });
 
@@ -317,7 +317,7 @@ describe('BIG-003, BIG-006 and BIG-008: the motoro, the bottom sharks and Shark 
     unlock(g, 'tank_500', { silent: true });
     for (const id of ['motoro_stingray', 'coral_catshark', 'epaulette_shark']) expect(isSpeciesAvailable(g, id), id).toBe(true);
     expect(isSpeciesAvailable(g, 'brownbanded_bamboo_shark')).toBe(false);
-    expect(speciesLockHint(g, findSpecies('brownbanded_bamboo_shark')!)).toBe('Comes into the shop with the 1,000 Gallon Grand Display: research Grand Display Engineering or open the Grand Hall.');
+    expect(speciesLockHint(g, findSpecies('brownbanded_bamboo_shark')!)).toBe('Comes into the shop with the 1,000 Gallon Grand Display: research Grand Display Engineering, or reach 800 reputation in the Grand Hall.');
     unlock(g, 'tank_1000', { silent: true });
     expect(isSpeciesAvailable(g, 'brownbanded_bamboo_shark')).toBe(true);
   });

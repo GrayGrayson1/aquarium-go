@@ -163,7 +163,16 @@ export function TankBar() {
           {arrowCue(-1) && <AttnDot level={arrowCue(-1)!.level} className="ag-switcher__attn" testId="tank-prev-attn" />}
         </button>
         <div className="ag-switcher__label" aria-live="polite">
-          <span className="ag-switcher__name" title={id ? name : undefined}>{id ? name : 'No tank'}</span>
+          <span className="ag-switcher__name" title={id ? name : undefined}>
+            {id ? (
+              name
+            ) : (
+              // Audit 2026-11-17 (G28): with every tank gone, the way to the next one
+              <button type="button" className="ag-switcher__buy" data-testid="tank-buy-first" onClick={() => { sfx('open'); useUI.getState().set({ panel: 'build', panelTarget: 'tab:tanks' }); }}>
+                No tank · Buy one
+              </button>
+            )}
+          </span>
           <span className={clsx('ag-switcher__status', `is-${st}`)} title={why || undefined} data-testid="tank-status">
             <Icon size={12} aria-hidden /> {STATUS_WORD[st]}
             {food && (

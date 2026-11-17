@@ -225,7 +225,7 @@ describe('P1: on a phone the animal’s card folds the guide into its pill, as t
 
 describe('A16: Party says where it is', () => {
   it('a where-only line for an unlock with no panel', () => {
-    expect(unlockWhere('party_mode')).toBe('Find Party in the tank tools.');
+    expect(unlockWhere('party_mode')).toBe('Tap Party in the tank tools: the lights dance to music.');
     expect(unlockWhere('constructor')).toBeUndefined();
   });
 });

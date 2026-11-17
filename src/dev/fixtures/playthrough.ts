@@ -764,7 +764,7 @@ class Bot {
     if (this.hour - (this.flagsNum.lastTankBuy ?? -999) < 24) return;
     const wc: WaterClass = s.tanks[this.homeId]?.environment === 'marine' ? 'marine_live_rock' : 'freshwater_tropical';
     const needTanks = unmet.find((r) => /^\d+ tanks?$/.test(r.label));
-    const needBig = unmet.find((r) => /gal tank/.test(r.label));
+    const needBig = unmet.find((r) => /\+ gal(lon)? tank/.test(r.label)); // Audit 2026-11-17 (G11): "a 500+ gallon tank"
     const bigUnlocked = TANK_TIERS.filter((t) => isUnlocked(s, t.unlock)).sort((a, b) => b.gallons - a.gallons);
     let tierId: string | undefined;
     if (needBig) {

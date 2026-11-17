@@ -6,6 +6,7 @@ import type { GameState, WaterClass, Creature, Tank, ShopOffer } from '@/types';
 import type { ActionResult } from '../care';
 import { refreshFoodStatus } from '../tankStatus';
 import { installEquipment } from '../care';
+import { MAX_PER_KIND } from '../care/tuning'; // Audit 2026-11-17 (G25)
 import { environmentGate } from '../compat';
 import { addCreature, isLotOffer, recordFinds } from '../life';
 import { generateName } from '../life/names';
@@ -197,6 +198,9 @@ export function kitEquipmentFor(state: GameState, tierId: string, waterClass: Wa
     let count = 0;
     if (sub) {
       count = def.kind === 'filter' || def.kind === 'heater' || def.kind === 'chiller' ? Math.min(3, Math.max(1, Math.ceil(gallons / Math.max(1, sub.gallonsRange.max)))) : 1;
+      // Audit 2026-11-17 (G25): never more of a kind than one tank may hold (a 300 gallon kit shipped 6 heaters, max 4)
+      const have = ids.filter((x) => getEquipmentDef(x)?.kind === def.kind).length;
+      count = Math.min(count, Math.max(0, (MAX_PER_KIND[def.kind] ?? 6) - have));
       for (let i = 0; i < count; i++) ids.push(sub.id);
     }
     const prev = swaps.get(id);
@@ -263,7 +267,8 @@ export function buyTank(state: GameState, tierId: string, waterClass: WaterClass
       spot = null;
     }
   }
-  if (!spot) return fail(`There's no floor space for ${aOrAn(tier.name)} ${tier.name}. Sell or move a tank, choose a smaller size, or expand your facility.`);
+  // Audit 2026-11-17 (G19): the real ways out (taking an empty tank down, an auction once it opens, a bigger venue)
+  if (!spot) return fail(`There's no floor space for ${aOrAn(tier.name)} ${tier.name}. Choose a smaller size, move a tank, or take down an empty tank you no longer need in Tanks${isUnlocked(state, 'tank_auctions') ? ' (or auction one in Market › My listings)' : ''}. A bigger venue (Build › Facility) adds room.`);
   const gear = kitEquipmentFor(state, tierId, waterClass);
   const kit = tankKitPrice(tierId, waterClass, !!opts.seeded, state);
   if (!canAfford(state, kit.total)) return needMoney(state, kit.total, `the ${tier.name} kit`);

@@ -202,6 +202,8 @@ function researchReq(g: GameState, id: string): LadderReq {
   const def = RESEARCH_BY_ID[id];
   const r = g.progress.research;
   if (r.completed.includes(id)) return { met: true, text: `${def.name}: researched` };
+  // Audit 2026-11-17 (G21): everything it teaches already earned through play (Research says "Learned through play")
+  if (r.activeId !== id && def.grants.length && def.grants.every((k) => g.progress.unlocked.includes(k))) return { met: true, text: `${def.name}: learned through play` };
   if (r.activeId === id) {
     const left = Math.max(1, Math.ceil((def.hours - r.progressHours) / HOURS_PER_DAY));
     return { met: false, text: `Researching ${def.name} · ${left} ${left === 1 ? 'day' : 'days'} left` };

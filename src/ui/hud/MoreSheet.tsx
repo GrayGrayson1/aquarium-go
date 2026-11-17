@@ -7,7 +7,7 @@
 import { useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
-import { ChevronRight, Gauge, Lock, Search, Settings, X } from 'lucide-react';
+import { ChevronRight, Gauge, Lock, Search, Settings, Star, X } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { useGameSelector } from '@/state/game';
 import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
@@ -23,6 +23,7 @@ import { AttnDot, useNavDots } from './AttnDot'; // lane:notify
 import type { NavDot } from '../common/notify';
 import { moreSubline } from '../common/ops'; // lane:automation (chunk 5)
 import { openFind } from '../search/FindAnything'; // chunk 19 (QOL-004)
+import { formatRep } from '../common/format'; // Audit 2026-11-17 (G6)
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -47,6 +48,7 @@ export function MoreSheetBody({ isLocked, dots, social = false }: { isLocked: (i
         <h2 className="ag-more__title" id="ag-more-title" tabIndex={-1}>
           More
         </h2>
+        <MoreReputation />
         {/* chunk 19 (ADR-0055 decision 3, QOL-004) — Find anything, from the phone's More (a header button: a row more
             pushed Settings under the tab bar on a phone held sideways) */}
         <button
@@ -122,6 +124,29 @@ export function MoreSheetBody({ isLocked, dots, social = false }: { isLocked: (i
         <ChevronRight size={18} aria-hidden className="ag-more__chev" />
       </button>
     </>
+  );
+}
+
+/**
+ * Audit 2026-11-17 (G6) — phones' top bar has no room for reputation, which gates most unlocks: More's header shows it
+ * (a header button, as Find anything is, so no row moves) and opens Research, which explains it.
+ */
+function MoreReputation() {
+  const rep = useGameSelector((g) => g.progress.reputation, 0);
+  return (
+    <button
+      type="button"
+      className="ag-more__rep"
+      data-testid="more-reputation"
+      aria-label={`Reputation ${formatRep(rep)} of 1000. What it opens and how it grows`}
+      onClick={() => {
+        useShell.getState().set({ popover: null });
+        openPanel('research', 'tab:research');
+      }}
+    >
+      <Star size={14} aria-hidden />
+      <span className="ag-tabular">{formatRep(rep)} reputation</span>
+    </button>
   );
 }
 

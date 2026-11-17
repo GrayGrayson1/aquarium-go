@@ -43,6 +43,7 @@ export {
   activeQuests,
   unlockProgress,
   researchList,
+  guideHoldLine, // Audit 2026-11-17 (G1)
 } from './progression';
 export type { TutorialStepView, QuestView, UnlockProgressView, ResearchView, CondStatus } from './progression';
 export { stepVisitors, visitorSummary, fairAdmission, admissionDraw, isOpenAt, ARCHETYPES, archetypeLabel, WEEKDAYS, weekdayOf } from './visitors';

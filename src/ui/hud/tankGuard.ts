@@ -9,17 +9,21 @@ import { useUI, type UIState } from '@/state/ui';
 import type { GameState } from '@/types';
 import { useShell } from '../common/shellStore';
 
-function ensureFocusedTank() {
+export function ensureFocusedTank() {
   const g = useGame.getState().game;
   const ui = useUI.getState();
   if (!g || ui.screen !== 'game') return;
   const id = ui.focusedTankId;
   if (id && g.tanks[id]) return;
+  // Audit 2026-11-17 (G28, B-231 e): while a tank is being placed, its landing focuses it (PlacementGhost). Focusing the
+  // first tank bought after selling every tank mid-placement made aside.ts drop Build on a phone instead of bringing it
+  // back; the guard runs again when the tool ends.
+  if (ui.tool === 'tank_place') return;
   const next = g.tankOrder.find((t) => !!g.tanks[t]) ?? Object.keys(g.tanks)[0] ?? null;
   if (next === id) return;
   const patch: Parameters<typeof ui.set>[0] = { focusedTankId: next, selectedCreatureId: null, followCreatureId: null };
   if (ui.cameraMode === 'follow') patch.cameraMode = 'front';
-  if (ui.tool !== 'none' && ui.tool !== 'tank_place') patch.tool = 'none';
+  if (ui.tool !== 'none') patch.tool = 'none'; // (a tank placement returned above)
   if (!next) patch.view = 'facility';
   ui.set(patch);
   const shell = useShell.getState();
@@ -67,7 +71,7 @@ export function useFocusedTankGuard() {
       if (s.game?.creatures !== p.game?.creatures) ensureSelectedCreature();
     });
     const unsubUI = useUI.subscribe((s, p) => {
-      if (s.focusedTankId !== p.focusedTankId || s.screen !== p.screen) ensureFocusedTank();
+      if (s.focusedTankId !== p.focusedTankId || s.screen !== p.screen || (p.tool === 'tank_place' && s.tool !== 'tank_place')) ensureFocusedTank();
     });
     return () => {
       unsubGame();

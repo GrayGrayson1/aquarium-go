@@ -75,17 +75,17 @@ const counter = (key: string, min: number, label?: string): Cond => ({ type: 'co
 export const UNLOCK_RULES: UnlockRule[] = [
   // ── livestock groups ──
   { key: 'fw_basic', when: [any(rep(40), mastery('husbandry', 150))], hint: 'Reach 40 reputation or build husbandry mastery.' },
-  { key: 'fw_coldwater', when: [any(research('coldwater_systems'), { type: 'all', of: [rep(90), mastery('husbandry', 250)] })], hint: 'Research Cool-water Systems, or reach 90 reputation with solid husbandry.' },
+  { key: 'fw_coldwater', when: [any(research('coldwater_systems'), { type: 'all', of: [rep(90), mastery('husbandry', 250)] })], hint: 'Research Cool-water Systems, or reach 90 reputation and 250 husbandry mastery.' },
   { key: 'fw_intermediate', when: [unlocked('fw_basic'), rep(70), mastery('husbandry', 200)], hint: 'Keep freshwater tanks healthy: 70 reputation and 200 husbandry.' },
   { key: 'fw_advanced', when: [research('discus_husbandry')], hint: 'Research Discus Husbandry.' },
-  { key: 'marine_basics', when: [any(research('marine_systems'), { type: 'all', of: [rep(150), mastery('husbandry', 400)] })], hint: 'Research Marine Systems (or reach 150 reputation as a seasoned keeper).' },
+  { key: 'marine_basics', when: [any(research('marine_systems'), { type: 'all', of: [rep(150), mastery('husbandry', 400)] })], hint: 'Research Marine Systems (or reach 150 reputation and 400 husbandry mastery).' },
   { key: 'marine_seahorse', when: [any(research('seahorse_husbandry'), mastery('marine', 500))], hint: 'Research Seahorse Husbandry (after Marine Systems).' },
   { key: 'reef', when: [research('reef_systems')], hint: 'Research Reef Systems.' },
   { key: 'marine_large', when: [research('large_marine')], hint: 'Research Big-water Marine.' },
   { key: 'marine_advanced', when: [research('refugium_pods')], hint: 'Research Refugiums & Copepods.' },
   { key: 'predators', when: [research('predator_husbandry')], hint: 'Research Predator Husbandry.' },
   // lane:brackish — research it, or earn it as a seasoned freshwater keeper.
-  { key: 'brackish', when: [any(research('brackish_estuaries'), { type: 'all', of: [unlocked('fw_intermediate'), rep(260), mastery('husbandry', 500)] })], hint: 'Research Brackish Estuaries (needs intermediate freshwater).' },
+  { key: 'brackish', when: [any(research('brackish_estuaries'), { type: 'all', of: [unlocked('fw_intermediate'), rep(260), mastery('husbandry', 500)] })], hint: 'Once you have intermediate freshwater, research Brackish Estuaries or reach 260 reputation and 500 husbandry mastery.' },
   // chunk 17 (ADR-0053) — the big freshwater fish: research only, as Big-water Marine is
   { key: 'fw_large', when: [research('large_freshwater')], hint: 'Research Big-water Freshwater.' },
   { key: 'elasmobranchs', when: [research('shark_ray_husbandry')], hint: 'Research Shark & Ray Husbandry.' },
@@ -108,17 +108,17 @@ export const UNLOCK_RULES: UnlockRule[] = [
   { key: 'tank_180', when: [rep(280), fac('aquarium_store')], hint: 'Reach 280 reputation in your store.' },
   { key: 'tank_240', when: [rep(360), fac('showroom')], hint: 'Open a public showroom and reach 360 reputation.' },
   { key: 'tank_300', when: [rep(430), fac('showroom')], hint: 'Reach 430 reputation in your showroom.' },
-  { key: 'tank_500', when: [any(research('acrylic_engineering'), { type: 'all', of: [rep(560), fac('destination')] })], hint: 'Research Acrylic Engineering, or grow into a destination aquarium.' },
-  { key: 'tank_600', when: [any(research('acrylic_engineering'), { type: 'all', of: [rep(620), fac('destination')] })], hint: 'Research Acrylic Engineering.' },
-  { key: 'tank_800', when: [any(research('grand_display'), { type: 'all', of: [rep(720), fac('destination'), { type: 'tanks', min: 1, minGallons: 300 }] })], hint: 'Run a 300-gallon exhibit at a destination aquarium, or research Grand Display Engineering.' },
-  { key: 'tank_1000', when: [any(research('grand_display'), { type: 'all', of: [rep(800), fac('grand_hall')] })], hint: 'Research Grand Display Engineering or open the Grand Hall.' },
+  { key: 'tank_500', when: [any(research('acrylic_engineering'), { type: 'all', of: [rep(560), fac('destination')] })], hint: 'Research Acrylic Engineering, or reach 560 reputation at a destination aquarium.' },
+  { key: 'tank_600', when: [any(research('acrylic_engineering'), { type: 'all', of: [rep(620), fac('destination')] })], hint: 'Research Acrylic Engineering, or reach 620 reputation at a destination aquarium.' },
+  { key: 'tank_800', when: [any(research('grand_display'), { type: 'all', of: [rep(720), fac('destination'), { type: 'tanks', min: 1, minGallons: 300 }] })], hint: 'Research Grand Display Engineering, or reach 720 reputation with a 300-gallon exhibit at a destination aquarium.' },
+  { key: 'tank_1000', when: [any(research('grand_display'), { type: 'all', of: [rep(800), fac('grand_hall')] })], hint: 'Research Grand Display Engineering, or reach 800 reputation in the Grand Hall.' },
 
   // ── facility & features ──
   { key: 'market_listings', when: [any({ type: 'flag', flag: 'opened_market', label: 'Open the market' }, { type: 'tutorial_done' }, rep(10))], hint: 'Open the market once.' },
   { key: 'tank_auctions', when: [any({ type: 'sales_count', min: 3 }, mastery('business', 150), fac('specialty_shop'))], hint: 'Make three sales, or open a shop.' },
   { key: 'visitors', when: [fac('specialty_shop')], hint: 'Upgrade to a specialty shop to welcome paying visitors.' },
   { key: 'signage', when: [any(fac('specialty_shop'), rep(45), research('public_education'))], hint: 'Open a shop, reach 45 reputation, or research Public Education.' },
-  { key: 'nursery', when: [any(counter('births', 1, 'Raise a clutch'), mastery('breeding', 40), rep(70), research('breeding_program'))], hint: 'Research the Breeding Programme, or reach 70 reputation.' },
+  { key: 'nursery', when: [any(counter('births', 1, 'Raise a clutch'), mastery('breeding', 40), rep(70), research('breeding_program'))], hint: 'Raise a clutch, build 40 breeding mastery, reach 70 reputation, or research the Breeding Programme.' },
   { key: 'genetics_lab', when: [research('genetics_lab')], hint: 'Research the Genetics Lab.' },
   { key: 'photo_contests', when: [any(mastery('aquascaping', 250), { type: 'beauty', min: 85, scaped: SCAPED_EDITS, ownLayout: true }, research('aquascape_awards'))], hint: 'Aquascape a tank yourself to beauty 85, or research Aquascape Awards.' },
   { key: 'party_mode', when: [any(rep(15), counter('feeds', 12, 'Feed 12 times'))], hint: 'Feed your animals 12 times, or reach 15 reputation.' }, // lane:qa-r3 — the real route
@@ -129,7 +129,7 @@ export const UNLOCK_RULES: UnlockRule[] = [
   { key: 'shows_international', when: [unlocked('shows_national'), fac('showroom'), rep(450)], hint: 'Open a public showroom and reach 450 reputation.' },
   { key: 'facility_specialty_shop', when: [rep(100), any({ type: 'sales_count', min: 1 }, counter('friend_visits', 4, 'Host 4 friend visits'))], hint: 'Reach 100 reputation and make a sale (or host a few friends).' }, // lane:w2-sim: 60 → 100 (no shop before ~40 min of play)
   { key: 'facility_aquarium_store', when: [fac('specialty_shop'), rep(180), { type: 'visitors', min: 150 }, { type: 'tanks', min: 4 }], hint: 'Run your shop: 180 reputation, 150 visitors and 4 tanks.' },
-  { key: 'facility_showroom', when: [fac('aquarium_store'), rep(350), { type: 'visitors', min: 800 }, { type: 'tanks', min: 7 }, mastery('exhibition', 300)], hint: '350 reputation, 800 visitors and 7 tanks.' },
+  { key: 'facility_showroom', when: [fac('aquarium_store'), rep(350), { type: 'visitors', min: 800 }, { type: 'tanks', min: 7 }, mastery('exhibition', 300)], hint: '350 reputation, 800 visitors, 7 tanks and 300 exhibition mastery (visitors and shows build it).' },
   { key: 'facility_destination', when: [fac('showroom'), rep(550), { type: 'visitors', min: 3000 }, { type: 'tanks', min: 10 }], hint: '550 reputation, 3,000 visitors and 10 exhibits.' },
   { key: 'facility_grand_hall', when: [fac('destination'), rep(780), { type: 'visitors', min: 9000 }, { type: 'tanks', min: 1, minGallons: 500 }], hint: '780 reputation, 9,000 visitors and a 500-gallon showpiece.' },
   // lane:staff — staff come with the first shop (capacity grows with the facility, see src/data/staff.ts)

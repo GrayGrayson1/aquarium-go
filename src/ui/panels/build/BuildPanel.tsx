@@ -7,11 +7,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Hammer, Layers, Mountain, Wrench, Palette, Building2, Lock, Move, MapPin, Sprout, Flower2, Shell, Gem, Puzzle, Waves, Check, Power, Trash2, Package, TriangleAlert, Info, Zap, Sparkles, Thermometer, Snowflake, Fan, Lightbulb, Wind, Droplets, Droplet, Utensils, Sun, Leaf, Box } from 'lucide-react';
-import type { BackdropKind, DecorCategory, DecorDef, Environment, EquipmentInstance, EquipmentKind, GameState, SubstrateKind, Tank, TankTier, WaterClass } from '@/types';
+import type { BackdropKind, DecorCategory, DecorDef, DecorInstance, Environment, EquipmentInstance, EquipmentKind, GameState, SubstrateKind, Tank, TankTier, WaterClass } from '@/types';
 import { Button, Money, formatMoney, Toggle, Slider, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { TANK_TIERS } from '@/data/catalog/tanks';
-import { DECOR } from '@/data/catalog/decor';
+import { DECOR, isLiving } from '@/data/catalog/decor'; // isLiving: Audit 2026-11-17 (G8)
 import { EQUIPMENT, getEquipmentDef } from '@/data/catalog/equipment';
 import { SUBSTRATES } from '@/data/catalog/substrates';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
@@ -20,8 +20,14 @@ import { tutorialChain, habitatPicks } from '@/data/quests';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { getFacilityLevel } from '@/data/facilities';
 import type { CommandOf } from '@/sim/commands';
-import { tankKitPrice, kitEquipmentFor, kitSwapNote, type KitEquipment } from '@/sim/economy';
-import { findFreeSpot, waterClassLock } from '@/sim/facility';
+import { tankKitPrice, kitEquipmentFor, kitSwapNote, fragStoreOffer, type KitEquipment } from '@/sim/economy';
+import { findFreeSpot, waterClassLock, guideHoldLine } from '@/sim/facility';
+import { decorWaterNote } from './decorWater'; // Audit 2026-11-17 (G7)
+import { isCave, isNestSite } from './decorRoles'; // Audit 2026-11-17 (G16)
+import { STRUGGLING_HEALTH } from '@/ui/common/notify'; // Audit 2026-11-17 (G8)
+import { usePlacementStore } from '@/render/facility/placementStore'; // Audit 2026-11-17 (G24)
+import { SellStoredEquipment } from './SellBack'; // Audit 2026-11-17 (G22)
+import { decorSellValue } from '@/sim/aquascape'; // Audit 2026-11-17 (G14)
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { formatTemp } from '@/ui/common/format';
 import { usePanelGame, safe, useIsPhone, useTempText } from '../common/hooks';
@@ -239,9 +245,11 @@ function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anythi
   const [a, b] = WATER_CLASS_TINT[wc];
 
   const place = (tier: TankTier) => {
+    // Audit 2026-11-17 (G24): a turn left by a placement cancelled from the hint doesn't carry over to this tank
+    usePlacementStore.getState().reset();
     // chunk 19 (QOL-001) — Build stays open beside the room (computers) or steps aside and comes back (phones)
     startToolFromPanel({ tool: 'tank_place', placingTankTierId: tier.id, movingTankId: null, placingWaterClass: wc, placingSeeded: seeded, view: 'facility', panelTarget: null });
-    useUI.getState().toast(`Choose a spot for your ${tier.name}. Press Esc to cancel.`, 'info');
+    useUI.getState().toast(tankPlaceToast(tier.name, typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches), 'info');
   };
   const quick = (tier: TankTier) => {
     const spot = safe(() => findFreeSpot(g, tier.id), null);
@@ -313,7 +321,8 @@ function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anythi
             const kit = safe(() => tankKitPrice(tier.id, wc, seeded, g), { total: tier.price, tank: tier.price, equipment: 0, substrate: 0, seeded: 0 });
             const swap = isUnlocked ? safe(() => kitSwapLine(kitEquipmentFor(g, tier.id, wc)), null) : null;
             const afford = g.finance.money >= kit.total;
-            const hint = tier.unlock ? UNLOCK_RULE_BY_KEY[tier.unlock]?.hint ?? UNLOCK_KEYS[tier.unlock as keyof typeof UNLOCK_KEYS] : '';
+            // Audit 2026-11-17 (G1): a size the guide holds back says which guide step hands it out
+            const hint = tier.unlock ? safe(() => guideHoldLine(g, tier.unlock!), null) ?? UNLOCK_RULE_BY_KEY[tier.unlock]?.hint ?? UNLOCK_KEYS[tier.unlock as keyof typeof UNLOCK_KEYS] : '';
             if (buyable && !(isUnlocked && afford)) return null;
             return (
               <div key={tier.id} className={clsx('pn-tier', !isUnlocked && 'is-locked')} data-tier-id={tier.id}>
@@ -368,11 +377,17 @@ function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anythi
           {/* lane:w2-ui — was "heater/lighting for freshwater water" */}
           Kits include the tank, a stand, substrate, and a filter, heater and lighting suited to a {WATER_CLASS_LABEL[wc].toLowerCase()} tank. Floor space is your only limit —{' '}
           {/* lane:qa-r3 — a tank can only leave through a whole-aquarium auction: don't suggest selling one before that opens */}
-          {unlocked(g, 'tank_auctions') ? 'auction a tank as a whole aquarium (Market › My listings) to free its spot, or move to a bigger venue in Build › Facility.' : 'a bigger venue (Build › Facility) adds room. Whole-aquarium auctions, which free a tank’s spot, open later.'}
+          {/* Audit 2026-11-17 (G19): an empty tank can be taken down in Tanks */}
+          {unlocked(g, 'tank_auctions') ? 'take down an empty tank in Tanks, auction a tank as a whole aquarium (Market › My listings), or move to a bigger venue in Build › Facility.' : 'take down an empty tank in Tanks, or move to a bigger venue in Build › Facility. Whole-aquarium auctions, which free a stocked tank’s spot, open later.'}
         </p>
       </section>
     </div>
   );
+}
+
+/** Audit 2026-11-17 (G24): the toast when a new tank's placement starts (a phone has no Esc key; its hint has Cancel). */
+export function tankPlaceToast(name: string, touch: boolean): string {
+  return `Choose a spot for your ${name}.${touch ? '' : ' Press Esc to cancel.'}`;
 }
 
 /** lane:fix-integrate-ui — the kit card's one-liner for locked default gear (S16-03); the sim's full note is the tooltip. */
@@ -446,7 +461,7 @@ type DecorSort = 'price' | 'beauty' | 'name';
 /** chunk 19 (QOL-003) — the words a decor piece is found by: its name, category and what it does for the animals. */
 function decorWords(d: DecorDef): string {
   const h = d.habitat;
-  return [d.name, CAT_META[d.category]?.label, h.hides >= 0.25 ? 'hiding spot shelter cave' : '', h.cover > 0.05 ? 'cover' : '', h.hitching > 0 ? 'hitching' : '', h.grazing > 0.05 ? 'grazing' : '', h.nitrateUptake > 0 ? 'eats nitrate' : '', h.enrichment > 0.1 ? 'enrichment' : '', d.anchors.some((a) => a.kind === 'host') ? 'host' : ''].join(' ');
+  return [d.name, CAT_META[d.category]?.label, h.hides >= 0.25 ? 'hiding spot shelter cave' : '', h.cover > 0.05 ? 'cover' : '', h.hitching > 0 ? 'hitching' : '', h.grazing > 0.05 ? 'grazing' : '', h.nitrateUptake > 0 ? 'eats nitrate' : '', h.enrichment > 0.1 ? 'enrichment' : '', d.anchors.some((a) => a.kind === 'host') ? 'host' : '', isNestSite(d) ? 'nest site spawn spawning flat eggs' : '', isCave(d) ? 'cave spawning tube' : ''].join(' '); // Audit 2026-11-17 (G16): nest and cave words
 }
 
 function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; tankId: string; cat: DecorCategory | 'all'; setCat: (c: DecorCategory | 'all') => void; q: string; setQ: (v: string) => void }) {
@@ -472,6 +487,7 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
     return def && def.environments.includes(tank.environment);
   });
   const residents = livingInTank(g, tankId);
+  const waterNote = safe(() => decorWaterNote(g, tank), null); // Audit 2026-11-17 (G7)
 
   const choose = (def: DecorDef) => {
     // the tool hint above the dock explains placement (click/tap the floor · R rotates · Esc cancels); chunk 19
@@ -549,6 +565,7 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
             </Chip>
           ))}
         </div>
+        {waterNote && <p className="pn-small pn-muted" style={{ marginTop: 0 }} data-testid="decor-water-note">{waterNote}</p> /* Audit 2026-11-17 (G7) */}
         {list.length === 0 && narrowed ? (
           <EmptyState icon={<Mountain size={24} />} title="Nothing matches" action={<Button onClick={() => { setQ(''); setBuyable(false); }} data-testid="decor-clear">Clear filters</Button>}>
             Try other words, or another category.
@@ -579,7 +596,7 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
                     <span className="pn-small">{def?.name ?? titleCase(inst.defId)}</span>
                     {typeof inst.health === 'number' && (
                       <span className="pn-tiny pn-muted">
-                        Health {Math.round(inst.health)}
+                        Health {Math.round(inst.health)}%{inst.health < STRUGGLING_HEALTH && def && isLiving(def) ? ' · struggling' : '' /* Audit 2026-11-17 (G8) */}
                         {typeof inst.growth === 'number' ? ` · grown ${Math.round(inst.growth * 100)}%` : ''}
                       </span>
                     )}
@@ -591,7 +608,8 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
                     To storage
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => act({ k: 'removeDecor', tank: tankId, decor: inst.id, sell: true }, { sound: 'coin' })}>
-                    Sell
+                    {/* Audit 2026-11-17 (G14): what the sim will pay, as the decorating tool quotes it (B-121) */}
+                    Sell · {formatMoney(placedSellValue(g, def, inst))}
                   </Button>
                 </li>
               );
@@ -601,6 +619,11 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
       )}
     </div>
   );
+}
+
+/** Audit 2026-11-17 (G14): what selling a placed piece pays (a growing frag goes to the store as a frag). */
+export function placedSellValue(g: GameState, def: DecorDef | undefined, inst: DecorInstance): number {
+  return inst.frag && inst.frag.grownHour === undefined ? safe(() => fragStoreOffer(g, inst), 0) : decorSellValue(def, inst);
 }
 
 function DecorSwatch({ d, size = 56 }: { d?: DecorDef; size?: number }) {
@@ -693,6 +716,12 @@ function DecorSwatch({ d, size = 56 }: { d?: DecorDef; size?: number }) {
   );
 }
 
+/** Audit 2026-11-17 (G17): a piece's hiding places as the sim counts them, rounded down ("1.5" is one big one). */
+export function hideWords(hides: number): string {
+  const n = Math.floor(hides);
+  return n >= 2 ? `${n} hiding spots` : hides >= 1.5 ? 'Big hiding spot' : 'Hiding spot';
+}
+
 function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameState; d: DecorDef; onChoose: () => void; longFins: boolean; suggested?: boolean }) {
   const isUnlocked = unlocked(g, d.unlock);
   const afford = g.finance.money >= d.price;
@@ -713,13 +742,17 @@ function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameSta
         <span className="pn-tiny pn-muted">· beauty {d.beauty}</span>
       </span>
       <span className="pn-chips pn-decor__chips">
-        {h.hides >= 1 ? <Chip>{Math.round(h.hides) > 1 ? `${Math.round(h.hides)} hiding spots` : 'Hiding spot'}</Chip> : h.hides >= 0.25 ? <Chip>Shelter</Chip> : null}
+        {/* Audit 2026-11-17 (G17): never more spots than the sim counts (a Stone Cave counts 1.5, it showed "2 hiding spots") */}
+        {h.hides >= 1 ? <Chip>{hideWords(h.hides)}</Chip> : h.hides >= 0.25 ? <Chip>Shelter</Chip> : null}
         {h.cover > 0.05 && <Chip>Cover</Chip>}
         {h.hitching > 0 && <Chip tone="aqua">Hitching</Chip>}
         {h.grazing > 0.05 && <Chip>Grazing</Chip>}
         {h.nitrateUptake > 0 && <Chip tone="good">Eats nitrate</Chip>}
         {h.enrichment > 0.1 && <Chip tone="violet">Enrichment</Chip>}
         {d.anchors.some((a) => a.kind === 'host') && <Chip tone="coral">Host</Chip>}
+        {/* Audit 2026-11-17 (G16): what the breeding rules accept as somewhere to lay eggs, or as a cave to claim */}
+        {isCave(d) ? <Chip title="A cave a breeding pair can claim, and a place to lay eggs">Cave</Chip> : isNestSite(d) && <Chip title="Pairs that lay eggs on a surface can spawn on it">Nest site</Chip>}
+        {isLiving(d) && (d.lightNeed ?? 0) >= 0.5 && <Chip tone="watch">Needs bright light</Chip> /* Audit 2026-11-17 (G8) */}
         {d.hazards?.sharp && <Chip tone={longFins ? 'danger' : 'watch'} icon={<TriangleAlert size={10} />}>{longFins ? 'Tears long fins' : 'Sharp edges'}</Chip>}
         {d.hazards?.ingestible && <Chip tone="watch" icon={<TriangleAlert size={10} />}>Swallowable</Chip>}
       </span>
@@ -839,7 +872,9 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
   const tank = g.tanks[tankId];
   const gal = gallonsOf(tank);
   const installed = tank.equipment;
-  const storage = storedEquipmentList(g, tank); // Audit 2026-11-17 C11: every stored unit, fitting ones first
+  // Audit 2026-11-17 (C11, G22): every stored unit, whatever this tank's water, the ones that fit first; each says
+  // when it can't go here, and each can be sold
+  const storage = storedEquipmentList(g, tank);
   const shopAll = EQUIPMENT.filter((e) => e.environments.includes(tank.environment)).map((e) => ({ e, fits: gal >= e.gallonsRange.min * 0.6 && gal <= e.gallonsRange.max * 1.4, installed: installed.some((x) => x.defId === e.id) }));
   // chunk 19 (ADR-0055 decision 3, QOL-003) — what to buy, searched and by kind (a tank card's "Buy a heater" opens on Heaters)
   const kinds = [...new Set(shopAll.map(({ e }) => e.kind))].filter((k) => EQUIP_CHIP[k]);
@@ -938,6 +973,7 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
                   <Button size="sm" disabled={!!fit?.blocked} title={fit?.blocked ? fit.text : undefined} onClick={() => act({ k: 'installEquipment', tank: tankId, def: e.defId, instance: e.id }, { sound: 'place', kind: fit && fit.level !== 'ok' && !fit.general && !fit.soft ? 'warning' : undefined })}>
                     <Check size={14} /> {needs ?? (fit?.blocked ? fit.label : 'Install')}
                   </Button>
+                  <SellStoredEquipment inst={e} />
                 </div>
               );
             })}

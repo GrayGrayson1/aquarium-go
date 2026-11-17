@@ -109,7 +109,7 @@ describe('BIG-007: a locked card says what is still missing (ADR-0053 round 3, t
   it('research and tank together, then the tank alone', () => {
     const g = game('betta');
     const emperor = findSpecies('emperor_angelfish')!;
-    expect(speciesLockHint(g, emperor)).toBe('Research Marine Systems (or reach 150 reputation as a seasoned keeper). It also waits for the 240 Gallon: open a public showroom and reach 360 reputation.');
+    expect(speciesLockHint(g, emperor)).toBe('Research Marine Systems (or reach 150 reputation and 400 husbandry mastery). It also waits for the 240 Gallon: open a public showroom and reach 360 reputation.');
     unlock(g, 'marine_basics', { silent: true });
     expect(speciesLockHint(g, emperor)).toBe('Comes into the shop with the 240 Gallon: open a public showroom and reach 360 reputation.');
     expect(speciesLockHint(g, findSpecies('royal_gramma')!)).toBe('Comes into the shop with the 40 Gallon Breeder: reach 25 reputation or raise a clutch.');
@@ -117,9 +117,9 @@ describe('BIG-007: a locked card says what is still missing (ADR-0053 round 3, t
 
   it('research alone, when the tank is already unlocked or needs no unlock', () => {
     const g = game('betta');
-    expect(speciesLockHint(g, findSpecies('firefish')!)).toBe('Research Marine Systems (or reach 150 reputation as a seasoned keeper).');
+    expect(speciesLockHint(g, findSpecies('firefish')!)).toBe('Research Marine Systems (or reach 150 reputation and 400 husbandry mastery).');
     unlock(g, 'tank_240', { silent: true });
-    expect(speciesLockHint(g, findSpecies('emperor_angelfish')!)).toBe('Research Marine Systems (or reach 150 reputation as a seasoned keeper).');
+    expect(speciesLockHint(g, findSpecies('emperor_angelfish')!)).toBe('Research Marine Systems (or reach 150 reputation and 400 husbandry mastery).');
   });
 
   it('nothing to say once the species can be bought, and never for the player’s starter', () => {

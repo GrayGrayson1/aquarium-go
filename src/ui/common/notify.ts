@@ -16,9 +16,10 @@
  */
 import { opsDot } from './ops'; // lane:automation (chunk 5)
 import { isHeld } from '@/sim/automation/hold'; // lane:automation (chunk 5)
-import type { Creature, DecorInstance, EquipmentInstance, GameEvent, GameState, NotifyState, Tank } from '@/types';
+import type { Creature, DecorDef, DecorInstance, EquipmentInstance, GameEvent, GameState, NotifyState, Tank } from '@/types';
 import type { StatusLevel } from '@/types/reports';
 import { getEquipmentDef } from '@/data/catalog/equipment';
+import { getDecorDef, isLiving } from '@/data/catalog/decor'; // Audit 2026-11-17 (G8)
 import { getFoodDef } from '@/data/catalog/foods';
 import { tankFoodOutlook } from '@/sim/tankStatus';
 import { unseenResults } from '@/sim/shows';
@@ -212,7 +213,29 @@ export function tankAttentionLevel(g: GameState, tankId: string): AttentionLevel
   const food = t.cache?.foodLevel;
   if (food === 'low' || food === 'out' || t.equipment?.some((e) => e.failed || isWorn(e)) || autofeedPaused(g, t)) w = 'watch';
   for (const it of gearFitItems(g, t)) w = worseLevel(w, it.level);
+  if (w === 'good' && strugglingDecor(t)) w = 'watch'; // Audit 2026-11-17 (G8)
   return w;
+}
+
+/** Audit 2026-11-17 (G8): a living plant or coral below this health is struggling (the decor step lowers it silently). */
+export const STRUGGLING_HEALTH = 40;
+
+/** Audit 2026-11-17 (G8): the tank's least healthy living piece under STRUGGLING_HEALTH (null: none). */
+export function strugglingDecor(t: Tank): { inst: DecorInstance; def: DecorDef } | null {
+  let worst: { inst: DecorInstance; def: DecorDef } | null = null;
+  for (const inst of t.decor ?? []) {
+    if (typeof inst.health !== 'number' || !(inst.health < STRUGGLING_HEALTH)) continue;
+    if (worst && inst.health >= (worst.inst.health ?? 0)) continue;
+    const def = getDecorDef(inst.defId);
+    if (def && isLiving(def)) worst = { inst, def };
+  }
+  return worst;
+}
+
+/** Audit 2026-11-17 (G8): the alert line, with the tank card's beauty tip's reason (src/sim/aquascape/beauty.ts). */
+export function strugglingDecorText(def: DecorDef, health: number): string {
+  const why = (def.lightNeed ?? 0.3) >= 0.5 ? 'it needs stronger light than this tank provides' : def.category !== 'plant' ? 'check salinity, temperature and nitrate' : 'check light, temperature and nutrients';
+  return `Your ${def.name.toLowerCase()} is struggling (${Math.round(health)}% health): ${why}.`;
 }
 
 const ANIMAL_WORDS = /\b(starv|hungry|ill\b|unwell|stress|health|injur|recover|weak|sick|dying)/i;
@@ -265,6 +288,9 @@ export function tankAttention(g: GameState, tankId: string): TankAttention {
   // 5. lane:automation (AUTO-005) — Auto-feed paused (off, jammed or empty) while someone is hungry
   const paused = autofeedPaused(g, t);
   if (paused) items.push({ level: 'watch', source: 'gear', text: autofeedPausedText(paused), tab: 'gear' });
+  // 6. Audit 2026-11-17 (G8) — a plant or coral fading toward 0% (no toast, no dot before this)
+  const fading = strugglingDecor(t);
+  if (fading) items.push({ level: 'watch', source: 'water', text: strugglingDecorText(fading.def, fading.inst.health ?? 0), short: `Your ${fading.def.name.toLowerCase()} is struggling.`, tab: 'life' });
   if (!items.length) return GOOD;
   items.sort((a, b) => RANK[b.level] - RANK[a.level]);
   const lvl = items.reduce<AttentionLevel>((w, it) => worseLevel(w, it.level), 'good');

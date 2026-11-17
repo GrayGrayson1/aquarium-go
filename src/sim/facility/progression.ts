@@ -416,7 +416,8 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
       return { met: p.reputation >= cond.min, current: Math.floor(p.reputation), target: cond.min, label: `${cond.min} reputation` };
     case 'mastery': {
       const v = p.mastery[cond.track] ?? 0;
-      return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `${cond.min} ${cond.track} mastery` };
+      // Audit 2026-11-17 (G10): points, as Research's standing card now shows them beside the level
+      return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `${cond.min} ${cond.track} mastery points` };
     }
     case 'counter': {
       const v = counterValue(state, cond.key);
@@ -455,9 +456,10 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
       return { met: done, current: done ? 1 : 0, target: 1, label: `Research: ${RESEARCH_BY_ID[cond.id]?.name ?? cond.id}` };
     }
     case 'facility': {
-      const cur = levelIdx(state.facility.level);
-      const need = levelIdx(cond.level);
-      return { met: cur >= need, current: cur, target: need, label: getFacilityLevel(cond.level).name };
+      // Audit 2026-11-17 (G11): done or not ("Aquarium Store 1/2" showed positions in the venue list)
+      const met = levelIdx(state.facility.level) >= levelIdx(cond.level);
+      const name = getFacilityLevel(cond.level).name;
+      return { met, current: met ? 1 : 0, target: 1, label: met ? name : `Move into the ${name}` };
     }
     case 'unlocked': {
       const has = p.unlocked.includes(cond.key);
@@ -482,6 +484,8 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
         n++;
       }
       const what = cond.minGallons ? `${cond.minGallons}+ gal tank` : cond.reef ? 'reef tank' : cond.env ? `${cond.env} tank` : 'tank';
+      // Audit 2026-11-17 (G11): "1 500+ gal tank" read as 1,500 gallons
+      if (cond.minGallons && cond.min === 1) return { met: n >= 1, current: n, target: 1, label: `a ${cond.minGallons}+ gallon tank` };
       return { met: n >= cond.min, current: n, target: cond.min, label: `${cond.min} ${what}${cond.min === 1 ? '' : 's'}` };
     }
     case 'visitors': {
@@ -737,6 +741,24 @@ export function pendingTutorialUnlocks(state: GameState): Set<string> {
   const chain = tutorialStepDefs(state);
   for (let i = Math.max(0, t.step); i < chain.length; i++) for (const k of chain[i].reward?.unlocks ?? []) out.add(k);
   return out;
+}
+
+/**
+ * Audit 2026-11-17 (G1) — the title of the guide step that will hand out `key` while the guide holds it back from its
+ * play rule (null: not held). The guide keeps running with Guide hints off, so locked cards say this themselves.
+ */
+export function tutorialStepGranting(state: GameState, key: string): string | null {
+  const t = state.progress.tutorial;
+  if (t.done || t.skipped || state.progress.unlocked.includes(key)) return null;
+  const chain = tutorialStepDefs(state);
+  for (let i = Math.max(0, t.step); i < chain.length; i++) if ((chain[i].reward?.unlocks ?? []).some((k) => k === key)) return interpolate(state, chain[i].title);
+  return null;
+}
+
+/** Audit 2026-11-17 (G1) — the line a locked card adds while the guide holds `key` (null: not held). */
+export function guideHoldLine(state: GameState, key: string): string | null {
+  const step = tutorialStepGranting(state, key);
+  return step ? `Your guide gives you this at its “${step}” step (see Research › Quests).` : null;
 }
 
 function checkTutorial(state: GameState, cache: CondCache): void {
@@ -1313,6 +1335,8 @@ export interface UnlockProgressView {
   requirements: { label: string; met: boolean; current: number; target: number }[];
   /** Research projects that grant this key. */
   viaResearch: { id: string; name: string }[];
+  /** Audit 2026-11-17 (G1): the guide holds this back until one of its steps; the line saying so (`guideHoldLine`). */
+  guide?: string;
 }
 
 /** Locked keys with how close the player is, nearest first. */
@@ -1325,7 +1349,10 @@ export function unlockProgress(state: GameState): UnlockProgressView[] {
     const rule = UNLOCK_RULE_BY_KEY[key];
     const reqs = (rule?.when ?? []).map((c) => evalCond(state, c, cache));
     const viaResearch = RESEARCH.filter((r) => r.grants.includes(key as never)).map((r) => ({ id: r.id, name: r.name }));
-    const progress = reqs.length ? reqs.reduce((a, s) => a + ratio(s), 0) / reqs.length : 0;
+    const raw = reqs.length ? reqs.reduce((a, s) => a + ratio(s), 0) / reqs.length : 0;
+    // Audit 2026-11-17 (G1): a rule the guide holds back isn't "100%": the guide hands it out, and the card says when
+    const guide = guideHoldLine(state, key);
+    const progress = guide ? Math.min(raw, 0.99) : raw;
     out.push({
       key,
       label: unlockLabel(key),
@@ -1333,6 +1360,7 @@ export function unlockProgress(state: GameState): UnlockProgressView[] {
       progress,
       requirements: reqs.map((s) => ({ label: s.label, met: s.met, current: s.current, target: s.target })),
       viaResearch,
+      ...(guide ? { guide } : {}),
     });
   }
   out.sort((a, b) => b.progress - a.progress);
