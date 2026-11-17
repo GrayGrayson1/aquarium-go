@@ -37,7 +37,10 @@ import { FacilityUpgradeCard } from '@/ui/panels/common/FacilityUpgrade';
 import { beautyScore, decorSellValue } from '@/sim/aquascape';
 import { placedSellValue } from '@/ui/panels/build/BuildPanel';
 import { textureFits } from '@/sim/aquascape/beauty';
-import { getDecorDef } from '@/data/catalog/decor';
+import { getDecorDef, DECOR } from '@/data/catalog/decor';
+import { isCave, isNestSite } from '@/ui/panels/build/decorRoles';
+import { hasCave, hasNestSite } from '@/sim/life/breeding/common';
+import { tankHabitat } from '@/sim/aquascape';
 import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 
@@ -416,5 +419,20 @@ describe('G14: Build’s Sell on a placed piece shows what it pays', () => {
     const def = getDecorDef(inst.defId)!;
     expect(placedSellValue(g, def, inst)).toBe(decorSellValue(def, inst));
     expect(placedSellValue(g, def, inst)).toBe(Math.round(def.price / 2));
+  });
+});
+
+describe('G16: Build says which pieces the breeding rules take as a nest site or a cave', () => {
+  it('a piece shows “Nest site” or “Cave” exactly when, alone in a tank, the breeding rules accept it', () => {
+    const g = game('betta');
+    const t = g.tanks[g.tankOrder[0]];
+    for (const d of DECOR) {
+      if (!d.environments.includes('freshwater') && !d.environments.includes('marine')) continue;
+      t.environment = d.environments.includes('freshwater') ? 'freshwater' : 'marine';
+      t.decor = [{ id: 'd-one', defId: d.id, x: 0, y: 0, z: 0, rotY: 0, scale: 1, seed: 1, health: 90, growth: 0.9 }];
+      const hab = tankHabitat(g, t);
+      expect(isNestSite(d), `${d.id} nest site`).toBe(hasNestSite(t, hab));
+      expect(isCave(d), `${d.id} cave`).toBe(hasCave(t, hab));
+    }
   });
 });
