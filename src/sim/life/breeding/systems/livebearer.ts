@@ -98,8 +98,11 @@ export const livebearerModule: BreedingModule = {
         continue;
       }
       let mated = false;
-      if (activeMale) {
-        r.partnerId = activeMale.id;
+      // audit E8: the male the player paired her with (Start breeding sets partnerId) fathers the brood while he is here
+      // and healthy; otherwise the first healthy male, as before. No draw depends on which one it is.
+      const mate = males.find((m) => m.id === r.partnerId && m.stats.health >= 40) ?? activeMale;
+      if (mate) {
+        r.partnerId = mate.id;
         r.storedBroods = STORED_BROODS;
         mated = true;
       } else if ((r.storedBroods ?? 0) > 0) {
