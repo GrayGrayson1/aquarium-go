@@ -306,3 +306,15 @@ describe('E19: the Move dialog warns before taking a guarding parent off its egg
     expect(moveWarning(d, m.id)).toBeNull();
   });
 });
+
+describe('E24: genotype words a child can read', () => {
+  it('no “het”, “homozygous” or “intermediate” on the card', async () => {
+    const { describeLocus } = await import('@/sim/life/genetics');
+    const sp = getSpecies('betta');
+    const additive = sp.genetics.loci.find((l) => l.mode === 'additive');
+    expect(additive).toBeDefined();
+    const [x, y] = additive!.alleles.map((al) => al.id);
+    expect(describeLocus(additive!, [x, y])).toMatch(/ \+ .* \(a blend of both\)$/);
+    expect(describeLocus(additive!, [y, y])).toMatch(/ ×2 \(two copies: the full look\)$/);
+  });
+});

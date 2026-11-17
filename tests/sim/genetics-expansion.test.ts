@@ -272,8 +272,8 @@ describe('two-copy traits read as hidden in carriers (B-136)', () => {
   it('a yellow/white betta carries opaque white; a crown/double betta carries double tail', () => {
     const color = betta.genetics.loci.find((l) => l.id === 'color')!;
     const fins = betta.genetics.loci.find((l) => l.id === 'fins')!;
-    expect(describeLocus(color, ['yellow', 'white'])).toBe('Non-red yellow · carries opaque white (het)');
-    expect(describeLocus(fins, ['crown', 'double'])).toBe('Crowntail · carries double tail (het)');
+    expect(describeLocus(color, ['yellow', 'white'])).toBe('Non-red yellow · carries opaque white (one hidden copy)');
+    expect(describeLocus(fins, ['crown', 'double'])).toBe('Crowntail · carries double tail (one hidden copy)');
     const g = G({ color: ['yellow', 'white'], pattern: ['solid', 'solid'], fins: ['crown', 'double'] });
     expect(hiddenAlleles(betta, g).map((h) => h.allele).sort()).toEqual(['double', 'white']);
     expect(name(g.alleles)).toBe('Yellow Crowntail Betta');

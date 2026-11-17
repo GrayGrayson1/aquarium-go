@@ -64,6 +64,8 @@ import {
 } from '@/sim/life';
 import { PrismaticBadge, MorphTierBadge, StrainBadge } from '../common/Prismatic'; // lane:genetics
 import { illnessDef } from '@/sim/life/illness'; // lane:guide
+import { moduleFor } from '@/sim/life/breeding/registry'; // audit E21, E24
+import { effectiveRole } from '@/sim/life/breeding/common'; // audit E24
 import { creatureValue } from '@/sim/economy';
 import { speciesWaterComfort } from '@/sim/water';
 import { isUnlocked } from '@/sim/facility';
@@ -362,6 +364,16 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
     return safe('predictOffspringStrains', () => predictOffspringStrains(sp, mom.genome, dad.genome), []).slice(0, 3);
   }, [partner, c.id, game.creatures, sp]); // eslint-disable-line react-hooks/exhaustive-deps
   const partnerC = partner ? game.creatures[partner] : null;
+  // audit E24: odds only for a pair that could breed (not two of one sex, not an anemone that splits alone)
+  const pairBred = safe('moduleFor', () => moduleFor(sp).breedable, false);
+  const sameSex = !!partnerC && sp.sexSystem === 'gonochoristic' && (() => {
+    const ra = safe('effectiveRole', () => effectiveRole(c, sp, game.clock.hour), null);
+    const rb = safe('effectiveRole', () => effectiveRole(partnerC, sp, game.clock.hour), null);
+    return !!ra && ra === rb;
+  })();
+  const showOdds = pairBred && !sameSex;
+  // audit E21: readiness means nothing for an animal that can't breed here, or not yet
+  const showReadiness = pairBred && status?.label !== 'Too young to breed';
   const shimmerParents = (isPrismatic(c) ? 1 : 0) + (isPrismatic(partnerC) ? 1 : 0);
   const shimmerChance = partnerC ? safe('prismaticChanceForPair', () => prismaticChanceForPair(c, partnerC), 0) : 0;
   return (
@@ -379,7 +391,7 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
       ) : (
         <div className="ag-small ag-muted">{c.lifeStage === 'adult' || c.lifeStage === 'elder' ? 'Not currently breeding.' : 'Too young to breed yet.'}</div>
       )}
-      <Meter label="Breeding readiness" value={c.stats.breedingReadiness} tone="auto" display={levelWord(c.stats.breedingReadiness)} />
+      {showReadiness && <Meter label="Breeding readiness" value={c.stats.breedingReadiness} tone="auto" display={levelWord(c.stats.breedingReadiness)} />}
       {/* lane:guide — say why there is nothing to pick instead of showing nothing */}
       {candidates.length === 0 && sp.breeding.system !== 'not_in_game' && sp.breeding.conditions.needsPartner && (c.lifeStage === 'adult' || c.lifeStage === 'elder') && (
         <div className="ag-small ag-muted">Breeding needs a partner, and you have no other {sp.commonName.toLowerCase()}. New animals turn up in the Market.</div>
@@ -407,16 +419,16 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
                 </ul>
               )}
               {check.nextStep && <div className="ag-reason__fix">Next step: {check.nextStep}</div>}
-              {odds.length > 0 && (
+              {showOdds && odds.length > 0 && (
                 <div className="ag-odds" aria-label="Likely offspring">
                   <div className="ag-odds__title">Likely offspring</div>
                   {odds.map((o) => (
                     <div key={o.morphName} className="ag-odds__row">
                       <span className="ag-grow">{safe('morphDisplayName', () => morphDisplayName(sp, o.morphName), o.morphName)}</span>
                       <span className="ag-odds__bar" aria-hidden>
-                        <i style={{ width: `${Math.round(o.chance * 100)}%` }} />
+                        <i style={{ width: `${Math.max(2, Math.round(o.chance * 100))}%` }} />
                       </span>
-                      <span className="ag-tabular ag-odds__pct">{Math.round(o.chance * 100)}%</span>
+                      <span className="ag-tabular ag-odds__pct">{oddsPct(o.chance)}</span>
                     </div>
                   ))}
                   {strainOdds.length > 0 && (
@@ -709,7 +721,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
             </div>
           )
         ) : (
-          <div className="ag-small ag-muted">Precise genetics unlock with the genetics lab.</div>
+          <div className="ag-small ag-muted">Precise genetics unlock with the Genetics Lab (Research › Breeding, needs 60 breeding mastery).</div>
         )}
       </Section>
 

@@ -575,24 +575,27 @@ function alleleName(locus: LocusDefinition, id: string): string {
   return alleleDef(locus, id)?.name ?? id;
 }
 
-/** Plain-language genotype for one locus, e.g. "Pigmented · carries leucistic (het)". */
+/**
+ * Plain-language genotype for one locus, e.g. "Pigmented · carries leucistic (one hidden copy)". audit E24: plain words
+ * ("one hidden copy", "two copies", "a blend") for het, homozygous, codominant and intermediate.
+ */
 export function describeLocus(locus: LocusDefinition, pair: [string, string]): string {
   const [a, b] = pair;
   const na = alleleName(locus, a);
   const nb = alleleName(locus, b);
   if (locus.mode === 'mendelian') {
-    if (a === b) return `${na} (homozygous)`;
+    if (a === b) return `${na} (two copies)`;
     const shown = expressedAlleles(locus, pair);
-    if (shown.length === 2) return `${na} / ${nb} (both expressed)`;
+    if (shown.length === 2) return `${na} / ${nb} (both show)`;
     const hidden = shown[0] === a ? nb : na;
-    return `${alleleName(locus, shown[0])} · carries ${hidden.toLowerCase()} (het)`;
+    return `${alleleName(locus, shown[0])} · carries ${hidden.toLowerCase()} (one hidden copy)`;
   }
   if (locus.mode === 'codominant') {
-    if (a === b) return `${na} ×2 (homozygous)`;
-    return `${na} / ${nb} (het — one copy each)`;
+    if (a === b) return `${na} ×2 (two copies)`;
+    return `${na} / ${nb} (one copy each, both show)`;
   }
-  if (a === b) return `${na} ×2 (full expression)`;
-  return `${na} + ${nb} (intermediate)`;
+  if (a === b) return `${na} ×2 (two copies: the full look)`;
+  return `${na} + ${nb} (a blend of both)`;
 }
 
 /** What the player can see about genetics at a reveal level (0 = bands only, 1 = full alleles). */
