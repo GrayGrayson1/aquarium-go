@@ -95,9 +95,13 @@ export function Rooms({ g, onOpen }: { g: GameState; onOpen: (r: RoomId) => void
       </div>
       {row('water', 'Water room', <Droplets size={17} aria-hidden />, !!water, isHeld(g, 'water') || isHeld(g, 'salt') ? <Status tone="watch">Held</Status> : <Status tone="good">Running</Status>)}
       {row('food', 'Live food room', <Egg size={17} aria-hidden />, !!food, isHeld(g, 'food') ? <Status tone="watch">Held</Status> : <Status tone="good">Running</Status>)}
-      <button type="button" className="pn-link" onClick={() => toOps('overview')}>
-        Buy and upgrade machines here. Operations runs them day to day. <ChevronRight size={14} aria-hidden />
-      </button>
+      {/* Audit 2026-11-17 (G26): only the part that leaves Build is the link (the whole line read as "buy here") */}
+      <div className="pn-small pn-muted">
+        Buy and upgrade machines here.{' '}
+        <button type="button" className="pn-link" onClick={() => toOps('overview')} data-testid="rooms-to-operations">
+          Operations runs them day to day <ChevronRight size={14} aria-hidden />
+        </button>
+      </div>
     </div>
   );
 }

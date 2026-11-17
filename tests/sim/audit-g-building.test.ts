@@ -24,6 +24,7 @@ import { decorWaterNote } from '@/ui/panels/build/decorWater';
 import { WATER_CLASS_BLURB } from '@/ui/panels/common/format';
 import { tankAttention, tankAttentionLevel } from '@/ui/common/notify';
 import { tierLadder } from '@/ui/common/ops';
+import { Rooms } from '@/ui/panels/build/FacilityRooms';
 import { RESEARCH_BY_ID } from '@/data/research';
 import { applyCommand } from '@/sim/commands';
 import { removeEquipment } from '@/sim/care';
@@ -514,5 +515,14 @@ describe('G25: a big tank’s kit never ships more units of a kind than a tank m
         }
         for (const [k, n] of kinds) expect(n, `${tier.id} ${wc} ${k}`).toBeLessThanOrEqual(MAX_PER_KIND[k] ?? 6);
       }
+  });
+});
+
+describe('G26: only the part of the Rooms line that leaves Build is a link', () => {
+  it('“Buy and upgrade machines here.” is text; “Operations runs them day to day” is the link', () => {
+    const g = game('betta');
+    use(g);
+    const html = renderToStaticMarkup(createElement(Rooms, { g, onOpen: () => {} }));
+    expect(html).toMatch(/Buy and upgrade machines here\. <button[^>]*data-testid="rooms-to-operations"[^>]*>Operations runs them day to day/);
   });
 });
