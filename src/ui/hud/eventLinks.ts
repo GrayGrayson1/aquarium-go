@@ -54,6 +54,12 @@ export const SHOW_RESULT_TEXT = /The judge’s cards (are in Shows|explain why)\
 
 const RESULTS: EventLink = { panel: 'shows', target: 'tab:results', where: '', label: 'See results' };
 
+/**
+ * Audit 2026-11-17 (F2) — money news opens Finances, where the ways to raise cash are: the midnight debt warning, "Cash
+ * is getting low", the club's loans and their repayment, an empty room money won't restock, and back in the black.
+ */
+export const MONEY_NEWS = /in the red after today's bills|^Cash is getting low|lent you (another )?\S+, interest-free|^Loan repaid in full|won't restock (them|it)\.|^You're back in the black/;
+
 /** The panel a log event opens, or null (tank / creature links are handled by the caller). */
 export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId' | 'offerId'>): EventLink | null {
   const text = e.text ?? '';
@@ -68,5 +74,6 @@ export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId' | 'of
   // lane:notify (chunk 3, NOTIFY-004) — a Prismatic or special stocked opens its offer (the shop says if it has gone)
   if (typeof e.offerId === 'string' && e.offerId) return { panel: 'market', target: `offer:${e.offerId}`, where: '', label: 'Open the shop' };
   if (/^New arrivals at the shop:|^Market special:/.test(text)) return { panel: 'market', target: 'tab:shop', where: '', label: 'Open the shop' };
+  if (MONEY_NEWS.test(text)) return { panel: 'finances', target: null, where: '', label: 'Open Finances' }; // audit 2026-11-17 (F2)
   return null;
 }

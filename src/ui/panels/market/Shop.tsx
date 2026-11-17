@@ -645,6 +645,12 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
               {offer.kind === 'group' ? `${groupPriceNote(chosen.length, offer.creatures.length, unitPrice, price)} · ` : ''}
               {afford ? `${formatMoney(g.finance.money - price)} left after` : `You need ${formatMoney(price - g.finance.money)} more`}
             </span>
+            {!afford && !locked && (
+              // audit 2026-11-17 (F2) — short of the price: where the ways to raise cash are
+              <button type="button" className="pn-link pn-tiny" data-testid="offer-raise-cash" onClick={() => useUI.getState().set({ panel: 'finances', panelTarget: null })}>
+                Ways to raise cash
+              </button>
+            )}
           </div>
           {!phone && fitBadge}
           {state.action === 'build' ? (

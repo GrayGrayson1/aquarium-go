@@ -296,6 +296,7 @@ function runMidnight(state: GameState, endedDay0: number, end: number): void {
     emitEvent(state, {
       kind: 'tip',
       text: `Cash is getting low: ${fmtMoney(f.money)} covers about ${days} day${days === 1 ? '' : 's'} of running costs (${fmtMoney(ahead.total)}/day).`,
+      toast: true, // audit 2026-11-17 (F2): the first word of money trouble, before the red, not only in the log
     });
     f.lastWarnHour = state.clock.hour;
   }

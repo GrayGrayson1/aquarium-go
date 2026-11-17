@@ -12,6 +12,12 @@ import { useGame } from '@/state/game';
 import { refreshFoodStatus } from '@/sim/tankStatus';
 import { SuppliesTab } from '@/ui/panels/market/Supplies';
 import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas } from '@/ui/common/moneyShort';
+import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
+import { eventLink } from '@/ui/hud/eventLinks';
+import { devStepEconomy } from '@/sim/economy';
+import { AQUARIUM_CLUB } from '@/data/buyers';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 
@@ -75,5 +81,49 @@ describe('F1: a greyed "Buy" says why, and how to raise the money', () => {
     // with enough for that pack, nothing to say
     g.finance.money = h!.price;
     expect(hungryAndShort(g)).toBeNull();
+  });
+});
+
+describe('F2: money trouble leads to Finances', () => {
+  const toMidnight = (g: GameState) => 24 - (g.clock.hour % 24) + 0.25;
+
+  it('the midnight debt warning and "Cash is getting low" open Finances (and the low-cash tip is a toast)', () => {
+    const g = game(-20);
+    devStepEconomy(g, toMidnight(g), { finance: true });
+    const red = g.log.find((e) => /in the red after today's bills/.test(e.text))!;
+    expect(red.toast).toBe(true);
+    expect(eventLink(red)).toMatchObject({ panel: 'finances', label: 'Open Finances' });
+
+    const h = game(1.5);
+    h.finance.lastWarnHour = -999;
+    devStepEconomy(h, toMidnight(h), { finance: true });
+    const low = h.log.find((e) => /^Cash is getting low/.test(e.text))!;
+    expect(low).toBeDefined();
+    expect(low.toast).toBe(true);
+    expect(eventLink(low)).toMatchObject({ panel: 'finances' });
+  });
+
+  it('the club’s loans, a room money won’t restock and back in the black open Finances too', () => {
+    for (const text of [
+      `Good news: ${AQUARIUM_CLUB} heard you were struggling and lent you $140, interest-free. It is repaid automatically.`,
+      `${AQUARIUM_CLUB} would rather see your room full than quiet: they've lent you another $1,230, interest-free, to start again.`,
+      `Loan repaid in full — ${AQUARIUM_CLUB} sends their thanks and a round of applause.`,
+      `Your tanks are empty and $4 won't restock them. If that's still true tomorrow, ${AQUARIUM_CLUB} will lend you enough to start again.`,
+      `You're back in the black with $12. Purchases are available again.`,
+    ])
+      expect(eventLink({ kind: 'info', text }), text).toMatchObject({ panel: 'finances' });
+    // the sim still writes the phrases the link looks for (update MONEY_NEWS if this copy changes)
+    const src = readFileSync(fileURLToPath(new URL('../../src/sim/economy/finance.ts', import.meta.url)), 'utf8');
+    for (const phrase of ["in the red after today's bills", 'Cash is getting low:', ', interest-free', 'Loan repaid in full', "won't restock ${", "You're back in the black"]) expect(src).toContain(phrase);
+    expect(eventLink({ kind: 'info', text: 'Pip blew a bubble nest.' })).toBeNull();
+  });
+
+  it('Finances’ ways to raise cash are links to where each happens', () => {
+    const g = game(-30);
+    g.progress.unlocked.push('market_listings');
+    const out = renderToStaticMarkup(createElement(FinancesPanel));
+    expect(out).toContain('data-testid="finance-idea-list_animal"');
+    expect(out).toContain('data-testid="finance-idea-go-list_animal"');
+    expect(text(out)).toContain('New listing');
   });
 });

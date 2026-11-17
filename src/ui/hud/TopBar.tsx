@@ -107,7 +107,19 @@ function MoneyPill({ compact }: { compact?: boolean }) {
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
   const debt = money < 0;
   return (
-    <div className={clsx('ag-hudpill ag-money-pill', debt && 'is-debt')} data-testid="hud-money" aria-label={`Money ${formatMoney(money)}`} title={formatMoney(money)} data-tutorial-id="hud-money">
+    // audit 2026-11-17 (F2) — the money pill opens Finances (in the red, it is where the ways to raise cash are)
+    <button
+      type="button"
+      className={clsx('ag-hudpill ag-money-pill', debt && 'is-debt')}
+      data-testid="hud-money"
+      aria-label={`Money ${formatMoney(money)}. Open Finances`}
+      title={formatMoney(money)}
+      data-tutorial-id="hud-money"
+      onClick={() => {
+        sfx('open');
+        useUI.getState().set({ panel: 'finances', panelTarget: null });
+      }}
+    >
       <span className="ag-money-pill__coin" aria-hidden>$</span>
       <span className="ag-money-pill__val">
         <AnimatedMoney value={money} short={compact} />
@@ -126,7 +138,7 @@ function MoneyPill({ compact }: { compact?: boolean }) {
           </motion.span>
         ))}
       </AnimatePresence>
-    </div>
+    </button>
   );
 }
 

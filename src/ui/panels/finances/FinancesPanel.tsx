@@ -4,10 +4,10 @@
  */
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Wallet, TrendingUp, TrendingDown, Receipt, Gauge, TriangleAlert, HandCoins, Lightbulb, Landmark, Layers, Building2, Users } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Receipt, Gauge, TriangleAlert, HandCoins, Lightbulb, Landmark, Layers, Building2, Users, ChevronRight } from 'lucide-react';
 import type { LedgerEntry } from '@/types';
 import { Money, formatMoney } from '@/ui/kit';
-import { dailyOperatingCost, cashSuggestions, restartNeed, LOAN_AFTER_DEBT_HOURS, type OperatingCosts } from '@/sim/economy';
+import { dailyOperatingCost, cashIdeas, restartNeed, LOAN_AFTER_DEBT_HOURS, type OperatingCosts, type CashIdea } from '@/sim/economy';
 import { PanelLayout } from '../common/PanelLayout';
 import { usePanelGame, safe } from '../common/hooks';
 import { Chip, Seg, EmptyState, SectionHead, Callout, Bar } from '../common/parts';
@@ -15,6 +15,7 @@ import { IncomeChart, type DayPoint } from './IncomeChart';
 import { orderedTanks, dailyCost } from '../common/derive';
 import { LEDGER_LABEL, dayOfHour, relTime, formatSpan } from '../common/format';
 import { needsCashIdeas } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F1)
+import { useUI, type PanelId } from '@/state/ui'; // audit 2026-11-17 (F2)
 
 type LedgerFilter = 'all' | 'income' | 'expenses';
 
@@ -69,7 +70,7 @@ export function FinancesPanel() {
   const loan = g.finance.loan;
   const runway = data.ops.total > 0 ? money / data.ops.total : Infinity;
   // audit 2026-11-17 (F1) — also when money stands between the animals and their food (Supplies' "Ways to raise cash")
-  const tips = inDebt || runway < 3 || safe(() => needsCashIdeas(g), false) ? safe(() => cashSuggestions(g), []) : [];
+  const tips = inDebt || runway < 3 || safe(() => needsCashIdeas(g), false) ? safe(() => cashIdeas(g), []) : [];
   // lane:fix-integrate-ui — an empty room the player can't restock: the club lends a restart at its second midnight
   // (the first one only notes it), so say which midnight (P5-08)
   const stranded = safe(() => restartNeed(g), null);
@@ -133,9 +134,24 @@ export function FinancesPanel() {
           <div className="pn-card pn-advice">
             <SectionHead title="Ways to raise cash" icon={<Lightbulb size={14} />} />
             <ul>
-              {tips.map((t, i) => (
-                <li key={i}>{t}</li>
-              ))}
+              {tips.map((t, i) => {
+                // audit 2026-11-17 (F2) — each idea goes where it happens
+                const to = CASH_IDEA_LINK[t.kind];
+                const target = to && (t.kind === 'quick_sell' || t.kind === 'starter') && t.creatureId ? `sell:${t.creatureId}` : (to?.target ?? null);
+                return (
+                  <li key={i} data-testid={`finance-idea-${t.kind}`}>
+                    {t.text}
+                    {to && (
+                      <>
+                        {' '}
+                        <button type="button" className="pn-link" data-testid={`finance-idea-go-${t.kind}`} onClick={() => useUI.getState().set({ panel: to.panel, panelTarget: target })}>
+                          {to.label} <ChevronRight size={12} aria-hidden style={{ verticalAlign: '-2px' }} />
+                        </button>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -260,6 +276,18 @@ export function FinancesPanel() {
     </PanelLayout>
   );
 }
+
+/** Audit 2026-11-17 (F2) — where each way to raise cash is done (a quick sale opens that animal's quick-sell dialog). */
+const CASH_IDEA_LINK: Partial<Record<CashIdea['kind'], { panel: PanelId; target: string | null; label: string }>> = {
+  quick_sell: { panel: 'livestock', target: null, label: 'Quick sell' },
+  starter: { panel: 'livestock', target: null, label: 'Quick sell' },
+  list_animal: { panel: 'market', target: 'list', label: 'New listing' },
+  list_tank: { panel: 'market', target: 'list:tank', label: 'New listing' },
+  visitors: { panel: 'visitors', target: 'tab:visitors', label: 'Open Visitors' },
+  empty_tank: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' },
+  trim: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' },
+  open_market: { panel: 'market', target: 'tab:shop', label: 'Open the Market' },
+};
 
 /** lane:staff — ledger categories plus the 'wages' breakdown line (operating entries whose memo starts "Wages"). */
 type CatKey = LedgerEntry['category'] | 'wages';
