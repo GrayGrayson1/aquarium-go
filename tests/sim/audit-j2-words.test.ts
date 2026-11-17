@@ -115,3 +115,15 @@ describe('Audit 2026-11-17 (J27): lines say what you got, and promise nothing th
     expect(reqs.join(' ')).not.toContain('past it');
   });
 });
+
+describe('Audit 2026-11-17 (J29): a shared link previews with a description', () => {
+  it('index.html has a one-sentence description and the matching Open Graph tags', () => {
+    const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+    const meta = (attr: string, key: string) => new RegExp(`<meta ${attr}="${key}" content="([^"]*)" />`).exec(html)?.[1];
+    const d = 'A living aquarium game where every animal is an individual: raise remarkable creatures and build living worlds.';
+    expect(meta('name', 'description')).toBe(d);
+    expect(meta('property', 'og:description')).toBe(d);
+    expect(meta('property', 'og:title')).toBe('Aquarium Go');
+    expect(meta('property', 'og:type')).toBe('website');
+  });
+});
