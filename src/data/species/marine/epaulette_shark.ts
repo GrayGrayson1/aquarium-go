@@ -151,7 +151,7 @@ export const epauletteShark: SpeciesDefinition = {
     summary: 'The walking shark: a slim, cream-gold shark with a big black “epaulette” spot on each shoulder that walks over sand and rock on its paddle-shaped fins.',
     nativeHabitat: 'Shallow reef flats and tide pools of the Great Barrier Reef, where it walks between pools at low tide.',
     socialStructure: 'Lives alone or in a pair; mature males fight.',
-    tankNeeds: 'A 500-gallon tank (three feet front to back), deep fine sand, ledges to rest under, rock set on the glass, a tight lid and strong filtration. Never copper or most medicines: quarantine every tankmate first.',
+    tankNeeds: 'A 500-gallon tank (three feet front to back), deep fine sand, ledges to rest under, rock set on the glass, a tight lid and strong filtration. Never copper or most medicines: quarantine every tank mate first.',
     compatibilityNotes: 'Eats crabs, shrimp, worms, small snails and sleeping small fish. Good with tangs and peaceful mid-water fish; never triggerfish, puffers, large angelfish or groupers.',
     breedingOverview: 'Breeds in aquariums: a female lays two egg cases every two to three weeks, tied to rock. Each hatches after about four months as a 15 cm banded pup. A female without a male lays empty cases.',
     conservationNote: 'Least Concern (IUCN 2015); captive-bred pups are sold.',

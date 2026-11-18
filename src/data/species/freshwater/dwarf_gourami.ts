@@ -172,7 +172,7 @@ export const dwarfGourami: SpeciesDefinition = {
   confidenceNotes: [
     'Its scientific name is disputed: Catalog of Fishes and FishBase have treated it as Trichogaster fasciata since 2022, others keep T. lalius; the game uses T. lalius.',
     'Colour-form inheritance is unpublished; the ladder is a playable simplification.',
-    'Sources disagree on shrimp: Seriously Fish lists cherry shrimp as tankmates, Aquarium Co-Op says it eats them; the game says caution.',
+    'Sources disagree on shrimp: Seriously Fish lists cherry shrimp as tank mates, Aquarium Co-Op says it eats them; the game says caution.',
     'Lifespan: 2–4 years (Aquarium Co-Op) against 4–6 (Wikipedia).',
   ],
   exceptionRules: [

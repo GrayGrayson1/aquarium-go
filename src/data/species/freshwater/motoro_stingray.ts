@@ -175,7 +175,7 @@ export const motoroStingray: SpeciesDefinition = {
   exceptionRules: [
     { other: 'tag:pleco', verdictFloor: 'high_risk', reason: 'Suckermouth catfish latch onto a ray’s disc and rasp it raw.', incidentRisk: 0.15 },
     { other: 'discus', verdictFloor: 'conditional', reason: 'Some keepers lose discus to rays at night, and discus want warmer water.', incidentRisk: 0.05, mitigatedBy: ['tank_size'] },
-    { other: 'fahaka_puffer', verdictFloor: 'incompatible', reason: 'A fahaka bites chunks out of tankmates, and a ray resting on the floor can’t escape.', incidentRisk: 0.4 },
+    { other: 'fahaka_puffer', verdictFloor: 'incompatible', reason: 'A fahaka bites chunks out of tank mates, and a ray resting on the floor can’t escape.', incidentRisk: 0.4 },
     { other: 'tag:fish_small', verdictFloor: 'incompatible', reason: 'Rays hunt small fish on and near the bottom, mostly at night.', incidentRisk: 0.3 },
     // the small bottom fish (the research's row): its natural prey
     ...['panda_corydoras', 'kuhli_loach', 'otocinclus', 'hillstream_loach'].map((other) => ({ other, verdictFloor: 'high_risk' as const, reason: 'Bottom fish are its natural prey.', incidentRisk: 0.2, mitigatedBy: ['hides' as const] })),
