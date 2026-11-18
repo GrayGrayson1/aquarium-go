@@ -11,7 +11,8 @@ import { useGame } from '@/state/game';
 import { opsSnapshot } from '@/ui/common/ops';
 import { ProblemsView } from '@/ui/panels/operations/Problems';
 import { dayOf } from '@/sim/time';
-import { QUARANTINE_HOURS } from '@/sim/production';
+import { QUARANTINE_HOURS, quarantineBusyUntil, restartDay } from '@/sim/production';
+import { lineView } from '@/sim/production/view';
 import { facility } from './support/automation';
 import { automationProblems, saltCap, upgradePrep, waterRoom } from '@/sim/automation';
 import { issueViews } from '@/ui/panels/operations/issues';
@@ -76,6 +77,52 @@ describe('Audit 2026-11-17 (H1): a line held up by a quarantine tank full of uns
     html = render();
     expect(html).toContain('Quarantine · full');
     expect(html).not.toContain('Resumes Day');
+  });
+});
+
+describe('Audit 2026-11-17 (H1 second review): a line waiting on an unwell animal past its hold', () => {
+  it('promises no day that has passed: it names the animal, says nothing of restarting by itself, and offers no Wait', () => {
+    const { g, lineId, tanks } = lineFarm(17);
+    g.progress.unlocked.push('operations_desk');
+    const line = g.production!.lines.find((l) => l.id === lineId)!;
+    const rng = simRng(g);
+    const kid = (name: string) => addCreature(g, createCreature(g, rng, 'betta', { ageDays: 8, name, motherId: line.pair.motherId, fatherId: line.pair.fatherId }), tanks.qt.id);
+    const sick = kid('Couture');
+    const well = kid('Velvet');
+    sick.illness = { kind: 'fin_rot', severity: 50, sinceHour: g.clock.hour } as never;
+    sick.stats.health = 30;
+    g.clock.hour = 24 * 8 + 10; // Day 9, 10 AM: the batch's hold ended on Day 8
+    line.batches = [
+      { id: 'b1', creatureIds: [sick.id, well.id], sortedHour: 24 * 0, tankId: tanks.qt.id, quarantinedHour: 24 * 7 - 168 + 20 },
+      { id: 'b2', creatureIds: [], sortedHour: g.clock.hour - 1 },
+    ];
+    line.waiting = true;
+    expect(quarantineBusyUntil(g, tanks.qt.id)).toBeLessThan(g.clock.hour); // still held, an hour past
+    expect(restartDay(g, line)).toBeNull(); // it was 8
+    expect(lineView(g, line)!.next.waitsOn?.id).toBe(sick.id);
+    expect(automationProblems(g).find((p) => p.kind === 'line')).toMatchObject({ restartDay: null });
+    useGame.setState({ game: g });
+    const html = text(renderToStaticMarkup(createElement(ProblemsView, { g, snap: opsSnapshot(g), nav: { tab: () => {}, view: () => {} } })));
+    expect(html).toContain('Quarantine’s batch waits until Couture is well, or until you move Couture out. No animals are lost.');
+    expect(html).toContain('Quarantine · busy waits until Couture is well, or until you move Couture out');
+    expect(html).not.toContain('restarts by itself');
+    expect(html).not.toMatch(/until Day \d|Wait · resumes Day|Resumes Day/);
+    // well again: the tank's batch lists, and a day can be promised once more (here: today, the tank free)
+    delete sick.illness;
+    sick.stats.health = 95;
+    expect(lineView(g, line)!.next.waitsOn).toBeUndefined();
+  });
+
+  it('a relisted batch taken off sale for an unwell animal keeps its quarantine tank while it waits on it', () => {
+    const { g, lineId, tanks } = lineFarm(17);
+    const line = g.production!.lines.find((l) => l.id === lineId)!;
+    const sick = addCreature(g, createCreature(g, simRng(g), 'betta', { ageDays: 8, motherId: line.pair.motherId, fatherId: line.pair.fatherId }), tanks.qt.id);
+    sick.illness = { kind: 'fin_rot', severity: 50, sinceHour: g.clock.hour } as never;
+    line.batches = [{ id: 'b1', creatureIds: [sick.id], sortedHour: 0, tankId: tanks.qt.id, quarantinedHour: g.clock.hour - 200, relists: 2 }];
+    expect(quarantineBusyUntil(g, tanks.qt.id)).not.toBeNull(); // it was free: the next batch moved in beside the sick one
+    delete sick.illness;
+    sick.stats.health = 95;
+    expect(quarantineBusyUntil(g, tanks.qt.id)).toBeNull(); // well: a relisting batch has done its hold
   });
 });
 

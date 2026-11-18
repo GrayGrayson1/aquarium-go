@@ -254,10 +254,14 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
   const m = g.creatures[line.pair.motherId];
   const f = g.creatures[line.pair.fatherId];
   const places = v.raising.places;
-  const busy = line.tanks.quarantine.map((id) => ({ id, until: quarantineBusyUntil(g, id) })).filter((q) => q.until !== null);
+  // busy to a day ahead; a tank held past its hold (waiting on an unwell animal) promises no day (H1 second review)
+  const busy = line.tanks.quarantine.map((id) => ({ id, until: quarantineBusyUntil(g, id) })).filter((q) => q.until !== null && q.until > g.clock.hour + 1e-9);
+  const heldId = line.tanks.quarantine.find((id) => { const u = quarantineBusyUntil(g, id); return u !== null && u <= g.clock.hour + 1e-9; });
   // Audit 2026-11-17 (H1): a free quarantine tank with no room promises no day
   const full = p.restartDay === null ? v.next.fullTank ?? v.quarantined.fullTank : undefined;
-  const qt = busy[0] ? g.tanks[busy[0].id] : full ?? v.quarantine;
+  const sick = p.restartDay === null ? v.next.waitsOn ?? v.quarantined.waitsOn : undefined;
+  const held = p.restartDay === null && !full && heldId ? g.tanks[heldId] : undefined;
+  const qt = busy[0] ? g.tanks[busy[0].id] : full ?? held ?? v.quarantine;
   const busyLine = busy[0] ? productionLines(g).find((l) => (l.batches ?? []).some((b) => b.tankId === busy[0].id && !b.released && b.quarantinedHour !== undefined)) : undefined;
   const kit = quarantineKit(g, line.id);
   return (
@@ -269,7 +273,9 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
           ? v.quarantined.unsold > 0
             ? `${full.name} is full of unsold young from an earlier batch: sell or move them, or add a quarantine tank.`
             : `${full.name} has no room for the next batch: move some animals out, or add a quarantine tank.`
-          : 'No animals are lost; the line restarts by itself.'}
+          : sick
+            ? `${qt?.name ?? 'The quarantine tank'}’s batch waits until ${sick.name} is well, or until you move ${sick.name} out. No animals are lost.`
+            : 'No animals are lost; the line restarts by itself.'}
       </span>
       <div className="ops-chain">
         <div className="ops-chain__step ops-chain__step--good">
@@ -296,15 +302,19 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
             <div className="ops-chain__arrow">
               <ArrowDown size={12} aria-hidden /> then waits for
             </div>
-            <div className={`ops-chain__step ${busy.length || full ? 'ops-chain__step--watch' : 'ops-chain__step--good'}`}>
+            <div className={`ops-chain__step ${busy.length || full || held ? 'ops-chain__step--watch' : 'ops-chain__step--good'}`}>
               <ShieldCheck size={15} aria-hidden />
               <div className="ops-row__main">
                 <span className="ops-row__title">
-                  {qt.name} · {busy.length ? 'busy' : full ? 'full' : 'ready'}
+                  {qt.name} · {busy.length || held ? 'busy' : full ? 'full' : 'ready'}
                 </span>
                 <span className="ops-row__sub">
                   {busy.length
                     ? `${busyLine?.name ?? line.name} until Day ${dayOf(busy[0].until!)}`
+                    : held
+                      ? sick
+                        ? `waits until ${sick.name} is well, or until you move ${sick.name} out`
+                        : 'still holds the last batch'
                     : full
                       ? v.quarantined.unsold > 0
                         ? `${v.quarantined.unsold} unsold · waits until it has room`
@@ -352,6 +362,7 @@ function WhyLineStops({ g, lineId }: { g: GameState; lineId: string }) {
   const now = g.clock.hour;
   const busy = line.tanks.quarantine.map((id) => ({ id, until: quarantineBusyUntil(g, id) })).filter((q): q is { id: string; until: number } => q.until !== null);
   if (!busy.length || line.tanks.quarantine.some((id) => quarantineBusyUntil(g, id) === null)) return null;
+  if (busy.some((q) => q.until <= now + 1e-9)) return null; // held past its hold: no day to weigh (H1 second review)
   const until = Math.min(...busy.map((q) => q.until));
   const qt = g.tanks[busy.find((q) => q.until === until)!.id];
   // the juveniles are ready for quarantine now (a sorted batch waits) or when the brood in the grow-out tank is sorted

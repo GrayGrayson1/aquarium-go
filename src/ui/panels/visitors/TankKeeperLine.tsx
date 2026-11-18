@@ -6,7 +6,7 @@ import type { GameState, Tank } from '@/types';
 import { useUI } from '@/state/ui';
 import { skillStars } from '@/data/staff';
 import { keeperOf, mealsPerDay } from '@/sim/staff';
-import { doserOf, isHeld } from '@/sim/automation';
+import { doserOf, doserShortWords, isHeld } from '@/sim/automation';
 import { StaffAvatar } from './StaffAvatar';
 import './staff.css';
 
@@ -29,6 +29,12 @@ export function TankKeeperLine({ game, tank }: { game: GameState; tank: Tank }) 
   const often = meals === 4 ? 'four times a day (small meals for fast-metabolism fish)' : meals === 3 ? 'three times a day (a late snack for fast-metabolism fish)' : 'twice a day';
   // Audit 2026-11-17 (H2): a nursery of fry only — the keeper gives them their first foods
   const fryOnly = !Object.values(game.creatures).some((c) => c.tankId === tank.id && (c.status === 'alive' || c.status === 'listed')) && Object.values(game.clutches).some((cl) => cl.tankId === tank.id && cl.count > 0);
+  let doserFoodShort: string | null = null;
+  try {
+    doserFoodShort = fryOnly ? doserShortWords(game, tank) : null;
+  } catch {
+    doserFoodShort = null;
+  }
   return (
     <button
       type="button"
@@ -37,7 +43,9 @@ export function TankKeeperLine({ game, tank }: { game: GameState; tank: Tank }) 
       title={
         fryOnly
           ? doserOf(tank) && !isHeld(game, 'food')
-            ? `${firstName} keeps the water clean; the live-food doser feeds the fry. Open Staff` // a working doser: the keeper leaves the fry to it (H1 review)
+            ? doserFoodShort
+              ? `${firstName} keeps the water clean; the live-food doser has no ${doserFoodShort} in stock, so the fry go hungry. Open Staff` // as the Feed tab says (second review)
+              : `${firstName} keeps the water clean; the live-food doser feeds the fry. Open Staff` // a working doser: the keeper leaves the fry to it (H1 review)
             : `${firstName} feeds the fry their first foods and keeps the water clean. Open Staff`
           : `${keeper.name} feeds this tank ${often} and keeps its water clean. Open Staff`
       }
