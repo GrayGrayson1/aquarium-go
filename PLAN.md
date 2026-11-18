@@ -57,20 +57,24 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    spotlight and tour. **Done and released as 0.9.2** (2026-11-02; the owner approved the words and asked for the
    release: "Yeah go ahead and make sure this is on GitHub, everything's updated, and it's on Render"; "Releases").
    **Next:** B-231's small notes; B-228 to B-230.
-4. **Released:** 0.9.2 (chunk 19, quality of life) on 2026-11-02; 0.9.1 (chunk 18, the owner's deletes) on 2026-11-01; 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+4. **Released:** 0.10.0 (chunk 20, the audit of 2026-11-17) on 2026-11-17; 0.9.2 (chunk 19, quality of life) on 2026-11-02; 0.9.1 (chunk 18, the owner's deletes) on 2026-11-01; 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-5. Every owner question is answered (ADR-0024 to ADR-0049) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
-   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
+5. Every owner question is answered (ADR-0024 to ADR-0056) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005), and group M, the 41 decisions
+   the audit of 2026-11-17 left as they were (each row says what the game does today). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
-6. **The audit of 2026-11-11** (the owner: "Do a full audit … find all issues, and just fix them") is on the branch
-   `audit/2026-11-11`, eleven commits from `next` at `582e640`, **not on `next`**: it was done from a cloud
-   sandbox that could run the typecheck and the unit tests (281 files, 4,269 tests, on a stand-in toolchain) but not
-   `npm run build` or `npm run e2e`. Its brief, "Audit, 2026-11-11" below, has what it fixed (B-210, B-165, B-181,
-   B-183, B-125, three parts of B-121, the shop server's meters, the Pages workflow's actions, unused imports), what
-   it left for the owner (dependency upgrades first among them) and the one line that runs the four checks on it.
-   **Next:** run that line on the Mac; if all four pass, fast-forward `next` to the branch and push `next`.
+6. **The audit of 2026-11-11** (the owner: "Do a full audit … find all issues, and just fix them") was done from a
+   cloud sandbox that could not run `npm run build` or `npm run e2e`. On 2026-11-17 its branch `audit/2026-11-11`
+   passed typecheck, the unit tests (281 files, 4,269) and the build on the Mac, and `next` was fast-forwarded to it:
+   it is part of 0.10.0. Its brief, "Audit, 2026-11-11" below, has what it fixed and what it left for the owner
+   (dependency upgrades first among them).
+7. **The audit of 2026-11-17 is done and released as 0.10.0** (chunk 20 below; ADR-0056, the owner's request and his
+   ten answers): 257 findings from ten auditors, fixed by area, reviewed, the reviews' blockers fixed and reviewed
+   again. **Next:** a problem the owner reports; a line of `docs/agent/design/CHUNK-20/WORDS.md` he wants changed
+   (every new or changed line is there); his answers to group M; BACKLOG B-232 (what the round left open).
+   `docs/agent/SESSION_HANDOFF.md` has the order of work.
 
 ## Status
 
@@ -96,9 +100,14 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 17 | Big-tank species, and no animal in the shop before its tank (ADR-0053) | Brief and design written 2026-10-30 (Marshall, at the owner's request; `docs/agent/design/CHUNK-17/BIG-TANKS.md`); handed to Skye to build |
 | 18 | The owner deletes anything in Social, from the database (ADR-0054) | Done 2026-11-01 (released in 0.9.1). Its full run (`f15b8d7`): typecheck, unit 4,138, build, e2e 341 of 341; the fresh review found no blockers (its notes fixed, `a780b79`), the re-check's one blocker fixed (`f15b8d7`) and re-checked clean |
 | 19 | Quality of life: panels stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) | Done 2026-11-02 (released in 0.9.2). On `0cfb443`: typecheck, unit 4,214, build, e2e 381 of 381; the fresh review's ten blockers and the re-check's two fixed, its last re-check clean |
-| Audit | A full audit, with what it found fixed (the owner, 2026-11-11): B-210, B-165, B-181, B-183, B-125, parts of B-121, the shop server's meters, the Pages workflow, unused imports | On the branch `audit/2026-11-11`, not on `next`. On `887459a` in a cloud sandbox: typecheck, unit 4,269 on a stand-in toolchain; **build and e2e not run**; the fresh review's two blockers fixed |
+| Audit | A full audit, with what it found fixed (the owner, 2026-11-11): B-210, B-165, B-181, B-183, B-125, parts of B-121, the shop server's meters, the Pages workflow, unused imports | Done 2026-11-11 in a cloud sandbox (typecheck, unit 4,269 on a stand-in toolchain; the fresh review's two blockers fixed); on the Mac on 2026-11-17 its branch passed typecheck, unit 281 files and 4,269 tests, and the build, and `next` was fast-forwarded to it. Released in 0.10.0 with chunk 20 |
+| 20 | The audit of 2026-11-17: a friendlier game with no dead ends (ADR-0056) | Done 2026-11-17 (released in 0.10.0; Chase, at the owner's request). 257 findings in ten areas fixed; the owner's ten answers built (AUD-001 to AUD-010). Its full run on `658f720`: typecheck, unit 4,761, build, e2e 414 of 415 (the one failure B-204's route walk in WebKit, 10 of 10 alone); `cf0f5cb` before it 415 of 415. Nine area reviews (6 blockers, fixed), three confirmation reviews (2 more, fixed) and a final review (no blockers; its four notes fixed) |
 
-**Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
+**Last full test runs:** chunk 20's final code `658f720`, the owner's Mac, 2026-11-17, from the internal-disk clone under
+`caffeinate -i -s`: typecheck passed; unit 311 files, 4,761 tests passed; build passed; e2e 414 of 415 in Chromium and
+WebKit (48.4 minutes), the one failure B-204's route walk in WebKit, 10 of 10 alone in each browser. Chunk 20's
+"Checks" has the passes before it (`cf0f5cb`: all four green, e2e 415 of 415).
+Before chunk 20: chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
 WebKit, dev and both production builds (39.9 minutes). Before it: `f9c62ab` the same four green (e2e 335 of 335, 40.0
 minutes); `0bdc84c` the same four green (unit 3,341, e2e 335 of
@@ -1963,7 +1972,88 @@ spotlight follows the feed step and the tour runs to the end); a fresh reviewer 
   anything's "Needs a reef tank", the phone pill's "👥 {n} ▾" against the brief's one line). Approved as shown
   (ADR-0055 decision 8, answered 2026-11-02). Open: B-231.
 
-### Audit, 2026-11-11 (Cowork, a cloud sandbox) — on the branch `audit/2026-11-11`; the four checks still to run on the Mac
+### 20. The audit of 2026-11-17: a friendlier game with no dead ends (ADR-0056) — done 2026-11-17 (Chase); released as 0.10.0
+
+The owner, 2026-11-17 (in full in ADR-0056): "Do a full audit on our codebase and our release and specifically look
+for logical issues or things that are not super friendly. I want this to be the most user-friendly,
+easiest-to-navigate game that has no logical issues and helps you along the way. […] Do the audit, find issues, and
+go ahead and just fix them."
+
+- *How it ran.* It started from the audit of 2026-11-11's branch (below), whose build and e2e had never run: its
+  typecheck, unit tests (281 files, 4,269) and build passed on the Mac, and `next` was fast-forwarded to it. Then, at
+  `cfdc5c0`: ten auditors (Opus 5.5, max effort), one area each, read the code and wrote findings; the lead played
+  the live site as a new player on a phone and a computer; nine fixers (Opus 5.5), one area each in its own git
+  worktree under `/Volumes/Dev/Projects/AquariumGo-wt/`, fixed their area's findings on a branch; nine fresh
+  reviewers (Opus 5.5, max effort) reviewed each branch against its findings, and the fixers fixed what they found;
+  two more fixers did the game-wide wording sweep on the merged code; three confirmation reviewers reviewed the
+  second-round fixes and both halves of the sweep. The lead merged everything, fixed what only showed up where
+  areas met, and asked the owner ten questions (ADR-0056). The working files (findings, reports, reviews, logs) are
+  kept outside the repo, in `/Volumes/Dev/Projects/AquariumGo-audit-2026-11-17/`.
+- *What was found.* 257 findings: A, the first hour and the guide (17, and two from the lead's play); B, getting
+  around (23); C, tank care (22); D, the animals (21); E, breeding (30); F, money (23); G, building, research and
+  unlocks (28); H, staff, lines, shows and visitors (26); I, saves, online and shared shops (25); J, the words
+  game-wide (40). Six were rated high: a water change with too little salt crashed salinity (C1); a production
+  line's unsold young stalled it for good while every screen said it restarts today (H1); the guide waited for ever
+  with no animal on show (A1); the bell's drawer couldn't scroll, so its danger rows were cut off (B1); a shared shop
+  never opened and never said why while the online service was down (I1); a parent moved into the nursery, as the
+  game advised, ate its young, and a brood raised in a full tank was given away without warning (E1, E2).
+- *The owner's ten answers* (ADR-0056, each built; AUD-001 to AUD-010): the first companion never dies of old age,
+  and every other card shows a lifespan; a food parcel from the club when there is no food and no money; production
+  lines sell by themselves (a buy-now price, then cheaper relistings down to half); an aquarium about to fall out of
+  "Previous autosave" is saved to a free slot, and the game asks when every slot is full; salt is paid only when
+  bought; group-living animals are sold in pairs and the tank-size warning is graded; stored equipment sells back at
+  half price and an empty tank can be taken down; keepers feed fry; a shop offer waits while it is open; a scheduled
+  job keeps the online project awake (`.github/workflows/keep-online-awake.yml`).
+- *What changed besides.* The CHANGELOG's 0.10.0 entry is the player's summary. For the code: three new commands
+  (`moveCreatures`, `sellEquipment`, `takeDownTank`) and `holdOffer`, each with its catalogue case and its row in
+  TRUST_BOUNDARY.md; two optional save fields (`ProductionBatch.relists`, a shop offer's hold), validated in
+  `repairState`, absent leaves `stateHash` unchanged; no `SCHEMA_VERSION` change, no new dependency, no migration.
+  `src/sim`, `src/data` and `src/types` changed, so **the shared build hash changes**: the game and the shop server go
+  out together. Nothing under `src/ai` changed.
+- *Every new or changed line of text* is in `docs/agent/design/CHUNK-20/WORDS.md`, for the owner to read in one
+  place (ADR-0056 decision 2). The decisions that were the owner's and weren't among the ten keep their rule, with
+  honest words, and wait in `docs/agent/OWNER_QUESTIONS.md` group M (ADR-0056 decision 3).
+- *The reviews.* The nine area reviews found six blockers: the group move's message swallowed the breeding warnings
+  a single move gives, and its button pushed the phone footer off the sheet (D); a fix made the trochus snail breed
+  without limit (4 became about 200 in a month; reverted), and 27 species were told to "keep a few together and they
+  pair up" (E); the bell's drawer still ended under the tab bar on a phone held sideways, and a new e2e case could
+  not pass (B). All fixed, with about 35 smaller items. The confirmation reviews found one more of substance (the
+  stock manager's young-food plan ordered up to fifteen times what keepers use, crowding out the adults' food;
+  fixed) and a flaky new e2e case (fixed).
+- *Where the areas met.* Three failures appeared only on the merged code: keepers gave big broods a serving per 20
+  young, and two snail broods' worth took a display tank's ammonia to danger for an hour (keepers now give a pinch:
+  at most two servings a brood a round); Build's "Nest site" labels disagreed with the breeding rule as the breeding
+  fixer left it (a guard test compares them piece by piece); two areas had each built "the guide is holding this
+  unlock" (one mechanism now). One seeded test's expectation changed on purpose: `staff-sim`'s fortnight counted a
+  baby snail born in the run and eaten by the tank's seahorse as a keeper's death; it now counts the animals the
+  team was hired to keep, and any young that die of hunger or water.
+- *Left open* (BACKLOG B-232 and group M): on a phone a placed decor piece can't be resized or turned without an
+  undocumented gesture (G15); the listing wizard's "Take photo" step doesn't step the sheet aside on a phone; the
+  server keeping a replaced online copy needs a migration (I4); the owner's VoiceOver pass (F1).
+- *What happened on the way.* The Playwright browsers in `~/LocalTest/playwright` had lost their large binaries (the
+  pinned builds were reinstalled). The Supabase project was paused and could not be woken from the session (ADR-0056
+  decision 4). Nine fixers running the unit suite at once, beside another project's builds, took the Mac's load past
+  300, so the first e2e passes ran slow and their timing tests failed; the internal disk filled (another project's
+  build folders); and the Mac was restarted mid-session, which emptied the temporary folder the working files were
+  in (they were rebuilt from the agents' transcripts and moved to the Dev drive).
+
+**Checks.** On the final code `658f720` (the owner's Mac, 2026-11-17, the internal-disk clone under `caffeinate -i -s`, the
+machine quiet): typecheck exit 0; unit 311 files, 4,761 tests passed; build exit 0; e2e 414 of 415 in Chromium and
+WebKit (48.4 minutes). The one failure, `nav-routes-matrix` "phone 390×844: visitors to log" in WebKit (at its
+`#/more` step the More sheet didn't open), then passed 10 of 10 alone in each browser and its whole spec 55 of 55
+over three repeats, though one earlier three-repeat run of a variant failed twice in WebKit: the walk is
+intermittent there. A probe of the router's history writes in both engines (`probe-history.mjs` in the working
+folder) found one write at start, none while idle, about two a route and no refusals. The same case failed on the
+pre-audit code that morning (Chromium, under load): it is B-204's route walk, and it was re-run alone as "How a
+chunk runs" says. Before it, `3882472` (the same game code; one e2e case's pacing differs): the same three green
+and e2e 414 of 415, the failure the new swipe-to-close case in WebKit, which sent its ten mouse moves in one burst
+(7 failures in 8 alone); paced a move a frame it passed 16 of 16 in both browsers. `cf0f5cb` (before the wording
+sweep's last review fixes and the production lines' last ones): all four green, unit 310 files and 4,747 tests, e2e
+415 of 415 (54.0 minutes). `08e734b` (before the sweep's first half): unit 309 files and 4,694 tests, build, e2e 413
+of 415 (57.4 minutes: a new phone-footer case that measured too early, fixed, and WebKit's perf test at a load
+average over 100). The passes before those ran while nine fixers were testing at once and are not counted.
+
+### Audit, 2026-11-11 (Cowork, a cloud sandbox) — merged on 2026-11-17 and released in 0.10.0 with chunk 20
 
 The owner, 2026-11-11: "Do a full audit on Aquarium Go and upgrade everything that you can find. Just do an audit,
 find all issues, and just fix them. If you have my permission, just do everything you need to do."

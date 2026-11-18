@@ -1,28 +1,87 @@
-# Session handoff: after chunk 19 (quality of life, released as 0.9.2) and the audit of 2026-11-11
+# Session handoff: after chunk 20 (the audit of 2026-11-17, released as 0.10.0)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
 
-## The audit of 2026-11-11: on the branch `audit/2026-11-11`, not on `next` yet
+## Chunk 20, the audit of 2026-11-17 (Chase): released as 0.10.0
 
-- **What** (PLAN.md, "Audit, 2026-11-11"): the owner asked for a full audit with everything found fixed. Done from a
-  Cowork cloud sandbox (not the Mac): B-210, B-165, B-181, B-183 and B-125 fixed, B-121's three display bugs fixed,
-  the shop server's meters no longer ask the database with every frame while it is down, the Pages workflow on the
-  actions' Node 24 majors, 49 unused imports and locals removed. `src/persistence/migrations.ts`, `src/sim` and
-  `src/types` changed, so **the shared build hash changes**: the game and the shop server go out together, as in any
-  release that touches them.
-- **Status:** eleven commits on `audit/2026-11-11` (from `next` at `582e640`). The sandbox could not reach the npm
-  registry: typecheck ran, the unit tests ran on a stand-in toolchain (PLAN.md says which), **`npm run build` and
-  `npm run e2e` did not run**. One fresh review (Opus, max effort): two blockers, fixed. Nothing was pushed.
-- **Order of work:** run the four checks on the branch from `~/LocalTest/AquariumGo` (PLAN.md has the one line); if
-  they pass, `git checkout next && git merge --ff-only audit/2026-11-11` and push `next`. In a browser, look at what
-  no unit test can: a long Livestock list scrolled up and down (every portrait still there: B-181), a specialty
-  shop's Visitors panel with the price slider (takings fall above the fair price: B-121), the locked Visitors dock
-  item's tooltip, an almond leaf's "Del sells for $…" line as it breaks down. Then the usual order below.
+- **What** (PLAN.md chunk 20; ADR-0056 has the owner's words verbatim and his ten answers): a full audit for logic
+  errors and for anything that left a player stuck, lost or guessing. 257 findings in ten areas, fixed; the earlier
+  audit's branch (`audit/2026-11-11`) is merged with it. Players get: a first companion that never dies of old age, a
+  food parcel when there is no food and no money, a group Move, selling spare gear and taking down a tank, lines that
+  sell by themselves, keepers that feed fry, shop offers that wait, salt paid once, safer saves, a shared shop that
+  says when it can't be reached, a guide that never waits in silence, and clearer words everywhere (the CHANGELOG's
+  0.10.0 entry). `src/sim`, `src/data` and `src/types` changed: **the shared build hash changed**, so the game and the
+  shop server went out together.
+- **Status:** done. The four checks on the final code `658f720`: typecheck exit 0, unit 311 files and 4,761 tests,
+  build exit 0, e2e 414 of 415 (the one failure B-204's route walk in WebKit: 10 of 10 alone in each browser; `cf0f5cb`
+  before it was 415 of 415). Nine area reviews, three confirmation reviews and a final review (no blockers; PLAN.md
+  chunk 20 has what each found). The release's steps and results are in PLAN.md "Releases", 0.10.0.
+- **Read first, in this order:** ADR-0056; `docs/agent/design/CHUNK-20/WORDS.md` (every new or changed line, for the
+  owner; 26 lines amend an earlier approved wording and say so); `docs/agent/OWNER_QUESTIONS.md` group M (41
+  decisions left as they were, each with what the game does today); BACKLOG B-232 (what the round left open).
+- **Order of work:** a problem the owner reports first (he hasn't played 0.6.0 to 0.10.0 yet); then a line of WORDS.md
+  he wants changed; then group M's answers; then B-232 (the phone decor gestures, G15, first: it is the one place a
+  phone player still can't do what a computer player can).
+- **The working files are outside the repo:** `/Volumes/Dev/Projects/AquariumGo-audit-2026-11-17/` has the ten
+  findings files, the fixers' reports, the reviews (`reviews/`, `reviews2/`), the checks' logs (`logs/`) and
+  `recover.py`. The fixers' worktrees are in `/Volumes/Dev/Projects/AquariumGo-wt/` (branches `fix/A` to `fix/J2`,
+  `fix/docs*`): all merged, safe to remove with `git worktree remove`.
+
+**Learned in chunk 20.**
+- *A reboot empties the scratchpad.* The session's temporary folder is under `/private/tmp`; the Mac was restarted
+  mid-run and ten findings files, nine reports and nine reviews went with it. They were rebuilt by replaying the
+  Write and Edit calls in the saved agent transcripts (`recover.py`). Give agents a folder on `/Volumes/Dev` for
+  anything they hand back.
+- *Many agents testing at once is a load test of the Mac.* Nine fixers each running the unit suite, beside another
+  project's Rust builds, took the load average past 300 (once past 600): timing tests fail (`core-gameloop` 10×,
+  `core-perf`, `core-crafted-saves-limits`, WebKit's `perf.spec`), e2e slows from 40 minutes to 70, and results stop
+  meaning anything. Tell fixers: touched test files only while working (`--maxWorkers=2`), the whole suite once at the
+  end (`--maxWorkers=3`), and re-run a failed timing test alone. Run the release's four checks when the agents are
+  done, and check `uptime` and `df -h ~` first (another project filled the internal disk that day; tests then fail
+  with `ENOSPC`).
+- *Since the X9 became a plain APFS drive (2026-11-03), worktrees on `/Volumes/Dev` are fast enough for the unit
+  suite:* a worktree under `/Volumes/Dev/Projects/AquariumGo-wt/` with `node_modules` linked to
+  `~/LocalTest/AquariumGo/node_modules` typechecks in about 16 s and runs the suite in about 4 minutes. e2e still runs
+  from the internal clone.
+- *Playwright's browsers can lose their binaries* (the large files under `~/LocalTest/playwright` were gone; the
+  folders and their `INSTALLATION_COMPLETE` markers were not, so Playwright thought they were installed): every test
+  fails at launch with "Executable doesn't exist" or a `dyld` symbol error. `npx playwright install --force chromium
+  webkit` with `PLAYWRIGHT_BROWSERS_PATH` set puts the pinned builds back.
+- *One fixer per area, then merge, finds what no branch can.* Three failures showed only on the merged code: two
+  fixes that were each right alone (snail young survive; keepers feed fry a serving per 20) fouled a tank together;
+  one area's labels disagreed with another's rule; two areas built the same explanation. Run the whole suite on each
+  merge, and bisect a seeded failure across the merge commits before touching the test.
+- *A guard test that compares a screen with the sim earns its keep at merge time* (Build's nest-site labels against
+  `hasNestSite`, piece by piece; the trust-boundary doc against `apply.ts`).
+- *Give each reviewer the findings and the diff, never the fixer's report,* and tell it what to distrust. The nine
+  area reviews found six blockers; three confirmation passes found two more and a flaky new e2e case. An agent
+  resumed with its review (SendMessage to the same agent) fixes it with its context intact.
+- *A wording sweep goes last and merges hardest:* it touches every file the other fixers touched. The sweep's own
+  fixer merging the main line into its branch (it knows both sides of each string) worked; then review the merge
+  itself, file by file against the main line.
+- *Text is parsed in places.* Toasts and event links match the sim's sentences by regular expression
+  (`eventLinks.ts`, `Toasts.tsx`, `notify/rules.ts`), the sim reads an animal's "Hurt by …" history back, and the
+  Staff tab matches a tank's name inside a flag. Rewording a sim line means searching for everything that reads it,
+  and keeping old saves' lines readable (`MONEY_NEWS` accepts both apostrophes; `lastHurtBy` reads three formats).
+- *The Supabase connector reaches one organization.* In this setup it sees only another project's organization, so
+  it can't restore, query or migrate `aquarium-go`; the CLI can list the project and run SQL but has no restore
+  command. A paused project's address stops resolving, so every online call fails as a plain network error. The
+  keep-awake workflow (`.github/workflows/keep-online-awake.yml`) runs from `main` on Mondays and Thursdays; GitHub
+  switches scheduled jobs off after 60 days without a commit.
+
+## The audit of 2026-11-11: merged on 2026-11-17, released in 0.10.0
+
+- **What** (PLAN.md, "Audit, 2026-11-11"): done from a Cowork cloud sandbox that could not run the build or e2e:
+  B-210, B-165, B-181, B-183 and B-125 fixed, B-121's three display bugs fixed, the shop server's meters no longer ask
+  the database with every frame while it is down, the Pages workflow on the actions' Node 24 majors, 49 unused imports
+  and locals removed. Its branch passed typecheck, the unit tests (281 files, 4,269) and the build on the Mac on
+  2026-11-17, `next` was fast-forwarded to it, and chunk 20's full runs cover it.
 - **Left for the owner** (the audit's list is in PLAN.md): dependency upgrades (the pin in `core-dependencies.test.ts`
-  needs an ADR; Vite 6 gets security fixes only now), `npm audit`, the Supabase advisors, B-123, B-163, B-206.
+  needs an ADR; Vite 6 gets security fixes only now), `npm audit`, the Supabase advisors, B-163 (partly fixed in chunk
+  20), B-206.
 
 **Learned in the audit.**
 - *A sandbox with no registry can still run the unit tests.* With the Mac's `node_modules` copied over, Vitest 3 runs

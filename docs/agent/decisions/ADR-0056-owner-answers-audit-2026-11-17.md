@@ -191,10 +191,38 @@ failed request fails the job, and GitHub's email about it is the signal to press
    `docs/agent/design/CHUNK-20/WORDS.md` for him to read in one place; a line he wants changed is a small follow-up.
 3. **Defaults on the decisions that weren't asked.** Where an auditor marked a finding as the owner's to decide and
    it wasn't one of the ten, the rule, balance or mechanic stays exactly as it was, the screens are made honest about
-   it, and the question is kept in `docs/agent/OWNER_QUESTIONS.md` (group M) for whenever he wants it.
+   it, and the question is kept in `docs/agent/OWNER_QUESTIONS.md` (group M, 41 questions) for whenever he wants it.
 4. **Waking the Supabase project** needs the owner's own click (Restore, in the project's dashboard), or the Supabase
    connector re-authorised for the "Aquarium Go" organization: the agent's connector reaches only another
    organization, the CLI has no restore command, and reading the CLI's stored sign-in stays off limits.
+
+## As built
+
+Where the game as built differs from an answer's mock-up (the mock-ups were sketches; `docs/agent/design/CHUNK-20/WORDS.md`
+has the exact words):
+
+- **Answer 2, the food parcel:** a small amount (about four meals for the hungry animals, not a whole pack), for an
+  animal that is very hungry (hunger 70 or more), at most once a game day, one per missing diet, hungriest first.
+- **Answer 3, line sales:** the buy-now price is for the whole lot (10% under its fair value), shown per animal with
+  cents. Each relisting is 10% lower and at least a dollar lower, down to half of that day's fair value, and never
+  asks more per animal than the listing before it (young grow while they are listed). A lot comes off sale while one
+  of its animals is unwell, and the line says which animal it waits for.
+- **Answer 6:** the verdict's words are the game's own ("Usually compatible" with a note), and "slightly small"
+  means at least 90% of the species' minimum, the point up to which the simulation's own stress stays small.
+- **Answer 7:** stored equipment sells for a flat half of its catalogue price, whatever its condition. Take down is
+  in the Tanks panel's row for the tank (the tank card had three other fixers in it), with the confirm as shown.
+- **Answer 8:** a keeper gives a brood at most two servings a round (one while ammonia or nitrite is at Watch):
+  young are fed by being offered their food, and more only fouls the water. The stock manager orders what the keepers
+  will give, after any food the grown animals have run out of.
+- **Answer 9:** the hold lasts while the offer is open, up to about six real minutes past its leaving time (the cap
+  a bid's hold has), so a forgotten tab or a dropped connection can't keep an offer for ever.
+- **Answer 10** runs from `main` (GitHub runs scheduled jobs from the default branch only), so it starts with the
+  0.10.0 release; the first runs fail, by design, until the project is restored.
+
+Defaults taken without a question, under decision 2, that the owner may want to look at first: Settings › About's
+"What's new" now describes this release (it listed 0.5's lines); the nursery unlock is called "Breeding know-how"
+and says only what it does (it never locked nurseries); "Autosave off" still means nothing saves on its own, and
+the game now asks before an in-app reload would lose play (group M has the alternative).
 
 ## Consequences
 
