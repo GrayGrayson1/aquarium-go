@@ -7461,13 +7461,15 @@
       "description": "A production line sells its young by itself through a buy-now price on the whole lot, and lists again what doesn't sell, a little cheaper each time.",
       "acceptance": [
         "A line lists each lot with a buy-now price (and reserve) of the lot's fair value less 10 %, so a buyer takes it without the player; an expired listing's animals go back to the batch and are listed again about 10 % and at least $1 cheaper each time, never below half of the lot's fair value ($1 at least), and no young one is dropped.",
-        "The log says \"{Line}: {lot} listed · Buy now {price} each\" and, on a relisting, \"{Line}: {lot} didn’t sell, so they’re listed again at {price} each\" (with \", the lowest the line goes\" at the floor); the Sell stage says \"Buy now at fair value −10% · a little cheaper each time it’s listed again\" and the set-up's step 3 \"Buy now at fair value −10%\".",
-        "An animal that falls unwell (an illness, or health under 45) takes its lot off sale (\"{Line}: off sale while {name} is unwell.\") and the line lists nothing with it until it is well or moved out, with no restart day promised meanwhile; a listing withdrawn, cancelled, or left while \"List automatically\" is off ends with the line's notice that the young are back in its quarantine tank and that it won't list them again."
+        "A relisting never asks more a head than the listing before it, though the young grow meanwhile: the batch remembers each part's last ask (the optional `lastAsk`, juveniles and adults apart) and asks the lower of the ladder's price and a whole dollar under it, and no more than last time once the ladder is at its floor; \", the lowest the line goes\" is said once, when the price can't go lower.",
+        "The log says \"{Line}: {lot} listed · Buy now {price} each\" and, on a relisting, \"{Line}: {lot} didn’t sell, so they’re listed again at {price} each\"; the Sell stage says \"Buy now at fair value −10% · a little cheaper each time it’s listed again\" and the set-up's step 3 \"Buy now at fair value −10%\".",
+        "An animal that falls unwell (an illness, or health under 45) takes its lot off sale (\"{Line}: off sale while {name} is unwell.\") and the line lists nothing with it until it is well or moved out; a batch past its hold that can't be listed says why instead of naming a day that has passed (\"The market’s 24 listing slots are all in use\", \"Held by manual mode\", the market's own not-open hint, or \"Lists as soon as it can\"), and no restart day is promised meanwhile; a listing withdrawn, cancelled, or left while \"List automatically\" is off ends with the line's notice that the young are back in its quarantine tank and that it won't list them again."
       ],
       "tasks": [],
       "tests": [
         "tests/sim/production-line.test.ts",
         "tests/sim/production-ui.test.ts",
+        "tests/sim/production-held-ui.test.ts",
         "tests/sim/automation-problems-ui.test.ts"
       ],
       "evidence": [],
