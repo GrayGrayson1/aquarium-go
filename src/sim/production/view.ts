@@ -14,7 +14,7 @@ import { makeTankInfo, readinessDrag, readinessTarget, READY, spPlural, type Rea
 import { planAutofeed } from '../care/autofeed';
 import { bestOpenBid } from '../economy/listings';
 import { isLineYoung } from './costs';
-import { QUARANTINE_HOURS, lineStatus, productionLines, quarantineBusyUntil, quarantineFull, quarantineReady, raiseTankFull, restartDay, unsoldYoung, youngPlaces, youngSizeCm, type LineStatus } from './index';
+import { QUARANTINE_HOURS, lineStatus, lineWaitsOn, productionLines, quarantineBusyUntil, quarantineFull, quarantineReady, raiseTankFull, restartDay, unsoldYoung, unwellForSale, youngPlaces, youngSizeCm, type LineStatus } from './index';
 
 export type StageId = 'breed' | 'raise' | 'sort' | 'quarantine' | 'sell';
 
@@ -29,12 +29,12 @@ export interface LineView {
   quarantine?: Tank;
   keep?: Tank;
   /** Next clutch: days until the pair is due again (rounded up), the cycle and how far through it they are. */
-  next: { days?: number; dayOf?: number; cycle: number; restartDay?: number; conditioning: boolean; /** Audit 2026-11-17 (H1): the full quarantine tank a waiting line needs room in (no restart day then). */ fullTank?: Tank; /** Audit 2026-11-17 (H4): due (or never spawned), but a parent can't get into condition: who, where, and the biggest drag. */ notReady?: { who: Creature; tank: Tank; drag: ReadinessDrag } };
+  next: { days?: number; dayOf?: number; cycle: number; restartDay?: number; conditioning: boolean; /** Audit 2026-11-17 (H1): the full quarantine tank a waiting line needs room in (no restart day then). */ fullTank?: Tank; /** Audit 2026-11-17 (H1 second review): the unwell animal a quarantine tank's batch waits on (no restart day then). */ waitsOn?: Creature; /** Audit 2026-11-17 (H4): due (or never spawned), but a parent can't get into condition: who, where, and the biggest drag. */ notReady?: { who: Creature; tank: Tank; drag: ReadinessDrag } };
   /** Growing out: the brood in the raise tank (or the young waiting there), its word, and its days. */
   raising: { count: number; word: string; dayOf?: number; ofDays?: number; full: boolean; waiting: number; feeding?: { food: string; meals: number }; places?: { used: number; cap: number }; /** Hours until the brood's next stage (chunk 6, DES-013: "next stage in 6 h"). */ nextStageIn?: number; /** The day the brood is raised and sorted (DES-013: "sorting on Day 42"). */ sortDay?: number };
   /** Quarantine: the batch in its hold (its word: "juveniles", or the species' plural once grown), days left, the day
    * it lists; or the day a busy shared tank frees up. */
-  quarantined: { count: number; word: string; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number; uncycledTank?: Tank; /** Audit 2026-11-17 (H1): the line's young in its quarantine tanks that no batch tracks (the line never lists them again). */ unsold: number; /** A free, cycled quarantine tank with no room for the waiting batch. */ fullTank?: Tank };
+  quarantined: { count: number; word: string; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number; uncycledTank?: Tank; /** Audit 2026-11-17 (H1): the line's young in its quarantine tanks that no batch tracks (the line never lists them again). */ unsold: number; /** A free, cycled quarantine tank with no room for the waiting batch. */ fullTank?: Tank; /** Past its hold, the batch waits on this unwell animal (H1 second review); `busyTank` without `busyUntilDay`: held past its hold for another reason. */ waitsOn?: Creature };
   /** Sell: the line's open listings and the best open bid among them; the buy-now price an animal (the lowest, when
    * several listings are open), and the listing's title when there's one ("12 juvenile bettas"; Audit 2026-11-17, H1). */
   selling: { listed: number; bestBid?: number; each?: number; title?: string; listings: number };
@@ -83,7 +83,10 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
   if (status === 'waiting') {
     const day = restartDay(state, line);
     if (day !== null) next.restartDay = day;
-    else next.fullTank = quarantineFull(state, line) ?? undefined;
+    else {
+      next.fullTank = quarantineFull(state, line) ?? undefined;
+      next.waitsOn = lineWaitsOn(state, line) ?? undefined;
+    }
   }
 
   // Growing out
@@ -119,7 +122,9 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
   }
 
   // Quarantine
-  const inHold = (line.batches ?? []).find((b) => b.tankId && b.quarantinedHour !== undefined && !b.released && !b.relists); // a batch listed again has done its hold
+  // a batch listed again has done its hold, unless it was taken off sale and waits on an unwell animal (H1 second review)
+  const inHold = (line.batches ?? []).find((b) => b.tankId && b.quarantinedHour !== undefined && !b.released && (!b.relists || b.creatureIds.some((id) => state.creatures[id]?.status === 'alive' && unwellForSale(state.creatures[id]))));
+  const waitsOn = lineWaitsOn(state, line);
   const quarantine = (inHold?.tankId ? state.tanks[inHold.tankId] : undefined) ?? line.tanks.quarantine.map((id) => state.tanks[id]).find(Boolean);
   const quarantined: LineView['quarantined'] = { count: 0, word: 'juveniles', unsold: unsoldYoung(state, line).length };
   if (inHold && inHold.quarantinedHour !== undefined) {
@@ -131,17 +136,25 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     quarantined.daysLeft = Math.max(0, Math.ceil((end - now) / 24));
     quarantined.listsDay = dayOf(end);
     quarantined.holdFraction = Math.max(0, Math.min(1, (now - inHold.quarantinedHour) / QUARANTINE_HOURS));
+    if (end <= now + 1e-9 && waitsOn) quarantined.waitsOn = waitsOn; // past its hold: it waits on the unwell one
   } else if ((line.batches ?? []).some((b) => !b.tankId)) {
-    // a batch waits: when does the first busy quarantine tank free up?
+    // a batch waits: when does the first busy quarantine tank free up? (a day ahead only: a tank held past its hold
+    // promises none, H1 second review)
     let best: { until: number; tank: Tank } | null = null;
+    let held: Tank | null = null;
     for (const id of line.tanks.quarantine) {
       const until = quarantineBusyUntil(state, id);
       const t = state.tanks[id];
-      if (until !== null && t && (!best || until < best.until)) best = { until, tank: t };
+      if (until === null || !t) continue;
+      if (until <= now + 1e-9) held ??= t;
+      else if (!best || until < best.until) best = { until, tank: t };
     }
     if (best) {
       quarantined.busyUntilDay = dayOf(best.until);
       quarantined.busyTank = best.tank;
+    } else if (held) {
+      if (waitsOn) quarantined.waitsOn = waitsOn;
+      else quarantined.busyTank = held;
     } else {
       // free but not cycled yet: the batch waits for it (the line's notice says so)
       quarantined.uncycledTank = line.tanks.quarantine.map((id) => state.tanks[id]).find((t) => !!t && !quarantineReady(t));

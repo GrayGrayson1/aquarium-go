@@ -729,7 +729,9 @@ export function quarantineFull(state: GameState, line: ProductionLine): Tank | n
 /**
  * The day the line's waiting young can move on (and a held line restart): today if a batch is waiting and a ready
  * quarantine tank is free and has room, else the day the busy one frees up, else the day the raise tank's brood is
- * raised. Null when no day can be promised: the free quarantine tanks have no room (quarantineFull).
+ * raised. Null when no day can be promised: the free quarantine tanks have no room (quarantineFull), or every busy one
+ * is past its hold and still held (a batch waiting on an unwell animal, quarantineWaitsOn; Audit 2026-11-17, H1 second
+ * review: it promised the day the hold had ended, for ever).
  */
 export function restartDay(state: GameState, line: ProductionLine): number | null {
   const now = state.clock.hour;
@@ -744,24 +746,62 @@ export function restartDay(state: GameState, line: ProductionLine): number | nul
   const freeNow = line.tanks.quarantine.some((id) => state.tanks[id] && quarantineBusyUntil(state, id) === null && quarantineReady(state.tanks[id]) && room(state.tanks[id]));
   if (waiting) {
     if (freeNow) return day(now);
-    if (busyUntil.length) return day(Math.min(...busyUntil));
+    const ahead = busyUntil.filter((h) => h > now + 1e-9);
+    if (ahead.length) return day(Math.min(...ahead));
+    if (busyUntil.length) return null; // held past its hold: no day to promise
     return quarantineFull(state, line) ? null : day(now);
   }
   const brood = Object.values(state.clutches).find((cl) => cl.tankId === line.tanks.raise && cl.motherId === line.pair.motherId && cl.fatherId === line.pair.fatherId);
   return brood ? day(Math.max(now, brood.nextStageHour)) : day(now);
 }
 
-/** When the batch quarantined in a tank finishes its hold (any line), or null when the tank is free. */
+/** A batch's first living member that is unwell (the line won't list it, so the batch waits on it). */
+function unwellMember(state: GameState, b: { creatureIds: string[] }): Creature | undefined {
+  return b.creatureIds.map((id) => state.creatures[id]).find((c): c is Creature => !!c && c.status === 'alive' && unwellForSale(c));
+}
+
+/**
+ * When the batch quarantined in a tank finishes its hold (any line), or null when the tank is free. A batch past its
+ * hold that isn't listed yet keeps the tank (an hour in the past, then: restartDay promises no day). A batch listed
+ * again has done its hold and leaves the tank free, unless it was taken off sale for an unwell animal and waits on it:
+ * it keeps its tank then, so no new batch moves in beside the sick one (Audit 2026-11-17, H1 second review).
+ */
 export function quarantineBusyUntil(state: GameState, tankId: string): number | null {
   let until: number | null = null;
   for (const l of productionLines(state)) {
     for (const b of l.batches ?? []) {
-      if (b.tankId !== tankId || b.released || b.relists || b.quarantinedHour === undefined) continue; // a batch listed again finished its hold
+      if (b.tankId !== tankId || b.released || b.quarantinedHour === undefined) continue;
+      if (b.relists && !unwellMember(state, b)) continue; // a batch listed again finished its hold
       const end = b.quarantinedHour + QUARANTINE_HOURS;
       until = until === null ? end : Math.max(until, end);
     }
   }
   return until;
+}
+
+/**
+ * The unwell animal a quarantine tank's batch waits on, past its hold (the line lists the batch once it's well or moved
+ * out), or null (Audit 2026-11-17, H1 second review: the screens name it instead of a day).
+ */
+export function quarantineWaitsOn(state: GameState, tankId: string): Creature | null {
+  const now = state.clock.hour;
+  for (const l of productionLines(state)) {
+    for (const b of l.batches ?? []) {
+      if (b.tankId !== tankId || b.released || b.quarantinedHour === undefined || b.quarantinedHour + QUARANTINE_HOURS > now + 1e-9) continue;
+      const ill = unwellMember(state, b);
+      if (ill) return ill;
+    }
+  }
+  return null;
+}
+
+/** The unwell animal one of the line's quarantine tanks waits on, if any. */
+export function lineWaitsOn(state: GameState, line: ProductionLine): Creature | null {
+  for (const id of line.tanks.quarantine) {
+    const ill = state.tanks[id] ? quarantineWaitsOn(state, id) : null;
+    if (ill) return ill;
+  }
+  return null;
 }
 
 // ───────────────────────────── the hourly step ─────────────────────────────
@@ -915,11 +955,12 @@ function countSales(state: GameState, line: ProductionLine): void {
         // Audit 2026-11-17 (H1 review): an animal that fell ill while listed isn't sold by the line (the buyer's
         // complaint costs reputation, and selling it was the player's call): off sale, back to the batch, until well
         const ill = l.creatureIds.map((cid) => state.creatures[cid]).find((c): c is Creature => !!c && c.status === 'listed' && unwellForSale(c));
-        if (ill && withdrawListing(state, id, { quiet: true, outcome: `The ${line.name} took it off sale: ${ill.name} looks unwell.` }).ok) {
+        if (ill && withdrawListing(state, id, { quiet: true, outcome: `${line.name}: off sale while ${ill.name} is unwell.` }).ok) {
           takeBack(l.creatureIds.map((cid) => state.creatures[cid]).filter((c): c is Creature => !!c && c.status === 'alive'));
           pulled = true;
           const it = ill.name;
-          notice(state, line, `ill:${b.id}`, state.clock.hour, { kind: 'warning', text: `${line.name}: ${it} looks unwell, so the line took “${l.title}” off sale. It lists them again once ${it} is well, or once you move ${it} out.`, tankId: ill.tankId ?? b.tankId, creatureId: ill.id });
+          const them = l.creatureIds.length === 1 ? 'it' : 'them';
+          notice(state, line, `ill:${b.id}`, state.clock.hour, { kind: 'warning', text: `${line.name}: ${it} looks unwell, so the line took “${l.title}” off sale. It lists ${them} again once ${it} is well, or once you move ${it} out.`, tankId: ill.tankId ?? b.tankId, creatureId: ill.id });
           continue;
         }
         open.push(id);

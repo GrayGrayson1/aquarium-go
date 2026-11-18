@@ -277,7 +277,12 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
   const next = (() => {
     if (v.status === 'paused_by_you') return { value: '—', hint: 'Paused by you' };
     if (v.status === 'paused') return { value: '—', hint: 'Paused' };
-    if (v.status === 'waiting') return v.next.fullTank ? { value: '—', hint: `Waits until ${v.next.fullTank.name} has room` } : { value: v.next.restartDay ? `Day ${v.next.restartDay}` : '—', hint: `${raiseName} is full` };
+    if (v.status === 'waiting')
+      return v.next.fullTank
+        ? { value: '—', hint: `Waits until ${v.next.fullTank.name} has room` }
+        : v.next.waitsOn
+          ? { value: '—', hint: `Waits until ${v.next.waitsOn.name} is well` } // H1 second review: no day that has passed
+          : { value: v.next.restartDay ? `Day ${v.next.restartDay}` : '—', hint: `${raiseName} is full` };
     const why = notReadyText(v);
     if (why) return { value: 'Not ready', hint: why.charAt(0).toUpperCase() + why.slice(1) }; // Audit 2026-11-17 (H4)
     if (v.next.days === undefined) return { value: '—', hint: 'Pair getting ready' };
@@ -287,9 +292,11 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
     ? { value: `${v.raising.count} ${v.raising.word}`, hint: v.raising.dayOf !== undefined ? `${raiseName} · day ${v.raising.dayOf} of ${v.raising.ofDays}` : `${raiseName}${v.raising.full ? ' · full' : ''}` }
     : { value: '—', hint: raiseName };
   const quarantine = v.quarantined.count > 0
-    ? { value: String(v.quarantined.count), hint: line.rules.autoList ? `Lists Day ${v.quarantined.listsDay}` : daysLeft(v.quarantined.daysLeft) }
+    ? { value: String(v.quarantined.count), hint: v.quarantined.waitsOn ? `Waits until ${v.quarantined.waitsOn.name} is well` : line.rules.autoList ? `Lists Day ${v.quarantined.listsDay}` : daysLeft(v.quarantined.daysLeft) }
+    : v.quarantined.waitsOn
+      ? { value: '—', hint: `Waits until ${v.quarantined.waitsOn.name} is well` }
     : v.quarantined.busyTank
-      ? { value: '—', hint: `${v.quarantined.busyTank.name} is busy to Day ${v.quarantined.busyUntilDay}` }
+      ? { value: '—', hint: v.quarantined.busyUntilDay !== undefined ? `${v.quarantined.busyTank.name} is busy to Day ${v.quarantined.busyUntilDay}` : `${v.quarantined.busyTank.name} is busy` }
       : v.quarantined.uncycledTank
         ? { value: '—', hint: `${v.quarantined.uncycledTank.name} isn’t ready yet: its filter bacteria are still growing` } // Audit 2026-11-17 (J5)
       : v.quarantined.unsold > 0
@@ -409,7 +416,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
                 {v.quarantined.count} {v.quarantined.word}
               </p>
               <Bar value={100 * (v.quarantined.holdFraction ?? 0)} tone="gold" thin label={daysLeft(v.quarantined.daysLeft)} />
-              <p className="pr-stage__foot">{daysLeft(v.quarantined.daysLeft)}</p>
+              <p className="pr-stage__foot">{v.quarantined.waitsOn ? `Waits until ${v.quarantined.waitsOn.name} is well, or until you move ${v.quarantined.waitsOn.name} out` : daysLeft(v.quarantined.daysLeft)}</p>
             </>
           ) : v.quarantined.unsold > 0 ? (
             <p>{v.quarantined.unsold} unsold · sell or move them</p>
@@ -508,14 +515,16 @@ export function RouteStrip({ g, line, v }: { g: GameState; line: ProductionLine;
         ? 'Paused'
         : v.quarantined.count > 0
           ? `${v.quarantined.count} ${v.quarantined.word}`
+          : v.quarantined.waitsOn
+            ? `waits on ${v.quarantined.waitsOn.name}`
           : v.quarantined.busyTank
-            ? `busy to Day ${v.quarantined.busyUntilDay}`
+            ? v.quarantined.busyUntilDay !== undefined ? `busy to Day ${v.quarantined.busyUntilDay}` : 'busy'
             : v.quarantined.uncycledTank
               ? 'isn’t ready yet: its filter bacteria are still growing' // Audit 2026-11-17 (J5)
               : v.quarantined.unsold > 0
                 ? `${v.quarantined.unsold} unsold`
                 : undefined,
-      warn: gone('quarantine') || !!v.quarantined.busyTank || !!v.quarantined.uncycledTank || !!v.quarantined.fullTank,
+      warn: gone('quarantine') || !!v.quarantined.busyTank || !!v.quarantined.uncycledTank || !!v.quarantined.fullTank || !!v.quarantined.waitsOn,
     },
     { key: 'market', name: 'Market', tag: v.selling.listed > 0 ? `${v.selling.listed} listed` : undefined, warn: false },
   ];

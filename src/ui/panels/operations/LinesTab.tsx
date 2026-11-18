@@ -37,6 +37,7 @@ const NEXT_STAGE_SHOWN_H = 48;
 /** "12 juveniles in Grow-out B · day 15 of 19 · next stage in 6 h", or what the line waits for. */
 function doing(g: GameState, line: ProductionLine, v: LineView): string {
   if (v.status === 'waiting' && v.next.fullTank) return `Waits until ${v.next.fullTank.name} has room`; // Audit 2026-11-17 (H1)
+  if (v.status === 'waiting' && v.next.waitsOn) return `Waits until ${v.next.waitsOn.name} is well, or until you move ${v.next.waitsOn.name} out`; // H1 second review
   if (v.raising.count > 0) {
     const days = v.raising.dayOf !== undefined && v.raising.ofDays ? ` · day ${v.raising.dayOf} of ${v.raising.ofDays}` : '';
     const h = v.raising.nextStageIn;

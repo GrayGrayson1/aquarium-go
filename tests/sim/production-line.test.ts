@@ -45,6 +45,7 @@ import {
   quarantineFull,
   youngSizeCm,
   linePrice,
+  quarantineBusyUntil,
   unsoldYoung,
   PAIRS_PER_SPECIES,
 } from '@/sim/production';
@@ -1067,7 +1068,7 @@ describe('Audit 2026-11-17 (H1): young a line leaves in quarantine', () => {
     expect(l.status).toBe('expired');
     // the line says what happened; the market's "ended without a sale … try a lower reserve" isn't for the player here
     expect(g.log.some((e) => e.listingId === l.id && /ended without a sale/.test(e.text))).toBe(false);
-    expect(l.advice).toBe('The Betta line lists them again.');
+    expect(l.advice).toBe('Betta line: they’re listed again.'); // a name, never "The Bettas" (second review)
     buyers();
     run(g, 1); // the line's next hour lists them again (it may sell at once)
     const again = lineListings(g, ids).find((x) => x.id !== l.id);
@@ -1189,7 +1190,7 @@ describe('Audit 2026-11-17 (H1): young a line leaves in quarantine', () => {
     buyers();
     advanceWorld(g, 1, { forceFull: true }); // no care: it stays ill this hour
     expect(l.status).toBe('withdrawn');
-    expect(l.outcome).toBe(`The Betta line took it off sale: ${sick.name} looks unwell.`);
+    expect(l.outcome).toBe(`Betta line: off sale while ${sick.name} is unwell.`);
     expect(g.log.filter((e) => e.text === `Betta line: ${sick.name} looks unwell, so the line took “${l.title}” off sale. It lists them again once ${sick.name} is well, or once you move ${sick.name} out.`).length).toBe(1);
     expect(g.log.some((e) => e.listingId === l.id && /^Withdrew/.test(e.text))).toBe(false); // one line, the line's
     advanceWorld(g, 1, { forceFull: true }); // still ill: nothing listed, nothing said again
@@ -1199,6 +1200,26 @@ describe('Audit 2026-11-17 (H1): young a line leaves in quarantine', () => {
     const again = lineListings(g, ids).find((x) => x.id !== l.id);
     expect(again).toBeDefined();
     expect(line.batches?.[0]?.relists ?? 0).toBe(0);
+  });
+
+  it('a batch past its hold waiting on an unwell animal keeps its tank and promises no day (second review)', () => {
+    const f = farm({ seed: 150 });
+    const g = f.g;
+    const line = start(f);
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const b = line.batches!.find((x) => x.tankId === f.qt.id)!;
+    run(g, b.quarantinedHour! + QUARANTINE_HOURS - g.clock.hour - 2);
+    const sick = g.creatures[b.creatureIds[0]];
+    sick.illness = { kind: 'fin_rot', severity: 50, sinceHour: g.clock.hour } as never;
+    sick.stats.health = 30;
+    for (let i = 0; i < 4; i++) advanceWorld(g, 1, { forceFull: true }); // no care: it stays ill
+    expect(b.released).toBeFalsy();
+    expect(lineListings(g, new Set(b.creatureIds))).toEqual([]);
+    expect(g.log.filter((e) => /^Betta line: .* looks unwell, so the line waits to list /.test(e.text)).length).toBe(1);
+    expect(quarantineBusyUntil(g, f.qt.id)).toBeLessThanOrEqual(g.clock.hour); // held, past its hold
+    (line.batches ??= []).push({ id: 'bnext', creatureIds: [], sortedHour: g.clock.hour }); // a batch behind it
+    expect(restartDay(g, line)).toBeNull();
   });
 
   it('cheap lots follow the rule: priced as a lot, each relisting at least a dollar lower, the floor half of fair value', () => {
