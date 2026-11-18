@@ -2,7 +2,7 @@
  * Finances — balance, 14-day income vs expenses chart, categorised ledger, operating cost by tank, and debt/loan
  * status with concrete advice. OWNER: lane "ui-panels".
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Wallet, TrendingUp, TrendingDown, Receipt, Gauge, TriangleAlert, HandCoins, Lightbulb, Landmark, Layers, Building2, Users, ChevronRight } from 'lucide-react';
 import type { LedgerEntry } from '@/types';
@@ -23,6 +23,17 @@ export function FinancesPanel() {
   const g = usePanelGame(1000);
   const [filter, setFilter] = useState<LedgerFilter>('all');
   const [cat, setCat] = useState<LedgerEntry['category'] | 'all'>('all');
+  // review fix (audit 2026-11-17) — every "Ways to raise cash" link opens Finances with the target 'cash': the ideas
+  // show (whatever the balance) and come into view
+  const target = useUI((s) => s.panelTarget);
+  const [wantIdeas, setWantIdeas] = useState(() => useUI.getState().panelTarget === CASH_TARGET);
+  useEffect(() => {
+    if (target !== CASH_TARGET) return;
+    setWantIdeas(true);
+    useUI.getState().set({ panelTarget: null });
+    const t = window.setTimeout(() => document.querySelector('[data-testid="finance-ideas"]')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 120);
+    return () => window.clearTimeout(t);
+  }, [target]);
 
   const data = useMemo(() => {
     if (!g) return null;
@@ -70,7 +81,7 @@ export function FinancesPanel() {
   const loan = g.finance.loan;
   const runway = data.ops.total > 0 ? money / data.ops.total : Infinity;
   // audit 2026-11-17 (F1) — also when money stands between the animals and their food (Supplies' "Ways to raise cash")
-  const tips = inDebt || runway < 3 || safe(() => needsCashIdeas(g), false) ? safe(() => cashIdeas(g), []) : [];
+  const tips = inDebt || runway < 3 || wantIdeas || safe(() => needsCashIdeas(g), false) ? safe(() => cashIdeas(g), []) : [];
   // lane:fix-integrate-ui — an empty room the player can't restock: the club lends a restart at its second midnight
   // (the first one only notes it), so say which midnight (P5-08)
   const stranded = safe(() => restartNeed(g), null);
@@ -133,7 +144,7 @@ export function FinancesPanel() {
           </Callout>
         )}
         {tips.length > 0 && (
-          <div className="pn-card pn-advice">
+          <div className="pn-card pn-advice" data-testid="finance-ideas">
             <SectionHead title="Ways to raise cash" icon={<Lightbulb size={14} />} />
             <ul>
               {tips.map((t, i) => {
@@ -171,7 +182,7 @@ export function FinancesPanel() {
 
         <div className="pn-grid pn-grid--2">
           <CategoryList title={`Income · ${data.truncated ? `last ${data.catDays} days` : '14 days'}`} icon={<TrendingUp size={14} />} rows={data.income} tone="income" />
-          <CategoryList title={`Spending · ${data.truncated ? `last ${data.catDays} days` : '14 days'}`} icon={<TrendingDown size={14} />} rows={data.expenses} tone="expense" />
+          <CategoryList title={`Expenses · ${data.truncated ? `last ${data.catDays} days` : '14 days'}`} icon={<TrendingDown size={14} />} rows={data.expenses} tone="expense" />
         </div>
         {data.truncated && (
           <p className="pn-tiny pn-muted" style={{ margin: '-6px 0 0' }}>
@@ -251,7 +262,7 @@ export function FinancesPanel() {
 
         <section>
           <SectionHead title="Ledger" icon={<HandCoins size={14} />}>
-            <Seg<LedgerFilter> size="sm" label="Ledger filter" value={filter} onChange={setFilter} items={[{ id: 'all', label: 'All' }, { id: 'income', label: 'Income' }, { id: 'expenses', label: 'Spending' }]} />
+            <Seg<LedgerFilter> size="sm" label="Ledger filter" value={filter} onChange={setFilter} items={[{ id: 'all', label: 'All' }, { id: 'income', label: 'Income' }, { id: 'expenses', label: 'Expenses' }]} />
           </SectionHead>
           {ledgerCats.length > 1 && (
             <div className="pn-chips pn-chips--scroll" style={{ marginBottom: 10 }}>
@@ -291,6 +302,9 @@ export function FinancesPanel() {
   );
 }
 
+/** The Finances target every "Ways to raise cash" link opens with (moneyShort.CASH_LINK). */
+const CASH_TARGET = 'cash';
+
 /** Audit 2026-11-17 (F2) — where each way to raise cash is done (a quick sale opens that animal's quick-sell dialog). */
 const CASH_IDEA_LINK: Partial<Record<CashIdea['kind'], { panel: PanelId; target: string | null; label: string }>> = {
   quick_sell: { panel: 'livestock', target: null, label: 'Quick sell' },
@@ -299,6 +313,8 @@ const CASH_IDEA_LINK: Partial<Record<CashIdea['kind'], { panel: PanelId; target:
   list_tank: { panel: 'market', target: 'list:tank', label: 'New listing' },
   visitors: { panel: 'visitors', target: 'tab:visitors', label: 'Open Visitors' },
   empty_tank: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' },
+  take_down: { panel: 'tanks', target: null, label: 'Open Tanks' }, // audit 2026-11-17 (G19 review)
+  spare_gear: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' }, // audit 2026-11-17 (G22 review)
   trim: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' },
   decor: { panel: 'build', target: 'tab:decor', label: 'Open decor' },
   open_market: { panel: 'market', target: 'tab:shop', label: 'Open the Market' },
@@ -319,7 +335,7 @@ function CategoryList({ title, icon, rows, tone }: { title: string; icon: React.
         </span>
       </SectionHead>
       {rows.length === 0 ? (
-        <span className="pn-small pn-muted">{tone === 'income' ? 'No income yet.' : 'No spending yet.'}</span>
+        <span className="pn-small pn-muted">{tone === 'income' ? 'No income yet.' : 'No expenses yet.'}</span>
       ) : (
         <div className="pn-col pn-gap-2">
           {rows.slice(0, 6).map((r) => (

@@ -164,9 +164,17 @@ describe('audit B5: Find anything finds the help', () => {
     expect(hit).toMatchObject({ title: 'What “cycling” means', detail: 'Encyclopedia › Aquarium science' });
     expect(hit.go).toEqual({ kind: 'route', route: { kind: 'panel', panel: 'encyclopedia', tab: 'science', target: 'science:cycling' } });
   });
-  it('lists them right after the screens, and not for an empty query', () => {
-    expect(FIND_GROUPS.indexOf('Aquarium science')).toBe(1);
+  it('lists them after the player’s own things (review: changed on purpose from right after Screens), and not for an empty query', () => {
+    expect(FIND_GROUPS.indexOf('Aquarium science')).toBe(FIND_GROUPS.indexOf('Encyclopedia') - 1);
     expect(findAnything(game(), '').some((r) => r.group === 'Aquarium science')).toBe(false);
+    const MINE = ['Your tanks', 'Your animals', 'In the shop', 'Food & supplies', 'Equipment'];
+    for (const q of ['betta', 'food', 'tank', 'filter']) {
+      const groups = orderResults(findAnything(game(), q)).map((r) => r.group);
+      const firstArticle = groups.indexOf('Aquarium science');
+      const mine = groups.flatMap((grp, i) => (MINE.includes(grp) ? [i] : []));
+      expect(mine.length, q).toBeGreaterThan(0);
+      if (firstArticle >= 0) expect(Math.max(...mine), q).toBeLessThan(firstArticle);
+    }
   });
   it('reads an article’s text without its markup', () => {
     expect(nodeText(createElement('p', null, 'Waste becomes ', createElement('b', null, 'ammonia'), ', ', 3, ' times'))).toBe('Waste becomes  ammonia ,  3  times');

@@ -6,6 +6,7 @@ import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): prop
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Dices, Store } from 'lucide-react';
+import type { GameState } from '@/types';
 import { getSpecies } from '@/data/species';
 import { STARTER_SETUPS, newGame } from '@/sim/newGame';
 import { useGame } from '@/state/game';
@@ -65,6 +66,26 @@ function warmLine(name: string, speciesId: string, personality: string[], morph:
   return lines[speciesId] ?? `${who} is ${trait} ${lowerName(sp.commonName)}, settling into a brand-new home.`;
 }
 
+/**
+ * A new solo aquarium on screen (the naming screen's "Begin"). Audit 2026-11-17 (A4): it starts with its guide showing,
+ * whoever switched the device's "Guide hints" off (tests/sim/audit-guide.test.ts calls this, as the screen does).
+ */
+export function enterNewGame(g: GameState): void {
+  guideOnForNewGame();
+  useGame.getState().setGame(g);
+  useUI.getState().set({
+    screen: 'game',
+    view: 'tank',
+    focusedTankId: g.tankOrder[0] ?? null,
+    selectedCreatureId: null,
+    cameraMode: 'front',
+    panel: null,
+    tool: 'none',
+    hudHidden: false,
+    pendingStarterId: null,
+  });
+}
+
 export function NamingScreen() {
   const { starterId, previews, seed, name, shopName, set, shared } = useOnboarding();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -105,19 +126,7 @@ export function NamingScreen() {
       useUI.getState().toast('Something went wrong creating your aquarium. Please try again.', 'danger');
       return;
     }
-    guideOnForNewGame(); // a new aquarium starts with its guide showing, whoever switched the hints off on this device
-    useGame.getState().setGame(g);
-    useUI.getState().set({
-      screen: 'game',
-      view: 'tank',
-      focusedTankId: g.tankOrder[0] ?? null,
-      selectedCreatureId: null,
-      cameraMode: 'front',
-      panel: null,
-      tool: 'none',
-      hudHidden: false,
-      pendingStarterId: null,
-    });
+    enterNewGame(g);
     await saveNow('auto', false);
   };
 

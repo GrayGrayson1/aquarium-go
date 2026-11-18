@@ -22,6 +22,7 @@ import { nearestAttention, tankAttention, ATTENTION_WORD } from '../common/notif
 import { AttnDot, useTankAttentionLevel } from './AttnDot'; // lane:notify
 import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
 import { convertTempText } from '../common/format'; // Audit 2026-11-17 (J1)
+import { openPanel } from './Dock'; // Audit 2026-11-17 (G28 review)
 
 export function cycleTank(dir: 1 | -1) {
   const g = useGame.getState().game;
@@ -121,6 +122,7 @@ const STATUS_WORD = TANK_STATUS_WORD; // Audit 2026-11-17 (J10): one table
 export function TankBar() {
   const focused = useUI((s) => s.focusedTankId);
   const view = useUI((s) => s.view);
+  const placing = useUI((s) => s.tool === 'tank_place'); // Audit 2026-11-17 (G28 review)
   const tankCardOpen = useDockedCard() === 'tank';
   const info = useGame(
     useShallow((s) => {
@@ -169,11 +171,14 @@ export function TankBar() {
           <span className="ag-switcher__name" title={id ? name : undefined}>
             {id ? (
               name
-            ) : (
-              // Audit 2026-11-17 (G28): with every tank gone, the way to the next one
-              <button type="button" className="ag-switcher__buy" data-testid="tank-buy-first" onClick={() => { sfx('open'); useUI.getState().set({ panel: 'build', panelTarget: 'tab:tanks' }); }}>
+            ) : n === 0 && !placing ? (
+              // Audit 2026-11-17 (G28): with every tank gone, the way to the next one (review: through openPanel, as every
+              // way into Build goes, and not while a tank is being placed or while other tanks exist)
+              <button type="button" className="ag-switcher__buy" data-testid="tank-buy-first" onClick={() => openPanel('build', 'tab:tanks')}>
                 No tank · Buy one
               </button>
+            ) : (
+              'No tank'
             )}
           </span>
           <span className={clsx('ag-switcher__status', `is-${st}`)} title={why || undefined} data-testid="tank-status">

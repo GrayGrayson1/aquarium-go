@@ -10,16 +10,27 @@ import { findSpecies } from '@/data/species';
 import { isFoodAvailable } from '@/sim/economy/shop';
 import { cashIdeas } from '@/sim/economy/finance';
 import { tankFoodOutlook } from '@/sim/tankStatus';
+import { SALT_PRICE_PER_KG } from '@/sim/economy';
+import { waterChangeCost } from '@/sim/care';
+import { isSaltClass } from '@/sim/water/constants';
+import { SALT_BAGS } from '@/data/catalog/machines';
 import { safe } from './safe';
 
 /**
+ * Review fix (audit 2026-11-17) — where every "Ways to raise cash" link goes: Finances with the target 'cash', which
+ * shows its ideas whatever the balance and brings them into view.
+ */
+export const CASH_LINK = { panel: 'finances', panelTarget: 'cash' } as const;
+
+/**
  * Money as the player holds it, never more than they have (F11): exact cents under $100 ("$4.50"), whole dollars
- * rounded down above that. A debt is shown as its size ("$12").
+ * rounded down above that. A debt is shown as its size ("$12.40"), the way the sim's own lines write it (fmtMoney),
+ * so the top bar, Finances, Supplies and the midnight toast all say the same (review note).
  */
 export function moneyHeld(money: number): string {
   const v = Math.abs(Number.isFinite(money) ? money : 0);
   if (v < 100 && Math.abs(v - Math.round(v)) > 0.004) return formatMoney(v, { cents: true });
-  return formatMoney(money < 0 ? Math.ceil(v) : Math.floor(v));
+  return formatMoney(Math.floor(v + 1e-6));
 }
 
 /**
@@ -27,7 +38,10 @@ export function moneyHeld(money: number): string {
  * enough for a $200 price (bills leave cents, and every check compares to the cent).
  */
 export function wholeMoney(money: number): string {
-  return formatMoney(Math.floor((Number.isFinite(money) ? money : 0) + 1e-6));
+  const v = Number.isFinite(money) ? money : 0;
+  // a debt as the sim writes it ("−$12.40"), not rounded to a bigger one
+  if (v < 0) return `−${moneyHeld(v)}`;
+  return formatMoney(Math.floor(v + 1e-6));
 }
 
 /** A disabled "Buy" button's reason (its `title`), or undefined when `price` is affordable. */
@@ -44,20 +58,53 @@ export function cheapestFoodPrice(g: GameState): number {
 
 /** Finances shows its "Ways to raise cash" whenever money stands between the player and food or anything on sale. */
 export function needsCashIdeas(g: GameState): boolean {
-  return g.finance.money < 0 || g.finance.money < cheapestFoodPrice(g) || !!hungryAndShort(g);
+  return g.finance.money < 0 || g.finance.money < cheapestFoodPrice(g) || !!hungryAndShort(g) || saltAndShort(g);
+}
+
+// ───────────── Audit 2026-11-17 C1 (review): salt water with no salt and no money for a bag ─────────────
+
+/** The smallest bag of marine salt mix on sale (Market › Supplies). */
+export function cheapestSaltPrice(): number {
+  return SALT_BAGS[0] * SALT_PRICE_PER_KG;
+}
+
+/** Can't even a 10% change (the card's smallest) be done in this salt tank with the salt in stock? */
+const saltBlocked = (g: GameState, tankId: string): boolean => {
+  const t = g.tanks[tankId];
+  return !!t && isSaltClass(t.waterClass) && !safe('waterChangeCost', () => waterChangeCost(g, tankId, 0.1), { saltKg: 0, enoughSalt: true }).enoughSalt;
+};
+
+/** A salt tank that can't have a water change for want of salt, and too little money for the smallest bag. */
+export function saltAndShort(g: GameState): boolean {
+  if (g.finance.money >= cheapestSaltPrice()) return false;
+  return g.tankOrder.some((id) => saltBlocked(g, id));
+}
+
+/**
+ * The tank card's line under its water-change buttons when the salt can't cover any change and the money won't buy
+ * the smallest bag (the change's own refusal says where to buy, which doesn't help then). Null otherwise.
+ */
+export function saltCashLine(g: GameState, tankId: string): string | null {
+  const money = g.finance.money;
+  const price = cheapestSaltPrice();
+  if (money >= price || !saltBlocked(g, tankId)) return null;
+  return money < 0
+    ? `Not enough salt for even a 10% water change, and purchases are paused while you’re ${moneyHeld(money)} in debt.`
+    : `Not enough salt for even a 10% water change, and the smallest bag of salt mix (${formatMoney(price)}) costs more than the ${moneyHeld(money)} you have.`;
 }
 
 export interface HungryAndShort {
-  /** Tanks where someone has no food left and the money won't buy the cheapest pack they eat. */
-  tanks: { tankId: string; names: string[] }[];
+  /** Tanks where someone's food is low or gone and the money won't buy the cheapest pack they eat. */
+  tanks: { tankId: string; names: string[]; level: 'low' | 'out' }[];
   /** The cheapest pack any of them eats (unlocked and on sale). */
   foodId: string;
   price: number;
 }
 
 /**
- * A7's worst case: animals with no food left, and less money than the cheapest pack they eat (or a debt, which pauses
- * every purchase). Null when every hungry animal's food can be bought.
+ * A7's case, and before it (review fix): animals whose food is running low or gone, and less money than the cheapest
+ * pack they eat (or a debt, which pauses every purchase). Null when every such animal's food can be bought. So a
+ * greyed "Buy" explains itself on a phone (no tooltip there) before the food runs out.
  */
 export function hungryAndShort(g: GameState): HungryAndShort | null {
   const money = g.finance.money;
@@ -65,9 +112,10 @@ export function hungryAndShort(g: GameState): HungryAndShort | null {
   let cheapest: { foodId: string; price: number } | null = null;
   for (const id of g.tankOrder) {
     const t = g.tanks[id];
-    if (!t || t.cache?.foodLevel !== 'out') continue;
+    const level = t?.cache?.foodLevel;
+    if (!t || (level !== 'out' && level !== 'low')) continue;
     const o = safe('tankFoodOutlook', () => tankFoodOutlook(g, id), null);
-    if (!o || o.level !== 'out') continue;
+    if (!o || o.level === 'ok') continue;
     const species = o.speciesIds.map((s) => findSpecies(s)).filter((s): s is NonNullable<typeof s> => !!s);
     let best: { foodId: string; price: number } | null = null;
     for (const f of FOODS) {
@@ -77,7 +125,7 @@ export function hungryAndShort(g: GameState): HungryAndShort | null {
     }
     if (!best && o.restockId) best = { foodId: o.restockId, price: getFoodDef(o.restockId)?.price ?? 0 };
     if (!best || (money >= 0 && money >= best.price)) continue;
-    tanks.push({ tankId: id, names: o.names });
+    tanks.push({ tankId: id, names: o.names, level: o.level });
     if (!cheapest || best.price < cheapest.price) cheapest = best;
   }
   return tanks.length && cheapest ? { tanks, ...cheapest } : null;
@@ -94,8 +142,18 @@ export function suppliesMoneyNote(g: GameState, cheapestShown: number): { title:
   const hungry = hungryAndShort(g);
   let title: string;
   let text: string;
-  const all = hungry ? hungry.tanks.flatMap((t) => t.names) : [];
-  const noFood = all.length ? `${names(all)} ${all.length === 1 ? 'has' : 'have'} no food left` : hungry ? 'Your animals have no food left' : '';
+  // animals with no food left come first; otherwise those whose food is running low
+  const out = hungry?.tanks.some((t) => t.level === 'out');
+  const all = hungry ? hungry.tanks.filter((t) => !out || t.level === 'out').flatMap((t) => t.names) : [];
+  const noFood = !hungry
+    ? ''
+    : out
+      ? all.length
+        ? `${names(all)} ${all.length === 1 ? 'has' : 'have'} no food left`
+        : 'Your animals have no food left'
+      : all.length
+        ? `Food for ${names(all)} is running low`
+        : 'Your animals’ food is running low';
   if (money < 0) {
     title = 'Purchases are paused';
     text = `You’re ${moneyHeld(money)} in debt, so purchases are paused, food included.${noFood ? ` ${noFood}.` : ''}`;
@@ -107,7 +165,7 @@ export function suppliesMoneyNote(g: GameState, cheapestShown: number): { title:
     text = `You have ${moneyHeld(money)}: not enough for anything here.`;
   } else return null;
   // a way to raise cash now (selling, listing, visitors), not a way to trim tomorrow's bill
-  const now = safe('cashIdeas', () => cashIdeas(g), []).find((i) => i.kind === 'quick_sell' || i.kind === 'list_animal' || i.kind === 'list_tank' || i.kind === 'visitors' || i.kind === 'decor');
+  const now = safe('cashIdeas', () => cashIdeas(g), []).find((i) => i.kind === 'quick_sell' || i.kind === 'list_animal' || i.kind === 'list_tank' || i.kind === 'visitors' || i.kind === 'decor' || i.kind === 'take_down' || i.kind === 'spare_gear'); // + take_down, spare_gear: audit 2026-11-17 (G19, G22 review)
   const alive = Object.values(g.creatures).some((c) => c.status === 'alive');
   const tip = now?.text ?? (alive ? 'Sell an animal for quick cash: tick it in Livestock and press Quick sell.' : 'Wait for income: nothing is ever taken from you.');
   return { title, text, tip };

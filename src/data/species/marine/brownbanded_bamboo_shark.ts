@@ -154,7 +154,7 @@ export const brownbandedBambooShark: SpeciesDefinition = {
     funFact: 'It can survive up to twelve hours out of water in a drying tide pool.',
     inGameBehavior: 'Lies under a ledge with its head or tail sticking out by day, then noses through the sand for food at night.',
     feedingNote: 'Bite-size frozen seafood two or three times a week; big pieces come back up.',
-    keeperTip: 'Bamboo sharks get goitre within months without iodine and vitamins: real keepers soak the seafood in a shark supplement.',
+    keeperTip: 'Bamboo sharks get goitre within months without iodine and vitamins: keepers soak the seafood in a shark supplement.',
   },
   sourceReferences: [
     { id: 'fishbase-chiloscyllium-punctatum', title: 'FishBase — Chiloscyllium punctatum (Brownbanded bambooshark)', url: 'https://www.fishbase.se/summary/Chiloscyllium-punctatum.html', tier: 1, facts: ['paired eggs', 'tide pools', 'survives up to 12 hours out of water', 'IUCN Near Threatened (2023)'] },

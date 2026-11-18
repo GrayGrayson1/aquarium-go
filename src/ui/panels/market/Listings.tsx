@@ -54,7 +54,7 @@ export function ListingsTab({ g, focusId, onCreate }: { g: GameState; focusId: s
         <SectionHead title={`Active · ${active.length}`} icon={<Gavel size={14} />} />
         {active.length === 0 ? (
           <EmptyState icon={<Tag size={24} />} title="Nothing listed right now">
-            When you list something, bids from NPC buyers arrive here. Waiting can bring a better offer — but never a guaranteed one.
+            When you list something, bids from buyers arrive here. Waiting can bring a better offer — but never a guaranteed one.
           </EmptyState>
         ) : (
           <div className="pn-col pn-gap-3">

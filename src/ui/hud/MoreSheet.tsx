@@ -147,7 +147,10 @@ function MoreReputation() {
       }}
     >
       <Star size={14} aria-hidden />
-      <span className="ag-tabular">{formatRep(rep)} reputation</span>
+      {/* (review: on a 320–360 px phone or with larger text the word gives way first: "1,000 rep…", never the number) */}
+      <span className="ag-more__rep-text">
+        <span className="ag-tabular">{formatRep(rep)}</span> reputation
+      </span>
     </button>
   );
 }

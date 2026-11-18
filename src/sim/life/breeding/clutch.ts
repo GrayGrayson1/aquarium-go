@@ -467,7 +467,7 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
           const nurseryHere = isNurseryFor(state, tank, hour);
           say(state, ctx, {
             kind: 'warning',
-            text: `${lost === 1 ? 'One' : lost.toLocaleString('en-US')} of ${parentName(state, cl).replace(/^The$/, 'the')} egg cases ${lost === 1 ? 'was' : 'were'} ${eaten ? 'eaten' : 'lost'}; ${cl.count} ${cl.count === 1 ? 'is' : 'are'} left.${eaten && !nurseryHere ? ' A nursery tank keeps the rest safe (Livestock › Eggs & fry).' : ''}`,
+            text: `${lost === 1 ? 'One' : String(lost)} of ${parentName(state, cl).replace(/^The$/, 'the')} egg cases ${lost === 1 ? 'was' : 'were'} ${eaten ? 'eaten' : 'lost'}; ${cl.count} ${cl.count === 1 ? 'is' : 'are'} left.${eaten && !nurseryHere ? ' A nursery tank keeps the rest safe (Livestock › Eggs & fry).' : ''}`,
             tankId: cl.tankId,
           });
         }
@@ -541,7 +541,13 @@ function predationText(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
   }
   if (pred.conspecific.length) return `The adult ${spPlural(sp)} are eating ${whose} ${label}! Move the clutch to a nursery tank (Livestock › Eggs & fry).`;
   const other = [...pred.others.keys()].map((id) => findSpecies(id)).filter((x): x is SpeciesDefinition => !!x);
-  if (other.length) return `${other.map((o) => spPlural(o)).join(' and ').replace(/^./, (ch) => ch.toUpperCase())} ${other.length === 1 && pred.others.get(other[0].id)!.length === 1 ? 'is' : 'are'} hunting ${whose} ${label}! Move the clutch to a nursery tank (Livestock › Eggs & fry).`;
+  // (review E, E1: in a nursery the young are where the advice sent them: the hunters are what has to go)
+  // (and "The betta is hunting", not "Bettas is hunting", when one animal is)
+  if (other.length) {
+    const one = other.length === 1 && pred.others.get(other[0].id)!.length === 1;
+    const hunters = one ? `the ${spName(other[0])}` : `the ${other.map((o) => spPlural(o)).join(' and ')}`;
+    return `${hunters.replace(/^./, (ch) => ch.toUpperCase())} ${one ? 'is' : 'are'} hunting ${whose} ${label}! ${isNurseryFor(state, tank, hour) ? `Move ${hunters} out of ${tank.name}.` : 'Move the clutch to a nursery tank (Livestock › Eggs & fry).'}`;
+  }
   return `Something is eating ${whose} ${label} — a nursery tank would keep them safe.`;
 }
 
@@ -554,7 +560,9 @@ function warnings(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinitio
   if (hz.predation > 0.004 && flag(cl, key)) {
     say(state, ctx, { kind: pred.guardianEating ? 'danger' : 'warning', text: predationText(state, cl, tank, sp, mod, pred, hour), tankId: cl.tankId, creatureId: pred.guardianEating?.id ?? pred.conspecific[0]?.id, toast: !!pred.guardianEating || toastWorthy(state, sp, 'predation', 2) });
   }
-  if (hz.starvation > 0.004 && (cl.fed ?? 1) < 0.4 && flag(cl, `food_${cl.stage}`)) {
+  // (review E: the flag names the stage's first food, so a brood in an old save whose foods changed — E10's marine cave
+  // spawners, mandarin and bumblebee goby — is told once more what it eats now; a new game warns once per stage as before)
+  if (hz.starvation > 0.004 && (cl.fed ?? 1) < 0.4 && flag(cl, `food_${cl.stage}:${currentPhase(cl, mod)?.foods[0] ?? ''}`)) {
     const ph = currentPhase(cl, mod);
     const foods = foodTagNames(ph?.foods ?? [], { max: 2, shelfOnly: true }); // Audit 2026-11-17 (J3): shop words; algae film isn't sold
     say(state, ctx, { kind: 'warning', text: `${who} ${label} are hungry — offer ${foods.length ? joinFoodNames(foods) : 'tiny live foods'} several times a day.`, tankId: cl.tankId, toast: toastWorthy(state, sp, 'hungry', 2) });
@@ -580,7 +588,7 @@ function hatch(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, 
   const plan = mod.plan;
   if (plan.hatchAtNight && !isNight(tank, hour)) return;
   if (!plan.larvaeViable) {
-    loseClutch(state, cl, sp, ctx, plan.nonViableText ?? `${parentName(state, cl)} eggs hatched, but the larvae need a rearing setup this shop can’t provide yet.`);
+    loseClutch(state, cl, sp, ctx, plan.nonViableText ?? `${parentName(state, cl)} eggs hatched, but the larvae need special rearing that Aquarium Go doesn’t include, so they were lost.`);
     return;
   }
   const ph = plan.phases[0];

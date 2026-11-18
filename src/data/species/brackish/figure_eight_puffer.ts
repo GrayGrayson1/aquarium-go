@@ -156,7 +156,7 @@ export const figureEightPuffer: SpeciesDefinition = {
     summary: 'A charismatic little estuary puffer with a white belly, a gold-and-olive back scrawled with figure-eight rings, and a face that follows you everywhere.',
     nativeHabitat: 'Slow lowland rivers, floodplains and tidal river mouths of South-east Asia, where fresh water meets the first traces of the sea.',
     socialStructure: 'Best kept alone. Puffers raised together can share a big tank, but crowded puffers nip each other.',
-    tankNeeds: 'About 15 gallons for one, plus 10 per extra puffer. Warm (24–27 °C), hard, alkaline, low-end brackish water (SG about 1.004–1.008), and very clean — puffers are sensitive to ammonia and nitrite. Feed snails and other hard-shelled foods so its ever-growing beak stays worn down.',
+    tankNeeds: 'About 15 gallons for one, plus 10 per extra puffer. Warm (24–27 °C), hard, alkaline, low-end brackish water (SG about 1.004–1.008), and very clean — puffers are sensitive to ammonia and nitrite. Feed snails and other hard-shelled foods so their ever-growing beaks stay worn down.',
     compatibilityNotes: 'Not a community fish. It eats snails and shrimp, nips fins (especially sailfin mollies and other long-finned fish), and competes hard at feeding. A species tank is the safe choice.',
     breedingOverview: 'Not bred in captivity. It is thought to lay eggs on a hard surface that the male guards, but nobody has a reliable method, so breeding is not part of the game.',
     conservationNote: 'Data Deficient: nobody knows how wild populations are faring, and every trade fish is wild-caught. Choose settled, feeding fish, keep them for life, and never release one.',

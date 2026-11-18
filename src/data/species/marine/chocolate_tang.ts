@@ -150,7 +150,7 @@ export const chocolateTang: SpeciesDefinition = {
     funFact: 'Young mimics fed about 10% more when close to their model angelfish — apparently because territorial damselfish attack them less.',
     inGameBehavior: 'The young dart in and out of the rock like a pygmy angel; adults graze in steady laps along the base of the reef.',
     feedingNote: 'A grazer: seaweed clipped to the rock most days, spirulina flake or small pellets, and a little thawed mysis. An autofeeder can add pellets; the seaweed goes on by hand.',
-    keeperTip: 'Ask for the scientific name and where it was collected — "yellow tang", "lemon tang" and "mimic tang" labels are often mixed up.',
+    keeperTip: 'Ask for the scientific name and where it was collected — “yellow tang”, “lemon tang” and “mimic tang” labels are often mixed up.',
   },
   sourceReferences: [
     { id: 'fishbase-acanthurus-pyroferus', title: 'FishBase — Acanthurus pyroferus (Mimic surgeonfish)', url: 'https://www.fishbase.se/summary/Acanthurus-pyroferus.html', tier: 1, facts: ['29 cm TL', 'depth 0–60 m', 'base of reefs, usually alone', 'juveniles mimic Centropyge', 'IUCN Least Concern (2010)'] },

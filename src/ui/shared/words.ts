@@ -77,6 +77,8 @@ export const SHARED_WORDS = {
   approve: 'Approve',
   decline: 'Decline',
   giveMoney: 'Give money',
+  /** Audit 2026-11-17 (J36): the member picker's own name (the section is already "Give money"). */
+  giveTo: 'Give money to',
   give: 'Give',
   spending: 'Spending:',
   spendsFreely: 'Spends freely',
@@ -126,26 +128,27 @@ export function closingText(why: VisitEnd, o: { club: string; until?: string; sa
     case 'restart':
       return `The shared shop’s server restarted, so it went back to its last save (${minutesAgo(o.savedAt, o.now)}).`;
     case 'outofstep':
-      // audit I11: what helps, as the slow device's line says it
-      return 'Your game keeps falling out of step with the shared shop, so it stopped. Someone who can change the speed could slow it down. Reload to try again.';
+      // audit I11 and its review: what helps (the speed), and Try again opens the shop afresh (a reload did no more)
+      return 'Your game keeps falling out of step with the shared shop, so it stopped. Someone who can change the speed could slow it down; then try again.';
     case 'busy':
       // audit I11: the join limit (20 an hour); no Reload, which can't help
       return 'You’ve joined the shared shop a lot in the last hour. Try again in a little while.';
     case 'gone':
       return `${o.club} has no shared shop any more.`;
     // B-230 (audit 2026-11-17, I1): the opening (or the reconnects after a drop) gave up
+    // (the review: beside a Try again button, the line doesn't also say "try again later")
     case 'offline':
-      return 'Can’t reach Aquarium Go online right now, so the shared shop can’t open. Your own aquarium is safe. Try again later.';
+      return 'Can’t reach Aquarium Go online right now, so the shared shop can’t open. Your own aquarium is safe, and you can try again whenever you like.';
     case 'unreachable':
-      return 'Can’t reach the shared shop right now. Your own aquarium is safe. Aquarium Go online may be down, or a browser blocker (such as Brave Shields) may be stopping the connection. Try again in a little while.';
+      return 'Can’t reach the shared shop right now. Your own aquarium is safe. Aquarium Go online may be down, or a browser blocker (such as Brave Shields) may be stopping the connection.';
   }
 }
 
 /** The closings that offer Reload (§8). */
-export const RELOAD_CLOSINGS: ReadonlySet<VisitEnd> = new Set(['build', 'outofstep']);
+export const RELOAD_CLOSINGS: ReadonlySet<VisitEnd> = new Set(['build']);
 
 /** B-230: the closings that offer Try again (the shop couldn't be reached; nothing is wrong with the visit itself). */
-export const RETRY_CLOSINGS: ReadonlySet<VisitEnd> = new Set(['offline', 'unreachable']);
+export const RETRY_CLOSINGS: ReadonlySet<VisitEnd> = new Set(['offline', 'unreachable', 'outofstep']);
 
 /** "1 November" from `YYYY-MM-DD` (the server's day, UTC); without one, the 1st of next month (when caps reset). */
 export function reopenDate(until: string | undefined, now = Date.now()): string {

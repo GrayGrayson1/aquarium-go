@@ -39,7 +39,7 @@ export const RESEARCH: ResearchDef[] = [
   { id: 'brackish_estuaries', name: 'Brackish Estuaries', blurb: 'Where rivers meet the sea: part-strength salt water, a hydrometer and mangrove roots. Opens figure-eight puffers, bumblebee gobies, mollies and archerfish.', cost: 1200, hours: 40, requires: [{ type: 'unlocked', key: 'fw_intermediate' }], grants: ['brackish', 'decor_mangrove'], track: 'husbandry', xp: 100, icon: 'Droplets', branch: 'freshwater' },
 
   // ── breeding ──
-  { id: 'breeding_program', name: 'Breeding Programme', blurb: 'Nursery tanks, fry foods and separation plans so more young survive.', cost: 300, hours: 18, requires: [], grants: ['nursery'], track: 'breeding', xp: 40, icon: 'Egg', branch: 'breeding' },
+  { id: 'breeding_program', name: 'Breeding Programme', blurb: 'Breeding know-how that opens the way to the Genetics Lab and Live Food Cultures. Any tank can already be a nursery: set its purpose in Tanks.', cost: 300, hours: 18, requires: [], grants: ['nursery'], track: 'breeding', xp: 40, icon: 'Egg', branch: 'breeding' },
   { id: 'genetics_lab', name: 'Genetics Lab', blurb: 'Reveal precise allele-level genetics and plan morph lines with confidence.', cost: 1200, hours: 48, requires: [{ type: 'unlocked', key: 'nursery' }, { type: 'mastery', track: 'breeding', min: 60 }], grants: ['genetics_lab'], track: 'breeding', xp: 120, icon: 'Dna', branch: 'breeding' },
 
   // ── marine ──

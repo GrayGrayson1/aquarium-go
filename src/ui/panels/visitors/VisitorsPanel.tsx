@@ -62,7 +62,7 @@ export function VisitorsPanel() {
             </Button>
           }
         >
-          Upgrade to a specialty shop to welcome paying visitors. Links to this page keep working — they show this until it unlocks.
+          Upgrade to a specialty shop to welcome paying visitors.
         </LockedDestination>
       </PanelLayout>
     );
@@ -259,7 +259,7 @@ function WeekBars({ g }: { g: GameState }) {
   return (
     <section>
       <SectionHead title="Last 7 days" icon={<Users size={14} />} />
-      <div className="pn-weekbars" role="img" aria-label={`Visitors per day: ${hist.map((h) => `day ${h.day} ${h.count}`).join(', ')}`}>
+      <div className="pn-weekbars" role="img" aria-label={`Visitors per day: ${hist.map((h) => `Day ${h.day}: ${h.count}`).join(', ')}`}>
         {hist.map((h, i) => (
           <div key={h.day} className={clsx('pn-weekbar', i === hist.length - 1 && 'is-today')}>
             <span className="pn-weekbar__v">{h.count}</span>

@@ -181,6 +181,12 @@ export function noteGameChange(next: GameState | null, prev: GameState | null): 
 }
 
 /** Would leaving now lose play (Autosave off, a game that could be saved, changed since its last save)? */
+/** The review of I2: the player chose "Reload anyway" in the game's own words: the browser needn't ask again. */
+let leaveAllowed = false;
+export function allowLeave(): void {
+  leaveAllowed = true;
+}
+
 export function leaveWouldLose(): boolean {
   return changedSinceSave && !useSettings.getState().autosave && autosaveAllowed({ evenIfOff: true });
 }
@@ -233,7 +239,7 @@ export function useAutosave(): void {
     // audit I2: Autosave off and unsaved play: the browser asks before the page goes (its own "Leave site?" words)
     const unsubChanges = useGame.subscribe((s, p) => noteGameChange(s.game, p.game));
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!leaveWouldLose()) return;
+      if (leaveAllowed || !leaveWouldLose()) return;
       e.preventDefault();
       e.returnValue = ''; // older engines ask only when this is set
     };

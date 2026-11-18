@@ -104,8 +104,8 @@ export const dwarfGourami: SpeciesDefinition = {
         mode: 'mendelian',
         alleles: [
           { id: 'W', name: 'Wild (red and blue)', dominance: 4, frequency: 0.35 },
-          { id: 'N', name: 'Neon blue', dominance: 3, frequency: 0.1 },
-          { id: 'P', name: 'Powder blue', dominance: 2, frequency: 0.3 },
+          { id: 'N', name: 'Neon Blue', dominance: 3, frequency: 0.1 },
+          { id: 'P', name: 'Powder Blue', dominance: 2, frequency: 0.3 },
           { id: 'F', name: 'Flame', dominance: 1, frequency: 0.25 },
         ],
         note: 'Powder blue, neon (cobalt) and flame (red) are line-bred farm strains of the one species; their inheritance is unpublished, so they are simplified to a ladder that keeps stock a mix of the four.',

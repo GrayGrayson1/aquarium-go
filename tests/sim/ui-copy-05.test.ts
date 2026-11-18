@@ -101,7 +101,8 @@ describe('§16 Locked panels (§5.7)', () => {
   it('Visitors before the Specialty Shop', () => {
     const out = text(html(createElement(VisitorsPanel)));
     expect(out).toContain('Visitors open with a Specialty Shop');
-    expect(out).toContain('Upgrade to a specialty shop to welcome paying visitors. Links to this page keep working — they show this until it unlocks.');
+    expect(out).toContain('Upgrade to a specialty shop to welcome paying visitors.'); // Audit 2026-11-17 (J33): no developer talk about links
+    expect(out).not.toContain('Links to this page');
     expect(out).toContain('Open Build › Facility');
   });
 

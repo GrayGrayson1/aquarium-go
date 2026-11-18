@@ -45,7 +45,11 @@
 .ag-more__close { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--c-ink-2); cursor: pointer; }
 .ag-more__close:hover { background: var(--c-fill); color: var(--c-ink); }
 /* Audit 2026-11-17 (G6): reputation in More's header (phones' top bar has no room for it) */
-.ag-more__rep { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 1px solid var(--c-line); border-radius: 99px; background: var(--c-fill); color: var(--c-ink); font: inherit; font-weight: 650; font-size: calc(13px * var(--text-scale)); white-space: nowrap; cursor: pointer; }
+.ag-more__rep { display: inline-flex; flex: 0 1 auto; min-width: 0; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 1px solid var(--c-line); border-radius: 99px; background: var(--c-fill); color: var(--c-ink); font: inherit; font-weight: 650; font-size: calc(13px * var(--text-scale)); white-space: nowrap; cursor: pointer; }
+.ag-more__rep svg { flex: none; }
+/* review: the chip shrinks before the header overflows (320–360 px, larger text): its words end in an ellipsis */
+.ag-more__rep-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ag-more__head > .ag-more__title, .ag-more__head > .ag-more__close { flex: none; }
 .ag-more__rep svg { color: var(--c-gold); fill: color-mix(in srgb, var(--c-gold) 25%, transparent); }
 .ag-more__rep:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
 /* chunk 6 (DES-011): the sheet's grabber (0.5 phone-more.png, S3-D more-normal-phone.png), as the panel sheets have */

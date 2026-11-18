@@ -14,7 +14,7 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { batchGal, batchSaltKg, changerOf, freshCap, heldSystems, isHeld, prepRate, saltCap, saltWaterNeeded, saltWaterPerDay, SALT_KG_PER_GAL, waterFlows, type SupplyProblem } from '@/sim/automation';
 import { opsMemo, type OpsSnapshot } from '@/ui/common/ops';
 import { Status, NewChip, Kicker, OpsBar } from './parts';
-import { nextMixHour, saltBuyLabel, whenText } from './issues';
+import { nextMixHour, saltBuyLabel, whenPhrase } from './issues';
 import { buySaltBag } from './actions';
 import type { OpsNav } from './OperationsPanel';
 
@@ -68,7 +68,7 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
   const saltStatus = !needed ? (
     <Status tone="neutral">Not needed</Status>
   ) : saltItem?.state === 'out' && saltItem.shortDay !== undefined ? (
-    <Status tone="danger">Short Day {saltItem.shortDay}</Status>
+    <Status tone="danger">Short on Day {saltItem.shortDay}</Status>
   ) : (
     <Status tone="good">OK</Status>
   );
@@ -96,11 +96,11 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
     : saltItem?.why === 'no_manager'
       ? `Uses ${g1(kgDay)} kg a day · No one reorders salt mix. Buy it, or hire a stock manager.`
       : saltItem?.state === 'arriving'
-        ? `Uses ${g1(kgDay)} kg a day · ${f?.m.name.split(' ')[0] ?? 'Your stock manager'} reorders ${whenText(saltItem.arrives ?? now, now)}`
+        ? `Uses ${g1(kgDay)} kg a day · ${f?.m.name.split(' ')[0] ?? 'Your stock manager'} reorders ${whenPhrase(saltItem.arrives ?? now, now)}`
         : saltItem && f
           ? `Uses ${g1(kgDay)} kg a day · ${f.m.name.split(' ')[0]}’s ${formatMoney(f.budget)} budget won’t cover it today`
           : orderAt !== null && f
-            ? `Uses ${g1(kgDay)} kg a day · ${f.m.name.split(' ')[0]} reorders ${whenText(orderAt, now)}`
+            ? `Uses ${g1(kgDay)} kg a day · ${f.m.name.split(' ')[0]} reorders ${whenPhrase(orderAt, now)}`
             : `Uses ${g1(kgDay)} kg a day`;
   // chunk 6 (DES-013): after a batch drew from the fresh reserve, and no water change has drawn since
   const batchStart = room.mix && now < room.mix.readyHour ? room.mix.readyHour - WATER_ROOM.mixHoursLong : null;
@@ -178,7 +178,7 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
           <span className="ops-row__title">Salt water · {g1(saltDay)} gal</span>
           <Stack parts={[flows.salt.changes, flows.salt.hatchery]} colors={['var(--c-aqua)', 'var(--c-violet)']} />
           <Legend color="var(--c-aqua)" text={`Water changes · ${flows.salt.tanks} salt ${flows.salt.tanks === 1 ? 'tank' : 'tanks'}`} value={flows.salt.changes} />
-          {flows.salt.hatchery > 0 && <Legend color="var(--c-violet)" text="Brine shrimp hatchery" value={flows.salt.hatchery} />}
+          {flows.salt.hatchery > 0 && <Legend color="var(--c-violet)" text="Brine Shrimp Hatchery" value={flows.salt.hatchery} />}
         </>
       )}
     </section>
@@ -195,7 +195,7 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
         )}
         <Sched label="Glass scrape" value="Once a week" sub="spread across the week" />
         <Sched label="Top-off" value="As needed" sub={`${flows.fresh.atos} Auto Top-${flows.fresh.atos === 1 ? 'Off' : 'Offs'}`} />
-        {needed && <Sched label="Salt mixing" value={`${g0(batch)} gal batches below 60%`} sub={`${batchKg.toFixed(1)} kg each · ${WATER_ROOM.mixHours.map((h) => formatClock(h)).join(' and ')}`} />}
+        {needed && <Sched label="Salt mixing" value={`${g0(batch)} gal batches when the salt water reserve is below 60%`} sub={`${batchKg.toFixed(1)} kg each · ${WATER_ROOM.mixHours.map((h) => formatClock(h)).join(' and ')}`} />}
       </div>
     </section>
   );
@@ -223,7 +223,7 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
         Machines
       </Kicker>
       <div className="ops-rows">
-        <Machine icon={<Filter size={16} aria-hidden />} name="Water Prep Station" sub={`${rate} gal an hour · $${WATER_ROOM.prepUpkeep.toFixed(2)}/day`} status={<Status tone="good" icon="running">Running</Status>} />
+        <Machine icon={<Filter size={16} aria-hidden />} name="Water Prep Station" sub={`${rate} gal an hour · ${formatMoney(WATER_ROOM.prepUpkeep, { cents: true })}/day`} status={<Status tone="good" icon="running">Running</Status>} />
         <Machine icon={<Droplets size={16} aria-hidden />} name="Reservoir" sub={`${fCap} gal fresh · ${sCap} gal salt`} status={<Status tone="good">OK</Status>} />
         <Machine
           icon={<FlaskConical size={16} aria-hidden />}

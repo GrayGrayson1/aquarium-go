@@ -31,7 +31,7 @@ and the game time (offline catch-up is computed on the device today: a server wo
 | `holdOffer` (economy/purchases; the audit of 2026-11-17, ADR-0056 answer 9) | an open shop offer's hold (it stays past its leave time while the player looks) | the offer exists; the hold's cap (`MAX_NEGOTIATION_HOLD_HOURS` from its start) |
 | `buyTank`, `placeTank` | money −, a tank | price, the facility's tank limit, placement |
 | `buyEquipment`, `installEquipment`, `repairEquipment`, `removeEquipment`, `setEquipment` | money −, a tank's gear | price (or the piece is in the player's stock), the tank is the player's |
-| `sellStoredEquipment` (the audit of 2026-11-17, ADR-0056 answer 7) | money +, a unit leaves the stock | the unit is in the player's stock; the price is half the catalogue price by its condition (half again when broken) |
+| `sellStoredEquipment` (the audit of 2026-11-17, ADR-0056 answer 7) | money +, a unit leaves the stock | the unit is in the player's stock; the price is half the catalogue price, whatever its condition (as the owner approved) |
 | `takeDownTank` (the audit of 2026-11-17, ADR-0056 answer 7) | money +, a tank goes, its gear and decor go to the stock | the tank is the player's and empty (no animals, eggs or young, no listing, no production line); the price is half the tier's bare price |
 | `convertWaterClass` | money −, a tank's water class (it empties and restarts its cycle) | the conversion's price, the tank is empty of animals that can't stay |
 | `buyFood`, `buySalt`, `buyEggs` | money −, stock + | price, pack size |

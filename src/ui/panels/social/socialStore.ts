@@ -59,23 +59,62 @@ export const setSocialUser = (user: SocialUser | null): void => {
   useSocial.setState({ user, offline: false });
 };
 
+/**
+ * Audit 2026-11-17, I13 (and its review): the friend requests Social has already shown on this device (their ids;
+ * device-side, never in the save). A request lights the dot only until then: only the owner can decline one
+ * (ADR-0054), so a dot that stayed until it was accepted pushed a child to accept someone they didn't want.
+ */
+export const SEEN_REQUESTS_KEY = 'aquarium-go.social.requests-seen.v1';
+const MAX_SEEN_REQUESTS = 200;
+function seenRequests(): Set<string> {
+  try {
+    const v = JSON.parse(globalThis.localStorage?.getItem(SEEN_REQUESTS_KEY) ?? '[]') as unknown;
+    return new Set(Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+function rememberSeenRequests(ids: readonly string[]): void {
+  if (!ids.length) return;
+  try {
+    const all = [...new Set([...seenRequests(), ...ids])].slice(-MAX_SEEN_REQUESTS);
+    globalThis.localStorage?.setItem(SEEN_REQUESTS_KEY, JSON.stringify(all));
+  } catch {
+    /* the dot may show a request again: no harm */
+  }
+}
+/** The requests waiting as last read (their ids). */
+let waitingRequests: string[] = [];
+
 /** Re-read what's new (the Social dot); quiet on failure. */
 export async function refreshSocialNews(): Promise<void> {
   try {
-    // audit I13: the requests waiting too (a request showed only if Friends happened to be opened)
-    const [news, requests] = await Promise.all([socialService().news(), socialService().friendRequests().then((r) => r.length, () => useSocial.getState().news.requests ?? 0)]);
-    useSocial.setState({ news: { ...news, requests } });
+    // audit I13: the requests waiting too, the ones Social hasn't shown yet (a request showed only if Friends happened
+    // to be opened)
+    const [news, ids] = await Promise.all([socialService().news(), socialService().friendRequests().then((r) => r.map((x) => x.id), () => null)]);
+    if (ids) waitingRequests = ids;
+    const seen = seenRequests();
+    useSocial.setState({ news: { ...news, requests: waitingRequests.filter((id) => !seen.has(id)).length } });
   } catch {
     /* keep the last answer */
   }
 }
 
-/** Social is open: what's there now has been seen. */
+/** Social is open: what's there now has been seen (the friend requests waiting too). */
 export async function markSocialSeen(): Promise<void> {
-  // a friend request still waiting for an answer keeps the dot (it goes when it is answered)
-  useSocial.setState((s) => ({ news: { trades: 0, clubs: 0, requests: s.news.requests ?? 0 } }));
+  rememberSeenRequests(waitingRequests);
+  useSocial.setState({ news: { trades: 0, clubs: 0, requests: 0 } });
   try {
-    await socialService().markSeen();
+    await Promise.all([
+      socialService().markSeen(),
+      // ones that came since the last read are on screen now too
+      socialService()
+        .friendRequests()
+        .then((r) => {
+          waitingRequests = r.map((x) => x.id);
+          rememberSeenRequests(waitingRequests);
+        }, () => {}),
+    ]);
   } catch {
     /* the next refresh says again */
   }

@@ -3,14 +3,14 @@
  * needs, at half its price as it already does for decorations (`SELL_BACK_FRACTION`), and an empty tank can be taken
  * down. Both are deterministic (no random draws) and add no save fields. The interface shows the amount and asks first.
  *
- * - Stored equipment sells for half its catalogue price, scaled by its condition (as a part-rotted almond leaf sells
- *   for what is left of it); a broken unit fetches half that again (the store has to fix it).
+ * - Stored equipment sells for half its catalogue price, whatever its condition (the owner's words: "at half price,
+ *   exactly as it already does for decorations"; no profit path: kit gear costs 0.9 of list, a repair 0.35).
  * - An empty tank (no animals, eggs or young; not listed; not in a production line) comes down: its equipment and decor
  *   go to storage through the same paths "Remove" and "To storage" use, the tank goes as an auctioned one does
  *   (`deleteTank`; the step's own tidying drops staff rounds, docent talks and visits to it), and the store pays half
  *   the bare tank's price. Taking down the last tank leaves the room empty, as selling the last one at auction does.
  */
-import type { EquipmentDef, EquipmentInstance, EquipmentKind, GameState } from '@/types';
+import type { EquipmentDef, EquipmentKind, GameState } from '@/types';
 import type { ActionResult } from '../care';
 import { removeEquipment } from '../care';
 import { removeDecor, SELL_BACK_FRACTION } from '../aquascape';
@@ -20,13 +20,11 @@ import { isUnlocked } from '../facility';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
 import { earn } from './finance';
-import { clamp, fmtMoney } from './util';
+import { fmtMoney } from './util';
 
-/** What the store pays for a stored unit: half its price, by its condition; half that again when it's broken. */
-export function equipmentSellValue(def: EquipmentDef | null | undefined, inst: Pick<EquipmentInstance, 'condition' | 'failed'>): number {
-  if (!def) return 0;
-  const condition = clamp(Number.isFinite(inst.condition) ? inst.condition : 1, 0, 1);
-  return Math.round(def.price * SELL_BACK_FRACTION * condition * (inst.failed ? 0.5 : 1));
+/** What the store pays for a stored unit: half its catalogue price (review: flat, as the owner approved it). */
+export function equipmentSellValue(def: EquipmentDef | null | undefined): number {
+  return def ? Math.round(def.price * SELL_BACK_FRACTION) : 0;
 }
 
 /** Sell one unit from storage to the local store. */
@@ -36,7 +34,7 @@ export function sellStoredEquipment(state: GameState, instanceId: string): Actio
   const inst = state.inventory.equipment[idx];
   const def = getEquipmentDef(inst.defId);
   const name = def?.name ?? 'Equipment';
-  const value = equipmentSellValue(def, inst);
+  const value = equipmentSellValue(def);
   state.inventory.equipment.splice(idx, 1);
   if (value > 0) earn(state, value, 'equipment', `Sold ${name} from storage`);
   return { ok: true, message: value > 0 ? `${name} sold for ${fmtMoney(value)}.` : `${name} given to the store for parts.` };
@@ -77,13 +75,15 @@ export interface TakeDownCheck {
   value: number;
   /** What goes to storage, as a sentence names it ("its heater, filter and 4 decor pieces"); '' when nothing. */
   stores: string;
+  /** Review fix: more than one thing goes to storage ("… go to storage"; one: "… goes to storage"). */
+  storesMany: boolean;
   /** It's the player's only tank: the room is left empty. */
   last: boolean;
 }
 
 export function takeDownCheck(state: GameState, tankId: string): TakeDownCheck {
   const tank = Object.hasOwn(state.tanks, tankId) ? state.tanks[tankId] : undefined;
-  if (!tank) return { ok: false, reason: 'That tank no longer exists.', called: 'that tank', value: 0, stores: '', last: false };
+  if (!tank) return { ok: false, reason: 'That tank no longer exists.', called: 'that tank', value: 0, stores: '', storesMany: false, last: false };
   const tier = TANK_TIER_BY_ID[tank.tierId];
   // a tank still called by its size ("10 Gallon", "10 Gallon 2") reads "the 10 Gallon"; a name of its own stands alone
   const called = tier && (tank.name === tier.name || tank.name.startsWith(`${tier.name} `)) ? `the ${tank.name}` : tank.name;
@@ -93,14 +93,17 @@ export function takeDownCheck(state: GameState, tankId: string): TakeDownCheck {
     if (k) kinds.set(k, (kinds.get(k) ?? 0) + 1);
   }
   const parts = [...kinds].map(([k, n]) => (n === 1 ? KIND_WORD[k]?.[0] ?? k : `${n} ${KIND_WORD[k]?.[1] ?? k}`));
-  if (tank.decor.length) parts.push(`${tank.decor.length} decor ${tank.decor.length === 1 ? 'piece' : 'pieces'}`);
-  const view: TakeDownCheck = { ok: true, called, value: tier ? Math.round(tier.price * SELL_BACK_FRACTION) : 0, stores: parts.length ? `its ${andList(parts)}` : '', last: state.tankOrder.length <= 1 };
+  // review fix: one piece is "its decor piece", never "its 1 decor piece"
+  if (tank.decor.length) parts.push(tank.decor.length === 1 ? 'decor piece' : `${tank.decor.length} decor pieces`);
+  const view: TakeDownCheck = { ok: true, called, value: tier ? Math.round(tier.price * SELL_BACK_FRACTION) : 0, stores: parts.length ? `its ${andList(parts)}` : '', storesMany: tank.equipment.length + tank.decor.length > 1, last: state.tankOrder.length <= 1 };
   const refuse = (reason: string): TakeDownCheck => ({ ...view, ok: false, reason });
   if (tank.listingId) return refuse('It’s listed for sale. Withdraw the listing first.');
   if (Object.values(state.creatures).some((c) => c.tankId === tankId && (c.status === 'alive' || c.status === 'listed'))) return refuse('Animals live in it. Move them to another tank first.');
-  if (Object.values(state.clutches).some((cl) => cl.tankId === tankId && cl.count > 0)) return refuse('Eggs or young are in it. Move them to another tank first, or wait until they’ve grown and moved on.');
+  // review fix: young that grow up stay in the tank, so waiting frees nothing
+  if (Object.values(state.clutches).some((cl) => cl.tankId === tankId && cl.count > 0)) return refuse('Eggs or young are in it. Move them to another tank first.');
   const line = (state.production?.lines ?? []).find((l) => l.tanks.breed === tankId || l.tanks.raise === tankId || l.tanks.keep === tankId || l.tanks.quarantine.includes(tankId) || l.pair.restTankId === tankId);
-  if (line) return refuse(`The ${line.name} line uses it. Give the line another tank in Operations, or end the line, first.`);
+  // review fix: line names already end in "line", and a line's tanks are changed (or the line ended) in Livestock › Production
+  if (line) return refuse(`${line.name} uses it. Give the line another tank in Livestock › Production, or end the line there, first.`);
   return view;
 }
 

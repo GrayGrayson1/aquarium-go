@@ -34,7 +34,7 @@ import { Button, Section, Segmented, Toggle, formatMoney } from '../kit';
 export const AUTOFEEDER_ID = 'autofeeder';
 export { WATER_CHANGER_ID }; // chunk 11: the buyAutoClean command's
 /** §10.2: the hint while the Autofeeder (and so the Auto Water Changer, which shares its unlock) is locked. */
-export const AUTOMATION_LOCK_HINT = 'Research Better Life Support, or build husbandry mastery with regular care.';
+export const AUTOMATION_LOCK_HINT = 'Research Better Life Support, or raise Husbandry mastery by caring for your tanks.';
 
 const kindOf = (e: EquipmentInstance) => getEquipmentDef(e.defId)?.kind;
 const pct = (v: number) => `${Math.round(v * 100)}%`;

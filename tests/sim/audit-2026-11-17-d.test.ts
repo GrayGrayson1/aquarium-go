@@ -7,20 +7,22 @@ import type { CompatReport, GameState, Tank } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { createTank } from '@/sim/tanks';
 import { createCreature, addCreature, stepTankCreatures, creatureWellbeing } from '@/sim/life';
+import { stressNote } from '@/sim/life/index';
 import { makeContext } from '@/sim/context';
 import { lastHurtBy } from '@/sim/life/step';
 import { moveCreatures } from '@/sim/life/groupMove';
 import { applyCommand, validateCommand } from '@/sim/commands';
 import { staleOf } from '@/sim/commands/shared';
+import { deepClone } from '@/sim/clone';
 import { simRng, mulberry32 } from '@/sim/rng';
 import { previewAddition, evaluateComposition, simpleMember, neutralContext } from '@/sim/compat';
 import { getSpecies, ALL_SPECIES } from '@/data/species';
 import { composition, generateOffer } from '@/sim/economy/shop';
 import { getFoodDef } from '@/data/catalog/foods';
+import { getDecorDef } from '@/data/catalog/decor';
 import { offerDiet } from '@/ui/panels/market/offerDietText';
 import { capitalPlural } from '@/ui/panels/market/offerWords';
 import { lifespanFacts } from '@/ui/common/lifespan';
-import { convertTempText } from '@/ui/common/format';
 import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isMemoryCard } from '@/ui/cards/conditionWords';
 import { moveButton, moveNeedsAck } from '@/ui/cards/moveRisk';
 import { fixForCreatureNote } from '@/ui/cards/noteFixes';
@@ -120,6 +122,9 @@ describe('D20: old age never takes the first companion (the owner’s decision);
     expect(lifespanFacts(old, sp, s.clock.hour).note).toBe('Ash is in her last stretch: about 12 days left.');
     old.status = 'dead';
     expect(lifespanFacts(old, sp, s.clock.hour).note).toBeNull();
+    // the review: a first companion that has died shows the plain lifespan, never an empty row
+    ember.status = 'dead';
+    expect(lifespanFacts(ember, sp, s.clock.hour)).toEqual({ value: `About ${sp.lifecycle.lifespanDays} days`, note: null });
   });
 });
 
@@ -198,20 +203,7 @@ describe('D4: the tank-size verdict is graded by how short the tank is (the owne
   });
 });
 
-describe('D8: compatibility reasons show the player’s temperature unit', () => {
-  it('a too-warm reason and its fix convert to °F with no °C left (what CompatView now renders)', () => {
-    const s = base();
-    const t = createTank(s, 'g20L', 'freshwater_planted', { cycled: true });
-    const r = previewAddition(s, t.id, { speciesId: 'white_cloud_minnow', count: 6 });
-    const temp = r.reasons.find((x) => x.category === 'temperature' && x.severity !== 'info');
-    expect(temp).toBeDefined();
-    expect(temp!.text).toMatch(/°C/);
-    const f = convertTempText(temp!.text, 'F')!;
-    expect(f).toMatch(/°F/);
-    expect(f).not.toMatch(/°\s*C/);
-    expect(convertTempText(temp!.mitigation, 'F')).not.toMatch(/°\s*C/);
-  });
-});
+// D8's tests are in tests/sim/audit-2026-11-17-d-units.test.ts (they render with the player's unit set to °F)
 
 describe('D6: a rule about water or temperature never becomes an attack', () => {
   const pair = (a: string, b: string) => {
@@ -232,13 +224,21 @@ describe('D6: a rule about water or temperature never becomes an attack', () => 
     expect(ray.incidents.some((i) => /alkaline/.test(i.text ?? ''))).toBe(false);
   });
 
-  it('goldfish with an arowana or an oscar: the eating has its own words, the water its own', () => {
-    for (const [pred, words] of [['silver_arowana', /An arowana swallows goldfish|Medium fish fit/], ['oscar', /An oscar eats goldfish/]] as const) {
-      const ev = pair(pred, 'fancy_goldfish');
-      const eat = ev.incidents.find((i) => i.kind === 'predation' && i.actorSpeciesId === pred && i.targetSpeciesId === 'fancy_goldfish');
-      expect(eat, pred).toBeDefined();
-      expect(eat!.text, pred).toMatch(words);
-      expect(ev.report.reasons.find((r) => r.category === 'predation')?.text, pred).not.toMatch(/cool-water/);
+  it('goldfish with an arowana or an oscar: what happens has its own words, the water its own', () => {
+    // the review: the words must match the incident the engine rolls (an attack is never told as eating)
+    const cases = [
+      ['silver_arowana', 'fancy_goldfish', 'predation', /swallows goldfish|Medium fish fit/],
+      ['silver_arowana', 'comet_goldfish', 'aggression', /attacks comets too big for it to swallow/],
+      ['oscar', 'fancy_goldfish', 'predation', /bullies and bites goldfish/],
+      ['oscar', 'comet_goldfish', 'aggression', /bullies and bites goldfish/],
+    ] as const;
+    for (const [pred, gf, kind, words] of cases) {
+      const ev = pair(pred, gf);
+      const hit = ev.incidents.find((i) => !i.youngOnly && i.actorSpeciesId === pred && i.targetSpeciesId === gf);
+      expect(hit?.kind, `${pred} ${gf}`).toBe(kind);
+      expect(hit!.text, `${pred} ${gf}`).toMatch(words);
+      // a kill is only told as eating when it can happen; an attack never says "eats"
+      if (!hit!.lethal) expect(hit!.text, `${pred} ${gf}`).not.toMatch(/\beats?\b/);
       expect(ev.report.reasons.some((r) => r.category === 'temperature' && /Goldfish are cool-water fish/.test(r.text)), pred).toBe(true);
     }
   });
@@ -303,7 +303,7 @@ describe('D11: a death or injury from a tank mate names the tank mate', () => {
 
   it('the healing note says who has been nipping her', () => {
     const { s, mango } = hurt();
-    expect(lastHurtBy(mango)).toEqual({ label: 'Rex the tiger barb', verb: 'nipping' });
+    expect(lastHurtBy(mango, s.clock.hour)).toEqual({ label: 'Rex the tiger barb', verb: 'nipping' });
     expect(creatureWellbeing(s, mango).notes).toContain('Healing from injuries — Rex the tiger barb has been nipping her.');
   });
 
@@ -314,6 +314,18 @@ describe('D11: a death or injury from a tank mate names the tank mate', () => {
     expect(mango.status).toBe('dead');
     expect(mango.deathCause).toBe('injuries from Rex the tiger barb');
     expect(s.log.some((e) => e.text === 'Mango has passed away from injuries — Rex the tiger barb kept nipping her. Keep them apart.')).toBe(true);
+  });
+
+  it('only a recent hurt names anyone (the review: never a tank mate from weeks ago), and a sting is “stung”', () => {
+    const { s, t, mango } = hurt();
+    mango.history = [{ hour: s.clock.hour - 24 * 20, kind: 'note', text: 'Hurt by Rex the tiger barb (fin nip).' }];
+    expect(lastHurtBy(mango, s.clock.hour)).toBeNull();
+    expect(creatureWellbeing(s, mango).notes).toContain('Healing from injuries — check for aggressive or nipping tank mates.');
+    mango.history.push({ hour: s.clock.hour - 3, kind: 'note', text: 'Hurt by Blossom the bubble-tip anemone (sting).' });
+    expect(lastHurtBy(mango, s.clock.hour)?.verb).toBe('stinging');
+    mango.stats.health = 0;
+    stepTankCreatures(s, t, 1, makeContext(s, 1));
+    expect(s.log.some((e) => e.text === 'Mango has passed away from injuries — Blossom the bubble-tip anemone stung her. Keep them apart.')).toBe(true);
   });
 });
 
@@ -432,6 +444,11 @@ describe('D16: the creature card’s notes link to where each problem is fixed',
     expect(fixForCreatureNote(c, 'Healing from injuries — Rex the tiger barb has been nipping her.')?.link.to).toEqual({ kind: 'card', tankId: 't1', tab: 'life', fix: 'compat' });
     expect(fixForCreatureNote(c, 'Bob is struggling with the water (too warm).')?.link.label).toBe('Water care');
     expect(fixForCreatureNote(c, 'Very hungry — time to feed.')).toBeNull();
+    // the review: substrate, light and sharp decor go to what fixes them, not "Add decor"
+    expect(fixForCreatureNote(c, 'Habitat: the gravel substrate is unsuitable.')?.link).toEqual({ label: 'Change substrate', to: { kind: 'panel', panel: 'build', target: 'tab:substrate' } });
+    expect(fixForCreatureNote(c, 'Habitat: the light is brighter than it likes.')?.link).toEqual({ label: 'Lighting', to: { kind: 'card', tankId: 't1', tab: 'gear', fix: 'lighting' } });
+    expect(fixForCreatureNote(c, 'Habitat: the light is dimmer than it likes.')?.link.label).toBe('Lighting');
+    expect(fixForCreatureNote(c, 'Habitat: sharp decor can tear long fins.')?.link.label).toBe('See decor');
     expect(fixForCreatureNote({ tankId: null, speciesId: 'neon_tetra' }, 'Habitat: needs plants.')).toBeNull();
   });
 });
@@ -454,8 +471,37 @@ describe('D2: a school moves in one go', () => {
     expect(validateCommand(JSON.parse(JSON.stringify(cmd)))).toEqual(cmd);
     const r = applyCommand(s, cmd);
     expect(r.ok).toBe(true);
-    expect(r.message).toMatch(/^Moved 8 neon tetras to /);
+    // one line for the whole school, not one per animal (the review's blocker 1)
+    expect(r.message).toBe(`Moved 8 neon tetras to ${to.name}. Give them a little while to settle in.`);
     expect(neons.every((c) => c.tankId === to.id)).toBe(true);
+  });
+
+  it('a courting pair moved with its group gives the warning a single move gives (the review’s case: five rams)', () => {
+    const s = base();
+    const from = createTank(s, 'g29', 'freshwater_tropical', { cycled: true });
+    const to = createTank(s, 'g40B', 'freshwater_tropical', { cycled: true });
+    const sexes = ['female', 'female', 'female', 'male', 'female'] as const;
+    const rams = sexes.map((sex, i) => addCreature(s, createCreature(s, mulberry32(300 + i), 'german_blue_ram', { sex, ageDays: 200, name: `Ram ${i}` }), from.id));
+    const [m, f] = [rams[3], rams[4]];
+    m.repro = { ...m.repro, stage: 'courting', partnerId: f.id };
+    f.repro = { ...f.repro, stage: 'courting', partnerId: m.id };
+    const single = deepClone(s);
+    const one = applyCommand(single, { k: 'separateCreature', creature: m.id, to: to.id, from: from.id });
+    expect(one.message).toMatch(/^Courtship interrupted — Ram 3 moved to /);
+    const r = applyCommand(s, { k: 'moveCreatures', creatures: rams.map((c) => c.id), to: to.id, from: rams.map(() => from.id) });
+    expect(r.ok).toBe(true);
+    expect(r.message.startsWith(`Moved 5 german blue rams to ${to.name}. Give them a little while to settle in.`)).toBe(true);
+    expect(r.message).toContain(one.message);
+    expect(r.message).not.toMatch(/Ram 0 moved|Moved Ram 0/);
+  });
+
+  it('one animal lost since the group was picked stays out; the rest still move', () => {
+    const { s, to, neons } = school();
+    neons[2].status = 'dead';
+    const r = moveCreatures(s, neons.map((c) => c.id), to.id);
+    expect(r.ok).toBe(true);
+    expect(r.message).toBe(`Moved 7 neon tetras to ${to.name}. Give them a little while to settle in. One of them is no longer in your care.`);
+    expect(neons.filter((c) => c.status !== 'dead').every((c) => c.tankId === to.id)).toBe(true);
   });
 
   it('a group the water refuses moves no one', () => {
@@ -472,5 +518,34 @@ describe('D2: a school moves in one go', () => {
     expect(staleOf(s, { k: 'moveCreatures', creatures: neons.map((c) => c.id), to: to.id, from: neons.map(() => from.id) })).toEqual({ key: `c:${neons[3].id}`, noun: 'fish' });
     expect(validateCommand({ k: 'moveCreatures', creatures: ['cr_1'], to: 't', from: ['', 'tank_1'] })).not.toBeNull();
     expect(validateCommand({ k: 'moveCreatures', creatures: ['cr_1'], to: 't', from: ['__proto__'] })).toBeNull();
+  });
+});
+
+describe('D7 (ADR-0056 decision 3, screens made honest while the owner decides): no promise that spare shells help', () => {
+  it('the hermits’ snail warnings and the Shell Pile promise nothing the game doesn’t do; the risk is unchanged', () => {
+    const blue = getSpecies('hermit_crab').exceptionRules!.find((r) => r.other === 'tag:snail')!;
+    const scarlet = getSpecies('scarlet_hermit_crab').exceptionRules!.find((r) => r.other === 'tag:snail')!;
+    for (const r of [blue, scarlet]) expect(r.reason).not.toMatch(/shells? (on hand|reduces?)|spare (empty )?shells/i);
+    expect([blue.verdictFloor, blue.incidentRisk, scarlet.verdictFloor, scarlet.incidentRisk]).toEqual(['conditional', 0.04, 'usually_compatible', 0.015]);
+    expect(getDecorDef('shell_pile')!.description).not.toMatch(/hermit|fight/i);
+    // what the blue-leg's line does claim holds in the game: its snail risk is predation, which hunger drives
+    const H = getSpecies('hermit_crab');
+    const S = getSpecies('trochus_snail');
+    const ev = evaluateComposition([simpleMember(H, 1, 'male'), simpleMember(S, 1, 'female')], { ...neutralContext(H, S), neutral: false, flowIndex: 1, lightLevel: 1 });
+    expect(ev.incidents.find((i) => i.actorSpeciesId === 'hermit_crab' && i.targetSpeciesId === 'trochus_snail' && !i.youngOnly)?.kind).toBe('predation');
+  });
+});
+
+describe('D10 (review): small standing causes that add up are named, not called a passing upset', () => {
+  it('a main cause; many small ones that hold it over 55; or a passing upset', () => {
+    const s = base();
+    const ember = Object.values(s.creatures).find((c) => c.isStarter)!;
+    ember.genome.potentials.temperament = 50;
+    ember.stats.enrichment = 50;
+    const f = (label: string, amount: number) => ({ key: label, label, amount });
+    expect(stressNote([f('lonely', 12), f('bright light', 2)], ember)).toBe('Stressed — mainly lonely.');
+    const many = Array.from({ length: 16 }, (_, i) => f(`small cause ${i}`, 4.5 - i * 0.01));
+    expect(stressNote(many, ember)).toBe('Stressed — several small things add up: small cause 0 and small cause 1.');
+    expect(stressNote([f('glass tapping', 2), f('bright light', 1)], ember)).toBe('Stressed — still settling after something upset it (a move, a chase or a scare).');
   });
 });

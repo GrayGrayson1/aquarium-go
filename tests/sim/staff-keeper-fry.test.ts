@@ -14,6 +14,7 @@ import { createClutch, currentPhase } from '@/sim/life/breeding/clutch';
 import { moduleFor } from '@/sim/life/breeding/registry';
 import { installEquipment } from '@/sim/care';
 import { addStaffDirect, keeperVisit } from '@/sim/staff';
+import { KEEPER_YOUNG_MAX_SERVINGS } from '@/sim/staff/work';
 import { BRINE, INFUSORIA } from '@/data/catalog/machines';
 
 function nursery(): { g: GameState; tank: Tank; m: ReturnType<typeof addStaffDirect>; clutchId: string } {
@@ -34,7 +35,7 @@ function nursery(): { g: GameState; tank: Tank; m: ReturnType<typeof addStaffDir
 }
 
 describe('Audit 2026-11-17 (H2): keepers feed fry their first foods', () => {
-  it('a round with baby brine in stock feeds the fry from it (the doser’s serving: one per 20 young)', () => {
+  it('a round with baby brine in stock feeds the fry from it (a serving per 20 young, two at most)', () => {
     const { g, tank, m, clutchId } = nursery();
     const cl = g.clutches[clutchId];
     expect(currentPhase(cl, moduleFor(getSpecies('betta')))?.foods).toContain('baby_brine');
@@ -46,6 +47,21 @@ describe('Audit 2026-11-17 (H2): keepers feed fry their first foods', () => {
     // fed a moment ago: the next visit leaves them be
     keeperVisit(g, m, tank.id, 'midday', g.clock.hour + 1);
     expect(g.inventory.foods[BRINE]).toBe(8);
+  });
+
+  it('a brood of hundreds gets a pinch, not a dose per 20 (what rots is what spikes the water), and one serving while ammonia is at WATCH', () => {
+    const big = nursery();
+    big.g.clutches[big.clutchId].count = 540; // two snail broods' worth in one display tank: 27 servings at one per 20
+    big.g.inventory.foods[BRINE] = 40;
+    keeperVisit(big.g, big.m, big.tank.id, 'morning', big.g.clock.hour);
+    expect(big.g.inventory.foods[BRINE]).toBe(40 - KEEPER_YOUNG_MAX_SERVINGS);
+    expect(big.tank.breedingEnv?.foodSeen?.baby_brine).toBe(big.g.clock.hour); // offered, which is what feeds them
+    const strained = nursery();
+    strained.g.clutches[strained.clutchId].count = 540;
+    strained.g.inventory.foods[BRINE] = 40;
+    strained.tank.water.ammonia = 0.3; // WATCH or worse on the water report
+    keeperVisit(strained.g, strained.m, strained.tank.id, 'morning', strained.g.clock.hour);
+    expect(40 - strained.g.inventory.foods[BRINE]).toBe(1);
   });
 
   it('with none of their foods in stock the keeper says so, once a round', () => {

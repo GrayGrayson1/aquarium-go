@@ -139,7 +139,7 @@ export const fahakaPuffer: SpeciesDefinition = {
   specialBehaviors: ['beg_at_glass', 'owner_recognition', 'shell_crush', 'sand_wallow', 'inflate', 'reflection_lunge', 'independent_eye_scan'],
 
   encyclopedia: {
-    summary: 'A big, characterful African puffer with independently swivelling eyes and a beak that crunches snails and crabs: the "water dog" that learns its keeper.',
+    summary: 'A big, characterful African puffer with independently swivelling eyes and a beak that crunches snails and crabs: the “water dog” that learns its keeper.',
     nativeHabitat: 'The open water and weedy edges of big rivers and lakes across North and West Africa, from the Nile to the Senegal.',
     socialStructure: 'Solitary. It does not share its tank with anything.',
     tankNeeds: 'A six-foot tank of 180 gallons or more to itself, fine sand to wallow in, powerful filtration and big weekly water changes: it is messy.',

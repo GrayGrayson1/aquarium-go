@@ -192,7 +192,7 @@ export const oscar: SpeciesDefinition = {
     nativeHabitat: 'Quiet, shallow, mud- and sand-bottomed water in the Amazon basin, where it hunts small fish, crayfish, worms and insect larvae.',
     socialStructure: 'Lives alone or in a bonded pair that forms by itself from a group of young.',
     tankNeeds: 'A six-foot tank of 180 gallons or more for one adult (a pair wants more), deep sand, a few heavy rocks, a guarded heater, strong filtration and a tight lid: it jumps.',
-    compatibilityNotes: 'Eats anything that fits in its mouth: no small fish, shrimp, snails or frogs. Big, robust fish of its own size can share a large tank; never with a fahaka puffer.',
+    compatibilityNotes: 'Eats anything that fits in its mouth, so keep it away from small fish, shrimp, snails and frogs. Big, robust fish of its own size can share a large tank; never with a fahaka puffer.',
     breedingOverview: 'A pair cleans a flat rock and lays hundreds to thousands of eggs. Both parents guard them and move the young to pits they dig in the sand.',
     conservationNote: 'Least Concern (IUCN 2020). It has become an invasive species in Florida, Hawaii and Puerto Rico: never release one.',
     funFact: 'Wild oscars sometimes lie on their side on the bottom as if dead, then snap up the small fish that come to investigate.',
@@ -229,8 +229,9 @@ export const oscar: SpeciesDefinition = {
     { other: 'tag:amphibian', verdictFloor: 'incompatible', reason: 'Oscars eat frogs and salamanders.', incidentRisk: 0.4 },
     { other: 'discus', verdictFloor: 'high_risk', reason: 'Discus need warmer, cleaner and calmer water than an oscar tank gives.', incidentRisk: 0.05 },
     // Audit 2026-11-17 (D6): the eating and the water told apart (the water rule rolls no incident)
-    { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'An oscar eats goldfish while they are small.', incidentRisk: 0.1 },
-    { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'An oscar eats goldfish while they are small.', incidentRisk: 0.1 },
+    // (review: both roll an attack, not a kill: an adult goldfish is too big for its mouth; its fry rule covers the young)
+    { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'An oscar bullies and bites goldfish.', incidentRisk: 0.1 },
+    { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'An oscar bullies and bites goldfish.', incidentRisk: 0.1 },
     { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an oscar needs tropical water.', incident: 'none' },
     { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; an oscar needs tropical water.', incident: 'none' },
     { other: 'clown_loach', verdictFloor: 'conditional', reason: 'Adult clown loaches are too big to eat, but young ones fit an oscar’s mouth; loaches also fare poorly beside big, dominant fish.', incidentRisk: 0.04, mitigatedBy: ['tank_size', 'hides'] },

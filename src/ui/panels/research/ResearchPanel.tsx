@@ -11,7 +11,7 @@ import { useUI } from '@/state/ui';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { RESEARCH } from '@/data/research';
 import { ACHIEVEMENTS } from '@/data/achievements';
-import type { Reward } from '@/data/quests';
+import { QUEST_BOARD_SIZE, type Reward } from '@/data/quests';
 import { researchList, activeQuests, unlockProgress, masteryLevel, unlockLabel, evalCond, currentTutorialStep, type ResearchView, type QuestView, type UnlockProgressView } from '@/sim/facility';
 import { PanelLayout } from '../common/PanelLayout';
 import { usePanelGame, safe, useIsPhone, useMedia } from '../common/hooks';
@@ -373,7 +373,7 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
             title={busy ? 'Only one project runs at a time. Finish or stop the current one first.' : !r.affordable ? `You need ${formatMoney(Math.max(0, cost - g.finance.money))} more to start this.` : undefined}
             onClick={() => act({ k: 'startResearch', project: d.id }, { sound: 'confirm' })}
           >
-            {busy ? 'One at a time' : !r.affordable ? 'Can’t afford' : 'Start'}
+            {busy ? 'One at a time' : !r.affordable ? `Need ${formatMoney(Math.ceil(cost - g.finance.money - 1e-6))} more` : 'Start'}
           </Button>
         )}
         {status === 'locked' && (
@@ -463,8 +463,9 @@ export function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: 
                     </summary>
                     <div className="pn-unlock__body">
                       <div className="pn-small pn-dim">{u?.hint}</div>
-                      {u?.guide && <div className="pn-small pn-dim">{u.guide}</div> /* Audit 2026-11-17 (G1) */}
-                      {parts ? <RuleRequirements g={g} conds={UNLOCK_RULE_BY_KEY[k].when} routes={routes} /> : u && u.requirements.length > 0 && <Requirements items={u.requirements} />}
+                      {/* Audit 2026-11-17 (G1, F8): while the guide holds it, the row is the guide's step (in u.hint and
+                          u.requirements), not the play rule's rows, which would read as already earned */}
+                      {u?.heldBy ? <Requirements items={u.requirements} /> : parts ? <RuleRequirements g={g} conds={UNLOCK_RULE_BY_KEY[k].when} routes={routes} /> : u && u.requirements.length > 0 && <Requirements items={u.requirements} />}
                       {u && u.viaResearch.length > 0 && (
                         <div className="pn-small pn-muted">
                           <FlaskConical size={12} style={{ verticalAlign: '-2px' }} /> {parts && !parts.requirements.length && !parts.either.length ? 'Research' : 'Or research'}: {u.viaResearch.map((r) => r.name).join(', ')}
@@ -498,6 +499,12 @@ function RewardChips({ r }: { r: Reward }) {
   );
 }
 
+/**
+ * Audit B2 (the part that needs no decision) — finished quests keep their board slot until claimed, so a board full of
+ * them draws no new quest: say so where the rewards are. (exported for tests)
+ */
+export const boardFullOfRewards = (quests: readonly QuestView[]): boolean => quests.filter((q) => q.status === 'complete' && !q.isTutorial).length >= QUEST_BOARD_SIZE;
+
 function QuestsTab({ g, quests }: { g: GameState; quests: QuestView[] }) {
   const tut = safe(() => currentTutorialStep(g), null);
   // audit 2026-11-17 (A13) — the step in the guide card's own words: the player's temperature unit, "Click" for a mouse
@@ -520,6 +527,11 @@ function QuestsTab({ g, quests }: { g: GameState; quests: QuestView[] }) {
             <Bar value={(tut.index / Math.max(1, tut.total)) * 100} tone="aqua" label="Guide progress" thin />
           </div>
         </div>
+      )}
+      {boardFullOfRewards(quests) && (
+        <Callout tone="gold" icon={<Gift size={15} />}>
+          <span data-testid="quests-board-full">Claim a reward to get new quests.</span>
+        </Callout>
       )}
       {sorted.length === 0 ? (
         <EmptyState icon={<ScrollText size={24} />} title="The quest board is quiet">

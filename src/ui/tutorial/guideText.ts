@@ -11,7 +11,8 @@ import { inSharedShop } from '@/state/sharedMode';
 import { useSettings } from '@/state/settings';
 import { tutorialChain, type TutorialStepDef } from '@/data/quests';
 import { interpolate } from '@/sim/facility/progression';
-import { friendBlocker } from '@/sim/facility/visitors';
+import { FRIEND_HOURS, friendBlocker } from '@/sim/facility/visitors';
+import { formatClock } from '@/sim/time';
 import { findSpecies } from '@/data/species';
 import { safe } from '../common/safe';
 import { convertTempText } from '../common/format';
@@ -33,16 +34,36 @@ export function guideAnimal(g: GameState, focusedTankId: string | null = null): 
 }
 
 /**
+ * The step's words with no animal left to name (audit review of A1): written for one named animal, so a sentence about
+ * who it is ("{name} is a betta…") or what it does on its own ("When {name} sees something new he…") is left out,
+ * the verbs that follow the name agree with "your animals", and a sentence that starts with it starts with a capital.
+ * If nothing is left (a meet step), the guide's own line for no animal.
+ */
+function withoutAnimal(t: string): string {
+  // (a sentence may end inside a bracket or a quote: "(… counts too.)" lost its words and kept the bracket)
+  const sentences = t.match(/[^.!?]*[.!?]+[)\]”’"]*(?:\s+|$)|[^.!?]+$/g) ?? [t];
+  const kept = sentences.filter((x) => !/\{name\} (is|sees)\b/.test(x)).join('').trim();
+  if (!kept) return 'There’s no animal to show right now. Bring one home from the Market first.';
+  return kept
+    .replace(/, \{name\}!/g, '!')
+    .replace(/\{name\}’s/g, `${NO_ANIMAL}’`)
+    .replace(/\{name\} (has|gets)\b/g, (_m, v: string) => `${NO_ANIMAL} ${v === 'has' ? 'have' : 'get'}`)
+    .replace(/(^|[.!?]\s+)\{name\}/g, (_m, before: string) => `${before}Your animals`)
+    .replace(/\{name\}/g, NO_ANIMAL);
+}
+
+/**
  * A guide text as the player reads it. `name` null: the animals are gone ("Keep your animals’ tank looking lovely").
  * `fine`: a mouse ("Click Feed", "scroll to lean in", "Bring the pointer near the glass").
  */
 export function fillGuide(t: string, name: string | null, species: string, fine: boolean, g?: GameState): string {
+  // the name first: the sim's interpolate below would put its own in
+  t = name == null ? withoutAnimal(t) : t.replace(/\{name\}/g, name);
   // {temp} / {salinity}: the sim's own wording of the starter's ideal band (same numbers as the tank card), shown in
   // the player's unit and tidied the same way ("24.5–28 °C")
   if (g && /\{(temp|salinity)\}/.test(t)) t = safe('interpolate', () => interpolate(g, t), t);
   t = convertTempText(t, useSettings.getState().tempUnit) ?? t;
-  let s = name == null ? t.replace(/\{name\}’s/g, `${NO_ANIMAL}’`).replace(/\{name\}/g, NO_ANIMAL) : t.replace(/\{name\}/g, name);
-  s = s.replace(/\{species\}/g, species);
+  let s = t.replace(/\{species\}/g, species);
   if (fine) s = s.replace(/\bTap\b/g, 'Click').replace(/\btap\b/g, 'click').replace(/ or pinch/g, '').replace(/\byour finger\b/g, 'the pointer');
   return s;
 }
@@ -119,7 +140,7 @@ export function friendWait(g: GameState, stepId: string): FriendWait | null {
   const b = safe('friendBlocker', () => friendBlocker(g), null);
   if (!b) return null;
   if (b.kind === 'no_animals') return { text: 'Friends come to see your animals, and there are none to see. Bring one home from the Market.', action: 'market', time: false };
-  if (b.kind === 'night') return { text: 'Friends visit between 9 am and 9 pm.', time: true };
+  if (b.kind === 'night') return { text: `Friends visit between ${formatClock(FRIEND_HOURS[0])} and ${formatClock(FRIEND_HOURS[1])}.`, time: true }; // (the clock's own style: 9:00 AM)
   // named when it is the only animal (the first hour's usual case); the tank's reason names whoever it is about
   const here = Object.values(g.creatures).filter((c) => (c.status === 'alive' || c.status === 'listed') && c.tankId);
   const who = here.length === 1 ? `${here[0].name} is` : 'your animals are';

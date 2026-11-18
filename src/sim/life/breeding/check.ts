@@ -85,7 +85,8 @@ export function readinessHint(state: GameState, c: Creature, sp: SpeciesDefiniti
   const pron = c.sex === 'female' || c.reproRole === 'female' ? 'her' : c.sex === 'male' || c.reproRole === 'male' ? 'his' : 'its';
   switch (worst.key) {
     case 'crowded':
-      return `${tank.name} is crowded (${Math.round(info.loadRatio() * 100)}% stocked) — animals breed less in a full tank. Sell or move some animals.`;
+      // (review E: no percentage — this load counts growing young as nearly grown, so it isn't the Stocking meter's figure)
+      return `${tank.name} is too full for them to breed (young count as nearly grown) — sell or move some animals.`;
     case 'comfort':
       return `${c.name} isn’t comfortable enough to breed (comfort ${Math.round(c.stats.comfort)}%) — the notes under Condition on ${pron} card say why.`;
     case 'health':
@@ -235,7 +236,9 @@ export function evaluatePair(state: GameState, aId: string, bId: string, forStar
     const move = `Start breeding moves ${mover.name} into ${host?.name ?? 'the same tank'}`;
     if (!startBlockers.length) {
       const then = steps.find((st) => !/Start breeding/.test(st));
-      return { ok: true, reasons: [], nextStep: then ? `${move} — then: ${then[0].toLowerCase()}${then.slice(1)}` : `${move}.`, startBlockers, male, female, tank, sp, mod };
+      // (review E: a step that starts with a name or a tank keeps its capital: "then: Bella isn’t comfortable…")
+      const proper = !!then && [a.name, b.name, ...Object.values(state.tanks).map((t) => t.name)].some((n) => n && then.startsWith(n));
+      return { ok: true, reasons: [], nextStep: then ? `${move} — then: ${proper ? then : `${then[0].toLowerCase()}${then.slice(1)}`}` : `${move}.`, startBlockers, male, female, tank, sp, mod };
     }
     reasons.push('They’re in different tanks.');
   }

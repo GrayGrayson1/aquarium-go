@@ -25,7 +25,7 @@ import { rememberOfferReturn, peekOfferReturn } from './offerReturn'; // lane:qa
 import { useShopFilters, offerMatches, filtersActive, useShopSearch, offerSearchMatches, sortOffers, type ShopSort } from './shopFilters'; // lane:ui-shell (chunk 1); chunk 19 (QOL-003): search and sort
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { matches } from '../common/match'; // audit 2026-11-17 (F9)
-import { wholeMoney } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F11)
+import { wholeMoney, CASH_LINK } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F11; review fix: CASH_LINK)
 import { ALL_SPECIES } from '@/data/species'; // audit 2026-11-17 (F9)
 import { useSeenStock } from './seenStock'; // lane:notify (0.5 §5.2)
 import { CopyLinkButton, OfferLinkRow, useOfferLink } from './OfferLink'; // lane:ui-shell (chunk 1)
@@ -229,7 +229,7 @@ function ClearFilters({ onClick }: { onClick: () => void }) {
 function SexMark({ c }: { c: Creature }) {
   if (c.sex === 'male') return <Mars size={13} className="pn-sex pn-sex--m" aria-label="Male" />;
   if (c.sex === 'female') return <Venus size={13} className="pn-sex pn-sex--f" aria-label="Female" />;
-  return <CircleDashed size={12} className="pn-sex" aria-label="Unsexed" />;
+  return <CircleDashed size={12} className="pn-sex" aria-label="Sex not known yet" />;
 }
 
 /** The card and hero title: the morph display name ("Royal Blue Butterfly Halfmoon Betta"); groups "10 × …". */
@@ -562,7 +562,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
 
       {offer.kind === 'group' && offer.creatures.length > 1 && (
         <section>
-          <SectionHead title={lot ? `Sold as one lot · ${offer.creatures.length} animals` : `Choose individuals · ${chosen.length} of ${offer.creatures.length}`} icon={<Users size={14} />} />
+          <SectionHead title={lot ? `Sold together · ${offer.creatures.length} animals` : `Choose individuals · ${chosen.length} of ${offer.creatures.length}`} icon={<Users size={14} />} />
           <div className="pn-pickgrid">
             {offer.creatures.map((c, i) => (
               <div key={c.id} className={clsx('pn-pick', picked.has(i) && 'is-on', active === i && 'is-active')}>
@@ -734,7 +734,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             </span>
             {!afford && !locked && (
               // audit 2026-11-17 (F2) — short of the price: where the ways to raise cash are
-              <button type="button" className="pn-link pn-tiny" data-testid="offer-raise-cash" onClick={() => useUI.getState().set({ panel: 'finances', panelTarget: null })}>
+              <button type="button" className="pn-link pn-tiny" data-testid="offer-raise-cash" onClick={() => useUI.getState().set({ ...CASH_LINK })}>
                 Ways to raise cash
               </button>
             )}
@@ -773,9 +773,12 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
  * of the day its time runs out (today, tomorrow, or in n days), and that an open offer waits.
  */
 export function offerLeavesText(expiresHour: number, now: number): string {
-  const day = Math.floor(expiresHour / 24) - Math.floor(now / 24);
   const h = ((expiresHour % 24) + 24) % 24;
-  const part = h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
+  // the small hours (before 5 AM) belong to the night before: a special leaving at 2 AM leaves "tonight", as its toast
+  // says ("until about 2 AM tonight"), not "tomorrow morning" (review note)
+  const small = h < 5;
+  const day = Math.floor(expiresHour / 24) - Math.floor(now / 24) - (small ? 1 : 0);
+  const part = small || h >= 21 ? 'night' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
   const when = expiresHour <= now && day < 0 ? 'now' : day <= 0 ? (part === 'night' ? 'tonight' : `this ${part}`) : day === 1 ? (part === 'night' ? 'tomorrow night' : `tomorrow ${part}`) : `in ${day} days`;
   return `Leaves the shop ${when}. It stays while you’re looking.`;
 }

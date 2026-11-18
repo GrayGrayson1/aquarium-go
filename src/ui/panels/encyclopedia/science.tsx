@@ -146,7 +146,7 @@ export const ARTICLES: Article[] = [
             <b>Feeding</b> — slow, deliberate feeders such as seahorses lose out to fast, competitive eaters.
           </li>
         </ul>
-        <p>“Conditional” means it can work with the right setup — more cover, a bigger tank or target feeding. “High risk” and “Incompatible” mean real harm is likely.</p>
+        <p>“Conditional” means it can work with the right setup — more cover, a bigger tank or target feeding. “High risk” and “Incompatible” mean real harm is likely, or the mix is unsafe in a real aquarium.</p>
       </>
     ),
   },

@@ -44,10 +44,12 @@ import {
   quarantineReady,
   quarantineFull,
   youngSizeCm,
-  linePriceEach,
+  linePrice,
+  unsoldYoung,
   PAIRS_PER_SPECIES,
 } from '@/sim/production';
 import { juvenileSlots } from '@/sim/life/breeding/common';
+import { fmtMoney } from '@/sim/economy/util';
 import { lineView } from '@/sim/production/view';
 import { createListing, withdrawListing } from '@/sim/economy/listings';
 import { repairState } from '@/persistence/migrations';
@@ -275,13 +277,14 @@ describe('PROD-007, PROD-012, PROD-013, PROD-014: Sort, Quarantine and Sell', ()
     expect(l.kind).toBe('juveniles');
     expect(l.createdHour).toBeGreaterThanOrEqual(until - 1e-9);
     expect(l.createdHour).toBeLessThan(until + 1);
-    // Audit 2026-11-17 (H1, the owner's "Sell by itself"): a buy-now price of fair value × 0.9 a head, whole dollars,
-    // and the reserve at it (it was a reserve of fair value × 0.9 for the batch, and no buy-now)
+    // Audit 2026-11-17 (H1, the owner's "Sell by itself"; the review): a buy-now price of fair value × 0.9 for the lot,
+    // whole dollars, and the reserve at it (it was a reserve of fair value × 0.9 for the batch, and no buy-now); one
+    // log line for it, the line's, with the price a head
     const n = l.creatureIds.length;
-    expect(l.buyNow).toBe(linePriceEach(l.snapshot.valuation / n) * n);
+    expect(l.buyNow).toBe(linePrice(l.snapshot.valuation).price);
     expect(l.reserve).toBe(l.buyNow);
-    expect(Math.abs(l.buyNow! - l.snapshot.valuation * 0.9)).toBeLessThanOrEqual(n / 2 + 1e-9);
-    expect(g.log.filter((e) => e.text === `Betta line: ${l.title} listed · Buy now $${l.buyNow! / n} each`).length).toBe(1);
+    expect(Math.abs(l.buyNow! - l.snapshot.valuation * 0.9)).toBeLessThanOrEqual(0.5 + 1e-9);
+    expect(g.log.filter((e) => e.listingId === l.id).map((e) => e.text)).toEqual([`Betta line: ${l.title} listed · Buy now ${fmtMoney(l.buyNow! / n)} each`]);
     expect([...l.creatureIds].sort()).toEqual([...ids].sort());
   });
 
@@ -1060,25 +1063,27 @@ describe('Audit 2026-11-17 (H1): young a line leaves in quarantine', () => {
     const ids = new Set(young(f, f.qt.id).map((c) => c.id));
     const { l, buyers } = endUnsold(f, line, ids);
     const n = l.creatureIds.length;
-    const each0 = l.buyNow! / n;
     run(g, 1);
     expect(l.status).toBe('expired');
+    // the line says what happened; the market's "ended without a sale … try a lower reserve" isn't for the player here
+    expect(g.log.some((e) => e.listingId === l.id && /ended without a sale/.test(e.text))).toBe(false);
+    expect(l.advice).toBe('The Betta line lists them again.');
     buyers();
     run(g, 1); // the line's next hour lists them again (it may sell at once)
     const again = lineListings(g, ids).find((x) => x.id !== l.id);
     expect(again).toBeDefined();
     expect(again!.creatureIds.length).toBe(n);
-    const each1 = again!.buyNow! / n;
-    expect(Math.abs(each1 - each0 * 0.9)).toBeLessThanOrEqual(1); // whole dollars, from today's fair value
-    expect(each1).toBeLessThan(each0);
+    expect(Math.abs(again!.buyNow! - l.buyNow! * 0.9)).toBeLessThanOrEqual(2); // whole dollars, from fair value as it is now (they grow)
+    expect(again!.buyNow!).toBeLessThan(l.buyNow!);
     expect(again!.reserve).toBe(again!.buyNow);
-    expect(g.log.filter((e) => e.text === `Betta line: ${n} didn’t sell: listed again at $${each1} each`).length).toBe(1);
+    expect(g.log.filter((e) => e.text === `Betta line: ${again!.title} didn’t sell, so they’re listed again at ${fmtMoney(again!.buyNow! / n)} each`).length).toBe(1);
     if (again!.status === 'active') expect(line.batches?.[0].relists).toBe(1);
     expect(lineView(g, line)!.quarantined.unsold).toBe(0); // the line still has them (or sold them)
     expect(lineView(g, line)!.quarantined.count).toBe(0); // not "in quarantine": their hold is done
     // the price steps: fair × 0.9, × 0.81, … and stops at half of fair value; never $0
-    expect([0, 1, 2, 3, 6, 7, 30].map((k) => linePriceEach(100, k))).toEqual([90, 81, 73, 66, 50, 50, 50]);
-    expect(linePriceEach(0.4, 9)).toBe(1);
+    expect([0, 1, 2, 3, 6, 7, 30].map((k) => linePrice(100, k).price)).toEqual([90, 81, 73, 66, 50, 50, 50]);
+    expect([5, 6].map((k) => linePrice(100, k).lowest)).toEqual([false, true]);
+    expect(linePrice(0.4, 9).price).toBe(1);
   });
 
   it('with List automatically off when a listing ends unsold, the line says where they are and leaves them to you', () => {
@@ -1097,5 +1102,166 @@ describe('Audit 2026-11-17 (H1): young a line leaves in quarantine', () => {
     expect(line.batches).toBeUndefined();
     expect(lineListings(g, ids).length).toBe(1);
     expect(lineView(g, line)!.quarantined.unsold).toBe(n);
+  });
+
+  // ── the fresh review's fixes (Audit 2026-11-17, H1 review) ──
+
+  it('a batch listed in two parts keeps every young one: each part that didn’t sell is listed again', () => {
+    const f = farm({ seed: 119 });
+    const g = f.g;
+    const line = start(f);
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const batch = line.batches!.find((b) => b.tankId === f.qt.id)!;
+    const ids = new Set(batch.creatureIds);
+    run(g, batch.quarantinedHour! + QUARANTINE_HOURS - g.clock.hour - 2);
+    const sp = getSpecies('betta');
+    // two of the batch have grown up by the time quarantine ends: juveniles list as a batch, adults as a group
+    for (const id of batch.creatureIds.slice(0, 2)) Object.assign(g.creatures[id], { bornHour: g.clock.hour - (sp.lifecycle.juvenileDays + 5) * 24, lifeStage: 'adult' });
+    for (const x of g.market.buyers) x.budget = 1; // nobody buys
+    run(g, 3);
+    const first = lineListings(g, ids).filter((l) => l.status === 'active');
+    expect(first.map((l) => l.kind).sort()).toEqual(['group', 'juveniles']);
+    const endNow = (l: (typeof first)[number]) => {
+      l.bids = [];
+      l.endsHour = g.clock.hour + 0.5;
+    };
+    endNow(first.find((l) => l.kind === 'juveniles')!);
+    run(g, 2);
+    endNow(first.find((l) => l.kind === 'group')!);
+    run(g, 2);
+    const living = [...ids].filter((id) => g.creatures[id] && g.creatures[id].status !== 'dead' && g.creatures[id].status !== 'sold');
+    const listed = lineListings(g, ids).filter((l) => l.status === 'active');
+    expect(listed.length).toBe(2);
+    expect(listed.reduce((a, l) => a + l.creatureIds.length, 0)).toBe(living.length); // it left the adults untracked
+    expect(unsoldYoung(g, line)).toEqual([]);
+    expect(g.log.filter((e) => /^Betta line: .* didn’t sell, so (they’re|it’s) listed again at /.test(e.text)).length).toBe(2);
+  });
+
+  it('a line listing the player withdraws: the line says where they are and leaves them to the player', () => {
+    const f = farm({ seed: 144 });
+    const g = f.g;
+    const line = start(f);
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const ids = new Set(young(f, f.qt.id).map((c) => c.id));
+    const { l } = endUnsold(f, line, ids);
+    const n = l.creatureIds.length;
+    expect(withdrawListing(g, l.id).ok).toBe(true);
+    run(g, 2);
+    expect(g.log.filter((e) => e.text === `Betta line: the ${n} juveniles taken off sale are back in Quarantine. The line won’t list them again: list them in Market, or move them.`).length).toBe(1);
+    expect(lineView(g, line)!.quarantined.unsold).toBe(n);
+  });
+
+  it('List automatically switched off while a relisting waits on a paused line: the line says so, once', () => {
+    const f = farm({ seed: 145 });
+    const g = f.g;
+    const line = start(f);
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const ids = new Set(young(f, f.qt.id).map((c) => c.id));
+    const { l } = endUnsold(f, line, ids);
+    const n = l.creatureIds.length;
+    setLineRunning(g, line.id, false);
+    run(g, 2);
+    expect(l.status).toBe('expired');
+    expect(line.batches?.[0].relists).toBe(1); // waits to be listed again
+    setLineRule(g, line.id, 'autoList', false);
+    setLineRunning(g, line.id, true);
+    run(g, 3);
+    expect(g.log.filter((e) => e.text === `Betta line: the ${n} juveniles that didn’t sell are back in Quarantine. The line won’t list them again: list them in Market, or move them.`).length).toBe(1);
+    expect(line.batches).toBeUndefined();
+    expect(lineView(g, line)!.quarantined.unsold).toBe(n);
+  });
+
+  it('an animal that falls ill while listed: the line takes the listing off sale, says why, and lists it again once well', () => {
+    const f = farm({ seed: 146 });
+    const g = f.g;
+    const line = start(f);
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const ids = new Set(young(f, f.qt.id).map((c) => c.id));
+    const { l, buyers } = endUnsold(f, line, ids);
+    l.endsHour = g.clock.hour + 40; // still running
+    const sick = g.creatures[l.creatureIds[0]];
+    sick.illness = { kind: 'fin_rot', severity: 50, sinceHour: g.clock.hour } as never;
+    sick.stats.health = 30;
+    buyers();
+    advanceWorld(g, 1, { forceFull: true }); // no care: it stays ill this hour
+    expect(l.status).toBe('withdrawn');
+    expect(l.outcome).toBe(`The Betta line took it off sale: ${sick.name} looks unwell.`);
+    expect(g.log.filter((e) => e.text === `Betta line: ${sick.name} looks unwell, so the line took “${l.title}” off sale. It lists them again once ${sick.name} is well, or once you move ${sick.name} out.`).length).toBe(1);
+    expect(g.log.some((e) => e.listingId === l.id && /^Withdrew/.test(e.text))).toBe(false); // one line, the line's
+    advanceWorld(g, 1, { forceFull: true }); // still ill: nothing listed, nothing said again
+    expect(lineListings(g, ids).filter((x) => x.status === 'active')).toEqual([]);
+    expect(g.log.filter((e) => /looks unwell, so the line/.test(e.text)).length).toBe(1);
+    run(g, 2); // treated (the test's care): listed again, at the same step (no relisting counted)
+    const again = lineListings(g, ids).find((x) => x.id !== l.id);
+    expect(again).toBeDefined();
+    expect(line.batches?.[0]?.relists ?? 0).toBe(0);
+  });
+
+  it('cheap lots follow the rule: priced as a lot, each relisting at least a dollar lower, the floor half of fair value', () => {
+    // ten ghost shrimp, $0.80 each: $8 the lot (it was $1 a head for ever, 125 % of fair value)
+    expect([0, 1, 2, 3, 4, 5].map((k) => linePrice(8, k).price)).toEqual([7, 6, 5, 4, 4, 4]);
+    expect([2, 3].map((k) => linePrice(8, k).lowest)).toEqual([false, true]);
+    for (const fair of [3, 8, 10, 27, 100, 333]) {
+      const floor = Math.max(1, Math.round(fair / 2));
+      let last = Infinity;
+      for (let k = 0; k < 30; k++) {
+        const { price, lowest } = linePrice(fair, k);
+        expect(price).toBeGreaterThanOrEqual(floor);
+        if (last > floor) expect(price, `fair ${fair}, k ${k}`).toBeLessThan(last);
+        expect(lowest).toBe(price === floor);
+        last = price;
+      }
+      expect(last).toBe(floor);
+    }
+  });
+
+  it('at the floor the relisting says it is the lowest the line goes, once', () => {
+    const f = farm({ seed: 147 });
+    const g = f.g;
+    const line = start(f);
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const ids = new Set(young(f, f.qt.id).map((c) => c.id));
+    const { l, buyers } = endUnsold(f, line, ids);
+    const fair = l.snapshot.valuation;
+    let k = 1;
+    while (!linePrice(fair, k).lowest) k++;
+    line.batches![0].relists = k - 1; // this expiry makes it the k-th relisting, the first at the floor
+    run(g, 1);
+    buyers();
+    run(g, 1);
+    const again = lineListings(g, ids).find((x) => x.id !== l.id)!;
+    expect(again.buyNow).toBe(linePrice(fair, k).price);
+    expect(g.log.some((e) => e.text === `Betta line: ${again.title} didn’t sell, so they’re listed again at ${fmtMoney(again.buyNow! / again.creatureIds.length)} each, the lowest the line goes`)).toBe(true);
+  });
+
+  it('a player’s own listing that ends unsold still gets the market’s advice', () => {
+    const f = farm({ seed: 148 });
+    const g = f.g;
+    const spare = tank(g, 'Spare', 12);
+    const c = addCreature(g, createCreature(g, simRng(g), 'neon_tetra', { ageDays: 60 }), spare.id);
+    const r = createListing(g, { kind: 'creature', creatureIds: [c.id], reserve: 9999, durationHours: 6 });
+    expect(r.ok, r.message).toBe(true);
+    run(g, 8);
+    expect(g.market.listings.find((x) => x.id === r.listingId)?.status).toBe('expired');
+    expect(g.log.some((e) => e.listingId === r.listingId && /ended without a sale/.test(e.text))).toBe(true);
+  });
+
+  it('a buyer whose rounded offer comes to the buy-now price buys now: no such offer waits on the player', () => {
+    const f = farm({ seed: 149 });
+    const g = f.g;
+    const spare = tank(g, 'Spare', 12);
+    const c = addCreature(g, createCreature(g, simRng(g), 'neon_tetra', { ageDays: 60 }), spare.id);
+    const r = createListing(g, { kind: 'creature', creatureIds: [c.id], reserve: 0, buyNow: 3, durationHours: 48 });
+    expect(r.ok, r.message).toBe(true);
+    const l = g.market.listings.find((x) => x.id === r.listingId)!;
+    for (let i = 0; i < 40 && l.status === 'active'; i++) {
+      forceBuyerVisit(g, l.id);
+      expect(l.bids.some((b) => b.status === 'open' && b.amount >= l.buyNow!)).toBe(false);
+    }
   });
 });

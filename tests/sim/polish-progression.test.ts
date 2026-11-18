@@ -322,7 +322,7 @@ describe('tutorial: steps need an action taken during the step', () => {
     g.progress.reputation = Math.max(g.progress.reputation, TUTORIAL_UPGRADE_REP) + TUTORIAL_UPGRADE_GAIN;
     tick(g);
     expect(tutorialStepId(g)).toBe('preview');
-    expect(g.log.some((e) => e.toast && /already have nursery/i.test(e.text))).toBe(true);
+    expect(g.log.some((e) => e.toast && /already have breeding know-how/i.test(e.text))).toBe(true);
     expect(g.log.some((e) => e.toast && e.text === 'New upgrade unlocked!')).toBe(false);
   });
 

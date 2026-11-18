@@ -1014,33 +1014,35 @@ export function readinessTarget(tank: Tank, c: Creature, sp: SpeciesDefinition, 
 /** What holds a pair's readiness down (Audit 2026-11-17, H4). */
 export type ReadinessDrag = 'water' | 'health' | 'stress' | 'hunger' | 'comfort' | 'illness' | 'temp_range' | 'too_cool' | 'too_warm' | 'conditioning' | 'crowded' | 'small_tank';
 
+/** review E: readinessFactors' keys in H4's names (fertility isn't one the player can change, so it has none). */
+const DRAG_OF: Partial<Record<ReadinessFactorKey, ReadinessDrag>> = {
+  water_type: 'water',
+  health: 'health',
+  stress: 'stress',
+  hunger: 'hunger',
+  comfort: 'comfort',
+  illness: 'illness',
+  temp_range: 'temp_range',
+  too_cool: 'too_cool',
+  too_warm: 'too_warm',
+  conditioning: 'conditioning',
+  crowded: 'crowded',
+  tank_small: 'small_tank',
+};
+
 /**
  * Audit 2026-11-17 (H4): the term of `readinessTarget` that holds this animal back most (its smallest factor below 1),
- * for the screens' "Not ready yet: …". Mirrors readinessTarget's terms; keep the two in step. Null when nothing the
- * player can change holds it back (or it isn't an adult, rests, or is held by its line).
+ * for the screens' "Not ready yet: …". Null when nothing the player can change holds it back (or it isn't an adult,
+ * rests, or is held by its line). Review E: read from `readinessFactors`, the target's own terms, so the two can't drift.
  */
 export function readinessDrag(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, info: TankInfo): { drag: ReadinessDrag; factor: number } | null {
-  if (!isMature(c, sp, hour) || c.repro?.lineHold || isResting(c, hour) || !fitsEnvironment(sp, tank.environment)) return null;
-  const s = c.stats;
-  const t = tank.water.tempC;
-  const cond = sp.breeding.conditions;
-  const load = info.loadRatio();
-  const terms: [ReadinessDrag, number][] = [
-    ['water', tank.environment === sp.environment ? 1 : 0.7],
-    ['health', ramp(s.health, 45, 85)],
-    ['stress', 1 - ramp(s.stress, 45, 90)],
-    ['hunger', 1 - ramp(s.hunger, 55, 90)],
-    ['comfort', 0.4 + 0.6 * ramp(s.comfort, 25, 65)],
-    ['illness', c.illness ? 0.3 : 1],
-    ['temp_range', t < sp.tempC.min || t > sp.tempC.max ? 0.15 : 1],
-    ['too_cool', cond.minTempC !== undefined && t < cond.minTempC - 0.25 ? 0.4 : 1],
-    ['too_warm', cond.maxTempC !== undefined && t > cond.maxTempC + 0.25 ? 0.35 : 1],
-    ['conditioning', cond.needsConditioningFood?.length ? 0.45 + 0.55 * conditioningLevel(tank, c, sp, hour) : 1],
-    ['crowded', load > 1.05 ? 0.15 : load > 0.85 ? 0.6 : 1],
-    ['small_tank', cond.minTankGallons && gallonsOf(tank) < cond.minTankGallons ? 0.5 : 1],
-  ];
+  const factors = readinessFactors(tank, c, sp, hour, info);
+  if (!factors) return null;
   let best: { drag: ReadinessDrag; factor: number } | null = null;
-  for (const [drag, factor] of terms) if (factor < 1 - 1e-9 && (!best || factor < best.factor)) best = { drag, factor };
+  for (const { key, mult } of factors) {
+    const drag = DRAG_OF[key];
+    if (drag && mult < 1 - 1e-9 && (!best || mult < best.factor)) best = { drag, factor: mult };
+  }
   return best;
 }
 

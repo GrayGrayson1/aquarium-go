@@ -84,15 +84,15 @@ describe('offerMatches', () => {
     const clown = offer(g, 'ocellaris_clownfish');
     expect(offerMatches(g, betta, f({ env: 'marine' }))).toBe(false);
     expect(offerMatches(g, clown, f({ env: 'marine' }))).toBe(true);
-    // "Fits my tanks": the starter tank is freshwater. Audit 2026-11-17 (F17), changed on purpose: a tank fits by its
-    // water type, temperature and size (tankFits), not the water type alone
-    for (const o of [betta, clown]) {
-      const sp = findSpecies(o.speciesId)!;
-      const before = g.tankOrder.some((id) => tankFits(sp, g.tanks[id]));
-      if (!fitsEnvironment(sp, g.tanks[g.tankOrder[0]].environment)) expect(before).toBe(false);
-      expect(envMatches(g, sp, 'fits')).toBe(before);
-      expect(offerMatches(g, o, f({ env: 'fits' }))).toBe(before);
-    }
+    // "Fits my tanks": the starter's warm freshwater tank. Audit 2026-11-17 (F17), changed on purpose: a tank fits by
+    // its water type, temperature and size (tankFits), not the water type alone. Concrete outcomes (review note):
+    expect(fitsEnvironment(findSpecies('betta')!, g.tanks[g.tankOrder[0]].environment)).toBe(true);
+    expect(envMatches(g, findSpecies('betta')!, 'fits')).toBe(true);
+    expect(offerMatches(g, betta, f({ env: 'fits' }))).toBe(true);
+    expect(envMatches(g, findSpecies('ocellaris_clownfish')!, 'fits')).toBe(false);
+    expect(offerMatches(g, clown, f({ env: 'fits' }))).toBe(false);
+    expect(envMatches(g, findSpecies('axolotl')!, 'fits')).toBe(false); // fresh water, but far too warm
+    expect(tankFits(findSpecies('betta')!, g.tanks[g.tankOrder[0]])).toBe(true);
     const shimmerClown = offer(g, 'ocellaris_clownfish', undefined, true);
     expect(offerMatches(g, shimmerClown, f({ prismatic: true, env: 'freshwater' }))).toBe(false);
     expect(offerMatches(g, shimmerClown, f({ prismatic: true, env: 'marine' }))).toBe(true);

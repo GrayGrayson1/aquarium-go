@@ -74,7 +74,7 @@ export function FeedTab({ g, small }: { g: GameState; nav: OpsNav; small: boolea
             </span>
           </span>
           <span className="ops-num ops-muted">
-            +{made} / −{used} made / used a day
+            Makes {made} · uses {used} a day
           </span>
         </div>
       </section>
@@ -107,7 +107,7 @@ export function FeedTab({ g, small }: { g: GameState; nav: OpsNav; small: boolea
               }),
             ),
           ].join(' and ');
-          const amounts = [BRINE, INFUSORIA].filter((f) => per.get(f)).map((f) => `${per.get(f)} ${f === BRINE ? 'brine' : 'infusoria'}`);
+          const amounts = [BRINE, INFUSORIA].filter((f) => per.get(f)).map((f) => `${per.get(f)} ${f === BRINE ? 'baby brine' : 'infusoria'} servings a day`);
           const short = needs.length ? doserShortWords(g, t) : null; // Audit 2026-11-17 (H15): it said "Running" with nothing to give
           return (
             <div key={t.id} className="ops-row">

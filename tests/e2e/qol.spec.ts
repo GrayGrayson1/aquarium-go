@@ -356,7 +356,19 @@ test.describe('QOL-003 and QOL-004: search, filters and Find anything', () => {
     await tid(page, 'supplies-search').fill('zzz');
     await aq(page, 'setUI', { panel: 'market', panelTarget: 'food:flake_tropical' }); // the bell's "Low food" row
     await expect(tid(page, 'supplies-search')).toHaveValue('');
-    await expect(page.locator('[data-food-row="flake_tropical"]')).toBeVisible();
+    await expect(page.locator('[data-food-row="flake_tropical"]').first()).toBeVisible();
+  });
+
+  test('audit B2: a quest board full of finished quests says to claim a reward', async ({ page }) => {
+    await start(page);
+    type Api = { __AQ: { mutate(fn: (s: { progress: { quests: { id: string; status: string; progress: number; startedHour: number }[] } }) => void): void } };
+    await page.evaluate(() =>
+      (window as unknown as Api).__AQ.mutate((s) => {
+        s.progress.quests = ['q_feed_routine', 'q_water_changes', 'q_water_good_3d'].map((id) => ({ id, status: 'complete', progress: 1, startedHour: 0 }));
+      }),
+    );
+    await aq(page, 'setUI', { panel: 'research', panelTarget: 'tab:quests' });
+    await expect(tid(page, 'quests-board-full')).toHaveText('Claim a reward to get new quests.');
   });
 
   test('Find anything opens a screen with the keyboard alone', async ({ page }) => {

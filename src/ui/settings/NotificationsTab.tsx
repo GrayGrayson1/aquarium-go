@@ -37,8 +37,8 @@ export const NOTIFY_CATEGORY_ROWS: { id: NotifyCategory; title: string; sub: str
 
 const STATUS_ICON: Record<NotifyPermission, typeof Bell> = { default: Bell, granted: BellRing, denied: BellOff, unsupported: Ban };
 
-/** Audit B14 — under the status on a phone or tablet: why its alerts stay in the game. */
-export const PHONE_NOTE = 'On a phone, the game pauses when you switch apps, so alerts show in the game.';
+/** Audit B14 — under the status on a touch-first device (a phone or a tablet; review: it said “phone” on tablets too). */
+export const PHONE_NOTE = 'On a phone or tablet, the game pauses when you switch apps, so alerts show in the game.';
 
 export function NotificationsTab() {
   const permission = useNotifyPermission((s) => s.permission);

@@ -167,7 +167,7 @@ export const melanurusWrasse: SpeciesDefinition = {
     'Juvenile colours rest on retailer text and a Reef Life Survey description; the game draws them as duller pinstripes with two dorsal eyespots.',
   ],
   exceptionRules: [
-    { other: 'tag:shrimp_dwarf', verdictFloor: 'conditional', reason: 'Picks off small ornamental shrimp (sexy shrimp, dwarf shrimp) and their young.', incidentRisk: 0.05, mitigatedBy: ['cover'] },
+    { other: 'tag:shrimp_dwarf', verdictFloor: 'conditional', reason: 'Picks off small ornamental shrimp (such as dwarf shrimp) and their young.', incidentRisk: 0.05, mitigatedBy: ['cover'] },
     { other: 'lined_seahorse', verdictFloor: 'conditional', reason: 'A fast, busy feeder that gets to food before a seahorse; workable only with target feeding.', incidentRisk: 0.03, mitigatedBy: ['target_feeding'] },
   ],
   special: {

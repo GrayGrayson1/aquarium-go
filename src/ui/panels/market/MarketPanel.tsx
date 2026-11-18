@@ -14,7 +14,9 @@ import type { ListingKind } from '@/types';
 import { formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { PanelLayout } from '../common/PanelLayout';
-import { usePanelGame, useIsPhone } from '../common/hooks';
+import { usePanelGame, useIsPhone, safe } from '../common/hooks';
+import { useGame } from '@/state/game'; // audit B6/B21 review
+import { marketAccess } from '@/sim/economy'; // audit B6 review
 import { Seg } from '../common/parts';
 import { ShopTab } from './Shop';
 import { SuppliesTab } from './Supplies';
@@ -26,6 +28,12 @@ import { wholeMoney } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F11)
 
 export type MarketTab = 'shop' | 'supplies' | 'listings' | 'trends';
 const MARKET_TABS: readonly MarketTab[] = ['shop', 'supplies', 'listings', 'trends'];
+
+/** Are listings open in the game on screen? (audit B6 review; true when it can’t tell; exported for tests) */
+export const listingsOpen = (): boolean => {
+  const g = useGame.getState().game;
+  return !g || safe(() => marketAccess(g).listings, true);
+};
 
 export function MarketPanel() {
   const g = usePanelGame(700);
@@ -75,11 +83,19 @@ export function MarketPanel() {
       setWizard(null);
       // audit B21: a link to a listing the market no longer keeps says so (the router does for addresses; the Log's
       // and the bell's "View listing" come here directly)
+      // (review: the store's game, not the panel's copy, which can be 0.7 s old: a listing just made is there)
       const id = target.slice(8);
-      if (g && !g.market.listings.some((l) => l.id === id)) {
+      const now = useGame.getState().game;
+      if (now && !now.market.listings.some((l) => l.id === id)) {
         setFocusListing(null);
         useUI.getState().toast(NOT_FOUND.listing.title, 'info', { detail: NOT_FOUND.listing.detail });
       } else setFocusListing(id);
+    } else if ((target === 'sell' || target === 'list' || target.startsWith('list:')) && !listingsOpen()) {
+      // audit B6 review: before listings open, a link to the wizard (#/market/listings/new) opens My listings and says
+      // when they open, instead of a wizard whose every kind is "Not unlocked yet"
+      switchTab('listings');
+      const hint = safe(() => marketAccess(useGame.getState().game!).hint, undefined);
+      if (hint) useUI.getState().toast(hint, 'info');
     } else if (target === 'sell' || target === 'list') {
       setTab('listings');
       setWizard({});

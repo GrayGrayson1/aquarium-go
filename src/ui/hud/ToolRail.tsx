@@ -53,6 +53,7 @@ import { safe, useMedia } from '../common/safe';
 import { tutorialFlag, act } from '../common/actions';
 import { Button, Chip, Slider, Toggle, formatMoney } from '../kit';
 import { buyFoodPack, openFoodInSupplies, tankFoodAlert, youngFoodNeed } from '../common/foodStock';
+import { CASH_LINK } from '../common/moneyShort'; // review fix (audit 2026-11-17)
 
 // ───────────── helpers ─────────────
 
@@ -77,7 +78,8 @@ const GENERIC_FOOD_WORDS = new Set(['frozen', 'live', 'shrimp', 'pellets', 'flak
 export function guideMentions(body: string, foodName: string): boolean {
   // audit 2026-11-17 (A12): the instruction is the first sentence; the rest is about the animal ("Axolotls hunt by
   // smell…" tagged Axolotl Pellets beside the earthworm the step asks for, and the pointer landed on the pellets)
-  const text = body.split(/(?<=[.!?])\s/)[0].toLowerCase();
+  // (no lookbehind: Safari below 16.4 can't parse one, and the whole game would fail to load there)
+  const text = (/^[\s\S]*?[.!?](?=\s)/.exec(body)?.[0] ?? body).toLowerCase();
   const name = foodName.toLowerCase();
   if (text.includes(name)) return true;
   return name.split(/[^a-z]+/).some((w) => w.length >= 4 && !GENERIC_FOOD_WORDS.has(w) && (text.includes(w) || text.includes(w.replace(/s$/, ''))));
@@ -165,7 +167,7 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
               onClick={() => {
                 sfx('open');
                 useShell.getState().set({ popover: null });
-                useUI.getState().set({ panel: 'finances', panelTarget: null });
+                useUI.getState().set({ ...CASH_LINK }); // review fix: Finances opens on its ways to raise cash
               }}
             >
               Ways to raise cash
@@ -263,7 +265,7 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
       </div>
       {mode === 'feed' && feedFoodId && (game?.inventory.foods[feedFoodId] ?? 0) > 0 && (
         <div className="ag-popover__row ag-foodnow">
-          <span className="ag-small ag-muted">No pointer? Drop it at the surface.</span>
+          <span className="ag-small ag-muted">Or drop it at the surface:</span>
           <Button size="sm" data-testid="feed-now" onClick={() => feedNow(feedFoodId)}>
             <Utensils size={14} /> Feed now
           </Button>
@@ -501,7 +503,8 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
       <CameraCycleTool />
       <ToolButton
         icon={Eye}
-        label="Watch"
+        label="Just watch"
+        shortLabel="Watch"
         testId="tool-watch"
         onClick={() => {
           sfx('close');

@@ -223,11 +223,11 @@ export function waterChange(state: GameState, tankId: string, fraction: number, 
     if (have < need - 1e-6) {
       const smaller = f > 0.1 + 1e-9 && have >= changeSaltNeed(state, tank, 0.1) - 1e-6;
       return fail(
-        `Changing ${Math.round(f * 100)}% of this tank needs about ${kgText(need, 'up')} kg of salt mix, and you have ${have < 0.005 ? 'none' : `${kgText(have, 'down')} kg`}. Buy marine salt mix in Market › Supplies first${smaller ? ', or change less water' : ''}.`,
+        `Changing ${Math.round(f * 100)}% of this tank needs about ${kgText(need, 'up')} kg of salt mix, and you have ${have < 0.01 ? 'none' : `${kgText(have, 'down')} kg`}. Buy marine salt mix in Market › Supplies first${smaller ? ', or change less water' : ''}.`,
       );
     }
   }
-  const { before, saltUsed, saltShort, shock } = applyWaterChange(state, tank, f, { hour: state.clock.hour, ...opts });
+  const { before, saltUsed, shock } = applyWaterChange(state, tank, f, { hour: state.clock.hour, ...opts });
   bumpCounter(state, 'waterChanges');
   const shockNote = shock ? ` Careful — ${shock}; sudden changes stress animals. Match the new water next time.` : '';
   // lane:fix-water — show a decimal when the rounded values would read as "5 → 5 ppm".
@@ -235,7 +235,6 @@ export function waterChange(state: GameState, tankId: string, fraction: number, 
   const parts = [`Changed ${Math.round(f * 100)}% of the water. Nitrate ${before.nitrate.toFixed(nDigits)} → ${w.nitrate.toFixed(nDigits)} ppm.`];
   if (before.ammonia >= 0.05) parts.push(`Ammonia ${before.ammonia.toFixed(2)} → ${w.ammonia.toFixed(2)} ppm.`);
   if (salty) parts.push(`Used ${saltUsed.toFixed(1)} kg of salt mix (${state.inventory.salt.toFixed(1)} kg left); salinity ${w.salinitySG.toFixed(3)}.`);
-  if (saltShort) parts.push('You ran short of salt, so the new water was weaker — salinity dropped. Buy more salt mix.');
   if (f > 0.5) parts.push('Very large changes can shock sensitive animals; 20–30% at a time is gentler.');
   return { ok: true, message: parts.join(' ') + shockNote };
 }
@@ -365,10 +364,7 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
       const m0 = w.bioMaturity;
       w.bioMaturity = clamp(m0 + (1 - m0) * 0.35, 0, 1);
       lab.colony = clamp((lab.colony ?? 0.3) + 0.2, 0.25, 1);
-      message =
-        m0 > 0.9
-          ? 'The filter is already fully established — the bottled bacteria had little to add.'
-          : `Seeded the filter with bottled nitrifying bacteria: ${pct(m0)} → ${pct(w.bioMaturity)} established. Keep feeding lightly while it finishes cycling.`;
+      message = `Seeded the filter with bottled nitrifying bacteria: ${pct(m0)} → ${pct(w.bioMaturity)} established. Keep feeding lightly while it finishes cycling.`;
       break;
     }
     case 'conditioner': {
@@ -429,8 +425,9 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
     }
     case 'buffer': {
       // Audit 2026-11-17 C4 — at the top of what these animals like, more buffer only pushes KH and pH past it
-      if (w.kh >= khPreferredMax(tank, inhabitantsOf(state, tank.id).map((i) => i.species)) - 1e-6)
-        return fail(`KH is already ${w.kh.toFixed(1)} dKH — more buffer would push it and the pH higher than your animals like.`);
+      const residents = inhabitantsOf(state, tank.id);
+      if (w.kh >= khPreferredMax(tank, residents.map((i) => i.species)) - 1e-6)
+        return fail(`KH is already ${w.kh.toFixed(1)} dKH — more buffer would push it and the pH higher than ${residents.length ? 'your animals like' : 'this water needs'}.`);
       if (!pay('pH buffer')) return fail(`Buffer costs ${money(cost)} — not enough money.`);
       const k0 = w.kh;
       const p0 = w.pH;
@@ -611,7 +608,8 @@ export function removeEquipment(state: GameState, tankId: string, equipmentId: s
   }
   tank.equipment.splice(idx, 1);
   state.inventory.equipment.push(inst);
-  return { ok: true, message: [`Removed the ${def?.name ?? 'equipment'} and put it in storage.`, ...notes].join(' ') };
+  // Audit 2026-11-17: stored gear can be sold back (Build › Equipment › In storage)
+  return { ok: true, message: [`Removed the ${def?.name ?? 'equipment'} and put it in storage: use it in another tank, or sell it in Build › Equipment.`, ...notes].join(' ') };
 }
 
 function settingRange(kind: string): [number, number] {

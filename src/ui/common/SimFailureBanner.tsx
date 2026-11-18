@@ -8,6 +8,7 @@ import { Button } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { useSimHealth } from '@/game/simHealth';
 import { saveNow } from './saves';
+import { guardedReload } from './reload'; // the review of I2
 
 export const SIM_FAILURE_TEXT = 'Something went wrong — your aquarium is paused. Save and reload.';
 
@@ -23,7 +24,7 @@ export function SimFailureBanner() {
         <Button size="sm" onClick={() => void saveNow('auto', true)} data-testid="sim-failure-save">
           Save
         </Button>
-        <Button size="sm" variant="primary" onClick={() => location.reload()} data-testid="sim-failure-reload">
+        <Button size="sm" variant="primary" onClick={guardedReload} data-testid="sim-failure-reload">
           Reload
         </Button>
       </span>

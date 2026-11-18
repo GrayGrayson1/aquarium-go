@@ -27,7 +27,9 @@ import { ARTICLES, type Article } from '../panels/encyclopedia/science'; // audi
 export type FindGroup = 'Screens' | 'Aquarium science' | 'Your tanks' | 'Your animals' | 'In the shop' | 'Food & supplies' | 'Equipment' | 'Decor' | 'Tank sizes' | 'Research' | 'Unlocks' | 'Encyclopedia';
 
 /** The order groups are listed in. */
-export const FIND_GROUPS: readonly FindGroup[] = ['Screens', 'Aquarium science', 'Your tanks', 'Your animals', 'In the shop', 'Food & supplies', 'Equipment', 'Decor', 'Tank sizes', 'Research', 'Unlocks', 'Encyclopedia'];
+// (audit B5 review: the articles come after the player's own things, so "betta", "food", "tank" or "filter" don't open
+// on three to five articles)
+export const FIND_GROUPS: readonly FindGroup[] = ['Screens', 'Your tanks', 'Your animals', 'In the shop', 'Food & supplies', 'Equipment', 'Decor', 'Tank sizes', 'Research', 'Unlocks', 'Aquarium science', 'Encyclopedia'];
 
 export type FindGo =
   | { kind: 'route'; route: Route }

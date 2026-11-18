@@ -2,7 +2,7 @@
  * Player actions on creatures. OWNER: lane "lifecycle". Signatures are contracts (UI calls them through `mutate`).
  */
 import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
-import type { GameState } from '@/types';
+import type { GameState, SpeciesDefinition, Tank } from '@/types';
 import type { ActionResult } from '../care';
 import { findSpecies } from '@/data/species';
 import { environmentGate } from '../compat';
@@ -62,12 +62,21 @@ export function moveCreature(state: GameState, creatureId: string, tankId: strin
   m.settledSinceHour = hour;
   delete m.targetFedUntil;
   pushHistory(c, { hour, kind: 'moved', text: `Moved from ${from} to ${tank.name}.` });
+  return { ok: true, message: `Moved ${c.name} to ${tank.name}.${moveHeadsUp(sp, tank) ?? ' Give it a little while to settle in.'}` };
+}
+
+/**
+ * The space warning a move into this tank carries (with its leading space), or null when the tank is big enough. Audit
+ * 2026-11-17 (D4): a little small isn't a heads-up; (D2) the group move gives it once, and tells it from a note.
+ */
+export function moveHeadsUp(sp: SpeciesDefinition, tank: Tank): string | null {
   const need = gallonsNeededNow(sp, sp.adultSizeCm);
-  const small = tankGallons(tank) < need * SLIGHTLY_SMALL_TANK; // Audit 2026-11-17 (D4): a little small isn't a heads-up
-  return {
-    ok: true,
-    message: `Moved ${c.name} to ${tank.name}.${small ? ` Heads up: an adult ${lowerName(sp.commonName)} needs at least ${sp.recommendedMinTankGallons} gallons.` : ' Give it a little while to settle in.'}`,
-  };
+  return tankGallons(tank) < need * SLIGHTLY_SMALL_TANK ? ` Heads up: an adult ${lowerName(sp.commonName)} needs at least ${sp.recommendedMinTankGallons} gallons.` : null;
+}
+
+/** What an ordinary move of one animal says (moveCreature's own words), so a group can tell a breeding note from it. */
+export function plainMoveMessage(name: string, sp: SpeciesDefinition, tank: Tank): string {
+  return `Moved ${name} to ${tank.name}.${moveHeadsUp(sp, tank) ?? ' Give it a little while to settle in.'}`;
 }
 
 /**

@@ -158,7 +158,7 @@ export const epauletteShark: SpeciesDefinition = {
     funFact: 'It survives hours with almost no oxygen in drying tide pools, and walks out of the water from one pool to the next.',
     inGameBehavior: 'Walks over the sand on its fins, rests under ledges by day and roots in the sand for food at dusk.',
     feedingNote: 'Bite-size frozen seafood three times a week from tongs or on the sand; it eats slowly.',
-    keeperTip: 'Sharks need iodine and vitamins in their food: real keepers soak the seafood in a shark supplement.',
+    keeperTip: 'Sharks need iodine and vitamins in their food: keepers soak the seafood in a shark supplement.',
   },
   sourceReferences: [
     { id: 'fishbase-hemiscyllium-ocellatum', title: 'FishBase — Hemiscyllium ocellatum (Epaulette shark)', url: 'https://www.fishbase.se/summary/Hemiscyllium-ocellatum.html', tier: 1, facts: ['107 cm TL max', 'tide pools and shallow reefs', 'paired eggs', 'survives low oxygen', 'IUCN Least Concern (2015)'] },

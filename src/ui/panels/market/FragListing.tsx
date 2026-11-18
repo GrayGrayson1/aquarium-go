@@ -144,7 +144,7 @@ export function FragValueDetails({ g, ids }: { g: GameState; ids: string[] }) {
             </KV>
           ))}
           <p className="pn-tiny pn-muted" style={{ margin: '8px 0 0' }}>
-            Coral frags fetch more than plant cuttings, and LPS and SPS more than soft corals. Healed, grown-out frags are worth more. Many recent frag sales soften prices for a few days.
+            Coral frags fetch more than plant cuttings, and stony corals more than soft corals. Healed, grown-out frags are worth more. Many recent frag sales soften prices for a few days.
           </p>
         </div>
       )}

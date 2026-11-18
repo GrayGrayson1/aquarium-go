@@ -174,7 +174,7 @@ function SaltCard({ g, issue }: { g: GameState; issue: IssueView }) {
       <span className="ops-muted">{lvl.id === 'grand_hall' ? `The highest budget (${formatMoney(max)})` : `The most for ${withArticle(lvl.name)} (${formatMoney(max)})` /* Audit 2026-11-17 (J16): "an Aquarium Store" */}</span>
     ) : p.why === 'orders_off' ? (
       <Button size="sm" onClick={() => go({ kind: 'panel', panel: 'operations', tab: 'overview', target: 'view:manual' })}>
-        {(opsSnapshot(g).forecast?.m.name ?? 'Stock manager').split(' ')[0]}’s orders
+        Turn on {(opsSnapshot(g).forecast?.m.name ?? 'Stock manager').split(' ')[0]}’s orders
       </Button>
     ) : (
       <Button size="sm" data-testid="issues-raise-budget" onClick={staff}>

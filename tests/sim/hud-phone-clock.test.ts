@@ -94,3 +94,17 @@ describe('B15: “Paused” on a phone', () => {
     expect(out).toMatch(/<span class="ag-speed__label" aria-hidden="true">Paused<\/span>/);
   });
 });
+
+describe('B15 review: the shared-shop pill on a phone says “Paused” too', () => {
+  it('its time line reads Paused while the shop is paused', async () => {
+    const { SharedPill } = await import('@/ui/shared/SharedMenu');
+    const g = shop();
+    g.clock.speed = 0;
+    useGame.setState({ game: g });
+    Object.assign(useGame.getInitialState(), useGame.getState());
+    const out = renderToStaticMarkup(createElement(SharedPill, { compact: true }));
+    expect(timeRow(out)).toBe('Paused');
+    g.clock.speed = 1;
+    expect(timeRow(renderToStaticMarkup(createElement(SharedPill, { compact: true })))).toBe('2:30 PM');
+  });
+});

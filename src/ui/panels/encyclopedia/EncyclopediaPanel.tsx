@@ -184,7 +184,7 @@ function SpeciesGrid({ g, known, onOpen }: { g: GameState; known: Set<string>; o
         </section>
       ))}
       <Callout tone="good" icon={<Leaf size={16} />}>
-        Every animal here stays in your care or goes to another keeper. Aquarium animals should never be released into the wild.
+        Every animal here stays in your care or goes to another fishkeeper. Aquarium animals should never be released into the wild.
       </Callout>
     </div>
   );
@@ -335,7 +335,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
         </FactRow>
         <FactRow icon={<Egg size={15} />} label="Breeding">
           {tempText(e.breedingOverview)}
-          {breeding && !breeding.breedable && <span className="pn-muted"> (Not bred in this build.)</span>}
+          {breeding && !breeding.breedable && <span className="pn-muted"> (Can’t be bred in Aquarium Go.)</span>}
         </FactRow>
         <FactRow icon={<Leaf size={15} />} label={`Conservation${sp.conservation?.status ? ` · ${sp.conservation.status}` : ''}`}>
           {tempText(e.conservationNote)}

@@ -147,7 +147,7 @@ export const PURPOSE_HINT: Record<TankPurpose, string> = {
   display: 'Shown to visitors and scored as an exhibit.',
   nursery: 'Safe rearing for eggs and fry — no hungry adults.',
   quarantine: 'Observe new arrivals before they join a display.',
-  breeding: 'Conditioning and spawning away from tank mates.',
+  breeding: 'Getting ready to spawn, away from tank mates.',
 };
 
 export const VERDICT_LABEL: Record<CompatVerdict, string> = {
@@ -326,7 +326,7 @@ export const MOOD_LABEL: Record<VisitorReaction['mood'], string> = {
   concerned: 'Concerned',
 };
 
-export const SEX_LABEL = { male: 'Male', female: 'Female', unknown: 'Unsexed' } as const;
+export const SEX_LABEL = { male: 'Male', female: 'Female', unknown: 'Sex not known yet' } as const;
 
 export function titleCase(s: string): string {
   return s

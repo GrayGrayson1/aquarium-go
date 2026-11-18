@@ -66,7 +66,6 @@ import {
 import { PrismaticBadge, MorphTierBadge, StrainBadge } from '../common/Prismatic'; // lane:genetics
 import { illnessDef } from '@/sim/life/illness'; // lane:guide
 import { moduleFor } from '@/sim/life/breeding/registry'; // audit E21, E24
-import { effectiveRole } from '@/sim/life/breeding/common'; // audit E24
 import { creatureValue, marketAccess } from '@/sim/economy';
 import { speciesWaterComfort } from '@/sim/water';
 import { isUnlocked } from '@/sim/facility';
@@ -94,7 +93,7 @@ import { dietGuide, feedingLine, temperatureGuide, FLOW_GUIDE } from '@/data/spe
 import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
 import { lifespanFacts } from '../common/lifespan'; // Audit 2026-11-17 (D20)
 import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isMemoryCard } from './conditionWords'; // Audit 2026-11-17 (D10, D12, D17)
-import { NoteFixButton } from './NoteFixButton'; // Audit 2026-11-17 (D16)
+import { ConditionNotes } from './ConditionNotes'; // Audit 2026-11-17 (D8, D16)
 import { MoveGroupButton } from './MoveGroupButton'; // Audit 2026-11-17 (D2)
 import { AutofeederVerdict, RealLifeTips, openSpeciesGuide } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
 import { Badge, Button, Chip, Meter, Section, StatusBadge, formatMoney, KV, Empty } from '../kit';
@@ -272,9 +271,17 @@ function CareFacts({ sp, tankGallons, unit, c, nowHour }: { sp: SpeciesDefinitio
         {sp.recommendedMinTankGallons}+ gal
       </KV>
       <KV label={<><Gauge size={13} aria-hidden /> Care level</>}>{diff?.label ?? titleCase(sp.difficulty)}</KV>
-      <KV label={<><Hourglass size={13} aria-hidden /> Lifespan</>} hint={life.note ?? undefined}>
-        {life.value}
-      </KV>
+      {life.value ? (
+        <KV label={<><Hourglass size={13} aria-hidden /> Lifespan</>} hint={life.note ?? undefined}>
+          {life.value}
+        </KV>
+      ) : life.note ? (
+        // review of D20: the first companion's row is its sentence, with no empty value beside the label
+        <div className="ag-kv">
+          <span className="ag-kv__label"><Hourglass size={13} aria-hidden /> Lifespan</span>
+          <span className="ag-kv__hint">{life.note}</span>
+        </div>
+      ) : null}
       <div className="ag-sg-card">
         <AutofeederVerdict sp={sp} compact />
         <RealLifeTips sp={sp} max={3} />
@@ -357,7 +364,8 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
     if (partner && !candidates.find((x) => x.id === partner)) setPartner(null);
   }, [candidates, partner]);
   const check = partner ? safe('breedingCheck', () => breedingCheck(game, c.id, partner), { ok: false, reasons: ['Unable to check right now.'] }) : null;
-  const systemNote = sp.breeding.system === 'not_in_game' ? 'Breeding for this species is not part of this version.' : sp.breeding.notes;
+  // Audit 2026-11-17 (J33): a species the game doesn't breed already says so in its status ("Not bred here" and why)
+  const systemNote = sp.breeding.system === 'not_in_game' ? null : sp.breeding.notes;
   // Exact morph odds for the chosen pairing (mother = the female; otherwise this animal).
   const odds = useMemo(() => {
     const p = partner ? game.creatures[partner] : null;
@@ -375,11 +383,8 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
   const partnerC = partner ? game.creatures[partner] : null;
   // audit E24: odds only for a pair that could breed (not two of one sex, not an anemone that splits alone)
   const pairBred = safe('moduleFor', () => moduleFor(sp).breedable, false);
-  const sameSex = !!partnerC && sp.sexSystem === 'gonochoristic' && (() => {
-    const ra = safe('effectiveRole', () => effectiveRole(c, sp, game.clock.hour), null);
-    const rb = safe('effectiveRole', () => effectiveRole(partnerC, sp, game.clock.hour), null);
-    return !!ra && ra === rb;
-  })();
+  // (review E: by the sexes the cards show, so hiding the odds never gives away a sex the card still hides)
+  const sameSex = !!partnerC && sp.sexSystem === 'gonochoristic' && c.sex !== 'unknown' && c.sex === partnerC.sex;
   const showOdds = pairBred && !sameSex;
   // audit E21: readiness means nothing for an animal that can't breed here, or not yet
   const showReadiness = pairBred && status?.label !== 'Too young to breed';
@@ -648,13 +653,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
             <StatusBadge status={wellbeing.status} label={wellbeing.status === 'good' ? 'Good' : wellbeing.status === 'watch' ? 'Watch' : 'Danger'} />
             <div className="ag-grow">
               <div className="ag-wellbeing__headline">{convertTempText(wellbeing.headline, unit) /* Audit 2026-11-17 (D8) */}</div>
-              {wellbeing.notes.length > 0 && (
-                <ul className="ag-wellbeing__notes">
-                  {wellbeing.notes.slice(0, 3).map((n, i) => (
-                    <li key={i}>{convertTempText(n, unit)} <NoteFixButton c={c} note={n} /></li>
-                  ))}
-                </ul>
-              )}
+              <ConditionNotes c={c} notes={wellbeing.notes} unit={unit} /* Audit 2026-11-17 (D8, D16) */ />
             </div>
           </div>
         )}

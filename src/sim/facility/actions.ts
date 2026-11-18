@@ -126,7 +126,7 @@ export function upgradeFacility(state: GameState): ActionResult {
   emitEvent(state, { kind: 'celebrate', text: `Welcome to your ${next.name}! ${next.perks[0] ?? ''}`.trim(), toast: true });
   if (moved.length) emitEvent(state, { kind: 'info', text: `The movers re-arranged ${moved.length} tank${moved.length === 1 ? '' : 's'} to fit the new floor plan.` });
   // Audit 2026-11-17 (G23): Build can't move tanks; each tank card's "Move tank" does
-  if (unplaced.length) emitEvent(state, { kind: 'warning', text: `${unplaced.length} tank${unplaced.length === 1 ? '' : 's'} could not find a good spot. Move ${unplaced.length === 1 ? 'it' : 'them'} with Move tank on ${unplaced.length === 1 ? 'its' : 'each'} tank’s card.`, toast: true });
+  if (unplaced.length) emitEvent(state, { kind: 'warning', text: `${unplaced.length} tank${unplaced.length === 1 ? '' : 's'} could not find a good spot. Move ${unplaced.length === 1 ? 'it with Move tank on its card' : 'them with Move tank on each tank’s card'}.`, toast: true });
   return { ok: true, message: `Moved into the ${next.name}.` };
 }
 

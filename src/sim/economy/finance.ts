@@ -28,8 +28,11 @@ import { payStaff, staffLeavingTonight, staffWagesPerDay } from '../staff'; // l
 import { roomsUpkeep } from '../automation/reserve'; // lane:automation (chunk 5)
 import { FOODS, eatsFood } from '@/data/catalog/foods'; // audit 2026-11-17: the club's food parcel
 import { ANIMAL_THRESHOLDS, needsFedFood, refreshFoodStatus } from '../tankStatus';
+import { portionForDemand, TYPICAL_MEAL_HUNGER } from '../water/food'; // review fix: the parcel's size
+import { effectiveBioload } from '../water/env';
 import { isFoodAvailable } from './shop';
 import { cheapestKit } from './purchases'; // F7: the restart loan counts a whole kit
+import { takeDownCheck } from './sellBack'; // audit 2026-11-17 (G19 review): an empty tank's take-down as a way to raise cash
 
 const LEDGER_CAP = 400;
 const DAILY_CAP = 120;
@@ -116,7 +119,7 @@ export function dailyOperatingCost(state: GameState): OperatingCosts {
  * animal to the local store, list one, auction a tank, open to visitors, an empty tank's bill, trimming the bills, the
  * Market's first visit, holding steady, or the starter as a last resort.
  */
-export type CashIdeaKind = 'quick_sell' | 'list_tank' | 'list_animal' | 'visitors' | 'empty_tank' | 'trim' | 'decor' | 'open_market' | 'hold' | 'starter';
+export type CashIdeaKind = 'quick_sell' | 'list_tank' | 'list_animal' | 'visitors' | 'empty_tank' | 'take_down' | 'spare_gear' | 'trim' | 'decor' | 'open_market' | 'hold' | 'starter'; // take_down, spare_gear: audit 2026-11-17 (G19, G22)
 export interface CashIdea {
   kind: CashIdeaKind;
   text: string;
@@ -143,12 +146,21 @@ export function cashIdeas(state: GameState): CashIdea[] {
   }
   if (isUnlocked(state, 'visitors') && !state.facility.openToPublic) out.push({ kind: 'visitors', text: 'Open your doors to visitors for admission and tips.' });
   const empty = state.tankOrder.filter((id) => state.tanks[id] && !Object.values(state.creatures).some((c) => c.tankId === id && (c.status === 'alive' || c.status === 'listed')));
-  // lane:guide — a tank can only leave through a whole-aquarium auction, so only suggest selling one once that is open
+  // lane:guide — a tank is sold only through a whole-aquarium auction, so only suggest selling one once that is open (an
+  // empty one can also be taken down: below)
   const it = empty.length === 1 ? 'it' : 'them';
   // audit 2026-11-17 (F13) — "restock" only while purchases are possible (in debt they are paused)
   const restock = state.finance.money >= 0 ? `restock ${it}, or ` : '';
   const fix = isUnlocked(state, 'tank_auctions') ? `${restock}auction ${it} as a whole aquarium` : `${restock}switch off ${empty.length === 1 ? 'its' : 'their'} gear to cut the bill`;
   if (empty.length > 0) out.push({ kind: 'empty_tank', text: `${empty.length === 1 ? 'An empty tank still costs' : `${empty.length} empty tanks still cost`} money to run — ${fix}.` });
+  // audit 2026-11-17 (G19, G22 review) — the store takes an empty tank back for half the bare tank's price (Tanks), and
+  // buys spare stored gear at half its price (Build › Equipment, shown with a tank)
+  const downable = empty.map((id) => takeDownCheck(state, id)).filter((c) => c.ok);
+  if (downable.length) {
+    const sum = downable.reduce((a, c) => a + c.value, 0);
+    out.push({ kind: 'take_down', text: downable.length === 1 ? `Take down ${downable[0].called} in Tanks if you don’t need it: the store pays ${fmtMoney(sum)} for it.` : `Take down the empty tanks you don’t need in Tanks: the store pays up to ${fmtMoney(sum)} for all ${downable.length}.` });
+  }
+  if ((state.inventory?.equipment?.length ?? 0) > 0 && state.tankOrder.length > 0) out.push({ kind: 'spare_gear', text: 'Sell spare equipment from storage in Build › Equipment: the shop pays half its price.' });
   // audit 2026-11-17 (F13) — Build buys placed decor back at half its price (SELL_BACK_FRACTION)
   if (state.tankOrder.some((id) => (state.tanks[id]?.decor?.length ?? 0) > 0)) out.push({ kind: 'decor', text: 'Sell decor you can spare in Build › Decor: the shop pays half its price.' });
   if (state.tankOrder.some((id) => (state.tanks[id]?.equipment.length ?? 0) > 1)) out.push({ kind: 'trim', text: 'Trim running costs: a shorter light schedule and switching off gear you do not need lowers the daily bill.' });
@@ -200,10 +212,12 @@ export function restartNeed(state: GameState): number | null {
   let need = Math.max(RESTART_FLOOR, Number.isFinite(cheapest) ? cheapest : 0);
   if (!tanks.length) {
     // No tank either: the cheapest whole kit the player can buy (glass, gear and substrate, as Build prices it;
-    // audit 2026-11-17, F7: it used to count 1.5× the glass, and the loan fell short of the kit's real price)
-    const kit = cheapestKit(state);
+    // audit 2026-11-17, F7: it used to count 1.5× the glass, and the loan fell short of the kit's real price), with
+    // seeded media as Build's Quick buy offers it by default (review fix), and two days of that tank's running costs
+    // (the room's own bills alone come to nothing when it is empty)
+    const kit = cheapestKit(state, { seeded: true });
     const tier = TANK_TIERS.filter((t) => isUnlocked(state, t.unlock)).sort((a, b) => a.price - b.price)[0];
-    need += kit ? kit.total : Math.round((tier?.price ?? 60) * 1.5);
+    need += kit ? kit.total + kit.daily * 2 : Math.round((tier?.price ?? 60) * 1.5);
   }
   need += dailyOperatingCost(state).total * 2;
   return state.finance.money < need ? Math.ceil(need) : null;
@@ -365,13 +379,16 @@ function grantLoan(state: GameState, restart?: number): void {
 
 /** progress.counters key: the game day (dayIndex) of the last food parcel. Absent until the first one (no save field). */
 export const PARCEL_DAY_KEY = '_clubParcelDay';
+/** The parcel holds this many meals: two days at the default two meals a day (review fix: "a small parcel"). */
+export const PARCEL_MEALS = 4;
 
 /**
  * The owner's choice (audit 2026-11-17, F5 and A7): when animals are very hungry (ANIMAL_THRESHOLDS.hungryHunger, the
  * card's "Very hungry"), there is no food in stock they eat, and the money (a debt counts) is below the cheapest pack
- * they eat on sale, the aquarium club drops off one pack of that cheapest food, free, at most once a game day, with a
- * tip on how to earn money. Hungriest first; one pack per missing diet (a pack already dropped that an animal eats
- * covers it too). Deterministic: no random draws, the day from the clock. Nothing for a player who can buy the pack.
+ * they eat on sale, the aquarium club drops off a little of that cheapest food (about two days' worth for the animals
+ * it is for, PARCEL_MEALS meals; at least a serving, at most a pack), free, at most once a game day, with a tip on how
+ * to earn money. Hungriest first; one parcel per missing diet (an animal that eats food already in a parcel shares it).
+ * Deterministic: no random draws, the day from the clock. Nothing for a player who can buy the pack.
  */
 export function clubFoodParcel(state: GameState, hour: number): boolean {
   const c = state.progress.counters;
@@ -384,22 +401,34 @@ export function clubFoodParcel(state: GameState, hour: number): boolean {
     .sort((a, b) => b.stats.hunger - a.stats.hunger || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   if (!hungry.length) return false;
   const stocked = FOODS.filter((f) => (inv[f.id] ?? 0) > 0);
-  const parcels: { foodId: string; names: string[]; tankId: string; creatureId: string }[] = [];
+  const parcels: { food: (typeof FOODS)[number]; names: string[]; eaters: { tankId: string; sp: NonNullable<ReturnType<typeof findSpecies>>; sizeCm: number }[]; tankId: string; creatureId: string }[] = [];
   for (const x of hungry) {
     const sp = findSpecies(x.speciesId);
     if (!sp || !needsFedFood(sp) || stocked.some((f) => eatsFood(sp, f))) continue;
-    const given = parcels.find((p) => FOODS.some((f) => f.id === p.foodId && eatsFood(sp, f)));
+    const given = parcels.find((p) => eatsFood(sp, p.food));
     if (given) {
       if (!given.names.includes(x.name)) given.names.push(x.name);
+      given.eaters.push({ tankId: x.tankId!, sp, sizeCm: x.sizeCm });
       continue;
     }
     let cheapest: (typeof FOODS)[number] | null = null;
     for (const f of FOODS) if (eatsFood(sp, f) && isFoodAvailable(state, f) && (!cheapest || f.price < cheapest.price)) cheapest = f;
     if (!cheapest || money >= cheapest.price) continue;
-    inv[cheapest.id] = (inv[cheapest.id] ?? 0) + Math.max(1, Math.round(cheapest.servingsPerPack));
-    parcels.push({ foodId: cheapest.id, names: [x.name], tankId: x.tankId!, creatureId: x.id });
+    parcels.push({ food: cheapest, names: [x.name], eaters: [{ tankId: x.tankId!, sp, sizeCm: x.sizeCm }], tankId: x.tankId!, creatureId: x.id });
   }
   if (!parcels.length) return false;
+  // review fix — "a small parcel": about two days of food for the animals it is for (two of the default feed's meals a
+  // day, each sized as feedTank sizes one: portionForDemand at TYPICAL_MEAL_HUNGER, per tank), never more than a pack
+  for (const p of parcels) {
+    let perMeal = 0;
+    for (const tankId of [...new Set(p.eaters.map((e) => e.tankId))]) {
+      const here = p.eaters.filter((e) => e.tankId === tankId);
+      const demand = here.reduce((a, e) => a + effectiveBioload(e.sp, e.sizeCm) * TYPICAL_MEAL_HUNGER, 0);
+      perMeal += portionForDemand(p.food, demand, new Set(here.map((e) => e.sp.id)).size);
+    }
+    const servings = Math.max(1, Math.min(Math.round(p.food.servingsPerPack), Math.ceil(perMeal * PARCEL_MEALS)));
+    inv[p.food.id] = (inv[p.food.id] ?? 0) + servings;
+  }
   c[PARCEL_DAY_KEY] = today;
   refreshFoodStatus(state);
   const names = parcels.flatMap((p) => p.names);

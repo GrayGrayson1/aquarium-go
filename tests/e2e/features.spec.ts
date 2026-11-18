@@ -176,7 +176,7 @@ test.describe('round-2 features', () => {
 
     // Locked: brackish is marked "(locked)" and Convert stays disabled.
     await aq(page, 'setUI', { panel: 'tanks', panelTarget: `tank:${tankId}` });
-    const select = page.getByLabel('Water class');
+    const select = page.getByLabel('Water type', { exact: true }); // Audit 2026-11-17 (J36): the field's visible name
     await expect(select).toBeVisible();
     await expect(select.locator('option[value="brackish"]')).toHaveText(/locked/i);
     await select.selectOption('brackish');

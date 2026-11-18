@@ -37,6 +37,8 @@ import { StaffAvatar } from './StaffAvatar';
 import './staff.css';
 
 const ROLE_ICON: Record<StaffRole, typeof Fish> = { aquarist: Fish, stock_manager: Package, docent: Presentation };
+/** Audit 2026-11-17 (J22): a hired docent's card has no blurb, so its tag says what the role does. */
+const ROLE_GLOSS: Partial<Record<StaffRole, string>> = { docent: 'gives talks' };
 const first = (m: Pick<StaffMember, 'name'>) => m.name.split(' ')[0];
 
 /** A tank's care load for this aquarist, on average over the shop's tanks (a 20-gallon tank's before there are any). */
@@ -228,18 +230,21 @@ function LockedStaff({ g }: { g: GameState }) {
 
 function Stars({ skill }: { skill: number }) {
   return (
-    <span className="st-stars" aria-label={`Skill ${skill} of 5`} title={`Skill ${skill} of 5`}>
-      <span className="st-stars__on">{skillStars(skill)}</span>
-      <span className="st-stars__off">{'★'.repeat(Math.max(0, 5 - skill))}</span>
+    <span className="st-stars" title={`Skill ${skill} of 5`}>
+      {/* Audit 2026-11-17 (J36): a plain span's aria-label isn't read; the glyphs were ("black star" five times) */}
+      <span className="st-stars__on" aria-hidden>{skillStars(skill)}</span>
+      <span className="st-stars__off" aria-hidden>{'★'.repeat(Math.max(0, 5 - skill))}</span>
+      <span className="st-sr">Skill {skill} of 5</span>
     </span>
   );
 }
 
-function RoleTag({ role }: { role: StaffRole }) {
+function RoleTag({ role, gloss }: { role: StaffRole; gloss?: boolean }) {
   const Icon = ROLE_ICON[role];
   return (
     <span className={clsx('st-role-tag', `st-role-tag--${role}`)}>
       <Icon size={12} aria-hidden /> {STAFF_ROLES[role].label}
+      {gloss && ROLE_GLOSS[role] ? ` (${ROLE_GLOSS[role]})` : ''}
     </span>
   );
 }
@@ -265,7 +270,7 @@ function StaffCard({ g, m }: { g: GameState; m: StaffMember }) {
         <div className="st-card__who">
           <div className="st-card__name">{m.name}</div>
           <div className="st-card__meta">
-            <RoleTag role={m.role} />
+            <RoleTag role={m.role} gloss />
             <Stars skill={m.skill} />
             <span className="st-wage">{formatMoney(m.wage)}/day</span>
           </div>
@@ -308,7 +313,7 @@ function StaffCard({ g, m }: { g: GameState; m: StaffMember }) {
       {m.skill < 5 && (
         <div className="st-xp" title="Experience grows with every day on the job">
           <span className="pn-tiny pn-muted">
-            <Sparkles size={11} aria-hidden /> Experience {Math.floor(m.xp)} / {need} days to {skillStars(m.skill + 1)}
+            <Sparkles size={11} aria-hidden /> Experience {Math.floor(m.xp)} / {need} days to <span aria-hidden>{skillStars(m.skill + 1)}</span><span className="st-sr">skill {m.skill + 1}</span>
           </span>
           <Bar value={(m.xp / Math.max(1, need)) * 100} tone="gold" label={`${m.name} experience`} thin />
         </div>
@@ -357,7 +362,7 @@ function FireButton({ m }: { m: StaffMember }) {
         act({ k: 'fireStaff', staff: m.id }, { sound: 'close', kind: 'info' });
       }}
     >
-      {armed ? 'Confirm' : 'Let go'}
+      {armed ? `Let ${first(m)} go (final day’s pay)` : 'Let go'}
     </Button>
   );
 }

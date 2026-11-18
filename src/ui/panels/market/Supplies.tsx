@@ -26,7 +26,7 @@ import { CulturesSection, DryFoodSection, LiveFoodSection, SaltRow, foodsShownAb
 import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { matches, queryWords } from '../common/match'; // chunk 19 (QOL-003)
-import { cantAffordTitle, cheapestFoodPrice, suppliesMoneyNote } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F1)
+import { cantAffordTitle, cheapestFoodPrice, suppliesMoneyNote, CASH_LINK } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F1)
 
 /** How many foods show before "Show all" — foods you own (or have owned) and foods made for your animals always show. */
 const FOOD_PREVIEW = 8;
@@ -129,7 +129,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
             icon={<Wallet size={16} />}
             title={short.title}
             action={
-              <Button size="sm" data-testid="supplies-raise-cash" onClick={() => useUI.getState().set({ panel: 'finances', panelTarget: null })}>
+              <Button size="sm" data-testid="supplies-raise-cash" onClick={() => useUI.getState().set({ ...CASH_LINK })}>
                 Ways to raise cash
               </Button>
             }

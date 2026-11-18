@@ -157,15 +157,15 @@ export const scarletHermitCrab: SpeciesDefinition = {
     { id: 'oca-red-reef-hermit', title: 'Oregon Coast Aquarium — Red reef hermit crab', url: 'https://aquarium.org/animals/red-reef-hermit-crab/', tier: 1, facts: ['detritus scavenger', 'IUCN not evaluated', '1985 Barbados stamp'] },
     { id: 'naturalis-paguristes-cadenati', title: 'Naturalis Caribbean diving — Paguristes cadenati', url: 'https://caribbean-diving.linnaeus.naturalis.nl/linnaeus_ng/app/views/species/taxon.php?id=6428', tier: 1, facts: ['red legs, yellow eyestalks', '~3 cm'] },
     { id: 'liveaquaria-scarlet-hermit', title: 'LiveAquaria — Scarlet Reef Hermit Crab', url: 'https://www.liveaquaria.com/product/620/', tier: 2, facts: ['1.5 in max', '72–78 °F, pH 8.1–8.4, SG 1.020–1.025', 'eats hair and slime algae and cyanobacteria', 'needs spare shells', 'reef safe'] },
-    { id: 'topshelf-scarlet-hermit', title: 'Top Shelf Aquatics — Scarlet Red Hermit Crab', url: 'https://topshelfaquatics.com/pages/saltwater-invertebrates/scarlett-red-hermit-crab', tier: 2, facts: ['rarely bothers snails if shells are scarce it may', 'prefers light oval shells', 'hides to molt', 'may irritate LPS'] },
+    { id: 'topshelf-scarlet-hermit', title: 'Top Shelf Aquatics — Scarlet Red Hermit Crab', url: 'https://topshelfaquatics.com/pages/saltwater-invertebrates/scarlett-red-hermit-crab', tier: 2, facts: ['rarely bothers snails; if shells are scarce, it may', 'prefers light oval shells', 'hides to molt', 'may irritate LPS'] },
   ],
   confidenceNotes: [
-    'Snail safety: sources and keepers disagree; many bad reports turn out to be red-leg hermits. Modelled as a small risk that spare shells reduce.',
+    'Snail safety: sources and keepers disagree; many bad reports turn out to be red-leg hermits. Modelled as a small risk; spare shells are not modelled yet (audit D7, an owner decision).',
     'Depth range differs by source (0–100 m, 8–30 m, 1–52 m); irrelevant in a tank.',
     'Lifespan (2–4 years) comes from a retailer page only.',
   ],
   exceptionRules: [
-    { other: 'tag:snail', verdictFloor: 'usually_compatible', reason: 'May take a living snail’s shell when spare empty shells run out; with shells on hand it rarely bothers snails.', incidentRisk: 0.015 },
+    { other: 'tag:snail', verdictFloor: 'usually_compatible', reason: 'May take a living snail’s shell now and then.', incidentRisk: 0.015 }, // ADR-0056 d3 (audit D7): spare shells aren't modelled, so no promise
     { other: 'peacock_mantis_shrimp', verdictFloor: 'incompatible', reason: 'Hermit crabs are favourite prey for smashing mantis shrimp — the shell is no protection.', incidentRisk: 0.5 },
   ],
   special: {

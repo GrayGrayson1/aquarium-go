@@ -101,7 +101,8 @@ describe('chunk 13: the words (§8, ADR-0045, ADR-0048)', () => {
       fault: /^The shared shop hit a problem and stopped\. It’s saved as of .+\.$/,
       restart: /^The shared shop’s server restarted, so it went back to its last save \(7 minutes ago\)\.$/,
       // audit 2026-11-17, I11: changed on purpose (what helps); `busy`, the join limit, is new
-      outofstep: /^Your game keeps falling out of step with the shared shop, so it stopped\. Someone who can change the speed could slow it down\. Reload to try again\.$/,
+      // changed on purpose again (the review of I11): Try again, not Reload, which couldn't help within the hour
+      outofstep: /^Your game keeps falling out of step with the shared shop, so it stopped\. Someone who can change the speed could slow it down; then try again\.$/,
       gone: /^CalliClub has no shared shop any more\.$/,
       busy: /^You’ve joined the shared shop a lot in the last hour\. Try again in a little while\.$/,
     };
@@ -241,11 +242,13 @@ export type _E = GameEvent;
 describe('audit 2026-11-17: the closings the browser gives itself', () => {
   it('I1 (B-230): a shop that couldn’t be reached says so, that your own aquarium is safe, and offers Try again', () => {
     const o = { club: 'CalliClub' };
-    expect(closingText('offline', o)).toBe('Can’t reach Aquarium Go online right now, so the shared shop can’t open. Your own aquarium is safe. Try again later.');
+    // the review: beside the Try again button, the lines don't also say "try again later" (changed on purpose)
+    expect(closingText('offline', o)).toBe('Can’t reach Aquarium Go online right now, so the shared shop can’t open. Your own aquarium is safe, and you can try again whenever you like.');
     expect(closingText('unreachable', o)).toBe(
-      'Can’t reach the shared shop right now. Your own aquarium is safe. Aquarium Go online may be down, or a browser blocker (such as Brave Shields) may be stopping the connection. Try again in a little while.',
+      'Can’t reach the shared shop right now. Your own aquarium is safe. Aquarium Go online may be down, or a browser blocker (such as Brave Shields) may be stopping the connection.',
     );
-    expect([...RETRY_CLOSINGS].sort()).toEqual(['offline', 'unreachable']);
+    expect([...RETRY_CLOSINGS].sort()).toEqual(['offline', 'outofstep', 'unreachable']);
+    expect([...RELOAD_CLOSINGS]).toEqual(['build']);
     // I8: a newer shop server, but the site still serves this build (no Reload that never turns on)
     expect(SHARED_WORDS.siteBehind).toBe('The shared shop has been updated, but this site hasn’t caught up yet. Try again later.');
     expect(RELOAD_CLOSINGS.has('unreachable')).toBe(false);

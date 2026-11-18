@@ -9,6 +9,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { useGame } from '@/state/game';
 import { GearTab, WaterTab } from '@/ui/cards/TankCard';
 import { useSettings } from '@/state/settings';
+import { cheapestSaltPrice, saltCashLine, needsCashIdeas } from '@/ui/common/moneyShort';
+import { menuFor } from '@/data/species/guide';
+import { equipmentEmitters } from '@/render/decor/emitters';
+import { SaltRow } from '@/ui/panels/market/SuppliesAutomation';
 import { Overview } from '@/ui/panels/operations/Overview';
 import { WaterTab as OpsWaterTab } from '@/ui/panels/operations/WaterTab';
 import { opsSnapshot, opsTier, type OpsSnapshot } from '@/ui/common/ops';
@@ -20,6 +24,7 @@ import { getWaterReport, tankDailyCost, STOCKING_WATCH, STOCKING_DANGER } from '
 import { waterChange, waterChangeCost, dose, installEquipment, feedTank, removeEquipment, removeEquipmentWarning, topOff, repairEquipment, REPAIR_FROM } from '@/sim/care';
 import { DECOR } from '@/data/catalog/decor';
 import { installedFit, equipmentFit } from '@/sim/care/fit';
+import { THERMOSTAT_DIAL } from '@/sim/care/tuning';
 import { storedEquipmentList } from '@/ui/panels/build/BuildPanel';
 import { convertWaterClass, convertWaterClassCost } from '@/sim/tankOps';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -208,16 +213,26 @@ describe('C5: a new tank’s advice says what to watch and how long, not "wait u
 });
 
 describe('C6: temperature advice aims at what suits the animals, and calls a split a compatibility problem', () => {
-  it('an axolotl in a tank with its heater at 25.5 °C is told to turn it down below the axolotl’s maximum', () => {
+  // (review) the axolotl's target is below the room, where no heater setting cools the water (and the dial stops at
+  // 18 °C): it said "Turn the heater down to about 16.5 °C."
+  it('an axolotl in a tank with its heater at 25.5 °C is told to switch the heater off, and how to cool further', () => {
     const s = base('axolotl');
     const t = firstTank(s);
     t.equipment = t.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'chiller');
     t.equipment.push({ id: 'test_heater', defId: 'heater_50w', installedHour: 0, condition: 1, on: true, setting: 25.5 });
     t.water.tempC = 25.5;
     const advice = getWaterReport(s, t.id).params.find((p) => p.key === 'temp')!.advice!;
-    const m = /^Turn the heater down to about ([\d.]+) °C\.$/.exec(advice);
-    expect(m, advice).not.toBeNull();
-    expect(Number(m![1])).toBeLessThanOrEqual(18);
+    expect(advice).toBe('Switch the heater off — the room keeps this tank near 22 °C. For cooler water, add a chiller or a clip-on fan.');
+    expect(fixForWaterIssue(t, { text: 'Too warm.', advice, param: 'temp' })).toEqual({ label: 'Switch it off', to: { kind: 'card', tankId: t.id, tab: 'gear', fix: 'equip-test_heater' } });
+  });
+
+  it('a target the dial can reach is still "Turn the heater down to about …"', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    const heater = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'heater')!;
+    heater.setting = 31;
+    t.water.tempC = 31;
+    expect(getWaterReport(s, t.id).params.find((p) => p.key === 'temp')!.advice).toMatch(/^Turn the heater down to about 2\d(\.5)? °C\.$/);
   });
 
   it('never says to turn the heater "down" to a warmer number', () => {
@@ -270,18 +285,65 @@ describe('C7: converting between cool, tropical and planted water resets the hea
     return { s, t };
   };
 
-  it('cool → tropical: the preview and the result name the chiller’s new setting and the missing heater', () => {
+  // (review) a tropical tank's chiller would want 27.5 °C, above the 26 °C its dial goes to: it waits switched off,
+  // set to the dial's top, instead of a setting the card can't show
+  it('cool → tropical: the preview and the result say the chiller is switched off and the tank has no heater', () => {
     const { s, t } = coolTank();
     const chiller = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'chiller')!;
     const name = getEquipmentDef(chiller.defId)!.name;
     const cost = convertWaterClassCost(s, t.id, 'freshwater_tropical');
-    expect(cost.gearNotes.join(' ')).toMatch(new RegExp(`The ${name} is reset to \\d+\\.\\d °C for the new water\\.`));
-    expect(cost.gearNotes.join(' ')).toMatch(/This tank has no heater yet — the room keeps it near 22 °C, too cool for tropical freshwater animals\./);
+    expect(cost.gearNotes).toEqual([
+      `The ${name} is switched off — a tropical freshwater tank needs no cooling.`,
+      'This tank has no heater yet — the room keeps it near 22 °C, too cool for a tropical freshwater tank.',
+    ]);
+    expect(cost.gearChanged).toBe(true);
     expect(chiller.setting).toBe(17); // the preview changes nothing
     const r = convertWaterClass(s, t.id, 'freshwater_tropical');
     expect(r.ok).toBe(true);
     expect(r.message).toContain(cost.gearNotes[0]);
-    expect(chiller.setting!).toBeGreaterThan(27);
+    expect(chiller.on).toBe(false);
+    expect(chiller.setting).toBe(THERMOSTAT_DIAL.chiller.max);
+  });
+
+  // (confirmation review) …and back: the chiller that conversion switched off comes on again for water that needs it
+  it('cool → tropical → cool: the chiller is switched back on, and the line says so', () => {
+    const { s, t } = coolTank();
+    const chiller = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'chiller')!;
+    const name = getEquipmentDef(chiller.defId)!.name;
+    expect(convertWaterClass(s, t.id, 'freshwater_tropical').ok).toBe(true);
+    expect(chiller.on).toBe(false);
+    const back = convertWaterClassCost(s, t.id, 'freshwater_cool');
+    expect(back.gearNotes.some((n) => n.startsWith(`The ${name} is switched on and set to `) && n.endsWith(' °C for the new water.'))).toBe(true);
+    expect(chiller.on).toBe(false); // the preview changes nothing
+    const r = convertWaterClass(s, t.id, 'freshwater_cool');
+    expect(r.ok).toBe(true);
+    expect(chiller.on).toBe(true);
+    expect(chiller.setting!).toBeLessThan(22); // cooling water kept below the room's temperature
+    // a failed chiller is the player's to repair: it isn't switched on
+    const again = coolTank();
+    const broken = again.t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'chiller')!;
+    expect(convertWaterClass(again.s, again.t.id, 'freshwater_tropical').ok).toBe(true);
+    broken.failed = true;
+    expect(convertWaterClass(again.s, again.t.id, 'freshwater_cool').ok).toBe(true);
+    expect(broken.on).toBe(false);
+  });
+
+  it('with only "no heater yet" to say, nothing counts as reset (the preview isn’t titled "resets your gear")', () => {
+    const { s, t } = coolTank();
+    t.equipment = t.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'chiller');
+    const cost = convertWaterClassCost(s, t.id, 'freshwater_tropical');
+    expect(cost.gearNotes).toEqual(['This tank has no heater yet — the room keeps it near 22 °C, too cool for a tropical freshwater tank.']);
+    expect(cost.gearChanged).toBe(false);
+  });
+
+  it('a heater kept going into cool water lands on a setting its dial shows', () => {
+    const s = base('betta');
+    s.finance.money = 1e5;
+    const id = buyTank(s, 'g29', 'freshwater_tropical').tankId!;
+    const heater = s.tanks[id].equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'heater')!;
+    convertWaterClass(s, id, 'freshwater_cool');
+    expect(heater.setting!).toBeGreaterThanOrEqual(THERMOSTAT_DIAL.heater.min);
+    expect(heater.setting!).toBeLessThanOrEqual(THERMOSTAT_DIAL.heater.max);
   });
 
   it('a heater bought next does not fight the kept chiller', () => {
@@ -292,14 +354,20 @@ describe('C7: converting between cool, tropical and planted water resets the hea
     expect(r.message).not.toMatch(/fight/);
   });
 
-  it('a heater still fighting a chiller set below what the animals need says to raise the chiller', () => {
+  it('a heater fighting a chiller set below what the animals need: raise the chiller only to a setting its dial has', () => {
     const { s, t } = coolTank();
     t.waterClass = 'freshwater_tropical'; // the old way: converted with the chiller left at 17 °C
     installEquipment(s, t.id, 'heater_100w', { purchased: true });
-    const fight = getWaterReport(s, t.id).issues.find((i) => /fight each other/.test(i.text))!;
-    expect(fight.advice).toMatch(/^Raise the chiller setting to at least \d+\.\d °C, or switch the chiller off\.$/);
     const chiller = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'chiller')!;
-    expect(fixForWaterIssue(t, fight)).toEqual({ label: 'Open Equipment', to: { kind: 'card', tankId: t.id, tab: 'gear', fix: `equip-${chiller.id}` } });
+    const heater = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'heater')!;
+    const fight = () => getWaterReport(s, t.id).issues.find((i) => /fight each other/.test(i.text))!;
+    // (review) the heater's 26 °C would need the chiller at 27, past its dial: only switching it off works
+    heater.setting = 26;
+    expect(fight().advice).toBe('Switch the chiller off — these animals need warmer water than it can be set to.');
+    expect(fixForWaterIssue(t, fight())).toEqual({ label: 'Switch it off', to: { kind: 'card', tankId: t.id, tab: 'gear', fix: `equip-${chiller.id}` } });
+    heater.setting = 24;
+    expect(fight().advice).toBe('Raise the chiller setting to at least 25.0 °C, or switch the chiller off.');
+    expect(fixForWaterIssue(t, fight())).toEqual({ label: 'Open Equipment', to: { kind: 'card', tankId: t.id, tab: 'gear', fix: `equip-${chiller.id}` } });
   });
 });
 
@@ -699,5 +767,79 @@ describe('C21: the early Overview’s auto-clean button says it sets up, not tha
     Object.assign(useGame.getInitialState(), { game: null });
     expect(html).toMatch(/Auto-clean needs an Auto Water Changer\s+Set up/);
     expect(html).not.toContain('Buy · $120');
+  });
+});
+
+describe('Review fixes: salt with no money, the KH refusal, the hunger line’s foods, airstone bubbles', () => {
+  it('a trace of salt reads as none', () => {
+    const s = base('ocellaris_clownfish');
+    const t = firstTank(s);
+    s.inventory.salt = 0.007;
+    expect(waterChange(s, t.id, 0.25).message).toMatch(/and you have none\./);
+  });
+
+  it('no salt for any change and too little money for a bag: the card points at ways to raise cash', () => {
+    const s = base('ocellaris_clownfish');
+    const t = firstTank(s);
+    s.inventory.salt = 0;
+    s.finance.money = 4.5;
+    expect(cheapestSaltPrice()).toBe(15);
+    expect(saltCashLine(s, t.id)).toBe('Not enough salt for even a 10% water change, and the smallest bag of salt mix ($15) costs more than the $4.50 you have.');
+    expect(needsCashIdeas(s)).toBe(true);
+    useGame.setState({ game: s });
+    const html = renderToStaticMarkup(createElement(WaterTab, { game: s, tank: t }));
+    useGame.setState({ game: null });
+    expect(html).toContain('data-testid="water-change-raise-cash"');
+    s.finance.money = -12;
+    expect(saltCashLine(s, t.id)).toBe('Not enough salt for even a 10% water change, and purchases are paused while you’re $12 in debt.');
+    s.finance.money = 100;
+    expect(saltCashLine(s, t.id)).toBeNull();
+    s.finance.money = 4.5;
+    s.inventory.salt = 50;
+    expect(saltCashLine(s, t.id)).toBeNull();
+  });
+
+  it('the KH refusal in an empty tank speaks of the water, not "your animals"', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    for (const id of Object.keys(s.creatures)) delete s.creatures[id];
+    t.water.kh = 20;
+    s.finance.money = 500;
+    expect(dose(s, t.id, 'buffer').message).toBe('KH is already 20.0 dKH — more buffer would push it and the pH higher than this water needs.');
+  });
+
+  it('a hungry betta is told the guide’s food in stock (micro pellets), not marine or goldfish pellets', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    const ember = Object.values(s.creatures).find((c) => c.tankId === t.id)!;
+    for (const id of Object.keys(s.inventory.foods)) s.inventory.foods[id] = 0;
+    const betta = getSpecies('betta');
+    const guide = menuFor(betta)[0];
+    const other = FOODS.filter((f) => eatsFood(betta, f) && !menuFor(betta).includes(f));
+    expect(other.length).toBeGreaterThan(0);
+    for (const f of other) s.inventory.foods[f.id] = 10;
+    s.inventory.foods[guide.id] = 10;
+    ember.stats.hunger = 75;
+    refreshTankCache(s, t);
+    const line = t.cache.statusReasons?.find((r) => r.startsWith(ember.name))!;
+    expect(line).toContain(guide.name.toLowerCase());
+    for (const f of other) expect(line).not.toContain(f.name.toLowerCase());
+  });
+
+  it('an airstone from an old save set to Gentle bubbles fully (its control is gone)', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    t.equipment.push({ id: 'test_air', defId: 'airstone', installedHour: 0, condition: 1, on: true, setting: 0.33 });
+    const air = equipmentEmitters(t).find((e) => e.equipmentId === 'test_air');
+    expect(air?.rate).toBe(34);
+  });
+
+  it('the Supplies salt row says how many changes without two numbers side by side', () => {
+    const s = base('ocellaris_clownfish');
+    s.inventory.salt = 20;
+    useGame.setState({ game: s });
+    const html = renderToStaticMarkup(createElement(SaltRow, { g: s, flash: null })).replace(/<[^>]+>/g, ' ');
+    useGame.setState({ game: null });
+    expect(html).toMatch(/enough for about \d+ water changes \(25% each\) of /);
   });
 });

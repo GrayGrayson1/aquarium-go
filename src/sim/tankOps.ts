@@ -10,7 +10,7 @@ import { initialWater } from './water';
 import { creaturesInTank, clutchesInTank } from './life';
 import { spend, SALT_PRICE_PER_KG } from './economy';
 import { saltKgFor, LITRES_PER_GALLON, isSaltClass, CLASS_DEFAULTS, ROOM_TEMP_C } from './water/constants'; // the shared salt formula (B-169)
-import { defaultSettingFor } from './care/tuning'; // Audit 2026-11-17 C7
+import { defaultSettingFor, THERMOSTAT_DIAL } from './care/tuning'; // Audit 2026-11-17 C7
 import { getEquipmentDef } from '@/data/catalog/equipment'; // lane:staff
 import { waterClassLock } from './facility'; // lane:brackish; chunk 7 (B-160)
 import { reseatDecor } from './aquascape'; // lane:staff
@@ -64,6 +64,8 @@ export interface ConvertCost {
   equipmentOut: string[];
   /** Audit 2026-11-17 C7 — heaters and chillers that stay, reset for the new water, and a missing heater (sentences). */
   gearNotes: string[];
+  /** Whether any heater or chiller is reset or switched off (the preview's title says so only then). */
+  gearChanged?: boolean;
 }
 
 /**
@@ -71,22 +73,45 @@ export interface ConvertCost {
  * install would be (`defaultSettingFor`; the tank is empty, so the class's own range), and say what changed. A cool
  * tank's chiller at 17 °C kept for tropical water used to stay at 17 °C and fight the heater bought next.
  */
-function retuneForClass(state: GameState, t: Tank): string[] {
+function retuneForClass(state: GameState, t: Tank): { notes: string[]; changed: boolean } {
   const notes: string[] = [];
+  let changed = false;
+  const kindOfTank = `${WATER_CLASS_WORDS[t.waterClass]} tank`; // Audit 2026-11-17 (J4): the sentence form
   for (const kind of ['heater', 'chiller'] as const) {
+    const dial = THERMOSTAT_DIAL[kind];
     for (const e of t.equipment) {
       const def = getEquipmentDef(e.defId);
       if (def?.kind !== kind) continue;
-      const set = defaultSettingFor(state, t, kind, def.stats.defaultSetting);
-      if (set === undefined || (e.setting !== undefined && Math.abs(e.setting - set) < 0.05)) continue;
+      const want = defaultSettingFor(state, t, kind, def.stats.defaultSetting);
+      if (want === undefined) continue;
+      // (review) water kept warmer than a chiller's dial goes: it has nothing to do here, so it waits switched off
+      if (kind === 'chiller' && want > dial.max + 1e-9) {
+        if (e.setting === undefined || Math.abs(e.setting - dial.max) >= 0.05) changed = true;
+        e.setting = dial.max;
+        if (e.on) {
+          e.on = false;
+          changed = true;
+          notes.push(`The ${def.name} is switched off — a ${kindOfTank} needs no cooling.`);
+        }
+        continue;
+      }
+      // (review) a setting the tank card's stepper can show (a cool tank's heater would want 14 °C)
+      const set = Math.min(dial.max, Math.max(dial.min, want));
+      // (confirmation review) a chiller switched off by an earlier conversion to warm water comes back on for water
+      // that needs cooling, as a new install would be: cool → tropical → cool left it off while saying "reset"
+      const wake = kind === 'chiller' && !e.on && !e.failed;
+      const same = e.setting !== undefined && Math.abs(e.setting - set) < 0.05;
+      if (same && !wake) continue;
       e.setting = set;
-      notes.push(`The ${def.name} is reset to ${set.toFixed(1)} °C for the new water.`);
+      if (wake) e.on = true;
+      changed = true;
+      notes.push(wake ? `The ${def.name} is switched on and set to ${set.toFixed(1)} °C for the new water.` : `The ${def.name} is reset to ${set.toFixed(1)} °C for the new water.`);
     }
   }
   const needsHeat = CLASS_DEFAULTS[t.waterClass].temp.idealMin > ROOM_TEMP_C + 1;
   if (needsHeat && !t.equipment.some((e) => getEquipmentDef(e.defId)?.kind === 'heater'))
-    notes.push(`This tank has no heater yet — the room keeps it near ${ROOM_TEMP_C} °C, too cool for ${WATER_CLASS_WORDS[t.waterClass]} animals.`);
-  return notes;
+    notes.push(`This tank has no heater yet — the room keeps it near ${ROOM_TEMP_C} °C, too cool for a ${kindOfTank}.`);
+  return { notes, changed };
 }
 
 export function convertWaterClassCost(state: GameState, tankId: string, wc: WaterClass): ConvertCost {
@@ -118,7 +143,9 @@ export function convertWaterClassCost(state: GameState, tankId: string, wc: Wate
   }
   // Audit 2026-11-17 C7 — the gear that stays, as it will be set (worked out on a copy: nothing changes yet)
   const stays = t.equipment.filter((e) => getEquipmentDef(e.defId)?.environments.includes(env) ?? true).map((e) => ({ ...e }));
-  out.gearNotes = retuneForClass(state, { ...t, waterClass: wc, environment: env, equipment: stays });
+  const gear = retuneForClass(state, { ...t, waterClass: wc, environment: env, equipment: stays });
+  out.gearNotes = gear.notes;
+  out.gearChanged = gear.changed;
   out.total = Math.round((out.substrate + out.saltCost) * 100) / 100;
   return out;
 }
@@ -178,7 +205,7 @@ export function convertWaterClass(state: GameState, tankId: string, wc: WaterCla
     t.equipment = stays;
   }
   t.lighting.preset = defaultLightPreset(wc);
-  const retuned = retuneForClass(state, t); // Audit 2026-11-17 C7
+  const retuned = retuneForClass(state, t).notes; // Audit 2026-11-17 C7
   // Return decor that does not belong in this water to storage.
   const keep: typeof t.decor = [];
   let stored = 0;

@@ -464,18 +464,21 @@ export interface ListingPreview {
 }
 
 /**
- * The buyers who bid are mostly the ones a listing suits: their fit lifts a private value about 10 % above fair value
- * on average (measured on the bid model, audit 2026-11-17: first offers' median ≈ 0.96× fair value).
+ * The typical bidder's fit and timing together (review of audit 2026-11-17, F3). Bidders are picked by interest, so
+ * their fit is a little above 1, and later bids are a little lower; measured on the bid model with natural arrivals
+ * (72-hour listings of one betta, six neons, a platy pair, one axolotl and four guppies, 25 seeds each), the two
+ * cancel: first offers' median is 0.90×–0.93× fair value (0.925× over all), the middle half about 0.79×–1.03×, and
+ * 60–69 % land in typicalOpening's 0.73×–1.05× (the platy pair, worth a few dollars, rounds its bids to whole dollars
+ * and is left out of these figures). tests/sim/audit-money-f.test.ts runs the measurement again on a few seeds.
  */
-const TYPICAL_BIDDER_FIT = 1.1;
+const TYPICAL_BIDDER_FIT = 1.0;
 
 /**
  * Audit 2026-11-17 (F3) — where buyers' FIRST offers usually land for a listing worth `expected`, from the bid model
- * itself (arrivals): a bidder's private value is fair value × fit × noise (±11 %), and they open at their archetype's
- * `opening` share of it (bargain hunters lower). The archetypes' average opening range, at the typical bidder's fit,
- * one spread either side: about 0.8×–1.15× fair value, where most first offers land. The listing screen's advice and
- * the "Listed …" line quote this; a bid under the reserve is turned down automatically, so the reserve advice is
- * measured against it.
+ * itself (arrivals): a bidder's private value is fair value × fit × timing × noise (±11 %), and they open at their
+ * archetype's `opening` share of it (bargain hunters lower). The archetypes' average opening range, at the typical
+ * bidder's fit and timing, one spread either side: about 0.73×–1.05× fair value, where about two in three first offers
+ * land. The listing screen's advice and the "Listed …" line quote this.
  */
 export function typicalOpening(expected: number): { low: number; high: number } {
   const arch = Object.values(BUYER_ARCHETYPES);
@@ -483,6 +486,25 @@ export function typicalOpening(expected: number): { low: number; high: number } 
   const lo = arch.reduce((a, d) => a + d.opening[0], 0) / arch.length;
   const hi = arch.reduce((a, d) => a + d.opening[1], 0) / arch.length;
   return { low: nicePrice(expected * lo * TYPICAL_BIDDER_FIT * dmath.exp(-0.11)), high: nicePrice(expected * hi * TYPICAL_BIDDER_FIT * dmath.exp(0.11)) };
+}
+
+/**
+ * Review of audit 2026-11-17 (F3) — what a reserve does to first offers (a bid under it is turned down automatically),
+ * in bands of fair value measured on the bid model (as above; the share of first offers under a reserve there):
+ * 0.73× 11–17 %, 0.8× 20–25 %, 0.86× 32–39 %, 0.9× 43–51 %, 0.96× 57–67 %, 1.0× 57–69 %, 1.05× 72–80 %, 1.1×
+ * 84–89 %. So: at or under typicalOpening's bottom (≈ 0.73×) most reach it; to 0.85× some are turned down; to 0.92×
+ * about half; to its top (≈ 1.05×) more than half; above that, most.
+ */
+export const RESERVE_BANDS = { half: 0.85, overHalf: 0.92 } as const;
+export type ReserveBand = 'most_reach' | 'some' | 'half' | 'over_half' | 'most_below';
+export function reserveBand(reserve: number, expected: number): ReserveBand | null {
+  const o = typicalOpening(expected);
+  if (!(o.high > 0)) return null;
+  if (reserve > o.high) return 'most_below';
+  if (reserve > expected * RESERVE_BANDS.overHalf) return 'over_half';
+  if (reserve > expected * RESERVE_BANDS.half) return 'half';
+  if (reserve > o.low) return 'some';
+  return 'most_reach';
 }
 
 /** Everything the listing dialog needs before the player commits. */
@@ -499,7 +521,7 @@ export function previewListing(state: GameState, spec: Omit<ListingSpec, 'reserv
     // lane:frags
     const fresh = contents.frags.filter((f) => isCoralDef(getDecorDef(f.defId)) && !(f.frag?.plantedHour !== undefined && state.clock.hour - f.frag.plantedHour >= FRAG_HEALED_HOURS)).length;
     if (fresh) warnings.push(`${fresh === contents.frags.length ? 'These are fresh cuts' : `${fresh} of these ${fresh === 1 ? 'is a fresh cut' : 'are fresh cuts'}`}. Buyers pay about a fifth more for a frag that has healed on its plug for a day — a frag rack is the place for that.`);
-    warnings.push('Listed frags wait in your holding system and don’t grow until the listing ends. Unsold ones come back to storage.');
+    warnings.push('Listed frags wait in storage and don’t grow until the listing ends. Unsold ones stay there.');
   }
   if (contents.tank && state.tankOrder.length === 1) warnings.push('This is your last aquarium. If it sells you will have an empty room — and the money to start a new build.');
   if (contents.tank) {
@@ -537,7 +559,11 @@ export function suggestPricing(state: GameState, spec: Omit<ListingSpec, 'reserv
 
 // ───────────────────────────── create / withdraw ─────────────────────────────
 
-export function createListing(state: GameState, spec: ListingSpec): ActionResult & { listingId?: string } {
+/**
+ * List something for sale. `opts.quiet` (a production line's listing, which logs its own line with its buy-now price;
+ * Audit 2026-11-17, H1 review) leaves out the market's "Listed …" line. Not part of the spec, so no command can set it.
+ */
+export function createListing(state: GameState, spec: ListingSpec, opts: { quiet?: boolean } = {}): ActionResult & { listingId?: string } {
   const access = marketAccess(state);
   if (!access.listings) return fail(access.hint ?? 'The marketplace is not open yet.');
   if (spec.kind === 'tank' && !access.tankAuctions) return fail(access.hint ?? 'Whole-aquarium auctions are not unlocked yet.');
@@ -591,12 +617,14 @@ export function createListing(state: GameState, spec: ListingSpec): ActionResult
   }
   state.market.listings.push(listing);
   bumpCounter(state, 'listingsCreated');
-  emitEvent(state, {
-    kind: 'market',
-    text: `Listed "${title}". Buyers usually open at ${fmtMoney(typicalOpening(built.snapshot.valuation).low)}–${fmtMoney(typicalOpening(built.snapshot.valuation).high)}, and they will start looking soon.`, // F3
-    listingId: id,
-    tankId: contents.tank?.id,
-  });
+  if (!opts.quiet) {
+    emitEvent(state, {
+      kind: 'market',
+      text: `Listed "${title}". Buyers usually open at ${fmtMoney(typicalOpening(built.snapshot.valuation).low)}–${fmtMoney(typicalOpening(built.snapshot.valuation).high)}, and they will start looking soon.`, // F3
+      listingId: id,
+      tankId: contents.tank?.id,
+    });
+  }
   return { ok: true, message: `Listed "${title}".`, listingId: id };
 }
 
@@ -625,16 +653,17 @@ function closeOpenBids(l: Listing, status: Bid['status'], note: string): void {
   }
 }
 
-export function withdrawListing(state: GameState, listingId: string): ActionResult {
+/** Withdraw a listing. `opts` (a production line taking it off sale; Audit 2026-11-17, H1 review): its own outcome, and no market log line (the line says why). */
+export function withdrawListing(state: GameState, listingId: string, opts: { quiet?: boolean; outcome?: string } = {}): ActionResult {
   const l = state.market.listings.find((x) => x.id === listingId);
   if (!l) return fail('Listing not found.');
   if (l.status !== 'active') return fail(`This listing is already ${l.status}.`);
   l.status = 'withdrawn';
   l.closedHour = state.clock.hour; // S13-10: the Sold card and 'Recently ended' order read it
-  l.outcome = 'You withdrew this listing.';
+  l.outcome = opts.outcome ?? 'You withdrew this listing.';
   restoreContents(state, l);
   closeOpenBids(l, 'declined', 'Listing withdrawn by the seller.');
-  emitEvent(state, { kind: 'market', text: `Withdrew "${l.title}". Everything stays with you.`, listingId: l.id });
+  if (!opts.quiet) emitEvent(state, { kind: 'market', text: `Withdrew "${l.title}". Everything stays with you.`, listingId: l.id });
   return { ok: true, message: `Withdrew "${l.title}".` };
 }
 
@@ -1214,7 +1243,7 @@ export function quickSell(state: GameState, creatureIds: string[]): ActionResult
   bumpCounter(state, 'animalsSold', sold.length);
   bumpCounter(state, 'salesRevenue', Math.round(q.total));
   addMastery(state, 'business', 2);
-  if (sick > 0) addReputation(state, -2 * sick, 'Sold unwell animals to the local store');
+  if (sick > 0) addReputation(state, -2 * sick, 'Sold unwell animals to the local fish store');
   emitEvent(state, { kind: 'info', text: `${LOCAL_FISH_STORE} bought ${names} for ${fmtMoney(q.total)}.${sick ? ' They noted the animals were unwell.' : ''}` });
   // lane:guide — say what the sale cost in reputation (it used to happen without a word)
   return { ok: true, message: `Sold ${names} to ${LOCAL_FISH_STORE} for ${fmtMoney(q.total)}.${sick ? ` Selling ${sick === 1 ? 'an unwell animal' : `${sick} unwell animals`} cost ${2 * sick} reputation.` : ''}` };
@@ -1560,8 +1589,10 @@ function arrivals(state: GameState, l: Listing, rng: Rng, dt: number, end: numbe
 
   const vars = msgVars(state, l, buyer.name, orgOf(buyer));
   const now = state.clock.hour;
-  // Buy-now: a buyer whose private value clears the buy-now price just takes it.
-  if (l.buyNow && W >= l.buyNow && buyer.budget >= l.buyNow) {
+  // Buy-now: a buyer whose private value clears the buy-now price just takes it, as does one whose offer, rounded,
+  // comes to it (Audit 2026-11-17, H1 review: on a lot under about $25 the rounded offer could equal a line's buy-now
+  // and then wait minutes as a bid). nicePrice draws nothing.
+  if (l.buyNow && buyer.budget >= l.buyNow && (W >= l.buyNow || Math.max(1, nicePrice(amount)) >= l.buyNow)) {
     const bid: Bid = {
       id: nextId(state, 'bid'),
       buyerId: buyer.id,
@@ -1665,9 +1696,15 @@ function expireListing(state: GameState, l: Listing): void {
   } else {
     advice = 'Offers expired before you accepted one. Buyers don’t wait forever — accept or counter sooner.';
   }
+  // Audit 2026-11-17 (H1 review): a production line that lists again what didn't sell says so itself ("… didn't sell, so
+  // they're listed again at …"); the market's advice to change the reserve, the length or the photo isn't the player's
+  // to act on there
+  const lineId = lineOfListing(state, l.id);
+  const line = lineId ? state.production?.lines.find((x) => x.id === lineId) : undefined;
+  if (line?.rules.autoList) advice = `The ${line.name} lists them again.`;
   l.advice = advice;
   l.outcome = 'Ended without a sale.';
-  emitEvent(state, { kind: 'market', text: `"${l.title}" ended without a sale. ${advice}`, listingId: l.id, toast: true });
+  if (!line?.rules.autoList) emitEvent(state, { kind: 'market', text: `"${l.title}" ended without a sale. ${advice}`, listingId: l.id, toast: true });
 }
 
 /** Per-tick listing simulation: integrity, counters, expiries, interest, arrivals, end of auction. */

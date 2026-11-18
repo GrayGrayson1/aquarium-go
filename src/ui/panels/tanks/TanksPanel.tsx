@@ -273,6 +273,7 @@ function wcLockHint(g: GameState, w: WaterClass): string {
 
 /** lane:fix-integrate-ui — what a conversion takes (new bed, salt, gear to storage) before the click (S14-06). */
 function ConvertPreview({ g, tank, wc }: { g: GameState; tank: Tank; wc: WaterClass }) {
+  const { t: tempText } = useTempText(); // (Audit 2026-11-17 review: the gear notes in °F for °F players)
   const cost = safe(() => convertWaterClassCost(g, tank.id, wc), null);
   if (!cost || (cost.total <= 0 && cost.saltKg <= 0 && cost.equipmentOut.length === 0 && !cost.gearNotes?.length)) return null;
   const parts: string[] = [];
@@ -283,11 +284,11 @@ function ConvertPreview({ g, tank, wc }: { g: GameState; tank: Tank; wc: WaterCl
   }
   const short = cost.total > g.finance.money;
   return (
-    <Callout tone={short ? 'danger' : 'info'} icon={<Coins size={16} />} title={cost.total > 0 ? `Converting costs ${formatMoney(cost.total, { cents: cost.total < 20 })}` : cost.saltKg > 0 ? 'Converting uses stored salt' : 'Converting resets your gear'}>
+    <Callout tone={short ? 'danger' : 'info'} icon={<Coins size={16} />} title={cost.total > 0 ? `Converting costs ${formatMoney(cost.total, { cents: cost.total < 20 })}` : cost.saltKg > 0 ? 'Converting uses stored salt' : cost.gearChanged ? 'Converting resets your gear' : 'Before you convert' /* (review) only "no heater yet" resets nothing */}>
       {parts.length > 0 && <>{parts.join(' · ')}. </>}
       {cost.equipmentOut.length > 0 && <>Moves to storage (can’t run in the new water): {cost.equipmentOut.join(', ')}. </>}
       {/* Audit 2026-11-17 C7 — heaters and chillers that stay are reset for the new water; a missing heater is named */}
-      {(cost.gearNotes?.length ?? 0) > 0 && <>{cost.gearNotes.join(' ')} </>}
+      {(cost.gearNotes?.length ?? 0) > 0 && <>{tempText(cost.gearNotes.join(' '))} </>}
       {short && <>You have {formatMoney(Math.max(0, g.finance.money))}.</>}
     </Callout>
   );
@@ -381,7 +382,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
         {convertGate.ok ? (
           <div className="pn-row pn-gap-2 pn-row--wrap">
             {/* lane:w2-ui — locked water types say so up front (same gates as Build › Tanks) instead of after a failed Convert */}
-            <Select<WaterClass> label="Water class" value={wc} onChange={setWc} options={PLAYABLE_WATER_CLASSES.map((w) => ({ id: w, label: wcLocked(g, w) && w !== tank.waterClass ? `${WATER_CLASS_LABEL[w]} (locked)` : WATER_CLASS_LABEL[w] }))} />
+            <Select<WaterClass> label="Water type" value={wc} onChange={setWc} options={PLAYABLE_WATER_CLASSES.map((w) => ({ id: w, label: wcLocked(g, w) && w !== tank.waterClass ? `${WATER_CLASS_LABEL[w]} (locked)` : WATER_CLASS_LABEL[w] }))} />
             <Button size="sm" data-testid="tank-convert" disabled={wc === tank.waterClass || (wcLocked(g, wc) && wc !== tank.waterClass)} title={wcLocked(g, wc) && wc !== tank.waterClass ? wcLockHint(g, wc) : undefined} onClick={() => act({ k: 'convertWaterClass', tank: tank.id, wc }, { sound: 'splash' })}>
               <Droplets size={14} /> Convert
             </Button>

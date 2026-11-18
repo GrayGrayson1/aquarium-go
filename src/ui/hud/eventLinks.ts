@@ -34,7 +34,7 @@ const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
   decor_mangrove: { panel: 'build', target: 'tab:decor', where: 'Find them in Build › Decor.' },
   market_listings: { panel: 'market', target: 'tab:listings', where: 'List animals in Market › My listings.' },
   tank_auctions: { panel: 'market', target: 'tab:listings', where: 'List a whole aquarium in Market › My listings.' },
-  nursery: { panel: 'tanks', target: null, where: 'Set a tank’s purpose in Tanks.' },
+  nursery: { panel: 'research', target: 'tab:research', where: 'Needed for the Genetics Lab and Live Food Cultures in Research.' }, // (audit A3: not tanks)
   // Audit 2026-11-17 (G7): corals and anemones live only in some marine water, so their unlock goes through Find
   decor_corals_soft: { panel: 'build', target: findDecor('decor_corals_soft'), where: 'Corals need a reef tank. Find them in Build › Decor.' },
   decor_corals_lps: { panel: 'build', target: findDecor('decor_corals_lps'), where: 'Corals need a reef tank. Find them in Build › Decor.' },
@@ -43,7 +43,6 @@ const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
   water_room: { panel: 'build', target: 'room:water', where: 'See it in Build › Facility › Water room.' },
   live_food_room: { panel: 'build', target: 'room:food', where: 'See it in Build › Facility › Live food room.' },
   operations_desk: { panel: 'operations', target: null, where: 'Its tools are in Operations.' },
-  signage: { panel: 'visitors', target: 'tab:visitors', where: 'Add a sign in Visitors, or from a tank card’s Value tab.' },
   genetics_lab: { panel: 'livestock', target: null, where: 'Open an animal’s card to see its genes.' },
   // Audit 2026-11-17 (G5): the shop also waits for a tank big enough for these animals (ADR-0053 decision 4)
   fw_large: { panel: 'market', target: 'tab:shop', where: 'They come into Market › Shop once you have a tank big enough for them.' },
@@ -56,6 +55,9 @@ const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
  */
 const UNLOCK_WHERE: Record<string, string> = {
   party_mode: 'Tap Party in the tank tools: the lights dance to music.',
+  // review fix: signs often unlock (45 reputation) before Visitors opens (a Specialty Shop), so no link to a locked
+  // page; the tank card's Value tab has the sign switch as soon as signs unlock
+  signage: 'Add a sign from a tank card’s Value tab.',
 };
 export const unlockWhere = (key: string): string | undefined => (Object.hasOwn(UNLOCK_WHERE, key) ? UNLOCK_WHERE[key] : undefined);
 
@@ -113,7 +115,7 @@ export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId' | 'of
   if (typeof e.offerId === 'string' && e.offerId) return { panel: 'market', target: `offer:${e.offerId}`, where: '', label: 'Open the shop' };
   if (/^New arrivals at the shop:|^Market special:/.test(text)) return { panel: 'market', target: 'tab:shop', where: '', label: 'Open the shop' };
   if (NURSERY_ADVICE.test(text) && YOUNG_WORD.test(text)) return EGGS_AND_FRY;
-  if (/^The aquarium club dropped off a little food/.test(text)) return { panel: 'finances', target: null, where: '', label: 'Ways to raise cash' }; // audit 2026-11-17: the club's food parcel
+  if (/^The aquarium club dropped off a little food/.test(text)) return { panel: 'finances', target: 'cash', where: '', label: 'Ways to raise cash' }; // audit 2026-11-17: the club's food parcel (opens on the ideas)
   if (MONEY_NEWS.test(text)) return { panel: 'finances', target: null, where: '', label: 'Open Finances' }; // audit 2026-11-17 (F2)
   return null;
 }

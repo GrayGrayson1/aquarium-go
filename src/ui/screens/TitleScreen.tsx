@@ -89,9 +89,10 @@ function autosaveKeepAdvice(saves: SaveMeta[], parkTo: string | null = null): { 
   if (copy)
     return {
       safe: false,
-      text: `${slotLabel(copy.slot)} has an older copy of ${auto.shopName} (Day ${copy.day}, saved ${timeAgo(copy.savedAt)}). Anything since then — you’re on Day ${auto.day} — is only in the autosave. To keep it, open it with Continue and save it to a slot in Settings first.`,
+      // the review of I3: every slot is full here; a later switch asks before it would delete this
+      text: `${slotLabel(copy.slot)} has an older copy of ${auto.shopName} (Day ${copy.day}, saved ${timeAgo(copy.savedAt)}). Anything since then — you’re on Day ${auto.day} — is only in the autosave. It stays as “Previous autosave”, and nothing deletes it without asking you first.`,
     };
-  return { safe: false, text: `${what} is only in the autosave. To keep it, open it with Continue and save it to a slot in Settings first.` };
+  return { safe: false, text: `${what} is only in the autosave. It stays as “Previous autosave”, and nothing deletes it without asking you first.` };
 }
 
 export function TitleScreen() {
@@ -163,8 +164,12 @@ export function TitleScreen() {
     useUI.getState().set({ screen: 'starter' });
   };
 
-  const onNew = () => {
-    if (saves && saves.some((s) => s.slot === 'auto')) setConfirmNew(true);
+  const onNew = async () => {
+    unlockAudio(); // while the click is still the gesture
+    // the review of I3: the box names a slot from the saves as they are now (a delete in Settings doesn't relist here)
+    const fresh = await listSlots();
+    setSaves(fresh);
+    if (fresh.some((s) => s.slot === 'auto')) setConfirmNew(true);
     else startNew();
   };
 
@@ -230,7 +235,7 @@ export function TitleScreen() {
               <ChevronRight size={18} className="ag-menubtn__chev" aria-hidden />
             </motion.button>
           )}
-          <motion.button {...item(1)} type="button" className={`ag-menubtn ${latest ? '' : 'ag-menubtn--primary'}`} data-testid="title-new-game" onClick={onNew} onPointerEnter={prewarmNow} onFocus={prewarmNow}>
+          <motion.button {...item(1)} type="button" className={`ag-menubtn ${latest ? '' : 'ag-menubtn--primary'}`} data-testid="title-new-game" onClick={() => void onNew()} onPointerEnter={prewarmNow} onFocus={prewarmNow}>
             <Sparkles size={18} aria-hidden />
             <span className="ag-menubtn__text">
               <span>New game</span>

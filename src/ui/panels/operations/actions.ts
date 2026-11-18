@@ -10,6 +10,7 @@ import { batchGal, batchSaltKg, manualModeOn } from '@/sim/automation';
 import { findLine } from '@/sim/production';
 import { EGGS_SUPPLY, VEGETABLES } from '@/data/catalog/machines';
 import { act } from '../common/act';
+import { formatMoney } from '@/ui/kit';
 
 const toast = (label: string, text: string, detail?: string, kind: 'success' | 'info' = 'success') => useUI.getState().toast(text, kind, { label, ...(detail ? { detail } : {}) });
 
@@ -28,7 +29,7 @@ export function buySaltBag(kg: number, onDone?: (ok: boolean) => void): void {
         const n = Math.floor((g.inventory.salt + 1e-6) / per);
         // the 40 kg sack's toast is the design's (§11 "Toasts", DES-013); the 5 and 20 kg bags count batches (§11 "Salt sizes")
         const detail = kg === 40 ? 'The salt mixer can start its next batch.' : `${stock} kg in stock · enough for ${n} ${n === 1 ? 'batch' : 'batches'}.`;
-        toast(`Bought · $${kg * SALT_PRICE_PER_KG}`, `${kg} kg of marine salt mix`, detail);
+        toast(`Bought · ${formatMoney(kg * SALT_PRICE_PER_KG)}`, `${kg} kg of marine salt mix`, detail);
       },
     },
   );
@@ -44,7 +45,7 @@ export function buyEggTin(onDone?: (ok: boolean) => void): void {
         onDone?.(!!r?.ok);
         if (!r?.ok) return;
         const g = useGame.getState().game!;
-        toast(`Bought · $${EGGS_SUPPLY.price}`, 'A tin of brine shrimp eggs', `${g.inventory.brineShrimpEggs ?? 0} scoops in stock.`);
+        toast(`Bought · ${formatMoney(EGGS_SUPPLY.price)}`, 'A tin of brine shrimp eggs', `${g.inventory.brineShrimpEggs ?? 0} scoops in stock.`);
       },
     },
   );

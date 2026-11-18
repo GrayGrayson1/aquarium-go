@@ -196,7 +196,8 @@ export function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, on
       {/* Audit 2026-11-17 (H10): a stage no tank can take says why, and where to get one */}
       {!id && !g.tankOrder.some((t) => tankFitFor(g, speciesId, stage.id, t, chosen, pair ? [pair.motherId, pair.fatherId] : []).ok) && (
         <p className="pr-hint" data-testid={`production-new-nofit-${stage.testId}`}>
-          No tank fits yet: each stage needs its own tank.{' '}
+          {/* every tank taken by another stage, or some tank here that doesn't suit this one (H1 review) */}
+          {g.tankOrder.every((t) => Object.entries(chosen).some(([k, v]) => k !== stage.id && v === t)) ? 'No tank fits yet: each stage needs its own tank.' : 'No tank here suits this stage yet (open it to see why).'}{' '}
           <button type="button" className="pn-link" onClick={() => useUI.getState().set({ panel: 'build', panelTarget: 'tab:tanks' })}>
             Buy one in Build
           </button>
@@ -282,7 +283,7 @@ export function PairPicker({ g, line, onClose }: { g: GameState; line: Productio
       testId="production-fix-pair-dialog"
       actions={
         <Button variant="primary" disabled={!picked} onClick={() => picked && act({ k: 'setLinePair', line: line.id, a: picked.motherId, b: picked.fatherId }, { quiet: true, after: (r) => r?.ok && onClose() })}>
-          Done
+          Use this pair
         </Button>
       }
     >

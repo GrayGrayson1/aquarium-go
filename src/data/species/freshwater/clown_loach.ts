@@ -185,7 +185,7 @@ export const clownLoach: SpeciesDefinition = {
     { other: 'fahaka_puffer', verdictFloor: 'incompatible', reason: 'The fahaka attacks tankmates and must live alone.', incidentRisk: 0.3 },
     { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; a clown loach needs warm tropical water.', incident: 'none' },
     { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; a clown loach needs warm tropical water.', incident: 'none' },
-    { other: 'ornate_bichir', verdictFloor: 'conditional', reason: 'An adult bichir hunts the floor at night, where loaches lie on their sides; only loaches too big to swallow.', incidentRisk: 0.04, mitigatedBy: ['tank_size', 'hides'] },
+    { other: 'ornate_bichir', verdictFloor: 'conditional', reason: 'An adult bichir hunts the floor at night, where loaches lie on their sides; keep only loaches too big for it to swallow.', incidentRisk: 0.04, mitigatedBy: ['tank_size', 'hides'] },
   ],
   special: { needsSinkingFood: true, outgrowsSmallTanks: true, escapeArtist: true, medicationSensitive: true, maleSizeFactor: 0.9 },
   visualLane: 'fish',

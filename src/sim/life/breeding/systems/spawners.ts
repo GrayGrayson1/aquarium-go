@@ -236,7 +236,8 @@ const SURFACE: Record<Surface, SurfaceText> = {
 const CICHLID_SURFACE: Record<string, { accepts: Surface[]; stoneWhere?: string; reason: string; step: string }> = {
   oscar: { accepts: ['stone'], reason: 'There is no flat rock or tile to lay eggs on.', step: 'Add a flat stone or rock near their favourite spot.' },
   german_blue_ram: { accepts: ['stone', 'leaf', 'sand'], reason: 'There is no flat stone, broad leaf or patch of sand to lay eggs on.', step: 'Add a flat stone, a broad-leaved plant such as anubias, or a sand substrate.' },
-  discus: { accepts: ['stone'], stoneWhere: 'a smooth upright stone', reason: 'There is no smooth stone or slate to lay eggs on.', step: 'Add a slate or a smooth stone.' },
+  // (review E: its notes say "a vertical surface (a breeding cone)": an upright stone or slate, or a broad sword leaf)
+  discus: { accepts: ['stone', 'leaf'], stoneWhere: 'a smooth upright stone', reason: 'There is no smooth stone, slate or broad leaf to lay eggs on.', step: 'Add a slate, a smooth stone or an Amazon sword.' },
   freshwater_angelfish: { accepts: ['leaf', 'stone'], reason: 'There is no broad leaf or smooth stone to lay eggs on.', step: 'Add an Amazon sword, anubias or a flat stone.' },
 };
 const cichlidOf = (sp: { id: string }) => CICHLID_SURFACE[sp.id] ?? CICHLID_SURFACE.oscar;
@@ -345,20 +346,3 @@ export const genericEggLayerModule = makePairSpawner(genericCfg);
 /** audit E10: the mandarin's larvae are reared on copepods (its notes), not infusoria (which a marine tank never grows). */
 export const copepodEggLayerModule = makePairSpawner(withFoods(genericCfg, [{ foods: ['copepod_live'], natural: ['copepods'] }, { foods: ['copepod_live', 'baby_brine'], natural: ['copepods'] }]));
 
-/**
- * audit E10: the trochus snail broadcasts a milky cloud of eggs and its babies settle on the glass without help (its
- * notes): the parents don't eat the eggs, and the baby snails graze like a mystery snail's (biofilm and algae).
- */
-export const trochusModule = makePairSpawner({
-  ...genericCfg,
-  plan: {
-    ...genericCfg.plan,
-    phases: [{ stage: 'fry', frac: 1, foods: ['algae_wafer', 'vegetable'], natural: ['biofilm', 'algae'], visual: 'fry_cloud', label: 'baby snails' }],
-    youngTags: ['snail_small', 'snail'],
-    parentsEatEggs: false,
-  },
-  text: {
-    court: TEXT.genericCourt,
-    spawn: (m, f) => `${f.name} released a milky cloud of eggs — tiny snails may settle on the glass.`,
-  },
-});

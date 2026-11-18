@@ -118,7 +118,7 @@ test.describe('save / load / settings', () => {
     // Load an earlier copy of the aquarium on screen: the current progress stays listed, and a slot is offered
     await openSaves();
     await row('Slot 1').getByRole('button', { name: 'Load' }).click();
-    await expect(tid(page, 'load-confirm')).toContainText('This is an earlier copy of the aquarium you are playing. Your current progress (Day 2) stays listed as “Previous autosave” until you switch again.');
+    await expect(tid(page, 'load-confirm')).toContainText('This is an earlier copy of the aquarium you are playing. Your current progress (Day 2) stays listed as “Previous autosave”.'); // (audit 2026-11-17: the next switch parks that copy or asks, so no "until you switch again")
     await expect(tid(page, 'load-confirm-park')).toHaveText('Save to Slot 3 & load');
     await tid(page, 'load-confirm-load').click();
     await expect.poll(() => probe<number>(page, 'g.clock.hour')).toBeLessThan(24);

@@ -693,3 +693,58 @@ describe('audit 2026-11-17, I3 (the owner’s decision): a switch never deletes 
     }
   });
 });
+
+describe('the review of I3: a newer build’s record in the autosave slot (PERSIST-014)', () => {
+  /** Reef Town in the autosave; a newer build's Coral Cove in "Previous autosave"; Other Shop in Slot 1. */
+  async function setUp() {
+    const reef = aquarium('Reef Town', 120);
+    const coral = aquarium('Coral Cove', 121);
+    const other = aquarium('Other Shop', 122);
+    expect((await saveGame(onDay(reef, 4), 'auto')).ok).toBe(true);
+    const newer = encodeRecord({ ...onDay(coral, 12), schemaVersion: SCHEMA_VERSION + 1 }, 'auto', Date.now() - 1000).text;
+    map.set('aquarium-go.save.auto.backup', newer);
+    expect((await saveGame(onDay(other, 7), 'slot1')).ok).toBe(true);
+    const listed = (await listSaves()).find((m) => m.previousOf === 'auto');
+    expect(listed?.schemaVersion).toBe(SCHEMA_VERSION + 1);
+    return { reef, other, newer };
+  }
+
+  it('saveGame never writes over it: another aquarium’s write is refused, the same aquarium’s leaves it', async () => {
+    const { reef, newer } = await setUp();
+    expect((await saveGame(onDay(aquarium('Fresh', 123), 1), 'auto')).code).toBe('too_new');
+    expect((await saveGame(onDay(reef, 5), 'auto')).ok).toBe(true);
+    expect(map.get('aquarium-go.save.auto.backup')).toBe(newer);
+  });
+
+  it('the doors neither park it nor ask about it, and go on (they used to stop with the newer-version message)', async () => {
+    const { other, newer } = await setUp();
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const saves = await import('@/ui/common/saves');
+    useUI.setState({ screen: 'title', toasts: [] });
+    useGame.getState().setGame(null);
+    try {
+      const plan = saves.planKeep(await listSaves(), [], { writes: [saves.NEW_GAME_WRITE] });
+      expect(plan.unkept).toEqual([]);
+      expect(plan.park.map((p) => p.m.shopName)).not.toContain('Coral Cove');
+      expect((await saves.loadIntoGame('slot1'))?.saveId).toBe(other.saveId);
+      expect(saves.useSaveLoss.getState().ask).toBeNull();
+      expect(useUI.getState().toasts.map((t) => t.text).join(' ')).not.toContain('newer version');
+      expect(map.get('aquarium-go.save.auto.backup')).toBe(newer);
+    } finally {
+      useGame.getState().setGame(null);
+      useUI.setState({ screen: 'boot' });
+    }
+  });
+});
+
+describe('the review of I3: the Load box says what is true now', () => {
+  it('an aquarium only in the autosave stays as “Previous autosave”, and nothing deletes it without asking', async () => {
+    const { loadKeepAdvice } = await import('@/ui/common/saves');
+    const a = aquarium('Only Auto', 124);
+    expect((await saveGame(onDay(a, 3), 'auto')).ok).toBe(true);
+    const advice = loadKeepAdvice(await listSaves(), onDay(a, 3));
+    expect(advice.text).toBe('Only Auto is only in the autosave. It stays as “Previous autosave” after you switch, and nothing deletes it without asking you first.');
+    expect(advice.freeSlot).toBe('slot1');
+  });
+});

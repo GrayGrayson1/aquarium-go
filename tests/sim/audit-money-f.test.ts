@@ -13,11 +13,13 @@ import { newGame } from '@/sim/newGame';
 import { useGame } from '@/state/game';
 import { refreshFoodStatus } from '@/sim/tankStatus';
 import { SuppliesTab } from '@/ui/panels/market/Supplies';
-import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas, wholeMoney } from '@/ui/common/moneyShort';
+import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas, wholeMoney, cheapestFoodPrice, CASH_LINK } from '@/ui/common/moneyShort';
 import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
-import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, devOpenMarket, createListing, forceBuyerVisit, acceptBid, restartNeed, tankKitPrice } from '@/sim/economy';
-import { cheapestKit } from '@/sim/economy/purchases';
+import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, RESERVE_BANDS, devOpenMarket, createListing, forceBuyerVisit, acceptBid, restartNeed, tankKitPrice } from '@/sim/economy';
+import { cheapestKit, HOLD_RELEASE_HOURS } from '@/sim/economy/purchases';
+import { applyCommand, type Actor } from '@/sim/commands';
+import { GAME_HOURS_PER_REAL_SECOND } from '@/sim/time';
 import { marketAccess, cashSuggestions, dailyOperatingCost, quickSellQuote } from '@/sim/economy';
 import { installWaterRoom } from '@/sim/automation/water';
 import { installFoodRoom } from '@/sim/automation/food';
@@ -25,7 +27,7 @@ import { unlockProgress } from '@/sim/facility';
 import { lockViews } from '@/ui/panels/common/UnlockHelp';
 import { useShopFilters, useShopSearch, envMatches, tankFits } from '@/ui/panels/market/shopFilters';
 import { ListingsTab, CounterNotes } from '@/ui/panels/market/Listings';
-import { decorSellOffer } from '@/ui/panels/build/BuildPanel';
+import { decorSellOffer, DECOR_SELL_ASK } from '@/ui/panels/build/BuildPanel';
 import { DECOR } from '@/data/catalog/decor';
 import { decorSellValue } from '@/sim/aquascape';
 import type { DecorInstance } from '@/types';
@@ -34,7 +36,10 @@ import { reserveHint, QuickSellLine } from '@/ui/panels/market/CreateListing';
 import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { offerLeavesText } from '@/ui/panels/market/Shop';
-import { PARCEL_DAY_KEY, clubFoodParcel } from '@/sim/economy/finance';
+import { PARCEL_DAY_KEY, PARCEL_MEALS, clubFoodParcel } from '@/sim/economy/finance';
+import { portionForDemand, TYPICAL_MEAL_HUNGER } from '@/sim/water/food';
+import { fmtMoney } from '@/sim/economy/util';
+import { effectiveBioload } from '@/sim/water/env';
 import { FOODS, eatsFood } from '@/data/catalog/foods';
 import { findSpecies } from '@/data/species';
 import { decodeRecord, encodeRecord, stateHash } from '@/persistence';
@@ -107,6 +112,43 @@ describe('F1: a greyed "Buy" says why, and how to raise the money', () => {
   });
 });
 
+describe('review fix: every "Ways to raise cash" link lands on the ideas', () => {
+  /** The starter's food is running low (two servings of what it eats), and money is $1 under that pack. */
+  function lowFood(): { g: GameState; price: number } {
+    const g = game(0);
+    for (const k of Object.keys(g.inventory.foods)) g.inventory.foods[k] = 0;
+    refreshFoodStatus(g);
+    const h = hungryAndShort(g)!;
+    g.inventory.foods[h.foodId] = 2;
+    g.finance.money = h.price - 1;
+    refreshFoodStatus(g);
+    return { g, price: h.price };
+  }
+
+  it('Finances opened with the "cash" target shows its ways to raise cash, whatever the balance', () => {
+    const g = game(400);
+    useUI.setState({ panelTarget: 'cash' });
+    const out = renderToStaticMarkup(createElement(FinancesPanel));
+    useUI.setState({ panelTarget: null });
+    expect(out).toContain('data-testid="finance-ideas"');
+    expect(renderToStaticMarkup(createElement(FinancesPanel))).not.toContain('finance-ideas'); // without it, $400 needs none
+    expect(g.finance.money).toBe(400);
+    expect(CASH_LINK).toEqual({ panel: 'finances', panelTarget: 'cash' });
+  });
+
+  it('food running low with less money than its pack: Finances lists the ideas and Supplies explains the greyed Buy', () => {
+    const { g, price } = lowFood();
+    expect(g.tanks[g.tankOrder[0]].cache.foodLevel).toBe('low');
+    expect(g.finance.money).toBeGreaterThanOrEqual(cheapestFoodPrice(g)); // the old rule (cheapest food on sale) missed it
+    expect(needsCashIdeas(g)).toBe(true);
+    expect(renderToStaticMarkup(createElement(FinancesPanel))).toContain('data-testid="finance-ideas"');
+    const t = text(supplies(g));
+    expect(t).toContain('Not enough money for food');
+    expect(t).toContain(`Food for Ember is running low, and ${moneyHeld(price - 1)} won’t buy a pack of`);
+    expect(t).toContain(`(${moneyHeld(price)}).`);
+  });
+});
+
 describe('F2: money trouble leads to Finances', () => {
   const toMidnight = (g: GameState) => 24 - (g.clock.hour % 24) + 0.25;
 
@@ -168,15 +210,21 @@ describe('the club’s food parcel (owner’s choice, F5 / A7): animals never st
     return FOODS.filter((f) => eatsFood(sp, f)).reduce((n, f) => n + (g.inventory.foods[f.id] ?? 0), 0);
   };
 
-  it('drops off the cheapest pack Ember eats, free, with the approved words and a link to the ways to raise cash', () => {
+  it('drops off a little of the cheapest food Ember eats (about two days), free, with the approved words and a link', () => {
     const g = hungryBroke(1);
     step(g, 1);
     expect(eaten(g)).toBeGreaterThan(0);
+    // review fix: "a small parcel", not a whole pack (Tropical Flakes are 120 servings): four of the default feed's meals
+    const ember = Object.values(g.creatures).find((c) => c.name === 'Ember')!;
+    const sp = findSpecies(ember.speciesId)!;
+    const food = FOODS.find((f) => (g.inventory.foods[f.id] ?? 0) > 0)!;
+    expect(eaten(g)).toBe(Math.max(1, Math.ceil(portionForDemand(food, effectiveBioload(sp, ember.sizeCm) * TYPICAL_MEAL_HUNGER, 1) * PARCEL_MEALS)));
+    expect(eaten(g)).toBeLessThan(food.servingsPerPack / 4);
     expect(g.finance.money).toBe(1);
     const e = g.log.find((x) => /^The aquarium club dropped off/.test(x.text))!;
     expect(e.text).toBe('The aquarium club dropped off a little food for Ember. Short on cash? Friends tip when your animals are healthy, or sell something in Livestock.');
     expect(e.toast).toBe(true);
-    expect(eventLink(e)).toMatchObject({ panel: 'finances', label: 'Ways to raise cash' });
+    expect(eventLink(e)).toMatchObject({ panel: 'finances', target: 'cash', label: 'Ways to raise cash' });
     expect(g.progress.counters[PARCEL_DAY_KEY]).toBe(3);
   });
 
@@ -273,17 +321,52 @@ describe('F6 (the owner’s choice): an open offer stays while you look', () => 
     expect(buyOffer(held, o.id, held.tankOrder[0]).message).not.toMatch(/expired/);
   });
 
-  it('released on close: it leaves at the next check', () => {
+  it('released on close: it leaves within about 20 real seconds (review fix: not at once)', () => {
     const g = shopWorld();
     const o = leavingAtRestock(g);
     devStepEconomy(g, at8(g) - g.clock.hour - 0.1, { market: true });
     holdOffer(g, o.id);
     pastRestock(g);
     expect(g.market.stock.some((x) => x.id === o.id)).toBe(true);
+    const start = o.holdStartHour;
     expect(holdOffer(g, o.id, true).ok).toBe(true);
-    expect(o.holdUntilHour).toBeUndefined();
-    devStepEconomy(g, 0.2, { market: true });
+    expect(o.holdStartHour).toBe(start); // the start is kept, so a later renewal stays inside the same cap
+    expect(o.holdUntilHour).toBeCloseTo(g.clock.hour + HOLD_RELEASE_HOURS, 6);
+    devStepEconomy(g, HOLD_RELEASE_HOURS / 2, { market: true });
+    expect(g.market.stock.some((x) => x.id === o.id)).toBe(true);
+    devStepEconomy(g, HOLD_RELEASE_HOURS / 2 + 0.2, { market: true });
     expect(g.market.stock.some((x) => x.id === o.id)).toBe(false);
+  });
+
+  it('in a shared shop, one member closing the offer leaves it for another who is still looking', () => {
+    const g = shopWorld();
+    const o = leavingAtRestock(g);
+    const ana = (at: number): Actor => ({ id: 'm_ana', name: 'Ana', at });
+    const ben = (at: number): Actor => ({ id: 'm_ben', name: 'Ben', at });
+    devStepEconomy(g, at8(g) - g.clock.hour - 0.5, { market: true });
+    expect(applyCommand(g, { k: 'holdOffer', offer: o.id }, ana(1_000)).ok).toBe(true);
+    expect(applyCommand(g, { k: 'holdOffer', offer: o.id }, ben(1_000)).ok).toBe(true);
+    pastRestock(g); // its time is up: only the hold keeps it
+    expect(applyCommand(g, { k: 'holdOffer', offer: o.id, release: true }, ben(20_000)).ok).toBe(true);
+    devStepEconomy(g, 15 * GAME_HOURS_PER_REAL_SECOND, { market: true }); // Ana's screen renews every 15 real s
+    expect(g.market.stock.some((x) => x.id === o.id)).toBe(true);
+    expect(applyCommand(g, { k: 'holdOffer', offer: o.id }, ana(35_000)).ok).toBe(true);
+    devStepEconomy(g, 1.5, { market: true });
+    expect(g.market.stock.some((x) => x.id === o.id)).toBe(true);
+    expect(o.holdUntilHour! - g.clock.hour).toBeGreaterThan(HOLD_RELEASE_HOURS);
+  });
+
+  it('a partial buy releases the rest of the group the same way (not at once)', () => {
+    const g = game();
+    g.market.stock = [];
+    const rng = simRng(g);
+    const o: ShopOffer = { id: 'offer_part', kind: 'group', speciesId: 'neon_tetra', creatures: Array.from({ length: 6 }, () => createCreature(g, rng, 'neon_tetra')), price: 30, unitPrice: 6, seller: 'Test Breeder', expiresHour: g.clock.hour + 48 };
+    g.market.stock.push(o);
+    holdOffer(g, o.id);
+    const start = o.holdStartHour;
+    expect(buyOffer(g, o.id, g.tankOrder[0], [0, 1]).ok).toBe(true);
+    expect(o.holdStartHour).toBe(start);
+    expect(o.holdUntilHour).toBeCloseTo(g.clock.hour + HOLD_RELEASE_HOURS, 6);
   });
 
   it('the safety limit: a screen left open (or a dropped connection) can’t keep an offer forever', () => {
@@ -309,43 +392,65 @@ describe('F6 (the owner’s choice): an open offer stays while you look', () => 
     expect(offerLeavesText(24 * 4 + 8, 24 * 3 + 15)).toBe('Leaves the shop tomorrow morning. It stays while you’re looking.');
     expect(offerLeavesText(24 * 3 + 18, 24 * 3 + 15)).toBe('Leaves the shop this evening. It stays while you’re looking.');
     expect(offerLeavesText(24 * 6 + 8, 24 * 3 + 15)).toBe('Leaves the shop in 3 days. It stays while you’re looking.');
+    // review note: a special leaving at 2 AM leaves "tonight", as its toast says ("until about 2 AM tonight")
+    expect(offerLeavesText(24 * 4 + 2, 24 * 3 + 15)).toBe('Leaves the shop tonight. It stays while you’re looking.');
+    expect(offerLeavesText(24 * 3 + 3, 24 * 3 + 1)).toBe('Leaves the shop tonight. It stays while you’re looking.');
+    expect(offerLeavesText(24 * 5 + 2, 24 * 3 + 15)).toBe('Leaves the shop tomorrow night. It stays while you’re looking.');
   });
 });
 
 describe('F3: the listing’s price advice matches what buyers in the code actually offer', () => {
-  it('first offers mostly land in the quoted range, and about half fall below fair value', () => {
-    const ratios: number[] = [];
-    for (let seed = 1; seed <= 30; seed++) {
-      const g = newGame({ starterId: 'betta', starterName: 'Ember', seed });
+  /**
+   * Review fix — the advice is measured on the bid model itself, the way a player meets it: natural arrivals over a
+   * 72-hour listing (no forced visits, so late bids' discount counts), for a single animal and a group. The constant
+   * and the bands in listings.ts were set from 25 seeds of five listings; here a few seeds keep them from drifting.
+   */
+  function firstOffers(sp: string, n: number, kind: 'creature' | 'group', seeds: number): number[] {
+    const out: number[] = [];
+    for (let seed = 1; seed <= seeds; seed++) {
+      const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 1000 + seed });
       g.clock.speed = 1;
       devOpenMarket(g);
-      const c = addCreature(g, createCreature(g, simRng(g), 'betta', { ageDays: 120 }), g.tankOrder[0]);
-      c.stats.health = 100;
-      delete c.illness;
-      const r = createListing(g, { kind: 'creature', creatureIds: [c.id], reserve: 1, durationHours: 72 });
+      const ids = Array.from({ length: n }, () => {
+        const c = addCreature(g, createCreature(g, simRng(g), sp, { ageDays: 150 }), g.tankOrder[0]);
+        c.stats.health = 100;
+        delete c.illness;
+        return c.id;
+      });
+      const r = createListing(g, { kind, creatureIds: ids, reserve: 1, durationHours: 72 });
       expect(r.ok).toBe(true);
       const l = g.market.listings.find((x) => x.id === r.listingId)!;
-      for (let i = 0; i < 40 && l.bids.length < 4 && l.status === 'active'; i++) forceBuyerVisit(g, l.id);
-      for (const b of l.bids) if (b.status === 'open' && !b.counterAmount) ratios.push(b.amount / l.snapshot.valuation);
+      for (let h = 0; h < 73 && l.status === 'active'; h++) devStepEconomy(g, 1, { market: true });
+      for (const b of l.bids) out.push(b.amount / l.snapshot.valuation);
     }
-    expect(ratios.length).toBeGreaterThan(40);
+    return out;
+  }
+
+  it('measured: first offers land in the quoted range, and each reserve band turns down the share it says', () => {
+    const ratios = [...firstOffers('betta', 1, 'creature', 4), ...firstOffers('neon_tetra', 6, 'group', 4)].sort((a, b) => a - b);
+    expect(ratios.length).toBeGreaterThan(80);
+    const below = (x: number) => ratios.filter((r) => r < x).length / ratios.length;
     const { low, high } = typicalOpening(100);
-    const inRange = ratios.filter((x) => x >= low / 100 - 0.02 && x <= high / 100 + 0.02).length / ratios.length;
-    const atFair = ratios.filter((x) => x >= 1).length / ratios.length;
-    expect(inRange).toBeGreaterThan(0.6);
-    // a reserve at fair value turns about half of first offers down (the old hint called it "steady bidding")
-    expect(atFair).toBeGreaterThan(0.25);
-    expect(atFair).toBeLessThan(0.7);
-    expect(reserveHint(100, typicalOpening(100))).toMatch(/^About half of first offers/);
+    const inRange = ratios.filter((r) => r >= low / 100 && r <= high / 100).length / ratios.length;
+    const median = ratios[Math.floor(ratios.length / 2)];
+    expect(inRange).toBeGreaterThan(0.5); // "usually open at …"
+    expect(median).toBeGreaterThan(0.84);
+    expect(median).toBeLessThan(0.98);
+    expect(below(low / 100)).toBeLessThan(0.3); // "Most first offers will reach this"
+    expect(below(RESERVE_BANDS.half)).toBeLessThan(0.5); // "Some … will be below this"
+    expect(below(RESERVE_BANDS.overHalf)).toBeGreaterThan(0.3); // "About half"
+    expect(below(RESERVE_BANDS.overHalf)).toBeLessThan(0.7);
+    expect(below(1.0)).toBeGreaterThan(0.45); // a reserve at fair value: more than half turned down
+    expect(below(high / 100 + 0.001)).toBeGreaterThan(0.6); // "Above most first offers: most will be turned down"
   });
 
-  it('the quoted range and the reserve hint', () => {
-    const o = typicalOpening(100);
-    expect(o).toEqual({ low: 81, high: 116 });
-    expect(reserveHint(120, o)).toBe('Above most first offers: many will be turned down automatically.');
-    expect(reserveHint(100, o)).toBe('About half of first offers will be below this and turned down automatically.');
-    expect(reserveHint(85, o)).toBe('Some first offers will be below this and turned down automatically.');
-    expect(reserveHint(80, o)).toBe('Most first offers will reach this. You still choose which one to accept.');
+  it('the quoted range and the reserve hint’s words', () => {
+    expect(typicalOpening(100)).toEqual({ low: 73, high: 105 });
+    expect(reserveHint(110, 100)).toBe('Above most first offers: most will be turned down automatically.');
+    expect(reserveHint(100, 100)).toBe('More than half of first offers will be below this and turned down automatically.');
+    expect(reserveHint(90, 100)).toBe('About half of first offers will be below this and turned down automatically.');
+    expect(reserveHint(80, 100)).toBe('Some first offers will be below this and turned down automatically.');
+    expect(reserveHint(70, 100)).toBe('Most first offers will reach this. You still choose which one to accept.');
   });
 });
 
@@ -477,6 +582,11 @@ describe('F11: money is never shown as more than the player has', () => {
   it('$199.60 reads "$199"; a $200 offer says "You need $1 more", not "$0"', () => {
     expect(wholeMoney(199.6)).toBe('$199');
     expect(wholeMoney(200)).toBe('$200');
+    // review note: a debt is written one way everywhere, as the sim's own lines write it
+    expect(wholeMoney(-12.4)).toBe(fmtMoney(-12.4));
+    expect(moneyHeld(-12.4)).toBe(fmtMoney(12.4));
+    expect(moneyHeld(-1234.6)).toBe(fmtMoney(1234.6));
+    expect(cantAffordTitle(-12.4, 6)).toBe('You’re $12.40 in debt, so purchases are paused');
     const g = game(199.6);
     g.market.stock = [];
     const o: ShopOffer = { id: 'offer_f11', kind: 'creature', speciesId: 'mystery_snail', creatures: [createCreature(g, simRng(g), 'mystery_snail')], price: 200, seller: 'Test Breeder', expiresHour: g.clock.hour + 48 };
@@ -528,6 +638,7 @@ describe('F15: Build’s decor "Sell" says what it pays, and a grown-in piece as
     expect(decorSellOffer(g, piece(coral.id), coral)).toEqual({ pays: decorSellValue(coral, piece(coral.id)), ask: true });
     expect(decorSellOffer(g, piece(rock.id), rock).ask).toBe(false);
     expect(decorSellOffer(g, piece(rock.id), rock).pays).toBe(Math.round(rock.price * 0.5));
+    expect(DECOR_SELL_ASK).toBe('A grown-in piece sells for more with its tank. Tap again to sell it.'); // shown in the row
   });
 });
 
@@ -550,7 +661,10 @@ describe('F17: "Fits my tanks" checks temperature and size, not only the water t
     t.water.tempC = 26;
     expect(envMatches(g, findSpecies('axolotl')!, 'fits')).toBe(false);
     expect(envMatches(g, findSpecies('betta')!, 'fits')).toBe(true);
-    expect(tankFits(findSpecies('axolotl')!, { ...t, water: { ...t.water, tempC: 17 }, tierId: 'g40B' } as typeof t)).toBe(true);
+    // review note: the temperature the tank is heading for counts, so a tank still warming up isn't hidden
+    t.water.tempC = 19;
+    expect(envMatches(g, findSpecies('betta')!, 'fits')).toBe(true);
+    expect(envMatches(g, findSpecies('axolotl')!, 'fits')).toBe(false);
   });
 });
 
@@ -619,6 +733,23 @@ describe('F7: an empty room quotes (and the restart loan covers) a whole kit, no
     g.tankOrder = [];
     const need = restartNeed(g)!;
     expect(need).toBeGreaterThanOrEqual(kit.total + 40);
+    // review fix: the kit Build's Quick buy offers by default (seeded media), and two days of that tank's running costs
+    const seeded = cheapestKit(g, { seeded: true })!;
+    expect(seeded.total).toBe(tankKitPrice(seeded.tierId, seeded.waterClass, true, g).total);
+    expect(seeded.daily).toBeGreaterThan(0);
+    expect(need).toBeGreaterThanOrEqual(seeded.total + seeded.daily * 2 + 40);
+  });
+
+  it('the restart loan leaves enough for the default kit, an animal and two days of its bills', () => {
+    const g = game(0);
+    for (const c of Object.values(g.creatures)) c.status = 'dead';
+    g.tanks = {};
+    g.tankOrder = [];
+    const kit = cheapestKit(g, { seeded: true })!;
+    devStepEconomy(g, 24 - (g.clock.hour % 24) + 0.25, { finance: true, market: true });
+    devStepEconomy(g, 24.5, { finance: true, market: true });
+    expect(g.finance.loan).toBeDefined();
+    expect(g.finance.money - kit.total).toBeGreaterThanOrEqual(40 + kit.daily * 2);
   });
 
   it('selling the last aquarium names the cheapest whole kit and its price', () => {

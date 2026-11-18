@@ -18,6 +18,7 @@ import type {
 import { ageDays, dayOf, formatClock, hourOfDay } from '@/sim/time';
 import { getFoodDef } from '@/data/catalog/foods';
 import { findSpecies } from '@/data/species';
+import { moduleFor } from '@/sim/life/breeding/registry'; // review E (E17)
 
 export { formatClock, dayOf, hourOfDay };
 
@@ -172,9 +173,10 @@ function tidyCelsius(text: string): string {
 /** A temperature *difference* ("by ~2 °C", "1 °C below the chiller", "1–2 °C of cooling", "~2 °C cooler") scales by
  *  1.8 with no +32 offset. Only "by …" before the value or a comparison word right after "°C" marks one: a bare "~"
  *  does not ("breeding slows below ~21 °C" is a real temperature). */
-// Audit 2026-11-17 (J1): "Cools 1–2 °C", "Cools only about 1 °C", "needs to drop about 2 °C" and a signed "−1 °C" are
-// differences too (they read as 34–36 °F, 34 °F and 36 °F before)
-const TEMP_DELTA_BEFORE = /(?:\b(?:by|cools?(?:\s+only)?|drops?)\s+(?:~\s*|about\s+|around\s+)?|±\s*|[−+]\s*)$/i;
+// Audit 2026-11-17 (review of D8): "Cools 1–2 °C by evaporation", "Cools about 2 °C", "Cools only about 2 °C" (care/fit.ts)
+// Audit 2026-11-17 (J1): "needs to drop about 2 °C" and a signed "−1 °C" are differences too (they read as 36 °F and
+// 30 °F before)
+const TEMP_DELTA_BEFORE = /(?:\bby\s+(?:~\s*|about\s+|around\s+)?|±\s*|\b(?:cools?|warms?|drops?)\s+(?:only\s+)?(?:~\s*|about\s+|around\s+)?|[−+]\s*)$/i;
 const TEMP_DELTA_AFTER = /^\s+(?:below|above|cooler|warmer|colder|hotter|lower|higher|of|per)\b/i;
 
 function fDelta(c: number): string {
@@ -264,8 +266,11 @@ export function sexRoleText(c: Creature, sp: SpeciesDefinition | undefined, nowH
   }
   // audit E17: a hermaphrodite never shows a sex, and a snail whose sex shows only at the end of its life can't be
   // sexed by eye: "Not yet visible · Sex shows at around 14 days" was forever, or a promise for its last day
-  if (sp?.sexSystem === 'simultaneous_hermaphrodite') return { label: 'Both sexes', detail: 'Any two adults can pair up — both can carry eggs.' };
-  if (sp && c.sex === 'unknown' && sp.lifecycle.sexVisibleAtDays >= sp.lifecycle.lifespanDays) return { label: 'Can’t be told by eye', detail: 'Keep a few together and they pair up on their own.' };
+  // (review E: the pairing advice only for a species that breeds in pairs here: not a tang, puffer or triggerfish the
+  // game never breeds, which fight their own kind, nor an anemone, which splits alone)
+  const pairs = !!sp && moduleFor(sp).breedable;
+  if (sp?.sexSystem === 'simultaneous_hermaphrodite') return pairs ? { label: 'Both sexes', detail: 'Any two adults can pair up — both can carry eggs.' } : { label: 'Both sexes' };
+  if (sp && c.sex === 'unknown' && sp.lifecycle.sexVisibleAtDays >= sp.lifecycle.lifespanDays) return pairs ? { label: 'Can’t be told by eye', detail: 'Keep a few together and they pair up on their own.' } : { label: 'Can’t be told by eye' };
   if (c.sex === 'unknown' || (sp && age < sp.lifecycle.sexVisibleAtDays && c.lifeStage !== 'adult')) {
     return { label: 'Not yet visible', detail: sp ? `Sex shows at around ${Math.round(sp.lifecycle.sexVisibleAtDays)} days.` : undefined };
   }

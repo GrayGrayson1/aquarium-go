@@ -119,7 +119,7 @@ const FLAVOURS: Record<string, StarterFlavour> = {
     habitat: ['A leaf to lounge on', 'Add a broad-leaf plant or some floating cover from Build. Bettas rest near the surface and build their nests under cover.'],
     habitatPicks: ['anubias_nana', 'floating_plants', 'java_fern'],
     observe: ['Watch for a flare', 'Keep watching. When {name} sees something new he spreads his fins wide, and a contented male may start a bubble nest.', ['observed:fin_flare', 'observed:bubble_nest', 'observed:display']],
-    upgrade: ['A nursery', 'Earn a little more reputation to unlock nursery tanks. They are the first step toward raising your own betta line.', ['nursery']],
+    upgrade: ['A nursery', 'Earn a little more reputation to unlock breeding know-how. Any tank can already be a nursery: set its purpose in Tanks, the first step toward raising your own betta line.', ['nursery']],
     preview: 'A pair is only introduced briefly, then the male guards the nest alone. Take a look at Research to plan your line and your first shop.',
     food: { bloodworm_frozen: 4 },
   },
@@ -156,7 +156,7 @@ const FLAVOURS: Record<string, StarterFlavour> = {
     habitat: ['Hitching posts', 'Add a plant, a soft branch or some decor from Build. Seahorses wrap their tails around it to rest.'],
     habitatPicks: ['hitching_post', 'red_ogo', 'chaetomorpha'],
     observe: ['The hitch', 'Watch {name} curl that tail around a hitching post and settle, eyes scanning independently.', ['observed:hitch', 'observed:hitched', 'observed:snick_feed']],
-    upgrade: ['A nursery', 'Earn a little more reputation to unlock nursery tanks. Seahorse fry are tiny and need a safe place to grow.', ['nursery']],
+    upgrade: ['A nursery', 'Earn a little more reputation to unlock breeding know-how. Any tank can already be a nursery: set its purpose in Tanks. Seahorse fry are tiny and need a safe place to grow.', ['nursery']],
     preview: 'Courting seahorses dance at dawn, and then the male gives birth. Take a look at Research to plan your first shop.',
     food: { mysis_frozen: 6 },
   },
@@ -189,7 +189,8 @@ function chainFor(f: StarterFlavour): TutorialStepDef[] {
     { id: 'first_money', title: 'A visitor!', body: 'A friend has heard about {name} and wants to visit. Keep the water healthy and they may leave a tip.', objective: { type: 'any', of: [{ type: 'counter', key: 'friend_visits', min: 1, relative: true }, { type: 'counter', key: 'sales', min: 1, relative: true }] }, hintTarget: 'hud-money', done: 'Your first money from the hobby!', reward: { foods: f.food } },
     { id: 'market', title: 'The market', body: 'Open the Market to browse captive-bred stock and see what buyers pay for well-kept animals.', objective: { type: 'flag', anyOf: ['opened_market'], fallbackHours: 24 }, hintTarget: 'dock-market', done: 'You can now list animals for sale.', reward: { unlocks: ['market_listings'] } },
     { id: 'first_goal', title: 'Word gets around', body: 'Keep {name}’s tank looking lovely and the water healthy while two more friends drop by. (Once you have animals to spare, a small sale in the Market counts too.)', objective: { type: 'any', of: [{ type: 'counter', key: 'friend_visits', min: 2, relative: true, label: 'more friend visits' }, { type: 'counter', key: 'sales', min: 1, relative: true, label: 'sale' }] }, hintTarget: 'hud-money', done: 'Word is getting around.', reward: { money: 40, reputation: 3 } },
-    // audit 2026-11-17 (A3): nursery tanks are a tank's purpose, set in Tanks (its button opened Build › Tanks)
+    // audit 2026-11-17 (A3): nursery tanks are a tank's purpose, set in Tanks (its button opened Build › Tanks); the
+    // `nursery` key it hands out is "Breeding know-how", the way to two research projects, and never locked nurseries
     { id: 'upgrade', title: f.upgrade[0], body: f.upgrade[1], objective: { type: 'reputation', min: TUTORIAL_UPGRADE_REP, gain: TUTORIAL_UPGRADE_GAIN, label: 'reputation' }, hintTarget: f.upgrade[2].includes('nursery') ? 'dock-tanks' : 'dock-build', done: 'New upgrade unlocked!', reward: { unlocks: f.upgrade[2] } },
     { id: 'preview', title: 'The road ahead', body: f.preview, objective: { type: 'flag', anyOf: ['opened_research', 'opened_visitors', 'opened_build', 'opened_panel:research', 'opened_panel:visitors'], fallbackHours: 20 }, hintTarget: 'dock-research', done: 'Guide complete. Your quest board is open in Research › Quests!', reward: { money: 60, reputation: 5 } },
   ];

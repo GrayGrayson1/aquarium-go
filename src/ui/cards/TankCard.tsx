@@ -82,6 +82,8 @@ import { Badge, Button, Chip, Meter, Section, Segmented, Slider, Stepper, Status
 import { WaterChip } from '../screens/StarterReveal';
 import { TankKeeperLine } from '../panels/visitors/TankKeeperLine'; // lane:staff
 import { tankGearIssues, type FitVerdict } from '@/sim/care/fit'; // lane:fit
+import { THERMOSTAT_DIAL } from '@/sim/care/tuning'; // Audit 2026-11-17 C7 (review)
+import { saltCashLine } from '../common/moneyShort'; // Audit 2026-11-17 C1 (review)
 import { FitLine } from '../common/FitNote'; // lane:fit
 import { AutomationSection, AutoCleanNote } from './Automation'; // lane:ui-shell (chunk 3, 0.5 §10)
 import { tankChips } from '../common/tankChips'; // lane:automation (chunk 5)
@@ -89,7 +91,7 @@ import { CHIP_ICON } from '../common/tankChipIcons'; // lane:automation (chunk 5
 import { fixForAttention, fixForWaterIssue } from '../common/fixLinks'; // chunk 19 (ADR-0055 decision 2, QOL-002)
 import { isWorn } from '../common/notify'; // chunk 19 (QOL-002)
 import { FixButton } from './FixButton'; // chunk 19 (QOL-002)
-import { animalStatus } from '@/sim/tankStatus'; // Audit 2026-11-17 (D16)
+import { animalStatus, withWaterHarm } from '@/sim/tankStatus'; // Audit 2026-11-17 (D16)
 import { TANK_STATUS_WORD } from '../common/tankStatus'; // Audit 2026-11-17 (J10)
 
 /** A switch flips what the game holds now, not this card's throttled copy (a quick second click turns it back, as before). */
@@ -203,6 +205,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
   // 1.4 °C sudden-change stress line — and two of them give the ~2 °C drop the breeding cue looks for.
   const coolCue = safe('coolCue', () => creaturesInTank(game, tank.id).some((c) => !!findSpecies(c.speciesId)?.breeding?.conditions?.coolingTrigger), false);
   const change25 = salty ? safe('waterChangeCost', () => waterChangeCost(game, tank.id, 0.25), null) : null; // Audit 2026-11-17 C1
+  const saltCash = salty ? safe('saltCashLine', () => saltCashLine(game, tank.id), null) : null; // (review)
   // Audit 2026-11-17 C4 — a dose's price scales with the tank: show it before the tap, not only in the toast
   const price = (a: Parameters<typeof doseCost>[2]) => {
     const c = safe('doseCost', () => doseCost(game, tank.id, a), 0);
@@ -304,6 +307,23 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
             </div>
             {/* Audit 2026-11-17 C1 — salt water: what a change takes, before a change it can't cover is refused */}
             {salty && change25 && <div className="ag-small ag-muted" data-testid="water-change-salt-need">25% uses about {change25.saltKg < 0.1 ? change25.saltKg.toFixed(2) : change25.saltKg.toFixed(1)} kg of salt mix.</div>}
+            {/* Audit 2026-11-17 C1 (review) — no salt for any change and no money for a bag: where to raise cash */}
+            {salty && saltCash && (
+              <div className="ag-small ag-watchtext" role="status" data-testid="water-change-salt-cash">
+                {saltCash}{' '}
+                <button
+                  type="button"
+                  className="ag-linkbtn"
+                  data-testid="water-change-raise-cash"
+                  onClick={() => {
+                    sfx('open');
+                    useUI.getState().set({ panel: 'finances', panelTarget: 'cash' }); // the ideas themselves (FinancesPanel's CASH_TARGET)
+                  }}
+                >
+                  Ways to raise cash
+                </button>
+              </div>
+            )}
             {/* audit E14: the button's tip, visible (a title never shows on touch) */}
             {coolCue && <div className="ag-small ag-muted">Two Cool 25% changes in a row give the ~{formatTempDelta(2, unit)} chill that sets off spawning.</div>}
           </div>
@@ -408,8 +428,8 @@ function EquipmentRow({ tank, e, readOnly, fit }: { tank: Tank; e: EquipmentInst
             <Stepper
               label={`${name} setpoint`}
               value={setting}
-              min={kind === 'heater' ? 18 : 10}
-              max={kind === 'heater' ? 32 : 26}
+              min={THERMOSTAT_DIAL[kind === 'heater' ? 'heater' : 'chiller'].min /* the sim's advice stays inside these (Audit 2026-11-17 C7) */}
+              max={THERMOSTAT_DIAL[kind === 'heater' ? 'heater' : 'chiller'].max}
               step={0.5}
               format={(v) => (unit === 'F' ? `${cToF(v).toFixed(0)} °F` : `${v.toFixed(1)} °C`)}
               onChange={(v) => set({ setting: v })}
@@ -529,8 +549,13 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
   const exhibit = safe('exhibitScore', () => exhibitScore(game, tank.id), null);
   const load = tank.cache.stockingLoad ?? 0;
   const selected = useUI((s) => s.selectedCreatureId);
-  // Audit 2026-11-17 (D16): the animals behind the tank's "3 neon tetras are stressed" are ringed in its colour
-  const flagged = safe('animalStatus', () => animalStatus(residents), null);
+  // Audit 2026-11-17 (D16): the animals behind the tank's "3 neon tetras are stressed" are ringed in its colour, worked
+  // out as the tank's own line is (src/sim/tankStatus.ts: the water's harm first), so the ring marks who the line names
+  const flagged = safe('animalStatus', () => {
+    const a = animalStatus(residents, game);
+    const water = getWaterReport(game, tank.id);
+    return water ? withWaterHarm(tank, a, water) : a;
+  }, null);
   const flaggedIds = new Set(flagged?.creatureIds ?? []);
   return (
     <>

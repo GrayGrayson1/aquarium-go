@@ -24,7 +24,6 @@ import { useSettings } from '@/state/settings';
 import { sfx } from '@/audio/sfx';
 import { EventIcon, type AnyKind } from './eventIcons';
 import { focusTank } from './AlertsPopover';
-import { useTankCardTab } from '../cards/tankCardTab'; // audit B4
 import { useShell } from '../common/shellStore';
 import { MOBILE_QUERY, SHORT_LANDSCAPE_QUERY, safe, useMedia } from '../common/safe';
 import { tutorialChain } from '@/data/quests';
@@ -36,6 +35,7 @@ import { isExpired, pickShown, prio, ttlOf, PREEMPT_AFTER_MS, URGENT_PRIO } from
 import { UpdatePrompt, useNewBuildAvailable } from './UpdatePrompt';
 import { StaleTabBanner, useStaleBanner } from '@/game/StaleTabBanner';
 import { useShared } from '../shared/store'; // chunk 13
+import { guardLeave } from '../panels/common/leaveGuard'; // audit B6 review
 import { othersEvent } from '../shared/activity';
 
 interface Entry {
@@ -473,15 +473,16 @@ export function toastGo(e: Pick<Entry, 'kind' | 'texts' | 'tankId' | 'creatureId
 }
 
 /**
- * Audit B19 — how a toast takes a tap. Normally its text goes where it is about; on a phone with a sheet open the toast
- * lies over the sheet's list, so a tap meant for the list only pins it (opens the whole message), and only a button
- * goes: its own ("See them"), or, once pinned, one named for where it goes. (pure; exported for tests)
+ * Audit B19 — how a toast takes a tap. Normally its text goes where it is about (a plain toast's pins it open); on a
+ * phone with a sheet open the toast lies over the sheet's list, so a tap there was meant for the list: it gets out of
+ * the way (review: pinning it grew it over the list for 6 s more), and only its own button ("See them") goes.
+ * `title` names where the text goes (its tooltip). (pure; exported for tests)
  */
-export function toastTap(e: Pick<Entry, 'tankId' | 'actionLabel'>, v: Pick<View, 'opensLog' | 'link'>, sheet: boolean, pinned: boolean): { textGoes: boolean; button: string | null; title: string } {
+export function toastTap(e: Pick<Entry, 'tankId' | 'creatureId' | 'actionLabel'>, v: Pick<View, 'opensLog' | 'link'>, sheet: boolean, animalHere: boolean = !!e.creatureId): { textGoes: boolean; dismiss: boolean; button: string | null; title: string } {
   const actionable = !!e.tankId || !!v.opensLog || !!v.link;
-  const title = v.opensLog ? 'Open the event log' : v.link ? 'Take me there' : 'Go to this tank';
-  const own = e.actionLabel && e.tankId ? e.actionLabel : null;
-  return { textGoes: actionable && !sheet, button: own ?? (actionable && sheet && pinned ? title : null), title };
+  // (review: the merged ones open the bell's drawer, and a toast about an animal opens its card)
+  const title = v.opensLog ? 'Open Alerts' : v.link ? 'Take me there' : e.creatureId && animalHere ? 'Go to this animal' : 'Go to this tank'; // (an animal that has died or been sold: toastGo opens its tank)
+  return { textGoes: actionable && !sheet, dismiss: sheet, button: e.actionLabel && e.tankId ? e.actionLabel : null, title };
 }
 
 function ToastItem({ e, onDone, sheet = false }: { e: Entry; onDone: () => void; /** a phone sheet is open under the toasts (audit B19) */ sheet?: boolean }) {
@@ -504,20 +505,26 @@ function ToastItem({ e, onDone, sheet = false }: { e: Entry; onDone: () => void;
   }, [hover, ttl, e.rev]);
   const expanded = (hover || pinned) && present;
   const celebrate = e.kind === 'celebrate' || e.kind === 'unlock';
-  const tap = toastTap(e, v, sheet, pinned);
+  // (the tooltip names where the tap goes: an animal that has died or been sold leads to its tank)
+  const animalHere = useGame((s) => { const c = e.creatureId ? s.game?.creatures[e.creatureId] : undefined; return !!c && (c.status === 'alive' || c.status === 'listed'); });
+  const tap = toastTap(e, v, sheet, animalHere);
   const onAct = () => {
     const to = toastGo(e, v, useGame.getState().game);
-    if (to?.to === 'log') {
+    // audit B6 review: a listing with typed prices asks before the whole move (Leave completes it, Keep changes nothing)
+    if (to?.to === 'panel' || to?.to === 'tank')
+      guardLeave(() => {
+        if (to.to === 'panel') {
+          // lane:w2-ui — unlocks / show results open where they live
+          sfx('open');
+          useUI.getState().set({ panel: to.panel, panelTarget: to.target });
+        } else {
+          focusTank(to.tankId, to.card, to.gear ? 'gear' : undefined);
+          if (to.creatureId) useUI.getState().set({ selectedCreatureId: to.creatureId });
+        }
+      });
+    else if (to?.to === 'log') {
       sfx('open');
       useShell.getState().set({ popover: 'alerts' });
-    } else if (to?.to === 'panel') {
-      // lane:w2-ui — unlocks / show results open where they live
-      sfx('open');
-      useUI.getState().set({ panel: to.panel, panelTarget: to.target });
-    } else if (to?.to === 'tank') {
-      if (to.gear) useTankCardTab.setState({ want: 'gear' });
-      focusTank(to.tankId, to.card);
-      if (to.creatureId) useUI.getState().set({ selectedCreatureId: to.creatureId });
     }
     onDone();
   };
@@ -545,7 +552,8 @@ function ToastItem({ e, onDone, sheet = false }: { e: Entry; onDone: () => void;
       onBlur={() => setHover(false)}
       onClick={(ev) => {
         if ((ev.target as HTMLElement).closest('button')) return;
-        setPinned((p) => !p);
+        if (tap.dismiss) onDone(); // audit B19: over a phone sheet, out of the list's way
+        else setPinned((p) => !p);
       }}
     >
       <span className="ag-toast__icon">
@@ -559,8 +567,7 @@ function ToastItem({ e, onDone, sheet = false }: { e: Entry; onDone: () => void;
         <span className="ag-toast__text">{body}</span>
       )}
       {tap.button && (
-        // chunk 19 (ADR-0055 decision 1) — "See them": the toast's own way there, as a visible button (audit B19: over a
-        // phone sheet, a pinned toast without one gets "Take me there" and its kin, the words its text's tooltip uses)
+        // chunk 19 (ADR-0055 decision 1) — "See them": the toast's own way there, as a visible button
         <button type="button" className="ag-toast__action" data-testid="toast-action" onClick={onAct}>
           {tap.button}
         </button>

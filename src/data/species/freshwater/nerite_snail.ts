@@ -75,7 +75,7 @@ export const neriteSnail: SpeciesDefinition = {
     predationWithoutNursery: 1,
     nurseryRequired: true,
     maxRaisedPerClutch: 1,
-    notes: 'Sexes are separate. Females glue hard white egg capsules — like sesame seeds, each holding dozens of eggs — onto rocks, wood and glass, but the eggs do not hatch or develop in freshwater. In the wild, larvae drift down to brackish estuaries (about SG 1.005–1.015) as planktonic veligers for roughly two months before crawling back upstream. The game does not model brackish larval rearing, so capsules are cosmetic only and never produce offspring.',
+    notes: 'Sexes are separate. Females glue hard white egg capsules — like sesame seeds, each holding dozens of eggs — onto rocks, wood and glass, but the eggs do not hatch or develop in freshwater. In the wild, larvae drift down to brackish estuaries (about SG 1.005–1.015) as planktonic veligers for roughly two months before crawling back upstream. In a freshwater tank the capsules never hatch.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'none',

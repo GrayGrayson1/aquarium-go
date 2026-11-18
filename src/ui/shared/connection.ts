@@ -170,6 +170,8 @@ export class SharedConnection {
   private cancelSlow: (() => void) | null = null;
   /** B-230: when the current run of failed tries began (the opening counts from the start); null while connected. */
   private troubleSince: number | null = null;
+  /** This run of trouble's clock started again at its first `/health` that answered (once a run; the review's case). */
+  private wokeThisRun = false;
   private nextId = 1;
   private viewSent: string | null | undefined = undefined;
   private viewWanted: string | null = null;
@@ -328,6 +330,13 @@ export class SharedConnection {
       return;
     }
     if (h.closed) return this.closed({ t: 'closing', why: h.closed, until: h.until ?? undefined });
+    // the review of B-230: a slow wake (Render's free plan can take two minutes) spent this run's time, and one dropped
+    // socket after it ended the visit. The server has just answered: the clock starts again, once per run of trouble,
+    // so a network that stops the socket (an answering /health, a failing WebSocket) still gives up
+    if (this.troubleSince !== null && !this.wokeThisRun) {
+      this.wokeThisRun = true;
+      this.troubleSince = this.deps.now();
+    }
     await this.connect();
   }
 
@@ -407,6 +416,7 @@ export class SharedConnection {
       this.welcomed = true;
       this.everWelcomed = true;
       this.troubleSince = null;
+      this.wokeThisRun = false;
       this.retryMs = RECONNECT_FIRST_MS;
       this.signInRetried = false;
       this.rejoin = false;

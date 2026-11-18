@@ -332,11 +332,13 @@ describe('J14: internal ids and tags are shown as words', () => {
     const g = base();
     const c = Object.values(g.creatures)[0];
     c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Rex the tiger barb, which nips fins.' });
-    expect(lastHurtBy(c)).toEqual({ label: 'Rex the tiger barb', verb: 'nipping' });
+    expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'Rex the tiger barb', verb: 'nipping' });
     c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Tank the oscar in a fight.' });
-    expect(lastHurtBy(c)).toEqual({ label: 'Tank the oscar', verb: 'attacking' });
+    expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'Tank the oscar', verb: 'attacking' });
     c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Ember the betta (harassment).' });
-    expect(lastHurtBy(c)).toEqual({ label: 'Ember the betta', verb: 'chasing' });
+    expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'Ember the betta', verb: 'chasing' });
+    c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by the anemone, which stings.' });
+    expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'the anemone', verb: 'stinging' }); // next's review: a sting stings
   });
 
   it('a listing’s row reads in words: stages, sexes, personality and a health out of 100', () => {

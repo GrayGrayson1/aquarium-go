@@ -10,6 +10,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useSharedMode } from '@/state/sharedMode';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
+import { guardedReload } from '../common/reload'; // the review of I2
 import { Button, Modal, Toggle } from '../kit';
 import { Wordmark } from '../screens/TitleScreen';
 import { BUILD_ID, parseBuildId, versionUrl } from '../hud/updateCheck';
@@ -47,7 +48,7 @@ export function SharedOpening() {
         </div>
         {phase !== 'saving' && phase !== 'checking' && (
           <Button variant="ghost" size="sm" onClick={() => void leaveSharedShop()} data-testid="shared-opening-back">
-            <ArrowLeft size={14} aria-hidden /> {from === 'title' ? 'Title' : W.back}
+            <ArrowLeft size={14} aria-hidden /> {from === 'title' ? 'Back to the title screen' : W.back}
           </Button>
         )}
       </div>
@@ -155,7 +156,7 @@ function useNewBuildOut(watch: boolean): 'new' | 'same' | null {
   return out;
 }
 
-/** Why the visit ended (§8 "Closing: …"), over wherever the player went back to; `build` and `outofstep` offer Reload. */
+/** Why the visit ended (§8 "Closing: …"), over wherever the player went back to; `build` offers Reload, RETRY_CLOSINGS Try again. */
 export function SharedClosingCard() {
   const closing = useShared((s) => s.closing);
   const club = useShared((s) => s.club?.name ?? '');
@@ -176,7 +177,7 @@ export function SharedClosingCard() {
       labelledBy="shared-closing-text"
       actions={
         reload ? (
-          <Button variant="primary" disabled={closing.why === 'build' && newBuild !== 'new'} onClick={() => location.reload()} data-testid="shared-closing-reload">
+          <Button variant="primary" disabled={closing.why === 'build' && newBuild !== 'new'} onClick={guardedReload} data-testid="shared-closing-reload">
             {W.reload}
           </Button>
         ) : retry ? (
@@ -187,7 +188,7 @@ export function SharedClosingCard() {
               </Button>
             )}
             {!closing.noRetry && (
-              <Button variant="primary" onClick={tryAgainShared} data-testid="shared-closing-retry">
+              <Button variant="primary" onClick={() => void tryAgainShared()} data-testid="shared-closing-retry">
                 {W.tryAgain}
               </Button>
             )}
