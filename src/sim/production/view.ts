@@ -14,7 +14,7 @@ import { makeTankInfo, readinessDrag, readinessTarget, READY, spPlural, type Rea
 import { planAutofeed } from '../care/autofeed';
 import { bestOpenBid } from '../economy/listings';
 import { isLineYoung } from './costs';
-import { QUARANTINE_HOURS, lineStatus, lineWaitsOn, listingHeldUp, productionLines, quarantineBusyUntil, quarantineFull, quarantineReady, raiseTankFull, restartDay, unsoldYoung, unwellForSale, youngPlaces, youngSizeCm, type LineStatus } from './index';
+import { QUARANTINE_HOURS, lineStatus, lineWaitsOn, listingHeldUp, productionLines, quarantineBusyUntil, quarantineFull, quarantineReady, raiseTankFull, restartDay, unsoldYoung, unwellMember, youngPlaces, youngSizeCm, type LineStatus } from './index';
 
 export type StageId = 'breed' | 'raise' | 'sort' | 'quarantine' | 'sell';
 
@@ -123,7 +123,7 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
 
   // Quarantine
   // a batch listed again has done its hold, unless it was taken off sale and waits on an unwell animal (H1 second review)
-  const inHold = (line.batches ?? []).find((b) => b.tankId && b.quarantinedHour !== undefined && !b.released && (!b.relists || b.creatureIds.some((id) => state.creatures[id]?.status === 'alive' && unwellForSale(state.creatures[id]))));
+  const inHold = (line.batches ?? []).find((b) => b.tankId && b.quarantinedHour !== undefined && !b.released && (!b.relists || !!unwellMember(state, b)));
   const waitsOn = lineWaitsOn(state, line);
   const quarantine = (inHold?.tankId ? state.tanks[inHold.tankId] : undefined) ?? line.tanks.quarantine.map((id) => state.tanks[id]).find(Boolean);
   const quarantined: LineView['quarantined'] = { count: 0, word: 'juveniles', unsold: unsoldYoung(state, line).length };
@@ -137,7 +137,8 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     if (end > now + 1e-9) quarantined.listsDay = dayOf(end);
     quarantined.holdFraction = Math.max(0, Math.min(1, (now - inHold.quarantinedHour) / QUARANTINE_HOURS));
     if (end <= now + 1e-9 && waitsOn) quarantined.waitsOn = waitsOn; // past its hold: it waits on the unwell one
-    else if (end <= now + 1e-9) quarantined.listsWhy = listingHeldUp(state) ?? 'Lists as soon as it can'; // H1 records check
+    // H1 records check; final review: with List automatically off the line never lists it, so no "lists" promise
+    else if (end <= now + 1e-9) quarantined.listsWhy = line.rules.autoList ? listingHeldUp(state) ?? 'Lists as soon as it can' : 'Yours to list or move';
   } else if ((line.batches ?? []).some((b) => !b.tankId)) {
     // a batch waits: when does the first busy quarantine tank free up? (a day ahead only: a tank held past its hold
     // promises none, H1 second review)

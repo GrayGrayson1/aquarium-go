@@ -755,9 +755,13 @@ export function restartDay(state: GameState, line: ProductionLine): number | nul
   return brood ? day(Math.max(now, brood.nextStageHour)) : day(now);
 }
 
-/** A batch's first living member that is unwell (the line won't list it, so the batch waits on it). */
-function unwellMember(state: GameState, b: { creatureIds: string[] }): Creature | undefined {
-  return b.creatureIds.map((id) => state.creatures[id]).find((c): c is Creature => !!c && c.status === 'alive' && unwellForSale(c));
+/**
+ * A batch's first member the line would list that is unwell (so the batch waits on it): alive, in the batch's tank and
+ * not protected, release()'s own filter (Audit 2026-11-17, final review: one moved out, or an unwell Prismatic the line
+ * never lists, was still named).
+ */
+export function unwellMember(state: GameState, b: { creatureIds: string[]; tankId?: string }): Creature | undefined {
+  return b.creatureIds.map((id) => state.creatures[id]).find((c): c is Creature => !!c && c.status === 'alive' && c.tankId === b.tankId && !isProtected(state, c) && unwellForSale(c));
 }
 
 /**
@@ -982,6 +986,11 @@ function countSales(state: GameState, line: ProductionLine): void {
         continue;
       }
       if (l.status === 'sold') {
+        // a part that sold has no ask to cap: animals grown out of the juveniles' lot keep that lot's (final review)
+        if (b.lastAsk) {
+          delete b.lastAsk[l.kind === 'juveniles' ? 'juveniles' : 'adults'];
+          if (b.lastAsk.juveniles === undefined && b.lastAsk.adults === undefined) delete b.lastAsk;
+        }
         const n = l.creatureIds.length;
         const v = roundCents(l.soldFor ?? 0);
         line.stats.soldCount += n;
@@ -998,7 +1007,10 @@ function countSales(state: GameState, line: ProductionLine): void {
           takeBack(back);
           unsold = true;
           const part = l.kind === 'juveniles' ? 'juveniles' : 'adults';
-          if (l.buyNow && l.creatureIds.length) asked[part] = Math.min(asked[part] ?? Infinity, l.buyNow / l.creatureIds.length);
+          // a head of the lot as it was listed: the market drops animals that die from the listing but keeps its price
+          // (final review: $214 over 8 survivors was $26.75 a head, where the line had asked $17.83 each for 12)
+          const listed = l.snapshot?.creatureIds?.length || l.creatureIds.length;
+          if (l.buyNow && listed) asked[part] = Math.min(asked[part] ?? Infinity, l.buyNow / listed);
         } else if (sp) leftToPlayer(state, line, sp, back, b.tankId, l.status === 'expired' ? 'that didn’t sell' : 'taken off sale');
       }
     }
@@ -1203,7 +1215,7 @@ function pruneNoticed(state: GameState, line: ProductionLine): void {
       (kind === 'floor' && !batches.has(id)) ||
       (kind === 'cycle' && (!state.tanks[id] || quarantineReady(state.tanks[id]))) ||
       (kind === 'qtfull' && (!state.tanks[id] || !(line.batches ?? []).some((b) => !b.tankId && !b.released))) || // said again for the next batch it holds up
-      (kind === 'ill' && !(line.batches ?? []).some((b) => b.id === id && b.creatureIds.some((cid) => !!state.creatures[cid] && unwellForSale(state.creatures[cid])))); // until it's well
+      (kind === 'ill' && !(line.batches ?? []).some((b) => b.id === id && !!unwellMember(state, b))); // until it's well, or moved out
     if (stale) delete line.noticed[k];
   }
   if (!Object.keys(line.noticed).length) delete line.noticed;

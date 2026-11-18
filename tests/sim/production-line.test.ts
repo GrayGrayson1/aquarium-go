@@ -1256,6 +1256,84 @@ describe('Audit 2026-11-17 (H1): young a line leaves in quarantine', () => {
     expect(g.log.some((e) => e.text === `Betta line: ${again.title} didn’t sell, so they’re listed again at ${fmtMoney(again.buyNow! / n)} each`)).toBe(true);
   });
 
+  it('a third of a listed lot dies and fair value rises 12 %: the relisting still asks less a head than the lot did (final review)', () => {
+    const f = farm({ seed: 151 });
+    const g = f.g;
+    const line = start(f);
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const ids = new Set(young(f, f.qt.id).map((c) => c.id));
+    const { l, buyers } = endUnsold(f, line, ids);
+    const listed = l.creatureIds.length;
+    const each0 = l.buyNow! / listed; // what the line advertised a head
+    for (const id of l.creatureIds.slice(0, Math.floor(listed / 3))) g.creatures[id].status = 'dead';
+    run(g, 1);
+    expect(l.status).toBe('expired');
+    expect(l.creatureIds.length).toBe(listed - Math.floor(listed / 3)); // the market dropped the dead, kept the price
+    buyers();
+    for (const x of g.market.buyers) x.budget = 1;
+    (g.market.demand ??= {}).betta = 1.12 * (g.market.demand?.betta ?? 1);
+    run(g, 1);
+    expect(line.batches?.[0].lastAsk?.juveniles).toBeCloseTo(each0, 9); // over the lot as listed, not the survivors
+    const again = lineListings(g, ids).find((x) => x.id !== l.id)!;
+    expect(again.buyNow! / again.creatureIds.length).toBeLessThan(each0);
+  });
+
+  it('a part that sold leaves no ask behind: juveniles that grew up keep their own lot’s ask (final review)', () => {
+    const f = farm({ seed: 119 });
+    const g = f.g;
+    const line = start(f);
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const batch = line.batches!.find((b) => b.tankId === f.qt.id)!;
+    const ids = new Set(batch.creatureIds);
+    run(g, batch.quarantinedHour! + QUARANTINE_HOURS - g.clock.hour - 2);
+    const sp = getSpecies('betta');
+    const grow = (id: string) => Object.assign(g.creatures[id], { bornHour: g.clock.hour - (sp.lifecycle.juvenileDays + 5) * 24, lifeStage: 'adult' });
+    for (const id of batch.creatureIds.slice(0, 2)) grow(id);
+    for (const x of g.market.buyers) x.budget = 1; // nobody buys
+    run(g, 3);
+    const juv = lineListings(g, ids).find((l) => l.status === 'active' && l.kind === 'juveniles')!;
+    const adults = lineListings(g, ids).find((l) => l.status === 'active' && l.kind === 'group')!;
+    // an earlier round in which both parts ended unsold left both asks; the adults' is far above the juveniles'
+    batch.relists = 1;
+    batch.lastAsk = { juveniles: juv.buyNow! / juv.creatureIds.length, adults: 26 };
+    // the adults' lot sells, the juveniles' lot ends unsold
+    adults.status = 'sold';
+    adults.soldFor = adults.buyNow;
+    for (const id of adults.creatureIds) g.creatures[id].status = 'sold';
+    juv.bids = [];
+    juv.endsHour = g.clock.hour + 0.5;
+    run(g, 1);
+    expect(juv.status).toBe('expired');
+    for (const id of juv.creatureIds.slice(0, 2)) grow(id); // two of them have grown up since
+    run(g, 1);
+    expect(batch.lastAsk?.adults).toBeUndefined();
+    const relisted = lineListings(g, ids).filter((l) => l.status === 'active' && l.id !== juv.id);
+    const grownUp = relisted.find((l) => l.kind === 'group')!;
+    expect(grownUp.buyNow! / grownUp.creatureIds.length).toBeLessThanOrEqual(juv.buyNow! / juv.creatureIds.length); // not $26 a head
+  });
+
+  it('List automatically off and the line paused when the hold ends: no promise to list them (final review)', () => {
+    const f = farm({ seed: 153 });
+    const g = f.g;
+    const line = start(f, { rules: { autoList: false } });
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const b = line.batches!.find((x) => x.tankId === f.qt.id)!;
+    run(g, b.quarantinedHour! + QUARANTINE_HOURS - g.clock.hour - 2);
+    setLineRunning(g, line.id, false);
+    run(g, 4);
+    expect(b.released).toBeFalsy(); // past its hold, the line paused
+    const v = lineView(g, line)!;
+    expect(v.quarantined.listsDay).toBeUndefined();
+    expect(v.quarantined.listsWhy).toBe('Yours to list or move'); // it said "Lists as soon as it can"
+    setLineRunning(g, line.id, true);
+    run(g, 2);
+    expect(line.batches).toBeUndefined(); // handed to the player, as it said
+    expect(lineView(g, line)!.quarantined.unsold).toBeGreaterThan(0);
+  });
+
   it('lastAsk: repaired when unreadable or without relists, kept when sound, and absent leaves the hash as it was', () => {
     const f = farm({ seed: 152 });
     const g = f.g;
