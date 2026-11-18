@@ -137,7 +137,7 @@ const PARAM_HELP: Partial<Record<string, { gloss: string; article?: string; labe
   nitrate: { gloss: 'The end of the nitrogen cycle: water changes and plants take it out. ppm means parts per million.', article: 'nitrogen_cycle', label: 'What ammonia, nitrite and nitrate mean' },
   ph: { gloss: 'pH says how acid (low) or alkaline (high) the water is.' },
   kh: { gloss: 'KH is the water’s buffer: it holds the pH steady.' },
-  gh: { gloss: 'GH is the minerals dissolved in the water.' },
+  gh: { gloss: 'GH measures the minerals dissolved in the water.' }, // (J5 review)
   salinity: { gloss: 'SG (specific gravity) says how salty the water is.', article: 'salinity', label: 'How salinity and topping off work' },
   cycle: { gloss: 'The bacteria in the filter that clean the water.', article: 'cycling', label: 'What “cycling” means' },
 };

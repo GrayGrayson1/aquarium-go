@@ -1250,8 +1250,8 @@ function quarantine(state: GameState, line: ProductionLine, sp: SpeciesDefinitio
     if (uncycled && !b.tankId) {
       const members = b.creatureIds.map((id) => state.creatures[id]).filter((c): c is Creature => !!c);
       const where = members.map((c) => c.tankId).find(Boolean) ?? line.tanks.raise;
-      // "{Line}: {tank} isn't cycled yet, so the juveniles wait in {tank}."
-      notice(state, line, `cycle:${uncycled.id}`, hour, { kind: 'warning', text: `${line.name}: ${uncycled.name} isn’t cycled yet, so the ${youngWord(sp, members, members.length)} ${members.length === 1 ? 'waits' : 'wait'} in ${tankName(state, line, where)}.`, tankId: uncycled.id });
+      // "{Line}: {tank}’s filter bacteria are still growing, so the juveniles wait in {tank}." (Audit 2026-11-17, J5 review)
+      notice(state, line, `cycle:${uncycled.id}`, hour, { kind: 'warning', text: `${line.name}: ${uncycled.name}’s filter bacteria are still growing, so the ${youngWord(sp, members, members.length)} ${members.length === 1 ? 'waits' : 'wait'} in ${tankName(state, line, where)}.`, tankId: uncycled.id });
     } else if (noRoom && !b.tankId) {
       // Audit 2026-11-17 (H1): a cycled quarantine tank with no room (often the young an ended listing left there)
       const members = b.creatureIds.map((id) => state.creatures[id]).filter((c): c is Creature => !!c);

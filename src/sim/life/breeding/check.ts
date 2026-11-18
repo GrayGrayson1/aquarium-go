@@ -188,7 +188,7 @@ export function evaluatePair(state: GameState, aId: string, bId: string, forStar
   }
   for (const c of [a, b]) {
     if (c.stats.health < 50) hard(`${c.name} needs to recover first (health ${Math.round(c.stats.health)}%).`, 'Sort out water quality and feeding, and let them recover.');
-    else if (c.illness) hard(`${c.name} is ill (${illnessName(c.illness.kind, sp)}).`, 'Treat the illness before breeding.'); // Audit 2026-11-17 (J3): the card's name
+    else if (c.illness) hard(`${c.name} is ill with ${illnessName(c.illness.kind, sp)}.`, 'Treat the illness before breeding.'); // Audit 2026-11-17 (J3): the card's name, not in brackets (the review: the name may carry its own brackets, "white spot (ich)")
     if (c.stats.stress > 70) soft(`${c.name} is too stressed to breed.`, 'Reduce stress: hides, calm tank mates, stable water, no glass tapping.');
     if (c.stats.hunger > 70) soft(`${c.name} is hungry — breeding animals need to be well fed.`, 'Feed them well for a day.');
   }

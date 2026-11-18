@@ -197,7 +197,7 @@ describe('D4: the tank-size verdict is graded by how short the tank is (the owne
       addCreature(s, createCreature(s, mulberry32(9), 'royal_gramma', { ageDays: 200, name: 'Gus' }), t.id);
       const before = s.log.length;
       stepTankCreatures(s, t, 1, makeContext(s, 1));
-      const said = s.log.slice(before).some((e) => /Gus's tank is too small/.test(e.text));
+      const said = s.log.slice(before).some((e) => /Gus’s tank is too small/.test(e.text));
       expect(said, tier).toBe(warned);
     }
   });

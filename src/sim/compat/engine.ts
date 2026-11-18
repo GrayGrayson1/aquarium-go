@@ -937,7 +937,7 @@ function directional(A: CompatMember, B: CompatMember, ctx: CompatContext, out: 
       // No tag, but the prey plainly fits in the mouth of a meat-eater (ambush predators swallow slender fish whole).
       const predatory = a.temperament === 'predatory';
       const p = mitigate((predatory ? 0.25 : 0.07) * df, mitFactor(['cover', 'hides', 'tank_size'], ctx, A, B));
-      add(predatory ? 'warning' : 'caution', 'predation', `At ${b.adultSizeCm} cm, ${plural(b)} are small enough to fit in ${the(a)}'s mouth.`, { probability: weekly(p) });
+      add(predatory ? 'warning' : 'caution', 'predation', `At ${b.adultSizeCm} cm, ${plural(b)} are small enough to fit in ${the(a)}’s mouth.`, { probability: weekly(p) });
       out.incident({ kind: 'predation', actorSpeciesId: a.id, targetSpeciesId: b.id, actorIds, targetIds, perDay: p, lethal: true, maxPreyCm: Math.max(mouth * 1.15, b.adultSizeCm), text: `${cap(the(a))} may swallow ${plural(b)}.` });
       adultPredation = true;
       out.flag(`pred:${dir}`);
@@ -975,7 +975,7 @@ function directional(A: CompatMember, B: CompatMember, ctx: CompatContext, out: 
     const p = mitigate(a.finNipper * 0.35 * (0.4 + 0.6 * zoneOverlap(a, b)), mitFactor(['sight_breaks', 'cover'], ctx, A, B));
     const sev: Sev = capByRule(out, key, a.finNipper >= 0.5 ? 'warning' : a.finNipper >= 0.25 ? 'caution' : 'info');
     add(sev, 'aggression', `${Subj(a)} may nip the long fins of ${plural(b)}.`, { probability: weekly(p), mitigation: 'Choose short-finned tank mates instead.' });
-    out.incident({ kind: 'fin_nip', actorSpeciesId: a.id, targetSpeciesId: b.id, actorIds, targetIds, perDay: p, lethal: false, text: `${cap(the(a))} is nipping at the ${lower(b.commonName)}'s fins.` });
+    out.incident({ kind: 'fin_nip', actorSpeciesId: a.id, targetSpeciesId: b.id, actorIds, targetIds, perDay: p, lethal: false, text: `${cap(the(a))} is nipping at the ${lower(b.commonName)}’s fins.` });
     out.flag(`fin:${dir}`);
   }
 
@@ -983,8 +983,8 @@ function directional(A: CompatMember, B: CompatMember, ctx: CompatContext, out: 
   if ((b.preyTags ?? []).includes('gills_external') && a.category === 'fish' && !out.has(`gill:${dir}`) && ((a.finNipper ?? 0) >= 0.05 || a.aggression >= 0.25 || a.feedingStyle === 'picker')) {
     const sev: Sev = a.finNipper >= 0.3 || a.aggression >= 0.5 ? 'warning' : 'caution';
     const p = mitigate(0.08 + a.finNipper * 0.4 + a.aggression * 0.2, mitFactor(['cover', 'sight_breaks'], ctx, A, B));
-    add(sev, 'aggression', `${Subj(a)} may pick at ${the(b)}'s delicate external gills.`, { probability: weekly(p) });
-    out.incident({ kind: 'gill_nip', actorSpeciesId: a.id, targetSpeciesId: b.id, actorIds, targetIds, perDay: p, lethal: false, text: `${cap(the(a))} is picking at the ${lower(b.commonName)}'s gills.` });
+    add(sev, 'aggression', `${Subj(a)} may pick at ${the(b)}’s delicate external gills.`, { probability: weekly(p) });
+    out.incident({ kind: 'gill_nip', actorSpeciesId: a.id, targetSpeciesId: b.id, actorIds, targetIds, perDay: p, lethal: false, text: `${cap(the(a))} is picking at the ${lower(b.commonName)}’s gills.` });
     out.flag(`gill:${dir}`);
   }
 

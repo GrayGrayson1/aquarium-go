@@ -175,8 +175,9 @@ function tidyCelsius(text: string): string {
  *  does not ("breeding slows below ~21 °C" is a real temperature). */
 // Audit 2026-11-17 (review of D8): "Cools 1–2 °C by evaporation", "Cools about 2 °C", "Cools only about 2 °C" (care/fit.ts)
 // Audit 2026-11-17 (J1): "needs to drop about 2 °C" and a signed "−1 °C" are differences too (they read as 36 °F and
-// 30 °F before)
-const TEMP_DELTA_BEFORE = /(?:\bby\s+(?:~\s*|about\s+|around\s+)?|±\s*|\b(?:cools?|warms?|drops?)\s+(?:only\s+)?(?:~\s*|about\s+|around\s+)?|[−+]\s*)$/i;
+// 30 °F before). The review: only the verb marks one ("Cools 2 °C", "cool about 2 °C", "drop about 2 °C"), never the
+// adjective ("a cool 18 °C room" is a temperature); a sign only when no digit or letter is right before it.
+const TEMP_DELTA_BEFORE = /(?:\bby\s+(?:~\s*|about\s+|around\s+)?|±\s*|\b(?:cools|warms|drops)\s+(?:only\s+)?(?:~\s*|about\s+|around\s+)?|\b(?:cool|warm|drop)\s+(?:only\s+)?(?:~\s*|about\s+|around\s+)|(?:^|[\s(])[−+]\s*)$/i;
 const TEMP_DELTA_AFTER = /^\s+(?:below|above|cooler|warmer|colder|hotter|lower|higher|of|per)\b/i;
 
 function fDelta(c: number): string {

@@ -81,7 +81,7 @@ describe('lifecycle — incidents', () => {
     expect(betta.life?.injury ?? 0).toBeGreaterThan(0);
     expect(betta.life?.damage?.injury ?? 0).toBeGreaterThan(0);
     expect(betta.stats.health).toBeLessThanOrEqual(h0);
-    const nips = s.log.filter((e) => e.kind === 'warning' && /nipping Ember's fins/.test(e.text));
+    const nips = s.log.filter((e) => e.kind === 'warning' && /nipping Ember’s fins/.test(e.text));
     expect(nips.length).toBeGreaterThanOrEqual(1);
     // The throttle is one line per nipper per 8 game hours: at most 6 in 48 h, never two within 8 h. (How many of
     // those windows actually roll a nip is seed-dependent — a species-data tweak shifts the draws.)

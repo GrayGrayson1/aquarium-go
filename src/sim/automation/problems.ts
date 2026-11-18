@@ -232,7 +232,7 @@ export function saltOutText(state: GameState, p: SupplyProblem): string {
     case 'no_manager':
       return `No one reorders salt mix. Buy it, or hire a stock manager.${lasts}`;
     case 'orders_off':
-      return `${name}'s orders are switched off, so nobody reorders salt mix.${lasts}`;
+      return `${name}’s orders are switched off, so nobody reorders salt mix.${lasts}`;
     case 'cash':
       return `${name} couldn’t reorder salt mix: there isn’t enough cash right now.${lasts}`;
     default:

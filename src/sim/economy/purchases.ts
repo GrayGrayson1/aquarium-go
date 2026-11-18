@@ -149,7 +149,7 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
   const uncycled = finite(tank.water?.bioMaturity, 1) < 0.4;
   emitEvent(state, {
     kind: uncycled ? 'warning' : 'info',
-    text: `${who} arrived in ${tank.name}.${uncycled ? ' This tank is not cycled yet — feed lightly and watch ammonia closely.' : ' Give them a little time to settle in.'}`,
+    text: `${who} arrived in ${tank.name}.${uncycled ? ' This tank’s filter bacteria are still growing — feed lightly and watch ammonia closely.' : ' Give them a little time to settle in.'}`, // Audit 2026-11-17 (J5 review): the words the Production card uses, not "cycled"
     tankId,
     creatureId: bought[0]?.id,
     ...(uncycled ? { toast: true } : {}), // audit 2026-11-17 (F4): said where the player sees it, not only in the log
@@ -362,10 +362,10 @@ export function buyTank(state: GameState, tierId: string, waterClass: WaterClass
   emitEvent(state, {
     kind: 'tip',
     text: opts.seeded
-      ? `Your ${tier.name} is set up with seeded media, so it’s partly cycled. Add animals gradually and keep testing the water.`
+      ? `Your ${tier.name} is set up with seeded media, so its filter bacteria are partly grown. Add animals gradually and keep testing the water.` // Audit 2026-11-17 (J5 review): the words the Production card uses, not "cycled"
       : // Audit 2026-11-17 C5 — new water reads zero ammonia and nitrite from the start, so "wait until they read zero"
         // was passed at once; say what to watch instead, and how long (a pinch a day: about a week in the sim)
-        `Your ${tier.name} is filled, but it isn’t cycled yet. Drop in a pinch of food each day until the tank card’s Biological filter reads Mature before adding animals — about a week, or a few days with bottled bacteria.`,
+        `Your ${tier.name} is filled, but its filter bacteria haven’t grown yet. Drop in a pinch of food each day until the tank card’s Biological filter reads Mature before adding animals — about a week, or a few days with bottled bacteria.`,
     tankId: tank.id,
     toast: true,
   });

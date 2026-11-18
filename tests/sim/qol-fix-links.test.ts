@@ -47,7 +47,7 @@ describe('QOL-002: water issues link to their fix', () => {
     expect(fixForWaterIssue(tank, { text: `The ${name} has failed.`, advice: 'Repair or replace it.' })).toEqual({ label: 'Repair', to: { kind: 'card', tankId: tank.id, tab: 'gear', fix: `equip-${heater.id}` } });
     heater.failMode = 'stuck_on';
     heater.on = true;
-    expect(fixForWaterIssue(tank, { text: `The ${name}'s thermostat has stuck on.`, advice: 'Switch it off now.' })?.label).toBe('Switch it off');
+    expect(fixForWaterIssue(tank, { text: `The ${name}’s thermostat has stuck on.`, advice: 'Switch it off now.' })?.label).toBe('Switch it off');
   });
   it('mixing animals that need different water → Livestock', () => {
     const { tank } = setup();

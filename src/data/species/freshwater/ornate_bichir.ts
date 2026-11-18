@@ -159,7 +159,7 @@ export const ornateBichir: SpeciesDefinition = {
   ],
   confidenceNotes: [
     'Clutch size and age at maturity come from hobby breeders (Tier 3); the hatch time is Seriously Fish’s and the behaviour FishBase’s.',
-    'Sources differ on its own kind (Seriously Fish lists other bichirs as tankmates, LiveAquaria calls it aggressive to them); the game keeps one per tank by default.',
+    'Sources differ on its own kind (Seriously Fish lists other bichirs as tank mates, LiveAquaria calls it aggressive to them); the game keeps one per tank by default.',
     'In the wild a soft-water rainy season triggers spawning; the game has no such cue, so breeding is simply hard.',
   ],
   exceptionRules: [
@@ -170,7 +170,7 @@ export const ornateBichir: SpeciesDefinition = {
     { other: 'tag:fish_medium', verdictFloor: 'high_risk', reason: 'Medium fish are within reach of an adult bichir.', incidentRisk: 0.08, mitigatedBy: ['tank_size'] },
     { other: 'tag:shrimp_dwarf', verdictFloor: 'incompatible', reason: 'A bichir eats shrimp.', incidentRisk: 0.3 },
     { other: 'tag:amphibian', verdictFloor: 'incompatible', reason: 'A bichir eats frogs.', incidentRisk: 0.3 },
-    { other: 'fahaka_puffer', verdictFloor: 'incompatible', reason: 'The fahaka bites chunks out of tankmates and must live alone.', incidentRisk: 0.3 },
+    { other: 'fahaka_puffer', verdictFloor: 'incompatible', reason: 'The fahaka bites chunks out of tank mates and must live alone.', incidentRisk: 0.3 },
     { other: 'oscar', verdictFloor: 'conditional', reason: 'Size-matched adults share a big tank, but an oscar eats a young bichir and takes the food first: feed the bichir after dark.', incidentRisk: 0.03, mitigatedBy: ['target_feeding', 'tank_size'] },
     { other: 'silver_arowana', verdictFloor: 'usually_compatible', reason: 'Different zones: the arowana holds the surface, the bichir the floor; feed the bichir after dark.', incidentRisk: 0.01, mitigatedBy: ['target_feeding'] },
     { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; a bichir needs tropical water.', incident: 'none' },

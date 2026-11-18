@@ -39,7 +39,8 @@ import { useGame } from '@/state/game';
 import { useShell } from '@/ui/common/shellStore';
 import { ARTICLES } from '@/ui/panels/encyclopedia/science';
 import { getWaterReport } from '@/sim/water';
-import { socialWord } from '@/ui/panels/common/Profile';
+import { socialWord, socialDetail } from '@/ui/panels/common/Profile';
+import { ALL_SPECIES } from '@/data/species';
 import { TANK_STATUS_WORD } from '@/ui/common/tankStatus';
 import { ATTENTION_WORD } from '@/ui/common/notify';
 import { ACHIEVEMENTS } from '@/data/achievements';
@@ -51,7 +52,7 @@ import { lowerName } from '@/data/speciesWords';
 import { pluralName, speciesSingular } from '@/sim/economy/util';
 import { plural as compatPlural, the as compatThe } from '@/sim/compat/text';
 import { spName, spPlural } from '@/sim/life/breeding/common';
-import { livestockSummary } from '@/sim/economy/valuation';
+import { livestockSummary, creatureValue } from '@/sim/economy/valuation';
 import { fillTemplate } from '@/sim/facility/reactions';
 import { saleWarnings } from '@/sim/economy/warnings';
 import { withArticle } from '@/sim/economy/util';
@@ -60,6 +61,13 @@ import { IncomeChart } from '@/ui/panels/finances/IncomeChart';
 import { probabilityWord } from '@/ui/common/format';
 import type { CompatReport } from '@/types';
 import { moveCreature } from '@/sim/life/actions';
+import { nextStepLine } from '@/ui/cards/CreatureCard';
+import { YoungView, LivestockPanel } from '@/ui/panels/livestock/LivestockPanel';
+import { breedingCheck, breedingStatus } from '@/sim/life';
+import { useUI } from '@/state/ui';
+import { convertWaterClass } from '@/sim/tankOps';
+import { matches } from '@/ui/panels/common/match';
+import { findAnything } from '@/ui/search/searchIndex';
 import { setLighting, feedTank } from '@/sim/care';
 import { warningText } from '@/persistence/storage';
 import { setOpenHours } from '@/sim/facility/actions';
@@ -118,6 +126,10 @@ describe('J1: a player on °F reads °F in the log, the bell, notifications and 
     expect(f('(about −1 °C, gentle)')).toBe('(about −2 °F, gentle)');
     // absolute temperatures are untouched by the new rules
     expect(f('needs 24 °C+')).toBe('needs 75 °F+');
+    // the review: the adjective ("a cool 18 °C room") is a temperature; the verb is a difference
+    expect(f('Keep it in a cool 18 °C room.')).toBe('Keep it in a cool 64 °F room.');
+    expect(f('A warm 28 °C tank suits it.')).toBe('A warm 82 °F tank suits it.');
+    expect(f('Warms about 1 °C at night.')).toBe('Warms about 2 °F at night.');
     expect(formatTempDelta(2, 'F')).toBe('4 °F');
     expect(formatTempDelta(2, 'C')).toBe('2 °C');
   });
@@ -148,6 +160,45 @@ describe('J1: a player on °F reads °F in the log, the bell, notifications and 
   it('the zebra danio’s range has both ends in °C, so both convert', () => {
     const fact = getSpecies('zebra_danio').encyclopedia.funFact;
     expect(convertTempText(fact, 'F')).toMatch(/from 76\.3 °F to 101\.5 °F/);
+  });
+
+  // the review: three places still showed the breeding lines' °C
+  it('the pairing check’s next step, and Eggs & fry’s breeding activity and chip, read °F', () => {
+    const g = base();
+    const t = g.tanks[g.tankOrder[0]];
+    const ember = Object.values(g.creatures)[0];
+    ember.sex = 'male';
+    ember.lifeStage = 'adult';
+    const bea = addCreature(g, createCreature(g, simRng(g), 'betta', { sex: 'female', ageDays: 400, name: 'Bea' }), t.id);
+    t.water.tempC = 22;
+    const step = breedingCheck(g, ember.id, bea.id).nextStep ?? '';
+    expect(step).toMatch(/27 °C/);
+    expect(nextStepLine(step, 'F')).toMatch(/^Next step: .*81 °F/);
+    expect(nextStepLine(step, 'F')).not.toMatch(/°C/);
+
+    const w = base();
+    const mossy = createTank(w, 'g20L', 'freshwater_cool', { cycled: true, name: 'Mossy' });
+    mossy.decor = Array.from({ length: 10 }, (_, i) => ({ id: `moss${i}`, defId: 'java_moss', x: -0.3 + i * 0.06, y: 0, z: 0, rotY: 0, scale: 2.4, seed: i, growth: 1, health: 100 })) as never;
+    const rng = simRng(w);
+    addCreature(w, createCreature(w, rng, 'white_cloud_minnow', { sex: 'male', ageDays: 200, name: 'Hiro' }), mossy.id);
+    const kumo = addCreature(w, createCreature(w, rng, 'white_cloud_minnow', { sex: 'female', ageDays: 200, name: 'Kumo' }), mossy.id);
+    mossy.water.tempC = 26;
+    kumo.repro.stage = 'gravid';
+    expect(breedingStatus(w, kumo.id)?.detail).toMatch(/needs ≤ 24 °C/);
+    useF();
+    useGame.setState({ game: w });
+    Object.assign(useGame.getInitialState(), useGame.getState());
+    try {
+      const young = text(renderToStaticMarkup(createElement(YoungView, { g: w })));
+      expect(young).toMatch(/Kumo .*Full of eggs — Can’t spawn yet: the water is too warm to spawn \(needs ≤ 75 °F\)/);
+      useUI.setState({ panel: 'livestock' });
+      const list = renderToStaticMarkup(createElement(LivestockPanel));
+      expect(list).toMatch(/title="Can’t spawn yet: the water is too warm to spawn \(needs ≤ 75 °F\)"/);
+      expect(`${young} ${list}`).not.toMatch(/≤ 24 °C/);
+    } finally {
+      useUI.setState({ panel: null });
+      useGame.setState({ game: null });
+    }
   });
 });
 
@@ -225,6 +276,18 @@ describe('J4: one water type, one name (a label, and the same name inside a sent
     const line = r.reasons.map((x) => x.text).find((x) => /normally kept in/.test(x)) ?? '';
     expect(line).toMatch(/not a planted freshwater setup\./);
   });
+
+  it('converting a tank names a tank, not an adjective (the review)', () => {
+    const g = base();
+    const t = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true });
+    if (!g.progress.unlocked.includes('marine_basics')) g.progress.unlocked.push('marine_basics');
+    g.finance.money = 0; // salt mix costs money
+    const short = convertWaterClass(g, t.id, 'marine_fowlr');
+    expect(short.ok).toBe(false);
+    expect(short.message).toMatch(/^Converting to a marine fish-only tank needs \$\d+/);
+    g.finance.money = 100000;
+    expect(convertWaterClass(g, t.id, 'marine_fowlr').message).toMatch(/^Converted to a marine fish-only tank\./);
+  });
 });
 
 describe('J5: the water and genes words point to the pages that explain them', () => {
@@ -295,6 +358,30 @@ describe('J9: species pages give advice their own numbers and diets agree with',
     expect(getSpecies('dwarf_gourami').encyclopedia.feedingNote).not.toMatch(/floating pellets/);
     expect(getSpecies('figure_eight_puffer').encyclopedia.funFact).toMatch(/Its old name, biocellatus/);
   });
+
+  // the review: six group species have a minimum of 1, and the chip read "Groups of 1+"
+  it('the care chip and the creature card agree with the data for every species; no chip says “1+”', () => {
+    for (const sp of ALL_SPECIES) {
+      const { kind, minGroup: min, idealGroup: ideal } = sp.social;
+      const chip = socialWord(sp);
+      const card = `${chip}${socialDetail(sp)}`; // the card's Social row: the chip's words, then the detail
+      expect(chip, sp.id).not.toMatch(/\b[01]\+/);
+      const n = /(\d+)\+/.exec(chip);
+      if (n) expect(Number(n[1]), `${sp.id}: the chip's number is the minimum`).toBe(min);
+      if (min > 1) expect(card, sp.id).toMatch(new RegExp(`\\b${min}\\+|at least ${min}\\b`));
+      if (kind === 'group' && min <= 1) expect(chip, sp.id).toBe('Alone or in groups');
+      const best = /ideally (\d+)\+/.exec(card);
+      if (best) expect(Number(best[1]), sp.id).toBe(ideal);
+      if (ideal > Math.max(1, min) && (min > 1 || kind === 'group')) expect(best, `${sp.id}: the card gives the ideal`).not.toBeNull();
+    }
+    const card = (id: string) => `${socialWord(getSpecies(id))}${socialDetail(getSpecies(id))}`;
+    expect(card('amano_shrimp')).toBe('Alone or in groups, ideally 5+');
+    expect(card('cardinal_tetra')).toBe('School of 6+, ideally 12+');
+    expect(card('cherry_shrimp')).toBe('Colony of 3+, ideally 10+');
+    expect(card('swordtail')).toBe('Harem · at least 3, ideally 4+');
+    expect(card('spotted_scat')).toBe('Groups of 6+');
+    expect(card('ocellaris_clownfish')).toBe('Bonded pair');
+  });
 });
 
 describe('J10: a tank’s status has one set of words (B-157)', () => {
@@ -337,8 +424,33 @@ describe('J14: internal ids and tags are shown as words', () => {
     expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'Tank the oscar', verb: 'attacking' });
     c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Ember the betta (harassment).' });
     expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'Ember the betta', verb: 'chasing' });
+    c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Ember the betta, which keeps chasing her.' });
+    expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'Ember the betta', verb: 'chasing' }); // the review: her pronoun, not "it"
+    c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Ember the betta, which keeps chasing it.' });
+    expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'Ember the betta', verb: 'chasing' }); // an earlier build's line
     c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by the anemone, which stings.' });
     expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'the anemone', verb: 'stinging' }); // next's review: a sting stings
+  });
+
+  it('a listing of three life stages names them as a list (the review)', () => {
+    let summary = '';
+    for (let seed = 1; seed <= 20 && !summary; seed++) {
+      const g = newGame({ starterId: 'axolotl', starterName: 'Mochi', seed });
+      devOpenMarket(g);
+      const cs = (['juvenile', 'adult', 'elder'] as const).map((stage, i) => {
+        const c = addCreature(g, createCreature(g, simRng(g), 'axolotl', { ageDays: 60 + i * 400 }), g.tankOrder[0]);
+        c.lifeStage = stage;
+        c.stats.health = 100;
+        delete c.illness;
+        return c;
+      });
+      const ids = cs.map((c) => c.id);
+      const pv = previewListing(g, { kind: 'group', creatureIds: ids });
+      if (!pv.ok) continue;
+      const r = createListing(g, { kind: 'group', creatureIds: ids, reserve: pv.suggestedReserve, buyNow: 0, durationHours: 24 });
+      summary = g.market.listings.find((x) => x.id === r.listingId)?.snapshot.summary ?? '';
+    }
+    expect(summary).toMatch(/ · juvenile, adult and elder · /);
   });
 
   it('a listing’s row reads in words: stages, sexes, personality and a health out of 100', () => {
@@ -370,7 +482,14 @@ describe('J14: internal ids and tags are shown as words', () => {
     const g = base();
     const c = Object.values(g.creatures)[0];
     c.illness = { kind: 'stress_coloration', severity: 40, sinceHour: g.clock.hour } as never;
-    expect(creatureShowReasons(g, c).join(' | ')).toMatch(/Unwell \(stress colouring\)/);
+    expect(creatureShowReasons(g, c).join(' | ')).toMatch(/Unwell with stress colouring — rest at home/);
+    // the review: a name with its own brackets ("white spot (ich)") is never inside more brackets
+    c.illness = { kind: 'ich', severity: 40, sinceHour: g.clock.hour } as never;
+    const sp = getSpecies('betta');
+    expect(illnessName('ich', sp)).toBe('white spot (ich)');
+    expect(creatureShowReasons(g, c).join(' | ')).toMatch(/Unwell with white spot \(ich\) — rest at home until recovered/);
+    expect(creatureValue(g, c).factors.map((x) => x.note ?? '').join(' | ')).toMatch(/Currently ill with white spot \(ich\) — most buyers wait/);
+    expect([...creatureShowReasons(g, c), ...creatureValue(g, c).factors.map((x) => x.note ?? '')].join(' ')).not.toMatch(/\([^()]*\([^()]*\)[^()]*\)/);
   });
 });
 
@@ -415,7 +534,13 @@ describe('J16: plurals and articles built for the value they hold', () => {
     const cl = createClutch(g, { sp: getSpecies('discus'), tank: home, mother: f, father: m, hour: g.clock.hour, stage: 'eggs', count: 1, visual: 'eggs_adhesive', nextStageHour: g.clock.hour + 40, guardedById: m.id });
     m.repro.stage = 'guarding';
     m.repro.clutchId = cl.id;
-    expect(saleWarnings(g, [m.id])).toContain('Rio is guarding 1 egg with Sol, who will go on tending them alone.');
+    expect(saleWarnings(g, [m.id])).toContain('Rio is guarding 1 egg with Sol, who will go on tending it alone.');
+    // the review: one carried young reads in the brood's own word, and "it"
+    const c2 = createClutch(g, { sp: getSpecies('discus'), tank: home, mother: f, father: m, hour: g.clock.hour, stage: 'in_pouch', count: 1, visual: 'pouch', nextStageHour: g.clock.hour + 40, guardedById: m.id });
+    cl.count = 0;
+    expect(saleWarnings(g, [m.id])).toContain('Rio is carrying 1 egg — it goes with him if sold.');
+    c2.count = 30;
+    expect(saleWarnings(g, [m.id])).toContain('Rio is carrying 30 eggs — they go with him if sold.');
     expect(withArticle('Aquarium Store')).toBe('an Aquarium Store');
     expect(withArticle('uncommon', true)).toBe('An uncommon');
   });
@@ -455,7 +580,17 @@ describe('J18: one spelling for each thing', () => {
   it('British spellings and one form for each name', () => {
     expect(EQUIPMENT_KIND_LABEL.uv).toBe('UV steriliser');
     expect(getEquipmentDef('uv_sterilizer')?.name).toBe('UV Steriliser');
-    expect(getEquipmentDef('live_food_doser')?.name).toBe('Live-Food Doser');
+    expect(getEquipmentDef('live_food_doser')?.name).toBe('Live-food doser'); // ADR-0032's approved name, everywhere
+  });
+
+  it('the US spelling still finds what the game spells the British way (the review)', () => {
+    expect(matches('sterilizer', 'UV Steriliser')).toBe(true);
+    expect(matches('uv sterilizers', 'UV sterilisers')).toBe(true);
+    expect(matches('fertilizer', 'Liquid Fertiliser')).toBe(true);
+    expect(matches('color', 'Colour morphs')).toBe(true);
+    expect(matches('sterilizer', 'Canister Filter')).toBe(false);
+    const found = findAnything(base(), 'sterilizer').map((r) => r.title);
+    expect(found).toContain('UV Steriliser');
   });
 });
 

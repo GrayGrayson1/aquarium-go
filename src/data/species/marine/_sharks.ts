@@ -22,7 +22,7 @@ export function sharkRules(o: { crushesShells: boolean; bambooAdult?: boolean })
     { other: 'clown_triggerfish', verdictFloor: 'incompatible', reason: 'Triggerfish bite and nip bottom sharks, and the clown trigger is among the most aggressive.', incidentRisk: 0.3 },
     // the good tankmates (Chewy's list): they steal food, so the shark is target-fed; a shark tank can never be treated
     // with copper, so whatever joins it is quarantined first (design §11)
-    { other: 'tag:tang', verdictFloor: 'usually_compatible', reason: 'Tangs are good shark tankmates, but they catch whitespot and a shark tank can never take copper: quarantine them first. They grab food fast, so target-feed the shark.', incidentRisk: 0.01, mitigatedBy: ['target_feeding'] },
+    { other: 'tag:tang', verdictFloor: 'usually_compatible', reason: 'Tangs are good shark tank mates, but they catch whitespot and a shark tank can never take copper: quarantine them first. They grab food fast, so target-feed the shark.', incidentRisk: 0.01, mitigatedBy: ['target_feeding'] },
     { other: 'lyretail_anthias', verdictFloor: 'usually_compatible', reason: 'Mid-water anthias are good tank mates for a shark; they feed fast, so target-feed the shark.', incidentRisk: 0.01, mitigatedBy: ['target_feeding'] },
     { other: 'foxface_rabbitfish', verdictFloor: 'usually_compatible', reason: 'Large and peaceful, and too big to be tried; it feeds fast, so target-feed the shark.', incidentRisk: 0.01, mitigatedBy: ['target_feeding'] },
     { other: 'maroon_clownfish', verdictFloor: 'usually_compatible', reason: 'A big, feisty clownfish that keeps to its anemone; target-feed the shark.', incidentRisk: 0.01, mitigatedBy: ['target_feeding'] },

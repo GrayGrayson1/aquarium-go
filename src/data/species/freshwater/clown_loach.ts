@@ -182,7 +182,7 @@ export const clownLoach: SpeciesDefinition = {
     { other: 'tag:long_fins', verdictFloor: 'conditional', reason: 'Clown loaches nip slow, long-finned fish.', incidentRisk: 0.04 },
     { other: 'betta', verdictFloor: 'high_risk', reason: 'A slow, long-finned betta gets nipped.', incidentRisk: 0.08 },
     { other: 'discus', verdictFloor: 'conditional', reason: 'Boisterous loaches outcompete discus at feeding time.', incidentRisk: 0.02, mitigatedBy: ['target_feeding'] },
-    { other: 'fahaka_puffer', verdictFloor: 'incompatible', reason: 'The fahaka attacks tankmates and must live alone.', incidentRisk: 0.3 },
+    { other: 'fahaka_puffer', verdictFloor: 'incompatible', reason: 'The fahaka attacks tank mates and must live alone.', incidentRisk: 0.3 },
     { other: 'comet_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; a clown loach needs warm tropical water.', incident: 'none' },
     { other: 'fancy_goldfish', verdictFloor: 'incompatible', reason: 'Goldfish are cool-water fish; a clown loach needs warm tropical water.', incident: 'none' },
     { other: 'ornate_bichir', verdictFloor: 'conditional', reason: 'An adult bichir hunts the floor at night, where loaches lie on their sides; keep only loaches too big for it to swallow.', incidentRisk: 0.04, mitigatedBy: ['tank_size', 'hides'] },

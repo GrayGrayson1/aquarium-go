@@ -1,5 +1,5 @@
 /**
- * Tank labels the simulation's own messages use ("Converted to planted freshwater.", "… is now a nursery tank"), moved
+ * Tank labels the simulation's own messages use ("Converted to a planted freshwater tank.", "… is now a nursery tank"), moved
  * out of the UI with the tank edits (chunk 6, B-169); src/ui/panels/common/format.ts re-exports them. OWNER: lane
  * "ui-panels".
  */
@@ -19,7 +19,7 @@ export const WATER_CLASS_LABEL: Record<WaterClass, string> = {
   brackish: 'Brackish',
 };
 
-/** Audit 2026-11-17 (J4): the label in running text ("suited to a marine live-rock tank", "Converted to reef."). */
+/** Audit 2026-11-17 (J4): the label in running text ("suited to a marine live-rock tank", "Converted to a reef tank."). */
 export const WATER_CLASS_WORDS: Record<WaterClass, string> = {
   freshwater_cool: 'cool freshwater',
   freshwater_tropical: 'tropical freshwater',

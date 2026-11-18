@@ -90,7 +90,7 @@ describe('Audit 2026-11-17 (H2): keepers feed fry their first foods', () => {
     const { g, tank } = nursery();
     expect(installEquipment(g, tank.id, 'live_food_doser', { purchased: true }).ok).toBe(true);
     const title = () => /title="([^"]*)"/.exec(renderToStaticMarkup(createElement(TankKeeperLine, { game: g, tank })))?.[1] ?? '';
-    expect(title()).toBe('Maya keeps the water clean; the live-food doser has no baby brine or infusoria in stock, so the fry go hungry. Open Staff');
+    expect(title()).toBe('Maya keeps the water clean; the live-food doser has no live baby brine shrimp or infusoria in stock, so the fry go hungry. Open Staff'); // Audit 2026-11-17 (J3 review): the food-name table's words, as the keepers say them
     g.inventory.foods[BRINE] = 10;
     expect(title()).toBe('Maya keeps the water clean; the live-food doser feeds the fry. Open Staff');
   });

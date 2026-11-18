@@ -957,7 +957,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     const dangerous = e.def.kind === 'heater' || e.def.kind === 'chiller' || e.def.kind === 'ato';
     issues.push({
       status: stuck || (dangerous && hasAnimals) ? 'danger' : 'watch',
-      text: stuck ? `The ${e.def.name}'s thermostat has stuck on — it is cooking the tank.` : `The ${e.def.name} has failed.`,
+      text: stuck ? `The ${e.def.name}’s thermostat has stuck on — it is cooking the tank.` : `The ${e.def.name} has failed.`,
       advice: stuck ? 'Switch it off now, then repair or replace it.' : 'Repair or replace it.',
       headline: stuck ? 'Heater stuck on — overheating!' : `${e.def.name} has failed`,
       weight: stuck ? 300 : dangerous ? 205 : 110,

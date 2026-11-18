@@ -96,6 +96,7 @@ import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isM
 import { ConditionNotes } from './ConditionNotes'; // Audit 2026-11-17 (D8, D16)
 import { MoveGroupButton } from './MoveGroupButton'; // Audit 2026-11-17 (D2)
 import { AutofeederVerdict, RealLifeTips, openSpeciesGuide } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
+import { socialWord, socialDetail } from '../panels/common/Profile'; // Audit 2026-11-17 (J9 review): the chip's words
 import { Badge, Button, Chip, Meter, Section, StatusBadge, formatMoney, KV, Empty } from '../kit';
 import { setCameraMode } from '../hud/ToolRail';
 import { MoveCreatureModal } from './MoveCreatureModal';
@@ -263,9 +264,9 @@ function CareFacts({ sp, tankGallons, unit, c, nowHour }: { sp: SpeciesDefinitio
         {flow?.label ?? sentenceCase(sp.flowPreference)}
       </KV>
       <KV label={<><Users size={13} aria-hidden /> Social</>} hint={sp.social.note}>
-        {sentenceCase(sp.social.kind)}
-        {/* Audit 2026-11-17 (J9): the ideal read as a minimum ("groups of 12+" above "Keep at least six") */}
-        {sp.social.minGroup > 1 ? (sp.social.idealGroup > sp.social.minGroup ? ` · at least ${sp.social.minGroup}, ideally ${sp.social.idealGroup}+` : ` · at least ${sp.social.minGroup}`) : ''}
+        {/* Audit 2026-11-17 (J9 and its review): the care chip's words, then the ideal ("School of 6+, ideally 12+") */}
+        {socialWord(sp)}
+        {socialDetail(sp)}
       </KV>
       <KV label={<><Box size={13} aria-hidden /> Tank</>} hint={tankGallons && tankGallons < sp.recommendedMinTankGallons ? `This tank is ${tankGallons} gal — smaller than recommended.` : undefined}>
         {sp.recommendedMinTankGallons}+ gal
@@ -349,6 +350,11 @@ function Lineage({ c, game }: { c: Creature; game: GameState }) {
   );
 }
 
+/** Audit 2026-11-17 (J1 review): the pairing check's next step in the player's unit ("Raise the heater … to about 81 °F."). */
+export function nextStepLine(step: string, unit: 'C' | 'F'): string {
+  return `Next step: ${convertTempText(step, unit) ?? step}`;
+}
+
 function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDefinition }) {
   const unit = useSettings((s) => s.tempUnit); // Audit 2026-11-17 (J1): breeding notes and checks carry °C
   const status = safe('breedingStatus', () => breedingStatus(game, c.id), null);
@@ -396,7 +402,7 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
         <div className="ag-breeding__status">
           <div className="ag-row">
             <Egg size={16} aria-hidden className="ag-evicon--violet" />
-            <strong className="ag-grow">{status.label}</strong>
+            <strong className="ag-grow">{convertTempText(status.label, unit) /* Audit 2026-11-17 (J1 review) */}</strong>
             {status.progress != null && <span className="ag-small ag-tabular">{Math.round(status.progress * 100)}%</span>}
           </div>
           {status.detail && <div className="ag-small ag-muted">{convertTempText(status.detail, unit)}</div>}
@@ -432,7 +438,7 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
                   ))}
                 </ul>
               )}
-              {check.nextStep && <div className="ag-reason__fix">Next step: {check.nextStep}</div>}
+              {check.nextStep && <div className="ag-reason__fix">{nextStepLine(check.nextStep, unit)}</div>}
               {showOdds && odds.length > 0 && (
                 <div className="ag-odds" aria-label="Likely offspring">
                   <div className="ag-odds__title">Likely offspring</div>

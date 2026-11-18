@@ -102,7 +102,7 @@ describe('NOTIFY-012: the "Out of salt mix" Automation notification', () => {
     const p = salt(g)!;
     expect(saltOutText(g, p)).toMatch(/^Rosa couldn’t reorder salt mix — today’s stock budget is spent\./); // Audit 2026-11-17 (J18): the sim writes ’, as the rest of the game
     g.staff!.ordersOff = true;
-    expect(saltOutText(g, salt(g)!)).toMatch(/^Rosa's orders are switched off, so nobody reorders salt mix\./);
+    expect(saltOutText(g, salt(g)!)).toMatch(/^Rosa’s orders are switched off, so nobody reorders salt mix\./);
   });
 });
 

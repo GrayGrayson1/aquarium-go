@@ -12,7 +12,9 @@ import { useUI } from '@/state/ui';
 import { quickSellQuote, saleWarnings } from '@/sim/economy';
 import { breedingStatus, isPrismatic } from '@/sim/life';
 import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
-import { isCarried } from '@/sim/life/breeding/clutch';
+import { isCarried, youngLabel } from '@/sim/life/breeding/clutch'; // Audit 2026-11-17 (J16 review): youngLabel
+import { youngSingular } from '@/sim/life/breeding/common'; // Audit 2026-11-17 (J16 review)
+import { moduleFor } from '@/sim/life/breeding/registry'; // Audit 2026-11-17 (J16 review)
 import { clutchStatus } from '@/sim/life/breeding'; // audit E2
 import { useShell } from '../../common/shellStore';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
@@ -396,8 +398,8 @@ function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick
                     </Chip>
                   )}
                   {status && (
-                    <Chip tone="violet" icon={<Baby size={11} />} title={status.detail}>
-                      {status.label}
+                    <Chip tone="violet" icon={<Baby size={11} />} title={t(status.detail) /* Audit 2026-11-17 (J1 review): the sim writes °C */}>
+                      {t(status.label)}
                     </Chip>
                   )}
                 </span>
@@ -472,8 +474,9 @@ function SexIcon({ sex }: { sex: Creature['sex'] }) {
   return <CircleDashed size={12} className="pn-sex" aria-label="Sex not yet visible" />;
 }
 
-function YoungView({ g }: { g: GameState }) {
+export function YoungView({ g }: { g: GameState }) { // (exported for tests/sim/audit-2026-11-17-j1.test.ts)
   const { close } = useSheet();
+  const { t } = useTempText(); // Audit 2026-11-17 (J1 review): breeding lines carry the sim's °C
   const tanks = orderedTanks(g);
   const clutches = Object.values(g.clutches).sort((a, b) => a.nextStageHour - b.nextStageHour);
   const breeders = Object.values(g.creatures)
@@ -505,8 +508,8 @@ function YoungView({ g }: { g: GameState }) {
                     <span className="pn-muted pn-small">{speciesOf(c.speciesId)?.commonName}</span>
                   </div>
                   <div className="pn-small pn-dim">
-                    {s.label}
-                    {s.detail ? ` — ${s.detail}` : ''}
+                    {t(s.label)}
+                    {s.detail ? ` — ${t(s.detail)}` : ''}
                   </div>
                   {typeof s.progress === 'number' && (
                     <div style={{ marginTop: 8 }}>
@@ -557,7 +560,7 @@ function YoungView({ g }: { g: GameState }) {
                         {sp?.commonName ?? cl.speciesId} · {cl.stage === 'in_pouch' && sp?.parentalCare === 'male_mouth' ? 'In his mouth' : CLUTCH_STAGE_LABEL[cl.stage]}
                       </div>
                       <div className="pn-card__sub">
-                        {cl.visual === 'egg_case' ? plural(cl.count, 'egg case') : plural(cl.count, cl.stage === 'eggs' ? 'egg' : 'young', cl.stage === 'eggs' ? 'eggs' : 'young')} in {tank?.name ?? 'a tank'}
+                        {cl.visual === 'egg_case' ? plural(cl.count, 'egg case') : cl.stage === 'eggs' ? plural(cl.count, 'egg') : sp ? plural(cl.count, youngSingular(youngLabel(cl, moduleFor(sp))), youngLabel(cl, moduleFor(sp))) /* Audit 2026-11-17 (J16 review): the brood's own word, never "1 young" */ : plural(cl.count, 'fry', 'fry')} in {tank?.name ?? 'a tank'}
                         {guard ? ` · guarded by ${guard.name}` : ''}
                       </div>
                     </div>
@@ -591,21 +594,21 @@ function YoungView({ g }: { g: GameState }) {
                   {cl.infertile && (
                     <Callout tone="watch" icon={<Egg size={15} />}>
                       {/* chunk 17: an empty shark egg case says so (its card line), and can be lifted out below */}
-                      {cl.visual === 'egg_case' && cl.notes ? cl.notes : 'These eggs can’t hatch here — they’ll dissolve naturally over time.'}
+                      {cl.visual === 'egg_case' && cl.notes ? t(cl.notes) : 'These eggs can’t hatch here — they’ll dissolve naturally over time.'}
                     </Callout>
                   )}
                   {/* audit E2: still being laid, and what a torch shows through a shark's egg case */}
-                  {!cl.infertile && (cl.pendingEggs || cl.visual === 'egg_case') && st?.detail && <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>{st.detail}</div>}
+                  {!cl.infertile && (cl.pendingEggs || cl.visual === 'egg_case') && st?.detail && <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>{t(st.detail)}</div>}
                   {/* audit E1/E2/E12: what threatens these young here (the sim's rule, not a head count of tank mates), and
                       whether they will fit when they grow up — before it matters, not when they are rehomed */}
                   {st && st.warnings.length > 0 && (
                     <Callout tone="watch" icon={<Egg size={15} />}>
                       {st.warnings.map((w) => (
-                        <div key={w}>{w}.</div>
+                        <div key={w}>{t(w)}.</div>
                       ))}
                     </Callout>
                   )}
-                  {st?.keepNote && <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>{st.keepNote}</div>}
+                  {st?.keepNote && <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>{t(st.keepNote)}</div>}
                   <div className="pn-row pn-gap-2 pn-row--wrap" style={{ marginTop: 10 }}>
                     {cl.infertile && cl.visual === 'egg_case' ? (
                       <Button size="sm" variant="primary" onClick={() => act({ k: 'liftOutClutch', clutch: cl.id, from: cl.tankId }, { sound: 'splash' })}>

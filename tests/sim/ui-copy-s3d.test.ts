@@ -288,7 +288,7 @@ describe('DES-013 A: the design words chunk 6 built (ADR-0035 decision 3)', () =
     expect(ops(f.g).feed()).toMatch(/Fresh 1 betta [a-z -]+ · \d+ (baby brine|infusoria) servings a day/);
     f.g.inventory.foods.baby_brine_live = 0;
     f.g.inventory.foods.infusoria_culture = 0;
-    expect(ops(f.g).feed()).toMatch(/Fresh 1 betta [a-z -]+ · no baby brine or infusoria in stock: the young go hungry Out of food/);
+    expect(ops(f.g).feed()).toMatch(/Fresh 1 betta [a-z -]+ · no live baby brine shrimp or infusoria in stock: the young go hungry Out of food/);
   });
 
   it('Build › Live food room: Each day "makes, uses, takes" (B124; SPEC §8.4)', () => {
@@ -327,7 +327,7 @@ describe('DES-013 A: the design words chunk 6 built (ADR-0035 decision 3)', () =
     expect(t).toMatch(/14 [a-z -]+ · baby brine and infusoria from the doser/); // C62
     f.g.inventory.foods.baby_brine_live = 0;
     f.g.inventory.foods.infusoria_culture = 0;
-    expect(render(createElement(ProductionTab, { g: f.g, sel: f.lineId, onSelect: () => {} }))).toMatch(/14 [a-z -]+ · the doser has no baby brine or infusoria in stock: the young go hungry/);
+    expect(render(createElement(ProductionTab, { g: f.g, sel: f.lineId, onSelect: () => {} }))).toMatch(/14 [a-z -]+ · the doser has no live baby brine shrimp or infusoria in stock: the young go hungry/);
     f.line.waiting = true;
     expect(render(createElement(ProductionTab, { g: f.g, sel: f.lineId, onSelect: () => {} }))).toMatch(/are kept apart until there’s room\. Fix/); // C59
   });

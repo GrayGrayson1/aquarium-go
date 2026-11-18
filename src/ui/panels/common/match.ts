@@ -4,7 +4,11 @@
  * Pure: the panels' search boxes and Find anything share it (tests/sim/qol-search.test.ts). OWNER: lane "ui-panels".
  */
 
-/** Lower case, accents and punctuation off, spaces squeezed ("CO₂ & Planted" → "co2 planted"). */
+/**
+ * Lower case, accents and punctuation off, spaces squeezed ("CO₂ & Planted" → "co2 planted"). Audit 2026-11-17 (J18
+ * review): the game spells the British way ("UV Steriliser", "Fertiliser", "colour"); the US spelling folds to the
+ * same words, so "sterilizer" still finds the UV unit.
+ */
 export function fold(text: string): string {
   return text
     .normalize('NFKD')
@@ -12,6 +16,8 @@ export function fold(text: string): string {
     .replace(/₂/g, '2')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b(steril|fertil)iz/g, '$1is')
+    .replace(/\bcolor/g, 'colour')
     .trim();
 }
 

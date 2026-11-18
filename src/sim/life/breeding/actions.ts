@@ -211,7 +211,7 @@ export function moveClutch(state: GameState, clutchId: string, toTankId: string)
   const pairGuards = !!moduleFor(sp).plan.pairGuards;
   const parents = pairGuards ? [cl.motherId, cl.fatherId] : undefined;
   if (!isNurseryFor(state, tank, hour, parents)) warnings.push(`there are adult animals in ${tank.name} that may eat them`);
-  if ((tank.water.bioMaturity ?? 1) < 0.3) warnings.push(`${tank.name} isn’t cycled yet`);
+  if ((tank.water.bioMaturity ?? 1) < 0.3) warnings.push(`${tank.name}’s filter bacteria are still growing`); // Audit 2026-11-17 (J5 review): the words the Production card uses, not "cycled"
   if (tank.water.ammonia > 0.25 || tank.water.nitrite > 0.25) warnings.push('ammonia/nitrite is detectable');
   const parentIn = (tankId: string) => [cl.motherId, cl.fatherId].some((id) => {
     const p = id ? state.creatures[id] : undefined;

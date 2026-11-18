@@ -111,7 +111,7 @@ export function creatureShowReasons(state: GameState, c: Creature, opts: { forJu
   if (sp && (sp.category === 'coral' || sp.category === 'anemone')) return ['Corals and anemones stay in their tanks'];
   if (c.lifeStage !== 'adult' && c.lifeStage !== 'elder') out.push(c.lifeStage === 'juvenile' ? 'Too young — shows are for adults' : 'Far too young to travel');
   const s = c.stats;
-  if (c.illness) out.push(`Unwell (${illnessName(c.illness.kind, sp)}) — rest at home until recovered`); // Audit 2026-11-17 (J14): the card's name
+  if (c.illness) out.push(`Unwell with ${illnessName(c.illness.kind, sp)} — rest at home until recovered`); // Audit 2026-11-17 (J14): the card's name, not in brackets (the review: the name may carry its own brackets, "white spot (ich)")
   else if ((s?.health ?? 100) < SHOW_RULES.minHealth) out.push(`Not in show condition (health ${Math.round(s.health)})`);
   if ((c.life?.injury ?? 0) > SHOW_RULES.maxInjury) out.push('Still healing from an injury');
   if ((s?.stress ?? 0) > SHOW_RULES.maxStress) out.push(`Too stressed to travel (stress ${Math.round(s.stress)}) — let it settle first`);
