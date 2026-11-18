@@ -79,7 +79,7 @@ export function feedTank(
   const food = getFoodDef(foodId);
   if (!food) return fail('Unknown food.');
   const have = Math.floor(state.inventory.foods[foodId] ?? 0);
-  if (have < 1) return fail(`You’re out of ${food.name.toLowerCase()} — buy more in the shop.`);
+  if (have < 1) return fail(`You’re out of ${food.name.toLowerCase()} — buy more in Market › Supplies.`); // Audit 2026-11-17 (J20): food is in Supplies; the Shop sells animals
 
   let targetName: string | null = null;
   let targetSp: SpeciesDefinition | undefined;

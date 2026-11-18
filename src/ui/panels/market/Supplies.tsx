@@ -222,7 +222,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
         ) : (
           <div className="pn-col pn-gap-3">
             <p className="pn-small pn-muted" style={{ margin: 0 }}>
-              For <b className="pn-dim">{tank.name}</b> · {gallonsOf(tank)} gallons. Manage installed gear in Build → Equipment.
+              For <b className="pn-dim">{tank.name}</b> · {gallonsOf(tank)} gallons. Manage installed gear in Build › Equipment.
             </p>
             {byKind.map(([kind, rows]) => (
               <div key={kind} className="pn-col pn-gap-2">

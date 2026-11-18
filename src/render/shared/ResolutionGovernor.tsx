@@ -145,7 +145,7 @@ export function ResolutionGovernor() {
       const cur = useRenderPerf.getState().degrade;
       if (!auto || cur <= -2) return;
       useRenderPerf.getState().setDegrade(cur - 1);
-      useUI.getState().toast('Eased the graphics a notch to keep the aquarium smooth. Settings › Graphics has the manual choice.', 'info');
+      useUI.getState().toast('Eased the graphics a notch to keep the aquarium smooth. Settings › General › Graphics has the manual choice.', 'info');
     } else if (d.kind === 'drop_helped') {
       const cur = useRenderPerf.getState().degrade;
       if (!auto || cur >= 0) return;

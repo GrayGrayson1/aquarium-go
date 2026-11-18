@@ -136,7 +136,7 @@ export async function autosaveNow(reason = 'manual'): Promise<boolean> {
         }
       } else if (res.code !== 'stale' && ++failures >= WARN_AFTER_FAILURES && !warnedFailing) {
         warnedFailing = true;
-        toastOnce('Autosave isn’t landing — export a copy from Settings › Saves to keep your progress safe.', 'danger');
+        toastOnce('Autosave isn’t working right now — export a copy from Settings › Saves to keep your progress safe.', 'danger'); // Audit 2026-11-17 (J20)
       }
     }
     return res.ok || mirrored;
@@ -144,7 +144,7 @@ export async function autosaveNow(reason = 'manual'): Promise<boolean> {
     if (typeof console !== 'undefined') console.warn(`[aquarium-go] autosave (${reason}) threw`, e);
     if (++failures >= WARN_AFTER_FAILURES && !warnedFailing) {
       warnedFailing = true;
-      toastOnce('Autosave isn’t landing — export a copy from Settings › Saves to keep your progress safe.', 'danger');
+      toastOnce('Autosave isn’t working right now — export a copy from Settings › Saves to keep your progress safe.', 'danger'); // Audit 2026-11-17 (J20)
     }
     return mirrored;
   } finally {

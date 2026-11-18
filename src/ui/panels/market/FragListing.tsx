@@ -55,7 +55,7 @@ export function FragPicker({ g, ids, setIds }: { g: GameState; ids: string[]; se
       <h3 className="pn-wizard__h">Which frags and cuttings?</h3>
       {pool.length === 0 ? (
         <EmptyState icon={<Scissors size={24} />} title="No frags in storage">
-          Grown corals and plants can be propagated: open Build → Decor and use “Take frag” or “Take cutting” on a piece that has grown in.
+          Grown corals and plants can be propagated: open Build › Decor and use “Take frag” or “Take cutting” on a piece that has grown in.
         </EmptyState>
       ) : (
         <>

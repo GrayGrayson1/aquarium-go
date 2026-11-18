@@ -60,7 +60,8 @@ import { IncomeChart } from '@/ui/panels/finances/IncomeChart';
 import { probabilityWord } from '@/ui/common/format';
 import type { CompatReport } from '@/types';
 import { moveCreature } from '@/sim/life/actions';
-import { setLighting } from '@/sim/care';
+import { setLighting, feedTank } from '@/sim/care';
+import { warningText } from '@/persistence/storage';
 import { setOpenHours } from '@/sim/facility/actions';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
@@ -463,5 +464,14 @@ describe('J19: one way to write a clock time', () => {
     expect(setLighting(g, t, { onHour: 7, offHour: 23 }).message).toMatch(/^Lights 7:00 AM–11:00 PM \(16 h\) at \d+%\./);
     expect(setOpenHours(g, 10, 21).message).toBe('Open 10:00 AM–9:00 PM.');
     expect(setOpenHours(g, 16, 24).message).toBe('Open 4:00 PM–12:00 AM.');
+  });
+});
+
+describe('J20: directions name the place the player will find', () => {
+  it('food is in Market › Supplies; the export button is “Export save file” in Settings › Saves', () => {
+    const g = base();
+    g.inventory.foods.micro_pellets = 0;
+    expect(feedTank(g, g.tankOrder[0], 'micro_pellets').message).toMatch(/— buy more in Market › Supplies\.$/);
+    expect(warningText('memory', 'full')).toBe('Browser storage is full — progress will only last until this tab closes. Use Export save file in Settings › Saves to keep a copy.');
   });
 });

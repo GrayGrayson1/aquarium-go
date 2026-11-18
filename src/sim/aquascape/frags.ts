@@ -175,7 +175,7 @@ export function takeFrag(state: GameState, tankId: string, decorId: string): Act
     emitEvent(state, {
       kind: 'tip',
       // lane:w2-ui (copy) — say where storage is, and use the › path style the rest of the UI uses
-      text: `Your first ${coral ? 'frag' : 'cutting'}! It waits in storage (Build › Decor). Plant it on a frag rack, a rock or the substrate to grow a new ${coral ? 'colony' : 'plant'}, or sell it: Market › New listing › Frags & cuttings.`,
+      text: `Your first ${coral ? 'frag' : 'cutting'}! It waits in storage (Build › Decor). Plant it on a frag rack, a rock or the substrate to grow a new ${coral ? 'colony' : 'plant'}, or sell it: Market › My listings › New listing › Frags & cuttings.`, // Audit 2026-11-17 (J20): New listing is on My listings
       tankId,
       toast: true,
     });

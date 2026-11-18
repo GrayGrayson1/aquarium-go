@@ -264,8 +264,8 @@ function remember(b: KVBackend) {
 
 export function warningText(to: BackendName, reason: StorageReason): string {
   if (to === 'memory') {
-    if (reason === 'full') return 'Browser storage is full — progress will only last until this tab closes. Use Export Save to keep a copy.';
-    return 'Browser storage is unavailable — progress will only last until this tab closes. Use Export Save to keep a copy.';
+    if (reason === 'full') return 'Browser storage is full — progress will only last until this tab closes. Use Export save file in Settings › Saves to keep a copy.'; // Audit 2026-11-17 (J20): the button's name and where it is
+    return 'Browser storage is unavailable — progress will only last until this tab closes. Use Export save file in Settings › Saves to keep a copy.'; // Audit 2026-11-17 (J20): the button's name and where it is
   }
   if (reason === 'full') return 'Browser storage is full — saving to local storage instead. Export a copy from Settings › Saves to be safe.';
   if (reason === 'slow') return 'The save database is slow to open — saving to local storage for now. Your saves move over automatically once it is ready.';

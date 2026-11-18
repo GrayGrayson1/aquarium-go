@@ -64,7 +64,7 @@ export async function saveNow(slot = 'auto', toast = true): Promise<boolean> {
     return r.ok;
   } catch (e) {
     console.warn('[ui] save failed', e);
-    if (toast) useUI.getState().toast('Saving failed — please try again.', 'danger');
+    if (toast) useUI.getState().toast('Saving failed — try again, or export a copy from Settings › Saves.', 'danger'); // Audit 2026-11-17 (J20)
     return false;
   }
 }
@@ -81,7 +81,7 @@ export async function saveBeforeLeaving(): Promise<boolean> {
     useUI.getState().toast(r.message, 'danger');
   } catch (e) {
     console.warn('[ui] save failed', e);
-    useUI.getState().toast('Saving failed — please try again.', 'danger');
+    useUI.getState().toast('Saving failed — try again, or export a copy from Settings › Saves.', 'danger'); // Audit 2026-11-17 (J20)
   }
   return false;
 }
@@ -412,7 +412,7 @@ export function storageNotice(): { text: string; tone: 'warning' | 'info' } | nu
     const st = storageStatus();
     if (!st.backend || st.reason === 'ok') return null;
     if (st.backend === 'memory' || st.reason === 'unavailable')
-      return { text: st.warning ?? 'Browser storage is unavailable — progress will only last until this tab closes. Use Export Save to keep a copy.', tone: 'warning' };
+      return { text: st.warning ?? 'Browser storage is unavailable — progress will only last until this tab closes. Use Export save file in Settings › Saves to keep a copy.', tone: 'warning' }; // Audit 2026-11-17 (J20)
     if (st.pendingPromotion) return { text: st.warning ?? 'The save database is slow to open — saving to local storage for now.', tone: 'info' };
     return st.warning ? { text: st.warning, tone: 'info' } : null;
   } catch {
