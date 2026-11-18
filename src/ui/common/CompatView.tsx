@@ -112,7 +112,7 @@ function ReasonRow({ r, existing }: { r: CompatReason; /** lane:qa-play — true
             {word && (
               <span className="ag-reason__prob">
                 Happens <strong>{word}</strong>
-                {r.probability != null && <span className="ag-muted"> (~{Math.round(r.probability * 100)}% / week)</span>}
+                {r.probability != null && <span className="ag-muted"> (about {Math.round(r.probability * 100)}% a week){/* Audit 2026-11-17 (J17) */}</span>}
               </span>
             )}
             {who && <span className="ag-muted">{who}</span>}

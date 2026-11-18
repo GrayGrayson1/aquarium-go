@@ -57,6 +57,8 @@ import { saleWarnings } from '@/sim/economy/warnings';
 import { withArticle } from '@/sim/economy/util';
 import { createClutch } from '@/sim/life/breeding/clutch';
 import { IncomeChart } from '@/ui/panels/finances/IncomeChart';
+import { probabilityWord } from '@/ui/common/format';
+import type { CompatReport } from '@/types';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -416,5 +418,21 @@ describe('J16: plurals and articles built for the value they hold', () => {
     const out = renderToStaticMarkup(createElement(IncomeChart, { data: [{ day: 0, label: 'Day 1', income: 12, expenses: 4, today: true }] }));
     expect(out).toContain('Income and expenses for the last day.');
     expect(out).not.toContain('last 1 days');
+  });
+});
+
+describe('J17: how often a risk happens, in words that fit “Happens …”', () => {
+  it('rarely · occasionally · sometimes · often · very often, and “(about 35% a week)”', () => {
+    expect([0.01, 0.05, 0.2, 0.35, 0.7].map(probabilityWord)).toEqual(['rarely', 'occasionally', 'sometimes', 'often', 'very often']);
+    const report = {
+      verdict: 'risky',
+      score: 50,
+      reasons: [{ severity: 'warning', category: 'aggression', text: 'Two adult males are likely to fight.', speciesIds: ['betta'], probability: 0.35 }],
+      pairs: [],
+      perSpecies: {},
+    } as unknown as CompatReport;
+    const html = text(renderToStaticMarkup(createElement(CompatView, { report })));
+    expect(html).toContain('Happens often (about 35% a week)');
+    expect(html).not.toMatch(/likely \(|% \/ week/);
   });
 });

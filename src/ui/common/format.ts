@@ -280,8 +280,8 @@ export function probabilityWord(p: number | undefined): string | null {
   if (p < 0.03) return 'rarely';
   if (p < 0.12) return 'occasionally';
   if (p < 0.3) return 'sometimes';
-  if (p < 0.6) return 'likely';
-  return 'very likely';
+  if (p < 0.6) return 'often'; // Audit 2026-11-17 (J17): "Happens often", not "Happens likely"
+  return 'very often';
 }
 
 export const EVENT_KIND_TONE: Record<GameEvent['kind'], 'aqua' | 'good' | 'watch' | 'danger' | 'gold' | 'violet' | 'neutral'> = {
