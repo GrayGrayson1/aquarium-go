@@ -135,12 +135,16 @@ describe('A1: the guide names an animal that is still there', () => {
     expect(none(step('betta', 'meet').body)).toBe('Say hello.');
     expect(none(step('pea_puffer', 'meet').body)).toBe('There’s no animal to show right now. Bring one home from the Market first.');
     expect(none(step('axolotl', 'first_goal').body)).toMatch(/^Keep your animals’ tank looking lovely/);
+    // a sentence that ends inside a bracket keeps its words (it read "…drop by. )")
+    expect(none(step('axolotl', 'first_goal').body)).toBe('Keep your animals’ tank looking lovely and the water healthy while two more friends drop by. (Once you have animals to spare, a small sale in the Market counts too.)');
     // every step and line of every chain: no "{name}" left, no sentence starting in lower case, no "your animals is/has/gets"
     for (const starter of ['axolotl', 'betta', 'pea_puffer', 'ocellaris_clownfish', 'lined_seahorse']) {
       for (const s of tutorialChain(starter)) {
         for (const t of [s.title, s.body, s.done ?? '']) {
           const out = none(t);
           expect(out, `${starter} ${s.id}`).not.toMatch(/\{name\}|your animals (is|has|gets|sees)\b|(^|[.!?]\s+)your animals/);
+          expect(out, `${starter} ${s.id}: brackets`).not.toMatch(/(^|\s)[)\]]|[(\[]\s*$/);
+          expect((out.match(/\(/g) ?? []).length, `${starter} ${s.id}: brackets pair`).toBe((out.match(/\)/g) ?? []).length);
         }
       }
     }

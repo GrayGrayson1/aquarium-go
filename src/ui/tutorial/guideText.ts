@@ -39,7 +39,8 @@ export function guideAnimal(g: GameState, focusedTankId: string | null = null): 
  * If nothing is left (a meet step), the guide's own line for no animal.
  */
 function withoutAnimal(t: string): string {
-  const sentences = t.match(/[^.!?]*[.!?]+(?:\s+|$)|[^.!?]+$/g) ?? [t];
+  // (a sentence may end inside a bracket or a quote: "(… counts too.)" lost its words and kept the bracket)
+  const sentences = t.match(/[^.!?]*[.!?]+[)\]”’"]*(?:\s+|$)|[^.!?]+$/g) ?? [t];
   const kept = sentences.filter((x) => !/\{name\} (is|sees)\b/.test(x)).join('').trim();
   if (!kept) return 'There’s no animal to show right now. Bring one home from the Market first.';
   return kept

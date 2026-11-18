@@ -405,7 +405,7 @@ function SoloSavesTab() {
         open={confirm?.kind === 'load'}
         onClose={() => setConfirm(null)}
         title={`Load ${slotLabel(confirm?.slot ?? '')}?`}
-        subtitle={sameAsRunning ? `This is an earlier copy of the aquarium you are playing. Your current progress (Day ${runningDay}) stays listed as “Previous autosave” until you switch again.` : 'Your current game is saved to Autosave first.'}
+        subtitle={sameAsRunning ? `This is an earlier copy of the aquarium you are playing. Your current progress (Day ${runningDay}) stays listed as “Previous autosave”.` : 'Your current game is saved to Autosave first.'}
         width={540}
         testId="load-confirm"
         actions={

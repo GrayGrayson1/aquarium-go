@@ -466,7 +466,7 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
           const nurseryHere = isNurseryFor(state, tank, hour);
           say(state, ctx, {
             kind: 'warning',
-            text: `${lost === 1 ? 'One' : lost.toLocaleString('en-US')} of ${parentName(state, cl).replace(/^The$/, 'the')} egg cases ${lost === 1 ? 'was' : 'were'} ${eaten ? 'eaten' : 'lost'}; ${cl.count} ${cl.count === 1 ? 'is' : 'are'} left.${eaten && !nurseryHere ? ' A nursery tank keeps the rest safe (Livestock › Eggs & fry).' : ''}`,
+            text: `${lost === 1 ? 'One' : String(lost)} of ${parentName(state, cl).replace(/^The$/, 'the')} egg cases ${lost === 1 ? 'was' : 'were'} ${eaten ? 'eaten' : 'lost'}; ${cl.count} ${cl.count === 1 ? 'is' : 'are'} left.${eaten && !nurseryHere ? ' A nursery tank keeps the rest safe (Livestock › Eggs & fry).' : ''}`,
             tankId: cl.tankId,
           });
         }

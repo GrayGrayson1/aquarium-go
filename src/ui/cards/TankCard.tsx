@@ -290,7 +290,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
                   data-testid="water-change-raise-cash"
                   onClick={() => {
                     sfx('open');
-                    useUI.getState().set({ panel: 'finances', panelTarget: null });
+                    useUI.getState().set({ panel: 'finances', panelTarget: 'cash' }); // the ideas themselves (FinancesPanel's CASH_TARGET)
                   }}
                 >
                   Ways to raise cash

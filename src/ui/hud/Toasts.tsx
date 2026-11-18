@@ -478,10 +478,10 @@ export function toastGo(e: Pick<Entry, 'kind' | 'texts' | 'tankId' | 'creatureId
  * the way (review: pinning it grew it over the list for 6 s more), and only its own button ("See them") goes.
  * `title` names where the text goes (its tooltip). (pure; exported for tests)
  */
-export function toastTap(e: Pick<Entry, 'tankId' | 'creatureId' | 'actionLabel'>, v: Pick<View, 'opensLog' | 'link'>, sheet: boolean): { textGoes: boolean; dismiss: boolean; button: string | null; title: string } {
+export function toastTap(e: Pick<Entry, 'tankId' | 'creatureId' | 'actionLabel'>, v: Pick<View, 'opensLog' | 'link'>, sheet: boolean, animalHere: boolean = !!e.creatureId): { textGoes: boolean; dismiss: boolean; button: string | null; title: string } {
   const actionable = !!e.tankId || !!v.opensLog || !!v.link;
   // (review: the merged ones open the bell's drawer, and a toast about an animal opens its card)
-  const title = v.opensLog ? 'Open Alerts' : v.link ? 'Take me there' : e.creatureId ? 'Go to this animal' : 'Go to this tank';
+  const title = v.opensLog ? 'Open Alerts' : v.link ? 'Take me there' : e.creatureId && animalHere ? 'Go to this animal' : 'Go to this tank'; // (an animal that has died or been sold: toastGo opens its tank)
   return { textGoes: actionable && !sheet, dismiss: sheet, button: e.actionLabel && e.tankId ? e.actionLabel : null, title };
 }
 
@@ -505,7 +505,9 @@ function ToastItem({ e, onDone, sheet = false }: { e: Entry; onDone: () => void;
   }, [hover, ttl, e.rev]);
   const expanded = (hover || pinned) && present;
   const celebrate = e.kind === 'celebrate' || e.kind === 'unlock';
-  const tap = toastTap(e, v, sheet);
+  // (the tooltip names where the tap goes: an animal that has died or been sold leads to its tank)
+  const animalHere = useGame((s) => { const c = e.creatureId ? s.game?.creatures[e.creatureId] : undefined; return !!c && (c.status === 'alive' || c.status === 'listed'); });
+  const tap = toastTap(e, v, sheet, animalHere);
   const onAct = () => {
     const to = toastGo(e, v, useGame.getState().game);
     // audit B6 review: a listing with typed prices asks before the whole move (Leave completes it, Keep changes nothing)

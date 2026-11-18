@@ -81,6 +81,7 @@ describe('audit B19: over a phone sheet, a tapped toast gets out of the way', ()
   it('its text goes there when no phone sheet is under it; the tooltip says where', () => {
     expect(toastTap({ tankId: 'T1' }, {}, false)).toEqual({ textGoes: true, dismiss: false, button: null, title: 'Go to this tank' });
     expect(toastTap({ tankId: 'T1', creatureId: 'C1' }, {}, false).title).toBe('Go to this animal');
+    expect(toastTap({ tankId: 'T1', creatureId: 'C1' }, {}, false, false).title).toBe('Go to this tank'); // it has died or been sold: its tank opens
     expect(toastTap({}, { link }, false)).toMatchObject({ textGoes: true, title: 'Take me there' });
     expect(toastTap({}, { opensLog: true }, false).title).toBe('Open Alerts'); // (a burst opens the bell's drawer)
     expect(toastTap({}, {}, false)).toMatchObject({ textGoes: false, dismiss: false }); // plain news: a tap pins it open

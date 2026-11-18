@@ -463,8 +463,9 @@ export function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: 
                     </summary>
                     <div className="pn-unlock__body">
                       <div className="pn-small pn-dim">{u?.hint}</div>
-                      {u?.guide && <div className="pn-small pn-dim">{u.guide}</div> /* Audit 2026-11-17 (G1) */}
-                      {parts ? <RuleRequirements g={g} conds={UNLOCK_RULE_BY_KEY[k].when} routes={routes} /> : u && u.requirements.length > 0 && <Requirements items={u.requirements} />}
+                      {/* Audit 2026-11-17 (G1, F8): while the guide holds it, the row is the guide's step (in u.hint and
+                          u.requirements), not the play rule's rows, which would read as already earned */}
+                      {u?.heldBy ? <Requirements items={u.requirements} /> : parts ? <RuleRequirements g={g} conds={UNLOCK_RULE_BY_KEY[k].when} routes={routes} /> : u && u.requirements.length > 0 && <Requirements items={u.requirements} />}
                       {u && u.viaResearch.length > 0 && (
                         <div className="pn-small pn-muted">
                           <FlaskConical size={12} style={{ verticalAlign: '-2px' }} /> {parts && !parts.requirements.length && !parts.either.length ? 'Research' : 'Or research'}: {u.viaResearch.map((r) => r.name).join(', ')}
