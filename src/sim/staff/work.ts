@@ -412,7 +412,7 @@ export const YOUNG_FED_RECENTLY_H = 4;
  */
 export const KEEPER_YOUNG_MAX_SERVINGS = 2;
 
-/** "baby brine or infusoria": the first two of a phase's foods that the shop sells. */
+/** "live baby brine shrimp or infusoria": the first two of a phase's foods that the shop sells. */
 export function youngFoodWords(tags: readonly string[]): string {
   const sold = tags.filter((t) => FOODS.some((f) => f.tags.includes(t as never)));
   return joinFoodNames(foodTagNames(sold, { max: 2 })) || 'first foods'; // Audit 2026-11-17 (J3): the shelf's words, one table

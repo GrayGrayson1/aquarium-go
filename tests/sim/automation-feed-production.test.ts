@@ -154,7 +154,7 @@ describe('AUTO-033: live-food dosers', () => {
     expect(doseTank(g, t, 24 * 3 + 8)).toBe('short');
     expect(automationProblems(g).find((p) => p.kind === 'supply' && p.supply === 'live')).toMatchObject({ tankIds: [t.id] });
     // Audit 2026-11-17 (H15): the doser rows say so ("Feeding 10 young" and "Running" it said)
-    expect(doserShortWords(g, t)).toBe('baby brine or infusoria');
+    expect(doserShortWords(g, t)).toBe('live baby brine shrimp or infusoria'); // Audit 2026-11-17 (J3 review): the food-name table's words, as the keepers say them
     g.inventory.foods[INFUSORIA] = 2;
     expect(doserShortWords(g, t)).toBeNull();
     g.inventory.foods[INFUSORIA] = 0;

@@ -16,7 +16,7 @@
 import type { Clutch, EquipmentInstance, FoodRoomState, GameState, Tank } from '@/types';
 import { BRINE, DOSER, EGGS_SUPPLY, FOOD_ROOM, INFUSORIA, VEGETABLES } from '@/data/catalog/machines';
 import { getEquipmentDef } from '@/data/catalog/equipment';
-import { getFoodDef } from '@/data/catalog/foods';
+import { getFoodDef, FOOD_TAG_NAMES } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3 review): FOOD_TAG_NAMES
 import { findSpecies } from '@/data/species';
 import { emitEvent } from '../context';
 import { feedTank } from '../care';
@@ -161,13 +161,14 @@ export function doserNeeds(state: GameState, tank: Tank, hour = state.clock.hour
 }
 
 /**
- * Audit 2026-11-17 (H15): the live foods a doser's young need and none of which is in stock ("baby brine or
- * infusoria"), or null when every brood has something; the screens say "the young go hungry" instead of "Feeding".
+ * Audit 2026-11-17 (H15): the live foods a doser's young need and none of which is in stock ("live baby brine shrimp
+ * or infusoria"), or null when every brood has something; the screens say "the young go hungry" instead of "Feeding".
  */
 export function doserShortWords(state: GameState, tank: Tank, hour = state.clock.hour): string | null {
   const dry = doserNeeds(state, tank, hour).filter((n) => !n.foods.some((f) => stock(state, f) >= 1));
   if (!dry.length) return null;
-  const words = [...new Set(dry.flatMap((n) => n.foods))].map((f) => (f === BRINE ? 'baby brine' : f === INFUSORIA ? 'infusoria' : getFoodDef(f)?.name.toLowerCase() ?? f));
+  // Audit 2026-11-17 (J3 review): the food-name table's words, as the keepers say them ("live baby brine shrimp")
+  const words = [...new Set(dry.flatMap((n) => n.foods))].map((f) => (f === BRINE ? FOOD_TAG_NAMES.baby_brine : f === INFUSORIA ? FOOD_TAG_NAMES.infusoria : getFoodDef(f)?.name.toLowerCase() ?? f));
   return words.join(' or ');
 }
 
