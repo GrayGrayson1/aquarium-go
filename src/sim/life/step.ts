@@ -265,7 +265,7 @@ function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
           ? 'regular feeding (or an autofeeder) keeps everyone in condition'
           : `${pluralName(spName)} only eat ${handFoodPhrase(sp)}, so they need regular feeding by hand — an autofeeder can’t feed them`;
       const p = pronoun(c);
-      return { kind: 'starvation', cause: 'not enough food', text: `${name} has passed away. ${cap(p.they)} ${p.they === 'they' ? "weren't" : "wasn't"} getting enough to eat — ${hint}.` };
+      return { kind: 'starvation', cause: 'not enough food', text: `${name} has passed away. ${cap(p.they)} ${p.they === 'they' ? "weren’t" : "wasn’t"} getting enough to eat — ${hint}.` };
     }
     case 'water': {
       const wv = env.water.get(sp.id);
@@ -650,13 +650,13 @@ export function applyIncident(state: GameState, env: TankEnv, list: { c: Creatur
       damage = rng.range(2.5, 7) * (victim.sp.hasLongFins ? 1.3 : 1);
       injury = 10;
       stress = 16;
-      msg = `${actorLabel} is nipping ${v.name}'s fins. ${risk.text ?? ''}`;
+      msg = `${actorLabel} is nipping ${v.name}’s fins. ${risk.text ?? ''}`;
       break;
     case 'gill_nip':
       damage = rng.range(4, 9);
       injury = 12;
       stress = 18;
-      msg = `${actorLabel} nipped at ${v.name}'s delicate gills. ${risk.text ?? ''}`;
+      msg = `${actorLabel} nipped at ${v.name}’s delicate gills. ${risk.text ?? ''}`;
       break;
     case 'harassment':
       damage = rng.range(0.5, 3);
@@ -1100,7 +1100,7 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
     const text =
       c.lifeStage === 'juvenile'
         ? `${c.name} is outgrowing this ${env.gallons}-gallon tank. An adult ${lc(sp.commonName)} needs at least ${adultNeed} gallons — plan a bigger home soon.`
-        : `${c.name}'s tank is too small. An adult ${lc(sp.commonName)} needs at least ${adultNeed} gallons.`;
+        : `${c.name}’s tank is too small. An adult ${lc(sp.commonName)} needs at least ${adultNeed} gallons.`;
     ctx.emit({ kind: 'warning', text, tankId: env.tank.id, creatureId: c.id, toast: true });
   }
 

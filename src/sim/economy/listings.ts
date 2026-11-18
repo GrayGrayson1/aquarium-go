@@ -235,7 +235,7 @@ function resolveContents(state: GameState, spec: Pick<ListingSpec, 'kind' | 'cre
     if (c.status === 'sold') return { ...base, ok: false, message: `${c.name} has already been sold.` };
     if (c.status === 'listed') return { ...base, ok: false, message: `${c.name} is already listed.` };
     if (c.status !== 'alive') return { ...base, ok: false, message: `${c.name} can’t be listed right now.` };
-    if (c.tankId && activeListingFor(state, c.tankId)) return { ...base, ok: false, message: `${c.name}'s tank is listed as a whole aquarium.` };
+    if (c.tankId && activeListingFor(state, c.tankId)) return { ...base, ok: false, message: `${c.name}’s tank is listed as a whole aquarium.` };
     creatures.push(c);
   }
   const sameSpecies = creatures.every((c) => c.speciesId === creatures[0].speciesId);
@@ -1509,7 +1509,7 @@ function expireAndDrift(state: GameState, l: Listing, rng: Rng, dt: number, end:
     if (b.expiresHour <= end) {
       b.status = 'expired';
       b.note = 'The buyer moved on.';
-      if (b === best) emitEvent(state, { kind: 'market', text: `${b.buyerName ?? 'A buyer'}'s ${fmtMoney(b.amount)} offer on "${l.title}" expired.`, listingId: l.id });
+      if (b === best) emitEvent(state, { kind: 'market', text: `${b.buyerName ?? 'A buyer'}’s ${fmtMoney(b.amount)} offer on "${l.title}" expired.`, listingId: l.id });
       continue;
     }
     // The player is writing a counter-offer: the buyer waits (no change of heart mid-negotiation).

@@ -433,7 +433,7 @@ export const EQUIPMENT: EquipmentDef[] = [
     gallonsRange: { min: 2, max: 300 },
     stats: { failureRate: 0.001 },
     visual: 'autofeeder', // reuses the Autofeeder's prop until the render lane adds one
-    description: 'Feeds fry and larvae live food from your Live food room\'s stock — baby brine shrimp or infusoria, whichever their stage needs, three times a day. It does nothing while the tank has no young to feed.',
+    description: 'Feeds fry and larvae live food from your Live food room’s stock — baby brine shrimp or infusoria, whichever their stage needs, three times a day. It does nothing while the tank has no young to feed.',
   },
   {
     id: 'co2_kit',
