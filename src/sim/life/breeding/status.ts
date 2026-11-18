@@ -264,7 +264,7 @@ export function moveWarning(state: GameState, creatureId: string): string | null
     const other = otherId ? state.creatures[otherId] : undefined;
     if (mod.plan.pairGuards && isAlive(other) && other.tankId === cl.tankId) return null;
     if (!mod.plan.guardEggs) return null;
-    const what = cl.stage === 'eggs' ? plural(cl.count, 'egg') : plural(cl.count, youngLabel(cl, mod).replace(/s$/, ''), youngLabel(cl, mod));
+    const what = cl.stage === 'eggs' ? plural(cl.count, 'egg') : plural(cl.count, youngSingular(youngLabel(cl, mod)), youngLabel(cl, mod)); // Audit 2026-11-17 (J16): "1 larva", not "1 larvae"
     return `${c.name} is guarding ${what} — without a parent they may fungus or fall from the nest. Move ${pron} anyway?`;
   }
   if (c.repro.stage === 'laying' && cl && (cl.pendingEggs ?? 0) > 0) return `${c.name} is still laying — the rest of her eggs won’t come if she moves now.`;

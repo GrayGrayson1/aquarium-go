@@ -142,7 +142,7 @@ export function IncomeChart({ data }: { data: DayPoint[] }) {
         </div>
       ) : (
         <div className="pn-chart__plot" ref={wrapRef} onPointerLeave={() => setHover(null)}>
-          <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`Income and expenses for the last ${data.length} days. Total income ${formatMoney(totals.inc)}, expenses ${formatMoney(totals.exp)}.`} style={{ height: 'auto', aspectRatio: `${W} / ${H}` }}>
+          <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`Income and expenses for the last ${data.length === 1 ? 'day' /* Audit 2026-11-17 (J16): not "the last 1 days" */ : `${data.length} days`}. Total income ${formatMoney(totals.inc)}, expenses ${formatMoney(totals.exp)}.`} style={{ height: 'auto', aspectRatio: `${W} / ${H}` }}>
             {/* grid + y ticks */}
             {ticks.map((t) => (
               <g key={t}>

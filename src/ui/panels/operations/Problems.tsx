@@ -6,6 +6,7 @@
  * IssueAction is each item's main button, shared with the Overview and the alerts drawer. OWNER: lane "automation".
  */
 import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
+import { withArticle } from '@/sim/economy/util'; // Audit 2026-11-17 (J16)
 import { useState } from 'react';
 import { ArrowDown, ArrowLeft, CircleCheck, Factory, Heart, Plus, ShieldCheck, Sprout, TriangleAlert, OctagonAlert } from 'lucide-react';
 import type { GameState } from '@/types';
@@ -170,7 +171,7 @@ function SaltCard({ g, issue }: { g: GameState; issue: IssueView }) {
         Staff
       </Button>
     ) : budgetAtMax(g) ? (
-      <span className="ops-muted">{lvl.id === 'grand_hall' ? `The highest budget (${formatMoney(max)})` : `The most for a ${lvl.name} (${formatMoney(max)})`}</span>
+      <span className="ops-muted">{lvl.id === 'grand_hall' ? `The highest budget (${formatMoney(max)})` : `The most for ${withArticle(lvl.name)} (${formatMoney(max)})` /* Audit 2026-11-17 (J16): "an Aquarium Store" */}</span>
     ) : p.why === 'orders_off' ? (
       <Button size="sm" onClick={() => go({ kind: 'panel', panel: 'operations', tab: 'overview', target: 'view:manual' })}>
         {(opsSnapshot(g).forecast?.m.name ?? 'Stock manager').split(' ')[0]}’s orders

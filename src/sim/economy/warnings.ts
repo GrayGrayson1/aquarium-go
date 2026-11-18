@@ -6,7 +6,7 @@ import type { GameState, Creature, Clutch } from '@/types';
 import { findSpecies } from '@/data/species';
 import { moduleFor } from '../life/breeding/registry';
 
-const YOUNG = (cl: Clutch): string => (cl.stage === 'eggs' ? `${cl.count} eggs` : `${cl.count} young`);
+const YOUNG = (cl: Clutch): string => (cl.stage === 'eggs' ? `${cl.count} egg${cl.count === 1 ? '' : 's'}` : `${cl.count} young`); // Audit 2026-11-17 (J16): "1 egg"
 const pronoun = (c: Creature): string => (c.sex === 'male' ? 'he' : c.sex === 'female' ? 'she' : 'they');
 
 /** Is this clutch carried by (not just guarded by) its parent — it travels with the animal. */

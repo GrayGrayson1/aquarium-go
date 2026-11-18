@@ -15,6 +15,7 @@ import { dayOf, formatClock } from '@/sim/time';
 import { planPurchases, plannedOrders, stockCheckHours } from '@/sim/staff/work'; // lane:automation (chunk 5)
 import { opsMemo, opsSnapshot } from '@/ui/common/ops'; // lane:automation (chunk 5, PERF-004)
 import { SALT_PRICE_PER_KG } from '@/sim/economy'; // lane:automation (chunk 5)
+import { withArticle } from '@/sim/economy/util'; // Audit 2026-11-17 (J16)
 import {
   canHire,
   keeperOf,
@@ -443,7 +444,7 @@ function BudgetControl({ g, m }: { g: GameState; m: StaffMember }) {
   const lvl = getFacilityLevel(g.facility.level);
   const next = nextFacilityLevelDef(g.facility.level);
   const nextMax = next ? STOCK_BUDGET[next.id]?.max : undefined;
-  const cap = v >= max ? (next && nextMax ? `the most at a ${lvl.name}; up to ${formatMoney(nextMax)} at a ${next.name}` : `the most at a ${lvl.name}`) : `up to ${formatMoney(max)} at a ${lvl.name}`;
+  const cap = v >= max ? (next && nextMax ? `the most at ${withArticle(lvl.name)}; up to ${formatMoney(nextMax)} at ${withArticle(next.name)}` : `the most at ${withArticle(lvl.name)}`) : `up to ${formatMoney(max)} at ${withArticle(lvl.name)}`; // Audit 2026-11-17 (J16): "an Aquarium Store"
   return (
     <div className="st-budget" data-testid="staff-budget">
       <div className="st-assign__head">

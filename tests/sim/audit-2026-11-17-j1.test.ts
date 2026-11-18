@@ -53,6 +53,10 @@ import { plural as compatPlural, the as compatThe } from '@/sim/compat/text';
 import { spName, spPlural } from '@/sim/life/breeding/common';
 import { livestockSummary } from '@/sim/economy/valuation';
 import { fillTemplate } from '@/sim/facility/reactions';
+import { saleWarnings } from '@/sim/economy/warnings';
+import { withArticle } from '@/sim/economy/util';
+import { createClutch } from '@/sim/life/breeding/clutch';
+import { IncomeChart } from '@/ui/panels/finances/IncomeChart';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -390,5 +394,27 @@ describe('J15: species names in sentences keep their proper nouns', () => {
     const ram = createCreature(g, simRng(g), 'german_blue_ram');
     expect(livestockSummary([ram])).toMatch(/^1 German blue ram/);
     expect(fillTemplate('Look at the {species}!', { species: 'African Dwarf Frog' })).toBe('Look at the African dwarf frog!');
+  });
+});
+
+describe('J16: plurals and articles built for the value they hold', () => {
+  it('one egg is “1 egg”; a facility level takes “an” before a vowel', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 71 });
+    const home = createTank(g, 'g55', 'freshwater_tropical', { cycled: true, name: 'Discus' });
+    const rng = simRng(g);
+    const m = addCreature(g, createCreature(g, rng, 'discus', { sex: 'male', ageDays: 400, name: 'Rio' }), home.id);
+    const f = addCreature(g, createCreature(g, rng, 'discus', { sex: 'female', ageDays: 400, name: 'Sol' }), home.id);
+    const cl = createClutch(g, { sp: getSpecies('discus'), tank: home, mother: f, father: m, hour: g.clock.hour, stage: 'eggs', count: 1, visual: 'eggs_adhesive', nextStageHour: g.clock.hour + 40, guardedById: m.id });
+    m.repro.stage = 'guarding';
+    m.repro.clutchId = cl.id;
+    expect(saleWarnings(g, [m.id])).toContain('Rio is guarding 1 egg with Sol, who will go on tending them alone.');
+    expect(withArticle('Aquarium Store')).toBe('an Aquarium Store');
+    expect(withArticle('uncommon', true)).toBe('An uncommon');
+  });
+
+  it('the income chart’s label on day one says “the last day”', () => {
+    const out = renderToStaticMarkup(createElement(IncomeChart, { data: [{ day: 0, label: 'Day 1', income: 12, expenses: 4, today: true }] }));
+    expect(out).toContain('Income and expenses for the last day.');
+    expect(out).not.toContain('last 1 days');
   });
 });

@@ -23,7 +23,7 @@ import type { DecorInstance } from '@/types'; // lane:frags
 import { propagationFor } from '@/data/catalog/propagation'; // lane:frags
 import { showValueFactors } from '../shows/titles'; // lane:shows
 import { saleWarnings } from './warnings'; // lane:fix-econ
-import { clamp, clamp01, finite, roundCents, normSeverity, exhibitPopularity, RARITY_SCORE, DIFFICULTY_INDEX, DIFFICULTY_LABEL, difficultyIndex, speciesPlural, nicePrice } from './util';
+import { clamp, clamp01, finite, roundCents, normSeverity, exhibitPopularity, RARITY_SCORE, DIFFICULTY_INDEX, DIFFICULTY_LABEL, difficultyIndex, speciesPlural, nicePrice, withArticle } from './util'; // Audit 2026-11-17 (J16): withArticle
 import * as dmath from '../dmath';
 
 const NEUTRAL_EPS = 0.01;
@@ -191,7 +191,7 @@ export function creatureValue(state: GameState, c: Creature): ValueBreakdown {
     const tier = strainTier(sp, strain);
     const want = STRAIN_VALUE[tier] ?? 1;
     const sm = Math.max(1, Math.min(want, MAX_GENETIC_MULTIPLIER / Math.max(1e-6, morphMult * pm)));
-    m *= pushFactor(factors, `Named strain: ${strain.name}`, sm, sm < want - 1e-9 ? `A ${TIER_WORD[tier]} strain — already at the collector ceiling for genetics` : `A recognised ${TIER_WORD[tier]} strain — collectors pay a premium`);
+    m *= pushFactor(factors, `Named strain: ${strain.name}`, sm, sm < want - 1e-9 ? `${withArticle(TIER_WORD[tier], true)} strain — already at the collector ceiling for genetics` /* Audit 2026-11-17 (J16): "An uncommon strain" */ : `A recognised ${TIER_WORD[tier]} strain — collectors pay a premium`);
   }
 
   // 5b. lane:genetics — Prismatic: an ultra-rare individual. One factor, applied once; nothing else multiplies by it.
