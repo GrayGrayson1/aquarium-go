@@ -51,10 +51,13 @@ function doing(g: GameState, line: ProductionLine, v: LineView): string {
 
 function Track({ v, held }: { v: LineView; held: boolean }) {
   const at = STAGES.findIndex((s) => s.id === v.active);
+  // Audit 2026-11-17 (review of J22): an aria-label on a plain div isn't read, so the stage is hidden text and the
+  // short segment words ("QT") are hidden from screen readers (the hover title keeps the full word)
   return (
-    <div className="ops-track" aria-label={`Stage: ${STAGES[at]?.full ?? STAGES[at]?.label ?? ''}`}>
+    <div className="ops-track">
+      <span className="pn-sr">Stage: {STAGES[at]?.full ?? STAGES[at]?.label ?? ''}</span>
       {STAGES.map((s, i) => (
-        <span key={s.id} title={s.full} className={`ops-track__seg${i < at ? ' is-done' : ''}${i === at ? ' is-on' : ''}${i === at && held ? ' is-held' : ''}`}>
+        <span key={s.id} aria-hidden title={s.full} className={`ops-track__seg${i < at ? ' is-done' : ''}${i === at ? ' is-on' : ''}${i === at && held ? ' is-held' : ''}`}>
           {s.label}
         </span>
       ))}

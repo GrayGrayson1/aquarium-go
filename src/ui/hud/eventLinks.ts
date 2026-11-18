@@ -24,9 +24,9 @@ export interface EventLink {
 // "where" line and open the right panel (lane:w2-ui).
 const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
   shows: { panel: 'shows', target: 'tab:upcoming', where: 'Enter a healthy adult from Shows.' }, // (audit A10: phones have no dock)
-  shows_regional: { panel: 'shows', target: 'tab:upcoming', where: 'Regional shows are on the Shows calendar.' },
-  shows_national: { panel: 'shows', target: 'tab:upcoming', where: 'National championships are on the Shows calendar.' },
-  shows_international: { panel: 'shows', target: 'tab:upcoming', where: 'International championships are on the Shows calendar.' },
+  shows_regional: { panel: 'shows', target: 'tab:upcoming', where: 'Regional shows are in Shows › Upcoming.' },
+  shows_national: { panel: 'shows', target: 'tab:upcoming', where: 'National championships are in Shows › Upcoming.' },
+  shows_international: { panel: 'shows', target: 'tab:upcoming', where: 'International championships are in Shows › Upcoming.' },
   photo_contests: { panel: 'shows', target: 'tab:upcoming', where: 'Aquascape classes open at shows.' },
   staff: { panel: 'visitors', target: 'tab:staff', where: 'Hire your first keeper in Visitors › Staff.' },
   visitors: { panel: 'visitors', target: 'tab:visitors', where: 'Open your doors in Visitors.' },

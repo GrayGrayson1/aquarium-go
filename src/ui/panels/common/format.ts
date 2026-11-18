@@ -19,10 +19,12 @@ import type {
   Environment,
   StatusLevel,
   Clutch,
+  Creature,
+  SpeciesDefinition,
 } from '@/types';
 import type { BadgeTone } from '@/ui/kit';
 import { GAME_HOURS_PER_REAL_SECOND, formatClock } from '@/sim/time'; // lane:w2-ui (realIn)
-import { agoText } from '@/ui/common/format'; // audit B23
+import { agoText, sexRoleText } from '@/ui/common/format'; // audit B23
 
 export const HOURS_PER_DAY = 24;
 
@@ -327,6 +329,21 @@ export const MOOD_LABEL: Record<VisitorReaction['mood'], string> = {
 };
 
 export const SEX_LABEL = { male: 'Male', female: 'Female', unknown: 'Sex not known yet' } as const;
+
+/**
+ * Audit 2026-11-17 (review of J22) — an animal's sex in the Shop (its card, the chip, the pick grid and the icon's name):
+ * Male or Female; for one whose sex doesn't show, the creature card's words for its species (`sexRoleText`: "Both
+ * sexes" for a hermaphrodite, "Can’t be told by eye" where the sex never shows, "Not yet differentiated" before a
+ * clownfish or a goby takes its role); and "Sex not known yet" only where the sex will show as it grows.
+ */
+export function sexLabel(c: Creature, sp: SpeciesDefinition | undefined, hour: number): string {
+  if (c.sex === 'male' || c.sex === 'female') return SEX_LABEL[c.sex];
+  const card = sexRoleText(c, sp, hour).label;
+  return card === 'Not yet visible' ? SEX_LABEL.unknown : card;
+}
+
+/** What a player types to find an animal whose sex isn't known (the Shop's search). */
+export const SEX_UNKNOWN_SEARCH = 'unsexed';
 
 export function titleCase(s: string): string {
   return s

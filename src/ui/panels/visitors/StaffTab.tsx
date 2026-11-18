@@ -281,7 +281,7 @@ function StaffCard({ g, m }: { g: GameState; m: StaffMember }) {
           )}
         </div>
         {m.role === 'stock_manager' && !(m.unpaidDays ?? 0) && <Badge tone="good">On shift</Badge>}
-        <FireButton m={m} />
+        <FireButton m={m} money={g.finance.money} />
       </div>
       {trait && (
         <p className="st-card__trait">
@@ -340,8 +340,20 @@ function IssueText({ g, text }: { g: GameState; text: string }) {
   );
 }
 
-function FireButton({ m }: { m: StaffMember }) {
+/**
+ * The second press's words (Audit 2026-11-17, J34 and its review): `fireStaff` pays a final day's wage only when the
+ * till covers it, so the label says which.
+ */
+export function fireWords(m: StaffMember, money: number): { label: string; title: string } {
+  const who = first(m);
+  return money >= m.wage
+    ? { label: `Let ${who} go (final day’s pay)`, title: `Let ${who} go with a final day’s pay (${formatMoney(m.wage)})` }
+    : { label: `Let ${who} go (no final day’s pay)`, title: `Let ${who} go: the till can’t cover a final day’s pay (${formatMoney(m.wage)})` };
+}
+
+function FireButton({ m, money }: { m: StaffMember; money: number }) {
   const [armed, setArmed] = useState(false);
+  const words = fireWords(m, money);
   const timer = useRef<number | null>(null);
   useEffect(() => () => {
     if (timer.current) window.clearTimeout(timer.current);
@@ -352,7 +364,7 @@ function FireButton({ m }: { m: StaffMember }) {
       variant={armed ? 'danger' : 'ghost'}
       className="st-fire"
       data-testid={`staff-fire-${m.id}`}
-      title={armed ? `Let ${first(m)} go with a final day’s pay` : `Let ${first(m)} go`}
+      title={armed ? words.title : `Let ${first(m)} go`}
       onClick={() => {
         if (!armed) {
           setArmed(true);
@@ -362,7 +374,7 @@ function FireButton({ m }: { m: StaffMember }) {
         act({ k: 'fireStaff', staff: m.id }, { sound: 'close', kind: 'info' });
       }}
     >
-      {armed ? `Let ${first(m)} go (final day’s pay)` : 'Let go'}
+      {armed ? words.label : 'Let go'}
     </Button>
   );
 }

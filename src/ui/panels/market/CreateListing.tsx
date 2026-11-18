@@ -29,7 +29,7 @@ import { orderedTanks, livingInTank, clutchesIn, valueOf, speciesOf, isListed, t
 import { FragPicker, FragReview, FragValueDetails } from './FragListing'; // lane:frags
 import { useExpandSheet } from '../common/PanelLayout';
 import { LeaveConfirm, guardLeave, setLeaveGuard } from '../common/leaveGuard'; // audit B6
-import { LISTING_KIND_LABEL, DIFFICULTY_LABEL, WATER_CLASS_LABEL, WATER_CLASS_WORDS /* Audit 2026-11-17 (J4) */, LIFE_STAGE_LABEL, SEX_LABEL, nicePrice, plural, nameList, formatSpan, titleCase, VERDICT_RANK } from '../common/format';
+import { LISTING_KIND_LABEL, DIFFICULTY_LABEL, WATER_CLASS_LABEL, WATER_CLASS_WORDS /* Audit 2026-11-17 (J4) */, LIFE_STAGE_LABEL, SEX_LABEL, sexLabel, nicePrice, plural, nameList, formatSpan, titleCase, VERDICT_RANK } from '../common/format';
 
 export interface WizardSeed {
   kind?: ListingKind;
@@ -453,10 +453,10 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
   );
 }
 
-function SexIcon({ c }: { c: Creature }) {
+function SexIcon({ c, hour }: { c: Creature; hour: number }) {
   if (c.sex === 'male') return <Mars size={12} className="pn-sex pn-sex--m" aria-label="Male" />;
   if (c.sex === 'female') return <Venus size={12} className="pn-sex pn-sex--f" aria-label="Female" />;
-  return <CircleDashed size={11} className="pn-sex" aria-label="Sex not known yet" />;
+  return <CircleDashed size={11} className="pn-sex" aria-label={sexLabel(c, speciesOf(c.speciesId), hour)} />;
 }
 
 function CreaturePicker({ g, kind, eligible, ids, setIds }: { g: GameState; kind: ListingKind; eligible: Creature[]; ids: string[]; setIds: (v: string[]) => void }) {
@@ -532,7 +532,7 @@ function CreaturePicker({ g, kind, eligible, ids, setIds }: { g: GameState; kind
                     <span className="pn-grow pn-col" style={{ gap: 2 }}>
                       <span className="pn-row pn-gap-1">
                         <b className="pn-serif">{c.name}</b>
-                        <SexIcon c={c} />
+                        <SexIcon c={c} hour={g.clock.hour} />
                         {c.isStarter && <Chip tone="gold">Starter</Chip>}
                       </span>
                       <span className="pn-tiny pn-muted pn-ellipsis">

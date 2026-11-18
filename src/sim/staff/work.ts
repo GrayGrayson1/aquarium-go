@@ -424,21 +424,48 @@ function youngFoodFits(foods: readonly string[], tank: Tank, speciesId: string):
   return FOODS.filter((f) => f.tags.some((t) => foods.includes(t)) && !madeForOtherWater(f, tank.environment) && !madeForOtherSpecies(f, speciesId)).sort((a, b) => rank(a) - rank(b) || (a.id < b.id ? -1 : 1));
 }
 
-/** Keepers' rounds a day that can feed young (YOUNG_FED_RECENTLY_H apart: 8 AM, 1 PM and 6 PM; 9 PM is too soon after). */
-const YOUNG_ROUNDS_A_DAY = 3;
+/**
+ * The servings a keeper gives one brood on one round: about one per 20 young (a doser's rate), never more than
+ * `KEEPER_YOUNG_MAX_SERVINGS`, and only one while ammonia or nitrite is at WATCH (`lightly`).
+ */
+export function keeperYoungServings(count: number, lightly: boolean): number {
+  return Math.min(lightly ? 1 : KEEPER_YOUNG_MAX_SERVINGS, Math.max(1, Math.ceil(count / DOSER.youngPerServing)));
+}
+
+/**
+ * The rounds a day on which this keeper can feed the young in this tank: the rounds the keeper walks to it
+ * (`tankRounds`, which `roundVisits` reads too), in day order, each counted only when it comes more than
+ * `YOUNG_FED_RECENTLY_H` after the last one counted (young offered food that recently aren't fed again). A tank of
+ * young only gets 2 (8 AM and 6 PM); a 4-meal tank or a meticulous keeper's tank gets 3 (8 AM, 1 PM and 6 PM, but not
+ * 9 PM, 3 hours after 6 PM). A tank keeps the same slot on every round, so the gaps are the rounds' start times'.
+ */
+export function youngFeedingRounds(state: GameState, m: StaffMember, tankId: string, meals = mealsPerDay(state, tankId)): number {
+  let n = 0;
+  let last = -Infinity;
+  for (const r of tankRounds(state, m, tankId, meals)) {
+    const at = roundStart(m, r);
+    if (at - last <= YOUNG_FED_RECENTLY_H) continue;
+    n++;
+    last = at;
+  }
+  return n;
+}
 
 /**
  * Audit 2026-11-17 (follow-up to H2) — servings a day of the first foods the young in keepers' tanks will be given:
  * each brood past its eggs in a tank an aquarist looks after (and no working doser feeds), in a phase that eats fed
  * food, on the food its keeper would pick (the first of its phase's foods in stock, else the first the shop sells),
- * about a serving per 20 young at up to three rounds a day. Pure: the stock manager's plan reads it.
+ * what the keeper gives it on a round (`keeperYoungServings`, so 1 or 2) times the rounds that can feed it
+ * (`youngFeedingRounds`, 2 or 3). Pure: the stock manager's plan reads it.
  */
 export function plannedYoungUsage(state: GameState): Map<string, number> {
   const usage = new Map<string, number>();
+  const watch = new Map<string, boolean>();
   for (const cl of Object.values(state.clutches)) {
     if (!(cl.count > 0) || cl.stage === 'eggs' || cl.stage === 'in_pouch' || isCarried(cl)) continue;
     const tank = state.tanks[cl.tankId];
-    if (!tank || !keeperOf(state, tank.id) || (doserOf(tank) && !isHeld(state, 'food'))) continue;
+    const keeper = tank ? keeperOf(state, tank.id) : null;
+    if (!tank || !keeper || (doserOf(tank) && !isHeld(state, 'food'))) continue;
     const sp = findSpecies(cl.speciesId);
     if (!sp) continue;
     const ph = currentPhase(cl, moduleFor(sp));
@@ -446,7 +473,10 @@ export function plannedYoungUsage(state: GameState): Map<string, number> {
     const fits = youngFoodFits(ph.foods, tank, sp.id);
     const pick = fits.find((f) => inStock(state, f.id) >= 1) ?? fits.find((f) => isFoodAvailable(state, f));
     if (!pick) continue;
-    usage.set(pick.id, (usage.get(pick.id) ?? 0) + Math.max(1, Math.ceil(cl.count / DOSER.youngPerServing)) * YOUNG_ROUNDS_A_DAY);
+    let lightly = watch.get(tank.id);
+    if (lightly === undefined) watch.set(tank.id, (lightly = nitrogenWatch(state, tank)));
+    const perDay = keeperYoungServings(cl.count, lightly) * youngFeedingRounds(state, keeper, tank.id);
+    usage.set(pick.id, (usage.get(pick.id) ?? 0) + perDay);
   }
   return usage;
 }
@@ -482,7 +512,7 @@ export function keeperFeedYoung(state: GameState, m: StaffMember, tank: Tank, ho
     }
     const left = inStock(state, pick.id) - (plan.get(pick.id) ?? 0);
     // a pinch per brood, and only one while ammonia or nitrite is at WATCH (the adults' "feed lightly until it clears")
-    const want = Math.min(lightly ? 1 : KEEPER_YOUNG_MAX_SERVINGS, Math.max(1, Math.ceil(cl.count / DOSER.youngPerServing)));
+    const want = keeperYoungServings(cl.count, lightly);
     plan.set(pick.id, (plan.get(pick.id) ?? 0) + Math.min(left, want));
   }
   let fed = 0;
@@ -812,7 +842,16 @@ interface Order {
   urgency: number;
   label: string;
   unit: number;
+  /** A food only young eat (`plannedYoungUsage`): bought after anything that runs out within `ADULTS_FIRST_DAYS`. */
+  young?: boolean;
 }
+
+/**
+ * Audit 2026-11-17 (review of the H2 follow-up) — a food only the young in keepers' tanks eat is ordered after every
+ * order that runs out within this many days (the animals' food, the salt and the hatchery's eggs, out or nearly out),
+ * so a brood's live food never takes the day's budget from food the grown animals have run out of.
+ */
+export const ADULTS_FIRST_DAYS = 1;
 
 /**
  * lane:automation (chunk 5, DESIGN-S3D §9.6, decision 15) — once a Water room mixes the salt, a salt order covers about
@@ -869,8 +908,13 @@ export function plannedOrders(state: GameState, m: StaffMember): Order[] {
   const orders: Order[] = [];
   const perDay = plannedUsage(state); // lane:staff2 — servings a day (was per round × 2)
   // Audit 2026-11-17 (follow-up to H2): plus the first foods keepers give young in their tanks, so a staffed nursery
-  // isn't flagged every round until the player buys by hand (none: the plan is as it was)
-  for (const [foodId, n] of plannedYoungUsage(state)) perDay.set(foodId, (perDay.get(foodId) ?? 0) + n);
+  // isn't flagged every round until the player buys by hand (none: the plan is as it was). A food the grown animals
+  // don't eat is the young's own, ordered after what runs out sooner (ADULTS_FIRST_DAYS).
+  const youngOnly = new Set<string>();
+  for (const [foodId, n] of plannedYoungUsage(state)) {
+    if (!((perDay.get(foodId) ?? 0) > 0)) youngOnly.add(foodId);
+    perDay.set(foodId, (perDay.get(foodId) ?? 0) + n);
+  }
   const target = stockTargetDays(m);
   const maxPacks = m.trait === 'thrifty' ? 1 : 6;
   // 1) Foods in use that would run out within the target (a day of keeper meals at a time).
@@ -882,7 +926,7 @@ export function plannedOrders(state: GameState, m: StaffMember): Order[] {
     if (days >= target) continue;
     const need = Math.max(0, (target + 1) * per - have);
     const packs = clamp(Math.ceil(need / Math.max(1, f.servingsPerPack)), 1, maxPacks);
-    orders.push({ kind: 'food', foodId, packs, urgency: days, label: f.name, unit: f.price });
+    orders.push({ kind: 'food', foodId, packs, urgency: days, label: f.name, unit: f.price, ...(youngOnly.has(foodId) ? { young: true } : {}) });
   }
   // 2) Animals with nothing at all in stock that they eat: the best food for them.
   const outlook = foodOutlookAll(state);
@@ -959,7 +1003,9 @@ export function plannedOrders(state: GameState, m: StaffMember): Order[] {
       orders.push({ kind: 'eggs', tins, urgency: days, label: 'brine shrimp eggs', unit: EGGS_SUPPLY.price });
     }
   }
-  orders.sort((a, b) => a.urgency - b.urgency);
+  // the young's own food waits behind anything out or nearly out (Audit 2026-11-17, review of the H2 follow-up)
+  const rank = (o: Order) => (o.young ? Math.max(o.urgency, ADULTS_FIRST_DAYS) : o.urgency);
+  orders.sort((a, b) => rank(a) - rank(b) || Number(!!a.young) - Number(!!b.young));
   return orders;
 }
 

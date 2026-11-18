@@ -82,6 +82,14 @@ export function doHold(sys: HoldSystem, on: boolean): void {
   );
 }
 
+/**
+ * Problems › salt › "Turn on Rosa’s orders": the stock manager's orders switch, as Manual mode's and Visitors › Staff's
+ * toggles flip it (the same command, so a shared shop's rules apply alike), quietly: the card changes as she reorders.
+ */
+export function turnOnStockOrders(onDone?: (ok: boolean) => void): void {
+  act({ k: 'setStockOrders', on: true }, { quiet: true, after: (r) => onDone?.(!!r?.ok) });
+}
+
 /** Problems › a paused line › Wait. */
 export function doWait(lineId: string, restartDay: number): void {
   const g = useGame.getState().game;

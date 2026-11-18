@@ -133,9 +133,13 @@ export function ShowsPanel() {
                   <>
                     Results
                     {unseen > 0 && tab !== 'results' && (
-                      <span className={clsx('pn-seg__count', 'pn-seg__count--new')} data-testid="shows-results-new" aria-label={`${unseen} new`}>
-                        {unseen}
-                      </span>
+                      <>
+                        {/* Audit 2026-11-17 (review of J36): a plain span's aria-label isn't read; the words are hidden text */}
+                        <span className={clsx('pn-seg__count', 'pn-seg__count--new')} data-testid="shows-results-new" aria-hidden>
+                          {unseen}
+                        </span>
+                        <span className="pn-sr">{unseen} new</span>
+                      </>
                     )}
                   </>
                 ),

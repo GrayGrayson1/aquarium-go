@@ -43,10 +43,10 @@ describe('QOL-003: the Shop', () => {
   it('finds an offer by species, scientific name and seller', () => {
     const g = game();
     const o = g.market.stock.find((x) => x.speciesId === 'betta') ?? ({ ...g.market.stock[0], speciesId: 'betta' } as ShopOffer);
-    expect(offerSearchMatches(o, 'betta')).toBe(true);
-    expect(offerSearchMatches(o, 'splendens')).toBe(true);
-    expect(offerSearchMatches(o, o.seller.split(' ')[0])).toBe(true);
-    expect(offerSearchMatches(o, 'shark')).toBe(false);
+    expect(offerSearchMatches(o, 'betta', g.clock.hour)).toBe(true);
+    expect(offerSearchMatches(o, 'splendens', g.clock.hour)).toBe(true);
+    expect(offerSearchMatches(o, o.seller.split(' ')[0], g.clock.hour)).toBe(true);
+    expect(offerSearchMatches(o, 'shark', g.clock.hour)).toBe(false);
   });
   it('sorts cheapest, priciest and leaving soonest, ties keeping the shop’s order', () => {
     const list = [offer('a', 30, 50), offer('b', 10, 80), offer('c', 30, 20)];

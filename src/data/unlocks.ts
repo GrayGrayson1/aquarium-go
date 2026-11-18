@@ -96,7 +96,7 @@ export const UNLOCK_RULES: UnlockRule[] = [
   { key: 'gear_chiller', when: [any(unlocked('fw_coldwater'), rep(120))], hint: 'Comes with Cool-water Systems research, or at 120 reputation.' },
   { key: 'gear_skimmer', when: [unlocked('marine_basics'), any(rep(40), mastery('marine', 60))], hint: 'Comes with Marine Systems research (or keep a marine tank a little while).' },
   { key: 'gear_ato', when: [unlocked('marine_basics'), any(rep(70), mastery('marine', 120))], hint: 'Comes with Marine Systems research (or reach 70 reputation as a marine keeper).' },
-  { key: 'gear_autofeeder', when: [any(mastery('husbandry', 220), research('life_support_2'))], hint: 'Research Better Life Support, or raise Husbandry mastery by caring for your tanks.' },
+  { key: 'gear_autofeeder', when: [any(mastery('husbandry', 220), research('life_support_2'))], hint: 'Research Better Life Support, or raise husbandry mastery by caring for your tanks.' },
   { key: 'gear_co2', when: [unlocked('gear_tier2'), any(mastery('aquascaping', 200), research('planted_co2'))], hint: 'Research CO₂ & Planted Tanks, or build aquascaping mastery.' },
 
   // ── tanks ──
