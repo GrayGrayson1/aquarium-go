@@ -22,7 +22,7 @@ import { opsSnapshot, type OpsSnapshot } from '@/ui/common/ops';
 import { AddQuarantine } from '../livestock/Production';
 import { Status, Kicker } from './parts';
 import { budgetAtMax, issueViews, nextMixHour, saltBuyLabel, saltChangeHour, whenText, type IssueView } from './issues';
-import { buyEggTin, buySaltBag, buyVegPack, doWait, markDecided } from './actions';
+import { buyEggTin, buySaltBag, buyVegPack, doWait, markDecided, turnOnStockOrders } from './actions';
 import type { OpsNav } from './OperationsPanel';
 
 const staff = () => go({ kind: 'panel', panel: 'visitors', tab: 'staff' });
@@ -171,7 +171,7 @@ function SaltCard({ g, issue }: { g: GameState; issue: IssueView }) {
     ) : budgetAtMax(g) ? (
       <span className="ops-muted">{lvl.id === 'grand_hall' ? `The highest budget (${formatMoney(max)})` : `The most for a ${lvl.name} (${formatMoney(max)})`}</span>
     ) : p.why === 'orders_off' ? (
-      <Button size="sm" onClick={() => go({ kind: 'panel', panel: 'operations', tab: 'overview', target: 'view:manual' })}>
+      <Button size="sm" data-testid="issues-orders-on" onClick={() => turnOnStockOrders()}>
         Turn on {(opsSnapshot(g).forecast?.m.name ?? 'Stock manager').split(' ')[0]}’s orders
       </Button>
     ) : (

@@ -53,7 +53,7 @@ import { StaffTab } from '@/ui/panels/visitors/StaffTab';
 import { ResearchPanel } from '@/ui/panels/research/ResearchPanel';
 import { RoomPage, Rooms, YourFacility } from '@/ui/panels/build/FacilityRooms';
 import { CulturesSection, DryFoodSection, LiveFoodSection, SaltRow } from '@/ui/panels/market/SuppliesAutomation';
-import { buySaltBag } from '@/ui/panels/operations/actions';
+import { buySaltBag, turnOnStockOrders } from '@/ui/panels/operations/actions';
 import { facility, run } from './support/automation';
 import { lineFarm } from './support/production';
 
@@ -377,6 +377,13 @@ describe('DES-013 B: the strings chunk 5 shipped that the owner approved as ship
     const offLow = saltLow();
     offLow.g.staff!.ordersOff = true;
     expect(ops(offLow.g).problems()).toContain('Turn on Rosa’s orders'); // Audit 2026-11-17 (J34): the button says what it's for
+    // ... and does it (the review of J34): the button's handler is the orders switch's own command, not a link
+    expect(readFileSync(join(ROOT, 'src/ui/panels/operations/Problems.tsx'), 'utf8')).toMatch(/data-testid="issues-orders-on" onClick=\{\(\) => turnOnStockOrders\(\)\}>\s+Turn on \{/);
+    let on: boolean | undefined;
+    turnOnStockOrders((x) => (on = x));
+    expect(on).toBe(true);
+    expect(useGame.getState().game!.staff!.ordersOff).toBeFalsy();
+    expect(ops(useGame.getState().game!).problems()).not.toContain('Turn on Rosa’s orders');
     holdAll(off);
     expect(ops(off).water()).toMatch(/Manual mode: .+ on hold\. Open/);
   });
