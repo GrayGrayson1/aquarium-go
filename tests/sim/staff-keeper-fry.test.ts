@@ -16,6 +16,9 @@ import { installEquipment } from '@/sim/care';
 import { addStaffDirect, keeperVisit } from '@/sim/staff';
 import { KEEPER_YOUNG_MAX_SERVINGS } from '@/sim/staff/work';
 import { BRINE, INFUSORIA } from '@/data/catalog/machines';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { TankKeeperLine } from '@/ui/panels/visitors/TankKeeperLine';
 
 function nursery(): { g: GameState; tank: Tank; m: ReturnType<typeof addStaffDirect>; clutchId: string } {
   const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 51 });
@@ -81,5 +84,14 @@ describe('Audit 2026-11-17 (H2): keepers feed fry their first foods', () => {
     expect(g.inventory.foods[BRINE]).toBe(10);
     expect(g.inventory.foods[INFUSORIA]).toBe(10);
     expect(g.log.some((e) => /couldn’t feed the fry/.test(e.text))).toBe(false);
+  });
+
+  it('the tank card’s keeper line says what the doser does, and when it has nothing to give (second review)', () => {
+    const { g, tank } = nursery();
+    expect(installEquipment(g, tank.id, 'live_food_doser', { purchased: true }).ok).toBe(true);
+    const title = () => /title="([^"]*)"/.exec(renderToStaticMarkup(createElement(TankKeeperLine, { game: g, tank })))?.[1] ?? '';
+    expect(title()).toBe('Maya keeps the water clean; the live-food doser has no baby brine or infusoria in stock, so the fry go hungry. Open Staff');
+    g.inventory.foods[BRINE] = 10;
+    expect(title()).toBe('Maya keeps the water clean; the live-food doser feeds the fry. Open Staff');
   });
 });

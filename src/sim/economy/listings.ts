@@ -1701,7 +1701,7 @@ function expireListing(state: GameState, l: Listing): void {
   // to act on there
   const lineId = lineOfListing(state, l.id);
   const line = lineId ? state.production?.lines.find((x) => x.id === lineId) : undefined;
-  if (line?.rules.autoList) advice = `The ${line.name} lists them again.`;
+  if (line?.rules.autoList) advice = `${line.name}: ${l.creatureIds.length === 1 ? 'it’s' : 'they’re'} listed again.`; // a name, never "The Bettas" (second review)
   l.advice = advice;
   l.outcome = 'Ended without a sale.';
   if (!line?.rules.autoList) emitEvent(state, { kind: 'market', text: `"${l.title}" ended without a sale. ${advice}`, listingId: l.id, toast: true });
