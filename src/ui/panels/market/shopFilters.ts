@@ -19,7 +19,7 @@ import { geneticsRevealLevel } from '@/sim/life/reveal';
 import { DEFAULT_SHOP_FILTERS, type EnvFilter, type ShopFilters } from '@/ui/nav/routes';
 import { rareGenesMatch } from './offerGenetics';
 import { matches } from '../common/match'; // chunk 19 (QOL-003)
-import { PERSONALITY_LABEL, SEX_LABEL } from '../common/format'; // chunk 19 (QOL-003)
+import { PERSONALITY_LABEL, SEX_UNKNOWN_SEARCH, sexLabel } from '../common/format'; // chunk 19 (QOL-003)
 
 interface ShopFilterState {
   filters: ShopFilters;
@@ -51,19 +51,23 @@ useGame.subscribe((s, prev) => {
   }
 });
 
-/** The words an offer is found by: species (common and scientific), morph and strain, seller, sex and personality. */
-export function offerWords(o: ShopOffer, sp: SpeciesDefinition | undefined): string {
+/**
+ * The words an offer is found by: species (common and scientific), morph and strain, seller, sex and personality. The
+ * sex is the card's words (`sexLabel` at `hour`), and "unsexed" for any animal whose sex isn't known (Audit 2026-11-17,
+ * the review of J22: what a player types, now the card no longer says it).
+ */
+export function offerWords(o: ShopOffer, sp: SpeciesDefinition | undefined, hour: number): string {
   const parts: string[] = [sp?.commonName ?? '', sp?.scientificName ?? '', o.seller ?? '', o.kind === 'group' ? 'group' : ''];
   for (const c of o.creatures) {
-    parts.push(c.morphName ?? '', c.name ?? '', SEX_LABEL[c.sex] ?? '', ...(c.personality ?? []).map((t) => PERSONALITY_LABEL[t] ?? t));
+    parts.push(c.morphName ?? '', c.name ?? '', sexLabel(c, sp, hour), c.sex === 'unknown' ? SEX_UNKNOWN_SEARCH : '', ...(c.personality ?? []).map((t) => PERSONALITY_LABEL[t] ?? t));
     if (isPrismatic(c)) parts.push('prismatic');
   }
   return parts.join(' ');
 }
 
-/** Does an offer match the search? */
-export function offerSearchMatches(o: ShopOffer, q: string): boolean {
-  return matches(q, offerWords(o, findSpecies(o.speciesId)));
+/** Does an offer match the search (at game hour `hour`)? */
+export function offerSearchMatches(o: ShopOffer, q: string, hour: number): boolean {
+  return matches(q, offerWords(o, findSpecies(o.speciesId), hour));
 }
 
 /** Order the shelf: as stocked (Prismatic first), cheapest, dearest or leaving soonest; ties keep the shop's order. */

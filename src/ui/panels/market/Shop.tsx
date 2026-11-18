@@ -41,7 +41,7 @@ import { CreaturePortrait } from '../common/Portrait';
 import { CompatPreview } from '../common/CompatPreview';
 import { PotentialBands, CareChips } from '../common/Profile';
 import { orderedTanks, speciesOf, livingInTank, gallonsOf, EMPTY_COMPAT, speciesUnlocked, lockHintOf } from '../common/derive';
-import { PERSONALITY_LABEL, PERSONALITY_TONE, WATER_CLASS_LABEL, ENV_LABEL, untilTime, plural, SEX_LABEL, RARITY_LABEL, RARITY_TONE, VERDICT_RANK, VERDICT_LABEL, verdictStatus } from '../common/format';
+import { PERSONALITY_LABEL, PERSONALITY_TONE, WATER_CLASS_LABEL, ENV_LABEL, untilTime, plural, sexLabel, RARITY_LABEL, RARITY_TONE, VERDICT_RANK, VERDICT_LABEL, verdictStatus } from '../common/format';
 import './offer-genes.css';
 import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
 import { requiredUnlocks } from '@/sim/economy'; // chunk 19 (QOL-006)
@@ -87,7 +87,7 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
     );
 
   const inStock = g.market.stock.filter((o) => !!speciesOf(o.speciesId));
-  const stock = sortOffers(inStock.filter((o) => offerMatches(g, o, filters) && offerSearchMatches(o, q)), sort);
+  const stock = sortOffers(inStock.filter((o) => offerMatches(g, o, filters) && offerSearchMatches(o, q, g.clock.hour)), sort);
   const lab = geneticsRevealLevel(g, {}) >= 1;
   const clear = () => {
     useShopFilters.getState().clearFilters();
@@ -154,7 +154,7 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
             <EmptyState icon={<Sparkles size={26} className="ag-violet" />} title="No Prismatic animals right now" action={<ClearFilters onClick={clear} />}>
               About {oneInLabel(PRISMATIC.shopChance)} stocked animals shimmers. New stock arrives through the day.
             </EmptyState>
-          ) : q.trim() && !inStock.some((o) => offerSearchMatches(o, q)) && notStocked(q).length > 0 ? (
+          ) : q.trim() && !inStock.some((o) => offerSearchMatches(o, q, g.clock.hour)) && notStocked(q).length > 0 ? (
             // audit 2026-11-17 (F9) — a search for an animal that isn't on the shelf: locked (and how to unlock it), or
             // just not stocked today
             <NotStocked g={g} q={q} />
@@ -226,10 +226,10 @@ function ClearFilters({ onClick }: { onClick: () => void }) {
   );
 }
 
-function SexMark({ c }: { c: Creature }) {
+function SexMark({ c, sp, hour }: { c: Creature; sp: SpeciesDefinition | undefined; hour: number }) {
   if (c.sex === 'male') return <Mars size={13} className="pn-sex pn-sex--m" aria-label="Male" />;
   if (c.sex === 'female') return <Venus size={13} className="pn-sex pn-sex--f" aria-label="Female" />;
-  return <CircleDashed size={12} className="pn-sex" aria-label="Sex not known yet" />;
+  return <CircleDashed size={12} className="pn-sex" aria-label={sexLabel(c, sp, hour)} />;
 }
 
 /** The card and hero title: the morph display name ("Royal Blue Butterfly Halfmoon Betta"); groups "10 × …". */
@@ -300,11 +300,11 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
         <div className="pn-grow">
           <div className="pn-offer__name ag-offercard__title">
             <span className="ag-offercard__titletext">{title}</span>
-            {lead && !group && <SexMark c={lead} />}
+            {lead && !group && <SexMark c={lead} sp={sp} hour={g.clock.hour} />}
           </div>
           {lead && (
             <div className="ag-offercard__sub">
-              {group ? `Group of ${offer.creatures.length} · ${lead.sizeCm.toFixed(1)} cm` : `${SEX_LABEL[lead.sex]} · ${lead.sizeCm.toFixed(1)} cm${firstTrait ? ` · ${PERSONALITY_LABEL[firstTrait] ?? firstTrait}` : ''}`}
+              {group ? `Group of ${offer.creatures.length} · ${lead.sizeCm.toFixed(1)} cm` : `${sexLabel(lead, sp, g.clock.hour)} · ${lead.sizeCm.toFixed(1)} cm${firstTrait ? ` · ${PERSONALITY_LABEL[firstTrait] ?? firstTrait}` : ''}`}
             </div>
           )}
         </div>
@@ -538,7 +538,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             {strainLeadChips}
             <NewGeneChips sp={sp} c={lead} />
             <Chip>
-              {SEX_LABEL[lead.sex]} · {lead.sizeCm.toFixed(1)} cm
+              {sexLabel(lead, sp, g.clock.hour)} · {lead.sizeCm.toFixed(1)} cm
             </Chip>
             {lead.captiveBred ? (
               <Chip tone="good" icon={<BadgeCheck size={11} aria-hidden />}>
@@ -569,7 +569,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
                 <button type="button" className="pn-pick__btn" onClick={() => setActive(i)} aria-label={`Inspect individual ${i + 1}`}>
                   <CreaturePortrait creature={c} size={52} />
                   <span className="pn-tiny pn-dim">
-                    {SEX_LABEL[c.sex]} · {c.sizeCm.toFixed(1)} cm
+                    {sexLabel(c, sp, g.clock.hour)} · {c.sizeCm.toFixed(1)} cm
                   </span>
                 </button>
                 <Checkbox

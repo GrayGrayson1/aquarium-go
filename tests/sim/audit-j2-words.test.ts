@@ -6,7 +6,10 @@
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { SEX_LABEL, PURPOSE_HINT } from '@/ui/panels/common/format';
+import { SEX_LABEL, PURPOSE_HINT, sexLabel } from '@/ui/panels/common/format';
+import { sexRoleText } from '@/ui/common/format';
+import { offerSearchMatches } from '@/ui/panels/market/shopFilters';
+import type { ShopOffer } from '@/types';
 import { CRITERION_LABEL } from '@/data/shows';
 import { AUTOMATION_LOCK_HINT } from '@/ui/cards/Automation';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
@@ -49,8 +52,8 @@ describe('Audit 2026-11-17 (J22): jargon gets plain words where it appears', () 
       ['ui/panels/build/BuildPanel.tsx', ' gph`', ' gallons an hour`'],
       ['ui/hud/AlertsAutomation.tsx', 'Add QT tank', 'Add quarantine tank'],
       ['ui/panels/market/Shop.tsx', 'Sold as one lot ·', 'Sold together · '],
-      ['ui/panels/market/Shop.tsx', 'aria-label="Unsexed"', 'aria-label="Sex not known yet"'],
-      ['ui/panels/market/CreateListing.tsx', 'aria-label="Unsexed"', 'aria-label="Sex not known yet"'],
+      ['ui/panels/market/Shop.tsx', 'aria-label="Unsexed"', 'aria-label={sexLabel(c, sp, hour)}'],
+      ['ui/panels/market/CreateListing.tsx', 'aria-label="Unsexed"', 'aria-label={sexLabel(c, speciesOf(c.speciesId), hour)}'],
       ['ui/panels/livestock/Production.tsx', 'Pair conditioning', 'Pair getting ready'],
       ['ui/panels/shows/Upcoming.tsx', 'Purse <', 'Prizes <strong>'],
       ['ui/panels/shows/Upcoming.tsx', 'table show', 'A friendly club show · judge'],
@@ -64,6 +67,44 @@ describe('Audit 2026-11-17 (J22): jargon gets plain words where it appears', () 
       expect(s, `${file}: ${gone}`).not.toContain(gone);
       expect(s, `${file}: ${now}`).toContain(now);
     }
+  });
+
+  it('the review: “Sex not known yet” only where the sex will show; elsewhere the creature card’s words, and “unsexed” still finds them', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 7 });
+    const rng = simRng(g);
+    const seen = new Set<string>();
+    for (const sp of ALL_SPECIES) {
+      for (const ageDays of [10, 60, Math.floor(sp.lifecycle.lifespanDays * 0.6)]) {
+        const c = createCreature(g, rng, sp.id, { ageDays });
+        const word = sexLabel(c, sp, g.clock.hour);
+        seen.add(word);
+        const id = `${sp.id} at ${ageDays} days`;
+        if (c.sex === 'male' || c.sex === 'female') expect(word, id).toBe(SEX_LABEL[c.sex]);
+        else if (sp.sexSystem === 'simultaneous_hermaphrodite') expect(word, id).toBe('Both sexes');
+        else if (sp.lifecycle.sexVisibleAtDays >= sp.lifecycle.lifespanDays && sp.sexSystem !== 'protandrous' && sp.sexSystem !== 'protogynous') expect(word, id).toBe('Can’t be told by eye');
+        if (word === SEX_LABEL.unknown) expect(sp.lifecycle.sexVisibleAtDays, id).toBeLessThan(sp.lifecycle.lifespanDays); // "yet" only where it will show
+        if (c.sex === 'unknown') expect(word, id).toBe(sexRoleText(c, sp, g.clock.hour).label === 'Not yet visible' ? SEX_LABEL.unknown : sexRoleText(c, sp, g.clock.hour).label);
+      }
+    }
+    expect([...seen].sort()).toEqual(['Both sexes', 'Can’t be told by eye', 'Female', 'Male', 'Not yet differentiated', 'Sex not known yet']);
+    // the Shop's search: an animal whose sex isn't known is found by "unsexed" and by its card's words
+    const offer = (speciesId: string) => {
+      const c = createCreature(g, rng, speciesId, { ageDays: 60 });
+      return { ...g.market.stock[0], speciesId, kind: 'single', creatures: [c] } as ShopOffer;
+    };
+    const ramshorn = offer('ramshorn_snail');
+    const nerite = offer('nerite_snail');
+    expect(offerSearchMatches(ramshorn, 'unsexed', g.clock.hour)).toBe(true);
+    expect(offerSearchMatches(ramshorn, 'both sexes', g.clock.hour)).toBe(true);
+    expect(offerSearchMatches(nerite, 'unsexed', g.clock.hour)).toBe(true);
+    expect(offerSearchMatches(nerite, 'told by eye', g.clock.hour)).toBe(true);
+    const young = offer('axolotl');
+    young.creatures[0] = createCreature(g, rng, 'axolotl', { ageDays: 10 }); // its sex shows later
+    expect(sexLabel(young.creatures[0], getSpecies('axolotl'), g.clock.hour)).toBe('Sex not known yet');
+    expect(offerSearchMatches(young, 'unsexed', g.clock.hour)).toBe(true);
+    const sexed = offer('betta');
+    expect(sexed.creatures[0].sex).not.toBe('unknown');
+    expect(offerSearchMatches(sexed, 'unsexed', g.clock.hour)).toBe(false);
   });
 });
 
@@ -242,6 +283,8 @@ describe('Audit 2026-11-17 (J34): a confirm button says what it does', () => {
       ['ui/panels/visitors/StaffTab.tsx', "'Confirm'", '`Let ${first(m)} go (final day’s pay)`'],
       ['ui/panels/livestock/ProductionSetup.tsx', '          Done\n        </Button>\n      }\n    >\n      <p>Only adult pairs', '          Use this pair\n'],
       ['ui/panels/operations/Problems.tsx', "        {(opsSnapshot(g).forecast?.m.name ?? 'Stock manager').split(' ')[0]}’s orders", "Turn on {(opsSnapshot(g).forecast?.m.name ?? 'Stock manager').split(' ')[0]}’s orders"],
+      // the review: "Turn on" must turn them on, not open Manual mode (ui-copy-s3d clicks it through turnOnStockOrders)
+      ['ui/panels/operations/Problems.tsx', "target: 'view:manual' })}>\n        Turn on", 'onClick={() => turnOnStockOrders()}>\n        Turn on'],
       ['ui/panels/livestock/LivestockPanel.tsx', '>Keep them</Button>', "pickedList.length === 1 ? 'Don’t sell' : 'Keep them'"],
     ];
     for (const [file, gone, now] of cases) {
