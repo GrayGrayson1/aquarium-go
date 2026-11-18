@@ -17,6 +17,7 @@
  * another aquarium) is recognised as stale: it is replaced with where the player is, never applied or booted (NAV-012
  * A3). A typed or followed link has no tag and opens as a link.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useUI, type UIState } from '@/state/ui';
@@ -34,6 +35,8 @@ import { toastMark, reportLoadFailure } from '../screens/loadFeedback';
 import { useTankCardTab } from '../cards/tankCardTab';
 import { urlFixtureName } from '@/game/useAutosave';
 import { useShopFilters } from '../panels/market/shopFilters';
+import { guardLeave } from '../panels/common/leaveGuard'; // audit B6
+import { useTour } from '../tutorial/tourStore'; // audit B13 (read only)
 import { urlSandboxName, urlScenarioBoot } from '@/state/devTools'; // chunk 7 (REL-019); chunk 15 (the scenario lab)
 import { socialAvailable } from '../online/mode'; // lane:social (chunk 6; chunk 8, REL-025)
 import {
@@ -101,6 +104,8 @@ export const BROKEN_LINK = { title: 'That link doesn’t go anywhere', detail: '
 export const NOT_FOUND = {
   tank: { panel: 'tanks', target: null, title: 'That tank isn’t in your aquarium', detail: 'Showing your tanks instead.' },
   creature: { panel: 'livestock', target: 'tab:animals', title: 'That animal isn’t in your aquarium', detail: 'Showing your livestock instead.' },
+  // audit B8: an animal that has died or been sold (its record stays in the save)
+  pastCreature: { panel: 'livestock', target: 'tab:past', title: 'That animal isn’t in your aquarium', detail: 'Showing past residents instead.' },
   listing: { panel: 'market', target: 'tab:listings', title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' },
   species: { panel: 'encyclopedia', target: 'tab:species', title: 'There’s no page for that species', detail: 'Showing every species instead.' },
   // DESIGN-S3D §6 (unknown id → not found), with the owner's words (ADR-0026 decision 9, INTAKE C-48)
@@ -172,13 +177,25 @@ function gameTag(): string | undefined {
   return useUI.getState().screen === 'game' && g && !g.isShowcase ? g.saveId : undefined;
 }
 
-/** history.state for an entry the router writes: whatever else is there, plus (or minus) the aquarium tag. */
+/** audit B22: the tank on screen, kept with each entry so Back returns to it (the address names no tank in `#/`). */
+const focusTag = (): string | undefined => (gameTag() ? (useUI.getState().focusedTankId ?? undefined) : undefined);
+
+/** history.state for an entry the router writes: whatever else is there, plus (or minus) the aquarium and tank tags. */
 function entryState(): Record<string, unknown> {
   const prev = history.state && typeof history.state === 'object' ? { ...(history.state as Record<string, unknown>) } : {};
   const tag = gameTag();
   if (tag) prev.aqGame = tag;
   else delete prev.aqGame;
+  const tank = focusTag();
+  if (tank) prev.aqTank = tank;
+  else delete prev.aqTank;
   return prev;
+}
+
+/** The tank the entry the browser just moved to was showing (audit B22). */
+function entryTank(): string | undefined {
+  const st = history.state as { aqTank?: unknown } | null;
+  return st && typeof st.aqTank === 'string' ? st.aqTank : undefined;
 }
 
 /** The aquarium tag of the entry the browser just moved to (undefined for a typed or followed link). */
@@ -194,9 +211,10 @@ function entryTag(): string | undefined {
 function writeHash(hash: string, mode: 'auto' | 'push' | 'replace'): void {
   if (!hasHistory()) return;
   if (location.hash === hash) {
-    // the right address already: keep the entry's aquarium tag current (a game coming on screen at #/)
+    // the right address already: keep the entry's aquarium tag current (a game coming on screen at #/), and its tank
+    // (audit B22: switching tanks at #/ changes no address)
     const tag = gameTag();
-    if (entryTag() !== tag) {
+    if (entryTag() !== tag || entryTank() !== focusTag()) {
       try {
         history.replaceState(entryState(), '', location.pathname + location.search + location.hash);
       } catch {
@@ -223,6 +241,9 @@ function writeHash(hash: string, mode: 'auto' | 'push' | 'replace'): void {
 export function syncAddress(mode: 'auto' | 'push' | 'replace' = 'auto'): void {
   syncQueued = false;
   if (!started || applying) return;
+  // audit B13: the tour's stops open panel after panel, each after a click on Next: they replace the address, so Back
+  // afterwards doesn't walk back through every panel it showed
+  if (mode === 'auto' && useTour.getState().running) mode = 'replace';
   const nav = useNav.getState();
   if (useUI.getState().screen !== 'game' || nav.boot || nav.pending) return;
   const route = currentRoute();
@@ -292,6 +313,8 @@ function applyInner(route: Route, filters: ShopFilters | undefined): void {
     case 'creature': {
       const c = g?.creatures[route.creatureId];
       if (!c) return notFound('creature');
+      // audit B8: its card would only flash open (or stay open on it while paused): Past residents instead
+      if (c.status === 'dead' || c.status === 'sold') return notFound('pastCreature');
       const inTank = c.status === 'alive' && !!c.tankId && !!g?.tanks[c.tankId];
       useShell.getState().set({ tankCardOpen: false, popover: null });
       useUI.getState().set({ panel: null, panelTarget: null, selectedCreatureId: c.id, ...(inTank ? { focusedTankId: c.tankId, view: 'tank' as const } : {}) });
@@ -338,8 +361,11 @@ export function applyRoute(route: Route, filters?: ShopFilters, mode: 'push' | '
 
 /** Navigate from code (a button that opens a screen): apply the route and push its address (§6.3). */
 export function go(route: Route, opts: { replace?: boolean; filters?: ShopFilters; fromNotification?: boolean } = {}): void {
-  if (opts.fromNotification) useNav.setState({ fromNotification: true });
-  applyRoute(route, opts.filters, opts.replace ? 'replace' : 'push');
+  // audit B6 review: a sub-view holding the player's work (the listing wizard) asks first; Leave completes the move
+  guardLeave(() => {
+    if (opts.fromNotification) useNav.setState({ fromNotification: true });
+    applyRoute(route, opts.filters, opts.replace ? 'replace' : 'push');
+  });
 }
 
 function onHashChange(): void {
@@ -360,12 +386,28 @@ function onHashChange(): void {
     else useNav.setState({ pending: parsed });
     return;
   }
+  // audit B6: a sub-view holding the player's work (the listing wizard) asks first; Keep editing puts its address back
+  const keep = () => syncAddress('push');
+  // audit B22: Back to an entry brings back the tank it was showing (read now, before anything rewrites the entry)
+  const tank = entryTank();
+  const refocus = () => {
+    const g = useGame.getState().game;
+    const ui = useUI.getState();
+    // (as the tank switcher does, TankBar's cycleTank: the animal and the follow camera stay with the old tank)
+    if (tank && g?.tanks[tank] && ui.focusedTankId !== tank)
+      ui.set({ focusedTankId: tank, selectedCreatureId: null, followCreatureId: null, cameraMode: ui.cameraMode === 'follow' ? 'front' : ui.cameraMode });
+  };
   if (!parsed) {
-    toast(BROKEN_LINK);
-    applyRoute(HOME);
+    guardLeave(() => {
+      toast(BROKEN_LINK);
+      applyRoute(HOME);
+    }, keep);
     return;
   }
-  applyRoute(parsed.route, parsed.filters);
+  guardLeave(() => {
+    refocus();
+    applyRoute(parsed.route, parsed.filters);
+  }, keep);
 }
 
 // ───────────────────────────── boot, reload, leaving ─────────────────────────────
@@ -443,7 +485,7 @@ function routeNames(g: GameState | null): RouteNames {
       const o = g?.market.stock.find((x) => x.id === id);
       const sp = o ? findSpecies(o.speciesId) : undefined;
       if (!o || !sp) return null;
-      return o.creatures.some(isPrismatic) ? `Prismatic ${sp.commonName.toLowerCase()}` : (o.label ?? sp.commonName);
+      return o.creatures.some(isPrismatic) ? `Prismatic ${lowerName(sp.commonName)}` : (o.label ?? sp.commonName);
     },
   };
 }
@@ -591,6 +633,8 @@ export function startRouter(opts: { boot?: boolean } = {}): () => void {
   offs.push(useNav.subscribe((s, p) => (s.tab !== p.tab || s.sub !== p.sub ? scheduleSync() : undefined)));
   offs.push(useShopFilters.subscribe((s, p) => (s.filters !== p.filters ? scheduleSync() : undefined)));
   offs.push(useTankCardTab.subscribe((s, p) => (s.want !== p.want ? scheduleSync() : undefined)));
+  // audit B13: the tour starting or ending is not the player's own navigation: what it opens or closes next replaces
+  offs.push(useTour.subscribe((s, p) => (s.running !== p.running ? void (gestureAt = -Infinity) : undefined)));
   if (opts.boot !== false) runBoot();
   if (useUI.getState().screen === 'game') onGameStart();
   return () => {

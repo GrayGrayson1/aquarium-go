@@ -12,7 +12,7 @@ export const amanoShrimp: SpeciesDefinition = {
   group: 'freshwater_shrimp',
   genus: 'Caridina',
   environment: 'freshwater',
-  waterClasses: ['freshwater_tropical', 'freshwater_planted', 'freshwater_cool'],
+  waterClasses: ['freshwater_tropical', 'freshwater_planted'], // Audit 2026-11-17 (D19): a cool tank runs at 17 °C, under its 18 °C minimum
   nativeRegion: 'Southern Japan and Taiwan — fast-flowing coastal streams',
   isStarter: false,
 
@@ -74,7 +74,7 @@ export const amanoShrimp: SpeciesDefinition = {
     predationWithoutNursery: 1,
     nurseryRequired: true,
     maxRaisedPerClutch: 5,
-    notes: 'Females carry hundreds to a couple of thousand tiny eggs for about 4–5 weeks. The hatching zoea larvae cannot survive in freshwater: in the wild they drift to the sea, pass through about nine larval stages over ~40 days on phytoplankton, then walk back upstream. Rearing needs a brackish-to-marine nursery (roughly SG 1.012–1.02) and a slow return to freshwater. The first build has no brackish nursery, so larvae hatched in freshwater tanks die.',
+    notes: 'Females carry hundreds to a couple of thousand tiny eggs for about 4–5 weeks. The hatching zoea larvae cannot survive in freshwater: in the wild they drift to the sea, pass through about nine larval stages over ~40 days on phytoplankton, then walk back upstream. Rearing needs a brackish-to-marine nursery (roughly SG 1.012–1.02) and a slow return to freshwater. Larvae that hatch in a freshwater tank die.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'female',

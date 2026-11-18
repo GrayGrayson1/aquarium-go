@@ -66,6 +66,41 @@ test.describe('phone 390×844 (touch)', () => {
     expect(clear).toBe(true);
   });
 
+  test('audit 2026-11-17 (review of D2): Livestock’s selection footer keeps every button inside the sheet', async ({ page }) => {
+    await phoneGame(page);
+    // a second tank, so the footer offers Move as well (four buttons and the count: about 405 px of buttons alone)
+    await aq(page, 'act', 'buyTank', 'g20L', 'freshwater_tropical');
+    await aq(page, 'dev.spawnSpecies', 'betta', undefined, { sex: 'female', count: 2 });
+    await tid(page, 'dock-livestock').tap();
+    await settled(page, '[data-testid="panel-livestock"]');
+    const ticks = page.locator('[data-testid="panel-livestock"] .pn-lsrow .pn-check');
+    await ticks.nth(0).click();
+    await ticks.nth(1).click();
+    await expect(tid(page, 'move-picked')).toBeVisible();
+    /** Footer buttons outside the sheet, or covered at their centre (by the tab bar or anything else). */
+    const outside = () =>
+      page.evaluate(() => {
+        const sheet = document.querySelector('[data-testid="panel-livestock"]')!.getBoundingClientRect();
+        const buttons = [...document.querySelectorAll('[data-testid="panel-livestock"] .pn-foot button')] as HTMLElement[];
+        return buttons
+          .map((b) => {
+            const r = b.getBoundingClientRect();
+            const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            const ok = r.width > 0 && r.left >= sheet.left - 0.5 && r.right <= sheet.right + 0.5 && r.bottom <= sheet.bottom + 0.5 && !!top && b.contains(top);
+            return ok ? null : (b.textContent ?? '').trim();
+          })
+          .filter((x) => x !== null);
+      });
+    expect(await page.locator('[data-testid="panel-livestock"] .pn-foot button').count()).toBe(4);
+    // (confirmation review) the start-up toasts sit just above a phone sheet's list, and their band is re-measured every
+    // 300 ms (Toasts.tsx useSheetBand), so for a moment after the footer appears they can still cover its first line:
+    // wait for the footer to be clear rather than measuring in that moment (it failed once in Chromium this way)
+    await expect.poll(outside, { timeout: 5_000 }).toEqual([]);
+    // and on the narrowest phone the game supports
+    await page.setViewportSize({ width: 360, height: 780 });
+    await expect.poll(outside, { timeout: 5_000 }).toEqual([]);
+  });
+
   test('Settings opens at full height from the same top', async ({ page }) => {
     await phoneGame(page);
     await tid(page, 'dock-more').tap();
@@ -74,6 +109,48 @@ test.describe('phone 390×844 (touch)', () => {
     const sheet = (await rect(page, '[data-testid="panel-settings"]'))!;
     expect(Math.abs(sheet.top - 64)).toBeLessThanOrEqual(2);
     expect(await page.evaluate(() => location.hash)).toBe('#/settings');
+  });
+
+  test('audit B18: More and Settings swipe closed from their header, as panels do', async ({ page }) => {
+    await phoneGame(page);
+    /**
+     * A downward swipe from the middle of `sel` (a mouse pointer: the drag is the same), at a hand's pace: a move a
+     * frame, about a fifth of a second in all. Ten moves sent in one burst can all land before the drag's first frame,
+     * and WebKit then ended the gesture where it began (the full-height Settings sheet stayed open 7 times in 8 when
+     * this case ran alone on a quiet machine; it had passed in two full runs on a busy one).
+     */
+    const swipe = async (sel: string) => {
+      const r = (await rect(page, sel))!;
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      for (let i = 1; i <= 12; i++) {
+        await page.mouse.move(x, y + i * 20);
+        await page.waitForTimeout(16);
+      }
+      await page.mouse.up();
+    };
+    await tid(page, 'dock-more').tap();
+    await settled(page, '[data-testid="more-sheet"]');
+    await swipe('.ag-more__title');
+    await expect(tid(page, 'more-sheet')).toBeHidden();
+    await tid(page, 'dock-more').tap();
+    await tid(page, 'more-settings').tap();
+    await settled(page, '[data-testid="panel-settings"]');
+    await swipe('[data-testid="panel-settings"] .ag-sheet__title');
+    await expect(tid(page, 'panel-settings')).toBeHidden();
+    // a short drag leaves it open
+    await tid(page, 'dock-more').tap();
+    await settled(page, '[data-testid="more-sheet"]');
+    const r = (await rect(page, '.ag-more__title'))!;
+    await page.mouse.move(r.left + 10, r.top + 5);
+    await page.mouse.down();
+    await page.mouse.move(r.left + 10, r.top + 45, { steps: 8 });
+    await page.waitForTimeout(300);
+    await page.mouse.up();
+    await page.waitForTimeout(600);
+    await expect(tid(page, 'more-sheet')).toBeVisible();
   });
 
   test('Settings › Notifications has no Save now footer, so with no notifications four of its six categories show before scrolling (ADR-0036)', async ({ page }) => {
@@ -119,6 +196,35 @@ test.describe('phone 390×844 (touch)', () => {
     expect(bar.bottom).toBeLessThanOrEqual(card.top);
     expect(await page.evaluate(() => getComputedStyle(document.querySelector('.ag-tankbar')!).visibility)).toBe('visible');
     expect(await page.evaluate(() => getComputedStyle(document.querySelector('.ag-hud__coach')!).visibility)).toBe('hidden');
+  });
+
+  test('the animal’s card folds the guide into its pill just above the card, and the pill brings the guide back (audit 2026-11-17, P1)', async ({ page }) => {
+    await phoneGame(page, { guide: true });
+    await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'meet');
+    await page.locator('[data-guide-showme]').tap(); // "Meet them" opens the starter's card
+    await settled(page, '[data-testid="creature-card"]');
+    // the meet step is done: the next one ("Have a look around") waits in the pill, in view just above the card
+    const pill = page.locator('.ag-coach-pill[data-testid="tutorial-card"]');
+    await expect(pill).toBeVisible();
+    await expect(pill).toContainText('Have a look around');
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.ag-hud__coach')!).visibility)).toBe('visible');
+    await expect
+      .poll(async () => {
+        const p = await rect(page, '.ag-coach-pill');
+        const c = await rect(page, '[data-testid="creature-card"]');
+        return !!p && !!c && p.top >= 0 && p.bottom <= c.top + 1 && c.top - p.bottom <= 24;
+      })
+      .toBe(true);
+    // nothing covers it
+    const hit = await page.evaluate(() => {
+      const r = document.querySelector('.ag-coach-pill')!.getBoundingClientRect();
+      return !!document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('.ag-coach-pill');
+    });
+    expect(hit).toBe(true);
+    // tapping it closes the card and opens the guide on its step
+    await pill.tap();
+    await expect(tid(page, 'creature-card')).toBeHidden();
+    await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'camera');
   });
 
   test('toasts sit above the tab bar and clear of the offer’s buy bar (B-116)', async ({ page }) => {

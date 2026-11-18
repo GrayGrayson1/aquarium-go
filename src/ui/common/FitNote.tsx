@@ -19,11 +19,12 @@ const ICON = { ok: CircleCheck, partial: TriangleAlert, useless: Ban, harmful: O
 
 /** Badge for a verdict. General advice (nothing in the tank to judge by) gets no badge. */
 export function FitBadge({ verdict, className }: { verdict: FitVerdict | null | undefined; className?: string }) {
+  const unit = useSettings((s) => s.tempUnit); // Audit 2026-11-17 (J1): the tooltip carries the sim's °C too
   if (!verdict || (verdict.general && verdict.level === 'ok')) return null;
   const tone = verdict.soft ? 'neutral' : FIT_TONE[verdict.level];
   const Icon = verdict.blocked ? Ban : verdict.soft ? Info : ICON[verdict.level];
   return (
-    <span className={clsx('ag-fitbadge', `is-${tone}`, className)} title={verdict.text} data-fit={verdict.level}>
+    <span className={clsx('ag-fitbadge', `is-${tone}`, className)} title={convertTempText(verdict.text, unit)} data-fit={verdict.level}>
       <Icon size={11} aria-hidden />
       {verdict.label}
     </span>

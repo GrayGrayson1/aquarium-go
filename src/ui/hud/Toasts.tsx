@@ -17,7 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion, useIsPresent } from 'motion/react';
 import { X } from 'lucide-react';
-import type { GameEvent } from '@/types';
+import type { GameEvent, GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI, type Toast } from '@/state/ui';
 import { useSettings } from '@/state/settings';
@@ -29,12 +29,13 @@ import { MOBILE_QUERY, SHORT_LANDSCAPE_QUERY, safe, useMedia } from '../common/s
 import { tutorialChain } from '@/data/quests';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { useDockedCard } from './cardDock';
-import { SHOW_RESULT_TEXT, UNLOCK_KEY_BY_LABEL, eventLink, unlockLink, type EventLink } from './eventLinks'; // lane:notify
+import { SHOW_RESULT_TEXT, UNLOCK_KEY_BY_LABEL, eventLink, unlockWhere, unlockLink, type EventLink } from './eventLinks'; // lane:notify
 import { convertTempText } from '../common/format';
 import { isExpired, pickShown, prio, ttlOf, PREEMPT_AFTER_MS, URGENT_PRIO } from './toastQueue';
 import { UpdatePrompt, useNewBuildAvailable } from './UpdatePrompt';
 import { StaleTabBanner, useStaleBanner } from '@/game/StaleTabBanner';
 import { useShared } from '../shared/store'; // chunk 13
+import { guardLeave } from '../panels/common/leaveGuard'; // audit B6 review
 import { othersEvent } from '../shared/activity';
 
 interface Entry {
@@ -45,6 +46,9 @@ interface Entry {
   texts: string[];
   tankId?: string;
   creatureId?: string;
+  /** audit B4 — a log event's listing or offer: a bid, a sale or a rare find opens it (eventLinks). */
+  listingId?: string;
+  offerId?: string;
   uiIds: number[];
   /** lane:ui-shell (B-151) — a UI toast's explicit label and detail (they win over parsing its text). */
   parts?: { label?: string; detail?: string };
@@ -64,7 +68,7 @@ const STALE_MS = 9000;
 const isStale = (e: Entry, now: number, shown: ReadonlyMap<string, number>) => prio(e.kind) <= 3 && now - e.born > STALE_MS && !shown.has(e.key);
 
 /** lane:qa-final — brood-loss warnings (adults eating a clutch, a brood lost in the display). */
-const BROOD_WARNING = /\bare eating .+’s (eggs|larvae|fry|wrigglers)\b|\bis eating (her|his|their) own\b|’s brood didn’t make it\b/;
+const BROOD_WARNING = /\bare eating .+’s (eggs|larvae|fry|wrigglers|wriggling fry)\b|\bis eating (her|his|their) own\b|’s brood didn’t make it\b/;
 
 function groupOf(kind: AnyKind, text: string, busy = false): string | null {
   // lane:qa-final — a big venue's pairs spawn around the clock (a staffed big_facility: ~25 breeding toasts and ~15
@@ -107,7 +111,8 @@ type ToastLink = Pick<EventLink, 'panel' | 'target' | 'where'>;
  */
 const HEADLINE_UNLOCKS = ['shows', 'staff', 'visitors', 'brackish', 'market_listings', 'tank_auctions'];
 
-function parse(text: string): View {
+/** `ids`: the event's listing or offer (audit B4: a bid opens its listing, a rare find its offer). */
+function parse(text: string, ids: { listingId?: string; offerId?: string } = {}): View {
   let m = /^Achievement:\s*(.+?)\s+—\s+(.+)$/.exec(text);
   if (m) return { label: 'Achievement', title: m[1], detail: m[2] };
   m = /^Unlocked:\s*(.+)$/.exec(text);
@@ -116,25 +121,27 @@ function parse(text: string): View {
     const key = UNLOCK_KEY_BY_LABEL[m[1]];
     const link = key ? unlockLink(key) : null;
     const headline = key ? HEADLINE_UNLOCKS.indexOf(key) : -1;
-    return { label: 'Unlocked', title: m[1], detail: link?.where, link: link ?? undefined, ...(headline >= 0 ? { headline } : {}) };
+    return { label: 'Unlocked', title: m[1], detail: link?.where ?? (key ? unlockWhere(key) : undefined), link: link ?? undefined, ...(headline >= 0 ? { headline } : {}) };
   }
   // lane:w2-ui — show results: "The judge’s cards are in Shows." → open Shows › Results (lane:notify: and entries the
   // club sent home — "… The club refunded the fee." — which the Results tab lists too)
   if (SHOW_RESULT_TEXT.test(text)) return { title: text, link: { panel: 'shows', target: 'tab:results', where: '' } };
+  // audit B4: the shop's news opens the shop (or the offer itself), as its bell and Log lines do
+  const link = eventLink({ kind: 'info', text, ...ids }) ?? undefined;
   m = /^New arrivals at the shop:\s*(.+?)\.?$/.exec(text);
-  if (m) return { label: 'New at the shop', title: m[1] };
+  if (m) return { label: 'New at the shop', title: m[1], link };
   m = /^Market special:\s*(.+)$/.exec(text);
-  if (m) return { label: 'Market special', title: m[1] };
-  // lane:notify — anything else with a home (finished research → Research)
-  const link = eventLink({ kind: 'info', text });
+  if (m) return { label: 'Market special', title: m[1], link };
+  // lane:notify — anything else with a home (finished research → Research; audit B4: a bid or a sale → its listing)
   return link ? { title: text, link } : { title: text };
 }
 
-function viewOf(e: Entry): View {
+/** What a toast says and where it goes (exported for tests). */
+export function viewOf(e: Pick<Entry, 'texts' | 'group' | 'parts' | 'listingId' | 'offerId'>): View {
   const n = e.texts.length;
   if (n <= 1 && e.parts) return { label: e.parts.label, title: e.texts[0] ?? '', detail: e.parts.detail };
-  if (n <= 1) return parse(e.texts[0] ?? '');
-  const views = e.texts.map(parse);
+  if (n <= 1) return parse(e.texts[0] ?? '', { listingId: e.listingId, offerId: e.offerId });
+  const views = e.texts.map((t) => parse(t));
   const list = (xs: string[]) => (xs.length <= 2 ? xs.join(' and ') : `${xs.slice(0, 2).join(', ')} and ${xs.length - 2} more`);
   switch (e.group) {
     case 'achievement':
@@ -332,7 +339,7 @@ export function Toasts() {
   const onScreen = useRef(new Set<string>());
   const [, setRecheck] = useState(0);
 
-  const add = useCallback((kind: AnyKind, text: string, extra: { tankId?: string; creatureId?: string; uiId?: number; source: 'ui' | 'log'; parts?: Entry['parts']; actionLabel?: string }) => {
+  const add = useCallback((kind: AnyKind, text: string, extra: { tankId?: string; creatureId?: string; listingId?: string; offerId?: string; uiId?: number; source: 'ui' | 'log'; parts?: Entry['parts']; actionLabel?: string }) => {
     const group = groupOf(kind, text, (useGame.getState().game?.tankOrder.length ?? 0) >= 4 /* lane:qa-final */);
     // The guide card shows its own "done" line; only toast tutorial tips when the guide is hidden.
     if (group === 'tip' && extra.source === 'log' && isGuideDoneLine(text)) return;
@@ -344,7 +351,7 @@ export function Toasts() {
         if (i >= 0) {
           const m = live[i];
           if (m.texts.includes(text)) return live;
-          const merged: Entry = { ...m, texts: [...m.texts, text], rev: m.rev + 1, tankId: m.tankId === extra.tankId ? m.tankId : undefined, creatureId: undefined, uiIds: extra.uiId != null ? [...m.uiIds, extra.uiId] : m.uiIds };
+          const merged: Entry = { ...m, texts: [...m.texts, text], rev: m.rev + 1, tankId: m.tankId === extra.tankId ? m.tankId : undefined, creatureId: undefined, listingId: undefined, offerId: undefined, uiIds: extra.uiId != null ? [...m.uiIds, extra.uiId] : m.uiIds };
           return [...live.slice(0, i), merged, ...live.slice(i + 1)];
         }
       }
@@ -354,7 +361,7 @@ export function Toasts() {
         const d = live[dup];
         return [...live.slice(0, dup), { ...d, rev: d.rev + 1, uiIds: extra.uiId != null ? [...d.uiIds, extra.uiId] : d.uiIds }, ...live.slice(dup + 1)];
       }
-      const e: Entry = { key: `t${++seq.current}`, kind, group, texts: [text], tankId: extra.tankId, creatureId: extra.creatureId, uiIds: extra.uiId != null ? [extra.uiId] : [], ...(extra.parts ? { parts: extra.parts } : {}), ...(extra.actionLabel && extra.tankId ? { actionLabel: extra.actionLabel } : {}), born: now, rev: 0 };
+      const e: Entry = { key: `t${++seq.current}`, kind, group, texts: [text], tankId: extra.tankId, creatureId: extra.creatureId, ...(extra.listingId ? { listingId: extra.listingId } : {}), ...(extra.offerId ? { offerId: extra.offerId } : {}), uiIds: extra.uiId != null ? [extra.uiId] : [], ...(extra.parts ? { parts: extra.parts } : {}), ...(extra.actionLabel && extra.tankId ? { actionLabel: extra.actionLabel } : {}), born: now, rev: 0 };
       return [...live, e].slice(-14);
     });
   }, []);
@@ -362,7 +369,7 @@ export function Toasts() {
   const pushLog = useCallback(
     (e: GameEvent) => {
       // no sound here: the audio director voices log events (src/audio/cues.ts), one cue per burst
-      add(e.kind, e.text, { tankId: e.tankId, creatureId: e.creatureId, source: 'log' });
+      add(e.kind, e.text, { tankId: e.tankId, creatureId: e.creatureId, listingId: e.listingId, offerId: e.offerId, source: 'log' });
     },
     [add],
   );
@@ -438,14 +445,47 @@ export function Toasts() {
       {update && !headerOnly && <UpdatePrompt version={update.version} />}
       <AnimatePresence initial={false}>
         {shown.map((e) => (
-          <ToastItem key={e.key} e={e} onDone={() => dismiss(e.key)} />
+          <ToastItem key={e.key} e={e} onDone={() => dismiss(e.key)} sheet={phone && screen === 'game' && sheetUp} />
         ))}
       </AnimatePresence>
     </div>
   );
 }
 
-function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
+/** Where tapping a toast goes: the event log, a panel, or a tank (with its card, on a tab) and an animal's card. */
+export type ToastGo =
+  | { to: 'log' }
+  | { to: 'panel'; panel: EventLink['panel']; target: string | null }
+  | { to: 'tank'; tankId: string; card: boolean; gear: boolean; creatureId: string | null };
+
+/** (pure; exported for tests) `g`: the game, to leave out an animal that has died or been sold (audit B8). */
+export function toastGo(e: Pick<Entry, 'kind' | 'texts' | 'tankId' | 'creatureId'>, v: View, g?: GameState | null): ToastGo | null {
+  if (v.opensLog) return { to: 'log' };
+  if (v.link) return { to: 'panel', panel: v.link.panel, target: v.link.target };
+  if (!e.tankId) return null;
+  // audit B8: only an animal still here gets its card ("… has passed away" opens the tank, not a card that flashes shut)
+  const c = e.creatureId ? g?.creatures[e.creatureId] : undefined;
+  const creatureId = c && (c.status === 'alive' || c.status === 'listed') ? c.id : null;
+  // audit B4: a warning or danger about a tank opens its card, whose header names the problem and its fix (a line
+  // pointing at "tank card › Equipment" opens that tab); one about an animal opens the animal's card
+  const card = (e.kind === 'warning' || e.kind === 'danger') && !creatureId;
+  return { to: 'tank', tankId: e.tankId, card, gear: card && /tank card › Equipment/.test(e.texts[0] ?? ''), creatureId };
+}
+
+/**
+ * Audit B19 — how a toast takes a tap. Normally its text goes where it is about (a plain toast's pins it open); on a
+ * phone with a sheet open the toast lies over the sheet's list, so a tap there was meant for the list: it gets out of
+ * the way (review: pinning it grew it over the list for 6 s more), and only its own button ("See them") goes.
+ * `title` names where the text goes (its tooltip). (pure; exported for tests)
+ */
+export function toastTap(e: Pick<Entry, 'tankId' | 'creatureId' | 'actionLabel'>, v: Pick<View, 'opensLog' | 'link'>, sheet: boolean, animalHere: boolean = !!e.creatureId): { textGoes: boolean; dismiss: boolean; button: string | null; title: string } {
+  const actionable = !!e.tankId || !!v.opensLog || !!v.link;
+  // (review: the merged ones open the bell's drawer, and a toast about an animal opens its card)
+  const title = v.opensLog ? 'Open Alerts' : v.link ? 'Take me there' : e.creatureId && animalHere ? 'Go to this animal' : 'Go to this tank'; // (an animal that has died or been sold: toastGo opens its tank)
+  return { textGoes: actionable && !sheet, dismiss: sheet, button: e.actionLabel && e.tankId ? e.actionLabel : null, title };
+}
+
+function ToastItem({ e, onDone, sheet = false }: { e: Entry; onDone: () => void; /** a phone sheet is open under the toasts (audit B19) */ sheet?: boolean }) {
   const [hover, setHover] = useState(false);
   // a tap on the text (phones have no hover) opens the whole message and gives it extra time
   const [pinned, setPinned] = useState(false);
@@ -465,18 +505,26 @@ function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
   }, [hover, ttl, e.rev]);
   const expanded = (hover || pinned) && present;
   const celebrate = e.kind === 'celebrate' || e.kind === 'unlock';
-  const actionable = !!e.tankId || !!v.opensLog || !!v.link;
+  // (the tooltip names where the tap goes: an animal that has died or been sold leads to its tank)
+  const animalHere = useGame((s) => { const c = e.creatureId ? s.game?.creatures[e.creatureId] : undefined; return !!c && (c.status === 'alive' || c.status === 'listed'); });
+  const tap = toastTap(e, v, sheet, animalHere);
   const onAct = () => {
-    if (v.opensLog) {
+    const to = toastGo(e, v, useGame.getState().game);
+    // audit B6 review: a listing with typed prices asks before the whole move (Leave completes it, Keep changes nothing)
+    if (to?.to === 'panel' || to?.to === 'tank')
+      guardLeave(() => {
+        if (to.to === 'panel') {
+          // lane:w2-ui — unlocks / show results open where they live
+          sfx('open');
+          useUI.getState().set({ panel: to.panel, panelTarget: to.target });
+        } else {
+          focusTank(to.tankId, to.card, to.gear ? 'gear' : undefined);
+          if (to.creatureId) useUI.getState().set({ selectedCreatureId: to.creatureId });
+        }
+      });
+    else if (to?.to === 'log') {
       sfx('open');
       useShell.getState().set({ popover: 'alerts' });
-    } else if (v.link) {
-      // lane:w2-ui — unlocks / show results open where they live
-      sfx('open');
-      useUI.getState().set({ panel: v.link.panel, panelTarget: v.link.target });
-    } else if (e.tankId) {
-      focusTank(e.tankId, false);
-      if (e.creatureId) useUI.getState().set({ selectedCreatureId: e.creatureId });
     }
     onDone();
   };
@@ -504,23 +552,24 @@ function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
       onBlur={() => setHover(false)}
       onClick={(ev) => {
         if ((ev.target as HTMLElement).closest('button')) return;
-        setPinned((p) => !p);
+        if (tap.dismiss) onDone(); // audit B19: over a phone sheet, out of the list's way
+        else setPinned((p) => !p);
       }}
     >
       <span className="ag-toast__icon">
         <EventIcon kind={e.kind} size={14} />
       </span>
-      {actionable ? (
-        <button type="button" className="ag-toast__text ag-toast__text--btn" onClick={onAct} title={v.opensLog ? 'Open the event log' : v.link ? 'Take me there' : 'Go to this tank'}>
+      {tap.textGoes ? (
+        <button type="button" className="ag-toast__text ag-toast__text--btn" onClick={onAct} title={tap.title}>
           {body}
         </button>
       ) : (
         <span className="ag-toast__text">{body}</span>
       )}
-      {e.actionLabel && e.tankId && (
+      {tap.button && (
         // chunk 19 (ADR-0055 decision 1) — "See them": the toast's own way there, as a visible button
         <button type="button" className="ag-toast__action" data-testid="toast-action" onClick={onAct}>
-          {e.actionLabel}
+          {tap.button}
         </button>
       )}
       <button type="button" className="ag-toast__close" aria-label="Dismiss" onClick={onDone}>

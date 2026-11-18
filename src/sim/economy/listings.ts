@@ -17,13 +17,15 @@ import type { Rng } from '../rng';
 import { simRng } from '../rng';
 import { nextId } from '../ids';
 import { emitEvent } from '../context';
+import { WATER_CLASS_WORDS } from '@/data/tankLabels'; // Audit 2026-11-17 (J4)
 import { hourOfDay, GAME_HOURS_PER_REAL_SECOND } from '../time';
 import { deleteTank } from '../tanks';
-import { creaturesInTank, isPrismatic } from '../life';
+import { creaturesInTank, isPrismatic, PERSONALITY_INFO } from '../life'; // Audit 2026-11-17 (J14): PERSONALITY_INFO
 import { environmentGate, previewAddition } from '../compat';
 import { isUnlocked, addReputation, addMastery, bumpCounter } from '../facility';
+import { counterValue, heldByGuideStep } from '../facility/progression'; // audit 2026-11-17 (F8)
 import { findSpecies } from '@/data/species';
-import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
+import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { BUYER_ARCHETYPES, LOCAL_FISH_STORE, archetypeLabel } from '@/data/buyers';
 import { earn } from './finance';
 import { tankValuation, bundleValue, careDifficultyLabel, lineageSummary, livestockSummary, tankSignature, compatRank, quickSellQuote } from './valuation';
@@ -31,13 +33,14 @@ import { buildProfile, buyerFit, buyerInterestWeight, maybeDelegation, buildFrag
 import { fragBundleValue, fragValue, fragStoreOffer, FRAG_HEALED_HOURS } from './valuation'; // lane:frags
 import { fragLabel, isCoralDef } from '@/data/catalog/propagation'; // lane:frags
 import { composeBidMessage, counterReply, buyNowMessage, withdrawMessage, saleFeedback, type MsgVars, type CounterOutcome } from './messages';
-import { clamp, clamp01, clonePlain, finite, fmtMoney, nicePrice, pushCapped, speciesPlural, roundCents, morphTitle } from './util';
+import { clamp, clamp01, clonePlain, finite, fmtMoney, nicePrice, pushCapped, speciesPlural, roundCents, morphTitle, aOrAn } from './util';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { touchResidents } from '../residents'; // lane:perf2
 import { computeTankEnv, effectiveBioload } from '../water'; // B-174
 import { settleTanks } from '../settle'; // B-127
 import { saleWarnings } from './warnings'; // lane:fix-econ
+import { cheapestKit } from './purchases'; // audit 2026-11-17 (F7)
 import * as dmath from '../dmath';
 
 export interface ListingSpec {
@@ -113,7 +116,7 @@ export const LISTING_DURATION_PRESETS: ListingDurationPreset[] = [
   { hours: 120, label: '5 days', realLabel: realLabel(120), note: 'Widest reach' },
 ];
 export const DEFAULT_LISTING_HOURS = 48;
-const MAX_ACTIVE_LISTINGS = 24;
+export const MAX_ACTIVE_LISTINGS = 24;
 const BIDS_CAP = 60;
 const CLOSED_LISTINGS_KEPT = 40;
 const CLOSED_PHOTOS_KEPT = 5;
@@ -121,15 +124,7 @@ const HISTORY_CAP = 200;
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
 
-const WATER_CLASS_LABEL: Record<string, string> = {
-  freshwater_cool: 'cool freshwater',
-  freshwater_tropical: 'tropical freshwater',
-  freshwater_planted: 'planted freshwater',
-  marine_fowlr: 'marine fish-only',
-  marine_live_rock: 'marine live-rock',
-  reef: 'reef',
-  brackish: 'brackish',
-};
+const WATER_CLASS_LABEL: Record<string, string> = WATER_CLASS_WORDS; // Audit 2026-11-17 (J4): the one table
 const COMPAT_WORD: Record<string, string> = {
   excellent: 'Excellent',
   usually_compatible: 'Usually compatible',
@@ -145,8 +140,15 @@ export function marketAccess(state: GameState): { listings: boolean; tankAuction
   const tankAuctions = isUnlocked(state, 'tank_auctions');
   let hint: string | undefined;
   // lane:guide — the real rule (src/data/unlocks.ts market_listings): the first visit to the Market, finishing the guide, or 10 reputation
-  if (!listings) hint = 'Listings open after your first visit to the Market (or at 10 reputation). Until then, the local fish store buys animals for quick cash in Livestock › Quick sell.';
-  else if (!tankAuctions) hint = 'Whole-aquarium auctions unlock a little later. You can already list individual animals, pairs and groups.';
+  // audit 2026-11-17 (F8) — while the guide runs it holds listings for its own step: say that, not a rule already met
+  const held = !listings ? heldByGuideStep(state, 'market_listings') : null;
+  if (held) hint = `Listings open at the guide’s “${held}” step, or when you finish or skip the guide. Until then the local fish store buys animals for quick cash: tick them in Livestock and press Quick sell.`;
+  else if (!listings) hint = 'Listings open after your first visit to the Market (or at 10 reputation). Until then, the local fish store buys animals for quick cash in Livestock › Quick sell.';
+  else if (!tankAuctions) {
+    // F8: the rule, with progress (src/data/unlocks.ts tank_auctions: 3 sales, business mastery or the Specialty Shop)
+    const sales = counterValue(state, 'sales');
+    hint = `Whole-aquarium auctions open after 3 sales (you’ve made ${sales}), or when you move into the Specialty Shop. You can already list individual animals, pairs and groups.`;
+  }
   return { listings, tankAuctions, hint };
 }
 
@@ -183,7 +185,7 @@ function pairCheck(a: Creature, b: Creature): string | null {
   if (['egg', 'larva', 'fry'].includes(a.lifeStage) || ['egg', 'larva', 'fry'].includes(b.lifeStage)) return 'These animals are too young to sell as a pair — list them as juveniles.';
   switch (sp.sexSystem) {
     case 'gonochoristic': {
-      if (a.sex === 'unknown' || b.sex === 'unknown') return `Their sexes can't be told apart yet, so they can't be sold as a pair. List them as a group instead.`;
+      if (a.sex === 'unknown' || b.sex === 'unknown') return `Their sexes can’t be told apart yet, so they can’t be sold as a pair. List them as a group instead.`;
       if (a.sex === b.sex) return `A pair needs one male and one female — these are both ${a.sex}s. List them as a group instead.`;
       return null;
     }
@@ -192,7 +194,7 @@ function pairCheck(a: Creature, b: Creature): string | null {
     case 'simultaneous_hermaphrodite':
       return null; // any two can form a pair
     default:
-      return `Pairs don't apply to ${speciesPlural(a.speciesId)}. List them as a group instead.`;
+      return `Pairs don’t apply to ${speciesPlural(a.speciesId)}. List them as a group instead.`;
   }
 }
 
@@ -229,11 +231,11 @@ function resolveContents(state: GameState, spec: Pick<ListingSpec, 'kind' | 'cre
   for (const id of ids) {
     const c = state.creatures[id];
     if (!c) return { ...base, ok: false, message: 'One of those animals could not be found.' };
-    if (c.status === 'dead') return { ...base, ok: false, message: `${c.name} has died and can't be listed.` };
+    if (c.status === 'dead') return { ...base, ok: false, message: `${c.name} has died and can’t be listed.` };
     if (c.status === 'sold') return { ...base, ok: false, message: `${c.name} has already been sold.` };
     if (c.status === 'listed') return { ...base, ok: false, message: `${c.name} is already listed.` };
-    if (c.status !== 'alive') return { ...base, ok: false, message: `${c.name} can't be listed right now.` };
-    if (c.tankId && activeListingFor(state, c.tankId)) return { ...base, ok: false, message: `${c.name}'s tank is listed as a whole aquarium.` };
+    if (c.status !== 'alive') return { ...base, ok: false, message: `${c.name} can’t be listed right now.` };
+    if (c.tankId && activeListingFor(state, c.tankId)) return { ...base, ok: false, message: `${c.name}’s tank is listed as a whole aquarium.` };
     creatures.push(c);
   }
   const sameSpecies = creatures.every((c) => c.speciesId === creatures[0].speciesId);
@@ -333,13 +335,18 @@ function buildSnapshot(state: GameState, kind: ListingKind, creatures: Creature[
     beautyScore = Math.round(profile.attrs.beauty * 100);
     const c = creatures[0];
     const sexes = creatures.map((x) => x.sex).filter((s) => s !== 'unknown');
-    const stages = [...new Set(creatures.map((x) => x.lifeStage))].join('/');
+    // Audit 2026-11-17 (J14): words, not ids or signs ("juvenile/adult", "1♂ 0♀", "showoff", a score with no scale)
+    const stageList = [...new Set(creatures.map((x) => x.lifeStage))];
+    const stages = stageList.length <= 1 ? stageList.join('') : `${stageList.slice(0, -1).join(', ')} and ${stageList[stageList.length - 1]}`; // (J14 review: "juvenile, adult and elder", not "… and … and …")
+    const males = sexes.filter((s) => s === 'male').length;
+    const females = sexes.filter((s) => s === 'female').length;
+    const sexWords = [males ? `${males} male${males === 1 ? '' : 's'}` : '', females ? `${females} female${females === 1 ? '' : 's'}` : ''].filter(Boolean).join(', ');
     summary = [
       livestockSummary(creatures),
       stages,
-      sexes.length ? `${sexes.filter((s) => s === 'male').length}♂ ${sexes.filter((s) => s === 'female').length}♀` : '',
-      creatures.length === 1 && c.personality?.length ? `Personality: ${c.personality.map((p) => p.replace(/_/g, ' ')).join(', ')}` : '',
-      `Health ${healthScore}${creatures.some((x) => x.illness) ? ' (illness disclosed)' : ''}`,
+      sexWords,
+      creatures.length === 1 && c.personality?.length ? `Personality: ${c.personality.map((p) => (PERSONALITY_INFO[p]?.label ?? p.replace(/_/g, ' ')).toLowerCase()).join(', ')}` : '',
+      `Health ${healthScore}/100${creatures.some((x) => x.illness) ? ' (illness disclosed)' : ''}`,
     ]
       .filter(Boolean)
       .join(' · ');
@@ -457,6 +464,50 @@ export interface ListingPreview {
   warnings: string[];
 }
 
+/**
+ * The typical bidder's fit and timing together (review of audit 2026-11-17, F3). Bidders are picked by interest, so
+ * their fit is a little above 1, and later bids are a little lower; measured on the bid model with natural arrivals
+ * (72-hour listings of one betta, six neons, a platy pair, one axolotl and four guppies, 25 seeds each), the two
+ * cancel: first offers' median is 0.90×–0.93× fair value (0.925× over all), the middle half about 0.79×–1.03×, and
+ * 60–69 % land in typicalOpening's 0.73×–1.05× (the platy pair, worth a few dollars, rounds its bids to whole dollars
+ * and is left out of these figures). tests/sim/audit-money-f.test.ts runs the measurement again on a few seeds.
+ */
+const TYPICAL_BIDDER_FIT = 1.0;
+
+/**
+ * Audit 2026-11-17 (F3) — where buyers' FIRST offers usually land for a listing worth `expected`, from the bid model
+ * itself (arrivals): a bidder's private value is fair value × fit × timing × noise (±11 %), and they open at their
+ * archetype's `opening` share of it (bargain hunters lower). The archetypes' average opening range, at the typical
+ * bidder's fit and timing, one spread either side: about 0.73×–1.05× fair value, where about two in three first offers
+ * land. The listing screen's advice and the "Listed …" line quote this.
+ */
+export function typicalOpening(expected: number): { low: number; high: number } {
+  const arch = Object.values(BUYER_ARCHETYPES);
+  if (!(expected > 0) || !arch.length) return { low: 0, high: 0 };
+  const lo = arch.reduce((a, d) => a + d.opening[0], 0) / arch.length;
+  const hi = arch.reduce((a, d) => a + d.opening[1], 0) / arch.length;
+  return { low: nicePrice(expected * lo * TYPICAL_BIDDER_FIT * dmath.exp(-0.11)), high: nicePrice(expected * hi * TYPICAL_BIDDER_FIT * dmath.exp(0.11)) };
+}
+
+/**
+ * Review of audit 2026-11-17 (F3) — what a reserve does to first offers (a bid under it is turned down automatically),
+ * in bands of fair value measured on the bid model (as above; the share of first offers under a reserve there):
+ * 0.73× 11–17 %, 0.8× 20–25 %, 0.86× 32–39 %, 0.9× 43–51 %, 0.96× 57–67 %, 1.0× 57–69 %, 1.05× 72–80 %, 1.1×
+ * 84–89 %. So: at or under typicalOpening's bottom (≈ 0.73×) most reach it; to 0.85× some are turned down; to 0.92×
+ * about half; to its top (≈ 1.05×) more than half; above that, most.
+ */
+export const RESERVE_BANDS = { half: 0.85, overHalf: 0.92 } as const;
+export type ReserveBand = 'most_reach' | 'some' | 'half' | 'over_half' | 'most_below';
+export function reserveBand(reserve: number, expected: number): ReserveBand | null {
+  const o = typicalOpening(expected);
+  if (!(o.high > 0)) return null;
+  if (reserve > o.high) return 'most_below';
+  if (reserve > expected * RESERVE_BANDS.overHalf) return 'over_half';
+  if (reserve > expected * RESERVE_BANDS.half) return 'half';
+  if (reserve > o.low) return 'some';
+  return 'most_reach';
+}
+
 /** Everything the listing dialog needs before the player commits. */
 export function previewListing(state: GameState, spec: Omit<ListingSpec, 'reserve' | 'durationHours'>): ListingPreview {
   const empty: ListingPreview = { ok: false, message: '', title: '', expected: 0, low: 0, high: 0, suggestedReserve: 0, suggestedBuyNow: 0, warnings: [] };
@@ -471,7 +522,7 @@ export function previewListing(state: GameState, spec: Omit<ListingSpec, 'reserv
     // lane:frags
     const fresh = contents.frags.filter((f) => isCoralDef(getDecorDef(f.defId)) && !(f.frag?.plantedHour !== undefined && state.clock.hour - f.frag.plantedHour >= FRAG_HEALED_HOURS)).length;
     if (fresh) warnings.push(`${fresh === contents.frags.length ? 'These are fresh cuts' : `${fresh} of these ${fresh === 1 ? 'is a fresh cut' : 'are fresh cuts'}`}. Buyers pay about a fifth more for a frag that has healed on its plug for a day — a frag rack is the place for that.`);
-    warnings.push('Listed frags wait in your holding system and don’t grow until the listing ends. Unsold ones come back to storage.');
+    warnings.push('Listed frags wait in storage and don’t grow until the listing ends. Unsold ones stay there.');
   }
   if (contents.tank && state.tankOrder.length === 1) warnings.push('This is your last aquarium. If it sells you will have an empty room — and the money to start a new build.');
   if (contents.tank) {
@@ -509,7 +560,11 @@ export function suggestPricing(state: GameState, spec: Omit<ListingSpec, 'reserv
 
 // ───────────────────────────── create / withdraw ─────────────────────────────
 
-export function createListing(state: GameState, spec: ListingSpec): ActionResult & { listingId?: string } {
+/**
+ * List something for sale. `opts.quiet` (a production line's listing, which logs its own line with its buy-now price;
+ * Audit 2026-11-17, H1 review) leaves out the market's "Listed …" line. Not part of the spec, so no command can set it.
+ */
+export function createListing(state: GameState, spec: ListingSpec, opts: { quiet?: boolean } = {}): ActionResult & { listingId?: string } {
   const access = marketAccess(state);
   if (!access.listings) return fail(access.hint ?? 'The marketplace is not open yet.');
   if (spec.kind === 'tank' && !access.tankAuctions) return fail(access.hint ?? 'Whole-aquarium auctions are not unlocked yet.');
@@ -563,12 +618,14 @@ export function createListing(state: GameState, spec: ListingSpec): ActionResult
   }
   state.market.listings.push(listing);
   bumpCounter(state, 'listingsCreated');
-  emitEvent(state, {
-    kind: 'market',
-    text: `Listed "${title}" — expected ${fmtMoney(built.snapshot.low ?? built.snapshot.valuation)}–${fmtMoney(built.snapshot.high ?? built.snapshot.valuation)}. Buyers will start looking soon.`,
-    listingId: id,
-    tankId: contents.tank?.id,
-  });
+  if (!opts.quiet) {
+    emitEvent(state, {
+      kind: 'market',
+      text: `Listed "${title}". Buyers usually open at ${fmtMoney(typicalOpening(built.snapshot.valuation).low)}–${fmtMoney(typicalOpening(built.snapshot.valuation).high)}, and they will start looking soon.`, // F3
+      listingId: id,
+      tankId: contents.tank?.id,
+    });
+  }
   return { ok: true, message: `Listed "${title}".`, listingId: id };
 }
 
@@ -597,16 +654,17 @@ function closeOpenBids(l: Listing, status: Bid['status'], note: string): void {
   }
 }
 
-export function withdrawListing(state: GameState, listingId: string): ActionResult {
+/** Withdraw a listing. `opts` (a production line taking it off sale; Audit 2026-11-17, H1 review): its own outcome, and no market log line (the line says why). */
+export function withdrawListing(state: GameState, listingId: string, opts: { quiet?: boolean; outcome?: string } = {}): ActionResult {
   const l = state.market.listings.find((x) => x.id === listingId);
   if (!l) return fail('Listing not found.');
   if (l.status !== 'active') return fail(`This listing is already ${l.status}.`);
   l.status = 'withdrawn';
   l.closedHour = state.clock.hour; // S13-10: the Sold card and 'Recently ended' order read it
-  l.outcome = 'You withdrew this listing.';
+  l.outcome = opts.outcome ?? 'You withdrew this listing.';
   restoreContents(state, l);
   closeOpenBids(l, 'declined', 'Listing withdrawn by the seller.');
-  emitEvent(state, { kind: 'market', text: `Withdrew "${l.title}". Everything stays with you.`, listingId: l.id });
+  if (!opts.quiet) emitEvent(state, { kind: 'market', text: `Withdrew "${l.title}". Everything stays with you.`, listingId: l.id });
   return { ok: true, message: `Withdrew "${l.title}".` };
 }
 
@@ -799,7 +857,7 @@ function orgOf(buyer: BuyerProfile | undefined): string | undefined {
  * so it doesn't eat or age there (docs/KNOWN_LIMITATIONS.md).
  */
 export const holdingText = (name: string): string =>
-  `${name} was not part of the sale and is resting in a holding container (they don't eat or age there). Move ${name} to a tank when you can.`;
+  `${name} was not part of the sale and is resting in a holding container (they don’t eat or age there). Move ${name} to a tank when you can.`;
 
 /** The single path through which every sale happens (accept, accepted counter, buy-now). */
 function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via: 'accept' | 'counter' | 'buy_now', rng: Rng): ActionResult {
@@ -852,7 +910,7 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
     }
     pushCapped(r.c.history, { hour: now, kind: 'moved', text: `Moved to ${to?.name ?? 'another tank'} — not part of the sale of ${check.tank?.name ?? 'its tank'}.` }, 40);
     // Say where they went (S03-04): the log entry opens the animal.
-    emitEvent(state, { kind: 'info', text: `${r.c.name} wasn't part of the sale and now lives in ${to?.name ?? 'another tank'}.`, creatureId: r.c.id, tankId: r.toTankId, toast: true });
+    emitEvent(state, { kind: 'info', text: `${r.c.name} wasn’t part of the sale and now lives in ${to?.name ?? 'another tank'}.`, creatureId: r.c.id, tankId: r.toTankId, toast: true });
   }
 
   // 3. Exactly the listed contents leave.
@@ -959,11 +1017,11 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
     });
   }
   if (check.tank && state.tankOrder.length === 0) {
-    const tiers = TANK_TIERS.filter((t) => isUnlocked(state, t.unlock));
-    const cheap = tiers.sort((a, b) => a.price - b.price)[0];
+    // audit 2026-11-17 (F7) — the whole kit's price (glass, gear, substrate), not the glass alone
+    const cheap = cheapestKit(state);
     emitEvent(state, {
       kind: 'info',
-      text: `${soldTankName ?? 'Your last aquarium'} has gone to its new home. You have ${fmtMoney(state.finance.money)} and an empty room — ${cheap ? `a ${cheap.name} kit starts at about ${fmtMoney(cheap.price)}. ` : ''}Tip: start the next tank early, because new tanks need time to cycle before animals move in.`,
+      text: `${soldTankName ?? 'Your last aquarium'} has gone to its new home. You have ${fmtMoney(state.finance.money)} and an empty room — ${cheap ? `the cheapest kit, ${aOrAn(cheap.name)} ${cheap.name}, costs about ${fmtMoney(cheap.total)}. ` : ''}Tip: start the next tank early, because new tanks need time to cycle before animals move in.`,
       toast: true,
     });
   }
@@ -1075,7 +1133,7 @@ export function counterBid(state: GameState, listingId: string, bidId: string, a
   if (l.status !== 'active') return fail(statusMessage(l));
   const b = l.bids.find((x) => x.id === bidId);
   if (!b) return fail('That offer could not be found.');
-  if (b.status === 'countered') return fail(`You've already countered — waiting for ${b.buyerName ?? 'the buyer'}.`);
+  if (b.status === 'countered') return fail(`You’ve already countered — waiting for ${b.buyerName ?? 'the buyer'}.`);
   if (b.status !== 'open') return fail(`That offer is no longer open (${b.status}).`);
   if (b.expiresHour <= state.clock.hour) {
     b.status = 'expired';
@@ -1097,7 +1155,8 @@ export function counterBid(state: GameState, listingId: string, bidId: string, a
   b.counterResponseHour = state.clock.hour + Math.max(0.5, rng.range(1, 3.5) * (1.3 - patience));
   delete b.response;
   const hrs = Math.max(1, Math.round(b.counterResponseHour - state.clock.hour));
-  return { ok: true, message: `Counter of ${fmtMoney(amt)} sent to ${b.buyerName ?? 'the buyer'}. Expect a reply in about ${hrs} h.` };
+  // Audit 2026-11-17 (J2): game hours say so (the bids beside it count real minutes; 2 game hours are about 20 s)
+  return { ok: true, message: `Counter of ${fmtMoney(amt)} sent to ${b.buyerName ?? 'the buyer'}. Expect a reply in about ${hrs} game hour${hrs === 1 ? '' : 's'}.` };
 }
 
 /**
@@ -1185,7 +1244,7 @@ export function quickSell(state: GameState, creatureIds: string[]): ActionResult
   bumpCounter(state, 'animalsSold', sold.length);
   bumpCounter(state, 'salesRevenue', Math.round(q.total));
   addMastery(state, 'business', 2);
-  if (sick > 0) addReputation(state, -2 * sick, 'Sold unwell animals to the local store');
+  if (sick > 0) addReputation(state, -2 * sick, 'Sold unwell animals to the local fish store');
   emitEvent(state, { kind: 'info', text: `${LOCAL_FISH_STORE} bought ${names} for ${fmtMoney(q.total)}.${sick ? ' They noted the animals were unwell.' : ''}` });
   // lane:guide — say what the sale cost in reputation (it used to happen without a word)
   return { ok: true, message: `Sold ${names} to ${LOCAL_FISH_STORE} for ${fmtMoney(q.total)}.${sick ? ` Selling ${sick === 1 ? 'an unwell animal' : `${sick} unwell animals`} cost ${2 * sick} reputation.` : ''}` };
@@ -1320,7 +1379,7 @@ function checkIntegrity(state: GameState, l: Listing, rng: Rng): boolean {
     // re-checked until it can go ahead.
     if (l.blocked && validateForSale(state, l).ok) {
       delete l.blocked;
-      emitEvent(state, { kind: 'info', text: `"${l.title}" can sell again — every animal that isn't part of the sale has somewhere to go.`, listingId: l.id, tankId: tank.id });
+      emitEvent(state, { kind: 'info', text: `"${l.title}" can sell again — every animal that isn’t part of the sale has somewhere to go.`, listingId: l.id, tankId: tank.id });
     }
     const sig = tankSignature(tank);
     if (l.snapshot.signature && sig !== l.snapshot.signature && !has(`sig:${sig}`)) {
@@ -1328,7 +1387,7 @@ function checkIntegrity(state: GameState, l: Listing, rng: Rng): boolean {
       if (onlyAdditions(l.snapshot.signature, sig)) {
         // Gear or decor added after listing stays with the seller (completeSale hands it back), so buyers price the
         // listing exactly as before: no re-pricing, no change of heart (lane:fix-econ, S03-01).
-        emitEvent(state, { kind: 'info', text: `What you added to "${tank.name}" after listing it isn't part of the sale — it goes back to storage if the tank sells. Offers are unchanged.`, listingId: l.id, tankId: tank.id });
+        emitEvent(state, { kind: 'info', text: `What you added to "${tank.name}" after listing it isn’t part of the sale — it goes back to storage if the tank sells. Offers are unchanged.`, listingId: l.id, tankId: tank.id });
       } else {
         markChanged(l, 'The aquascape or equipment changed after listing.');
         repriceBids(state, l, rng, 'the layout change', 0.35, 'changed');
@@ -1340,7 +1399,7 @@ function checkIntegrity(state: GameState, l: Listing, rng: Rng): boolean {
       addAlert('water');
       markChanged(l, 'Water quality crashed after listing.');
       repriceBids(state, l, rng, 'the water problems', 0.4, 'water', 0.85);
-      emitEvent(state, { kind: 'warning', text: `Water quality in "${tank.name}" crashed while it's listed. Buyers noticed — fix the water to protect the sale.`, listingId: l.id, tankId: tank.id, toast: true });
+      emitEvent(state, { kind: 'warning', text: `Water quality in "${tank.name}" crashed while it’s listed. Buyers noticed — fix the water to protect the sale.`, listingId: l.id, tankId: tank.id, toast: true });
     } else if (status === 'good' && has('water')) {
       removeAlert('water');
     }
@@ -1423,11 +1482,11 @@ function auctionEndingSoon(state: GameState, l: Listing, now: number): void {
   const best = bestOpen(l);
   if (!best) return;
   (l.alerts ??= []).push('ending');
-  const h = Math.max(1, Math.round(l.endsHour - now));
+  const h = Math.max(1, Math.round(l.endsHour - now)); // Audit 2026-11-17 (J2): said as game hours
   const buyer = best.buyerName ?? 'a buyer';
   emitEvent(state, {
     kind: 'market',
-    text: `Bidding on "${l.title}" ends in about ${h} hour${h === 1 ? '' : 's'}. Best offer so far: ${fmtMoney(best.amount)} from ${buyer}${/[.!?]$/.test(buyer) ? '' : '.'}`,
+    text: `Bidding on "${l.title}" ends in about ${h} game hour${h === 1 ? '' : 's'}. Best offer so far: ${fmtMoney(best.amount)} from ${buyer}${/[.!?]$/.test(buyer) ? '' : '.'}`,
     listingId: l.id,
     toast: true,
     notice: { topic: 'auction_ending', vars: { title: l.title, buyer, amount: best.amount } },
@@ -1451,7 +1510,7 @@ function expireAndDrift(state: GameState, l: Listing, rng: Rng, dt: number, end:
     if (b.expiresHour <= end) {
       b.status = 'expired';
       b.note = 'The buyer moved on.';
-      if (b === best) emitEvent(state, { kind: 'market', text: `${b.buyerName ?? 'A buyer'}'s ${fmtMoney(b.amount)} offer on "${l.title}" expired.`, listingId: l.id });
+      if (b === best) emitEvent(state, { kind: 'market', text: `${b.buyerName ?? 'A buyer'}’s ${fmtMoney(b.amount)} offer on "${l.title}" expired.`, listingId: l.id });
       continue;
     }
     // The player is writing a counter-offer: the buyer waits (no change of heart mid-negotiation).
@@ -1531,8 +1590,10 @@ function arrivals(state: GameState, l: Listing, rng: Rng, dt: number, end: numbe
 
   const vars = msgVars(state, l, buyer.name, orgOf(buyer));
   const now = state.clock.hour;
-  // Buy-now: a buyer whose private value clears the buy-now price just takes it.
-  if (l.buyNow && W >= l.buyNow && buyer.budget >= l.buyNow) {
+  // Buy-now: a buyer whose private value clears the buy-now price just takes it, as does one whose offer, rounded,
+  // comes to it (Audit 2026-11-17, H1 review: on a lot under about $25 the rounded offer could equal a line's buy-now
+  // and then wait minutes as a bid). nicePrice draws nothing.
+  if (l.buyNow && buyer.budget >= l.buyNow && (W >= l.buyNow || Math.max(1, nicePrice(amount)) >= l.buyNow)) {
     const bid: Bid = {
       id: nextId(state, 'bid'),
       buyerId: buyer.id,
@@ -1620,7 +1681,11 @@ function expireListing(state: GameState, l: Listing): void {
   const sid = l.snapshot.speciesIds?.[0];
   let advice: string;
   if (received === 0) {
-    const tips = [l.reserve > 0 ? 'a lower reserve' : '', 'a longer listing', l.snapshot.photo ? '' : 'a listing photo', demand < 0.95 && sid ? `waiting until demand for ${speciesPlural(sid)} recovers (now ${demand.toFixed(2)}×)` : '', l.snapshot.beautyScore < 50 && l.kind === 'tank' ? 'improving the aquascape first' : '']
+    // audit 2026-11-17 (F18) — advice that fits this listing: a lower reserve only when it was well above fair value, a
+    // longer listing only when a longer one exists, and demand in plain words (not "0.83×")
+    const ran = l.endsHour - l.createdHour;
+    const longest = Math.max(...LISTING_DURATION_PRESETS.map((p) => p.hours));
+    const tips = [l.reserve > l.snapshot.valuation * 1.1 ? 'a lower reserve' : '', ran < longest - 1e-6 ? 'a longer listing' : '', l.snapshot.photo ? '' : 'a listing photo', demand < 0.95 && sid ? `waiting until prices for ${speciesPlural(sid)} recover (they are ${Math.round((1 - demand) * 100)}% below normal)` : '', l.snapshot.beautyScore < 50 && l.kind === 'tank' ? 'improving the aquascape first' : '']
       .filter(Boolean)
       .join(', ');
     advice = `No bids arrived. Try ${tips || 'listing again when buyers are more active'}.`;
@@ -1632,9 +1697,15 @@ function expireListing(state: GameState, l: Listing): void {
   } else {
     advice = 'Offers expired before you accepted one. Buyers don’t wait forever — accept or counter sooner.';
   }
+  // Audit 2026-11-17 (H1 review): a production line that lists again what didn't sell says so itself ("… didn't sell, so
+  // they're listed again at …"); the market's advice to change the reserve, the length or the photo isn't the player's
+  // to act on there
+  const lineId = lineOfListing(state, l.id);
+  const line = lineId ? state.production?.lines.find((x) => x.id === lineId) : undefined;
+  if (line?.rules.autoList) advice = `${line.name}: ${l.creatureIds.length === 1 ? 'it’s' : 'they’re'} listed again.`; // a name, never "The Bettas" (second review)
   l.advice = advice;
   l.outcome = 'Ended without a sale.';
-  emitEvent(state, { kind: 'market', text: `"${l.title}" ended without a sale. ${advice}`, listingId: l.id, toast: true });
+  if (!line?.rules.autoList) emitEvent(state, { kind: 'market', text: `"${l.title}" ended without a sale. ${advice}`, listingId: l.id, toast: true });
 }
 
 /** Per-tick listing simulation: integrity, counters, expiries, interest, arrivals, end of auction. */

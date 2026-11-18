@@ -57,7 +57,6 @@ function fromWords(high: number, low: number): number {
 
 const TWO24 = 16777216.0; // 0x1.0p24
 const TWO54 = 1.8014398509481984e+16; // 0x1.0p54
-const HUGE = 1.0e300;
 const TINY = 1.0e-300;
 const PI = 3.141592653589793; // 0x1.921fb54442d18p1
 

@@ -79,7 +79,7 @@ describe('NOTIFY-008: what is shown, and when', () => {
   it('open but not focused, granted and the category on: one notification with its route, tag and text', () => {
     const out = notificationsFor([prismatic(), { id: 'ev_i', hour: 10, kind: 'info', text: 'A visitor dropped by.' }], env());
     expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ title: 'Prismatic betta in the shop', body: 'Coral Cove just stocked a Prismatic Royal Blue Halfmoon. It leaves in 10 h.', route: '#/shop/fish/offer_k3', category: 'rare' });
+    expect(out[0]).toMatchObject({ title: 'Prismatic betta in the shop', body: 'Coral Cove just stocked a Prismatic Royal Blue Halfmoon. It leaves in about 2 min.' /* Audit 2026-11-17 (J2): real time (10 game hours) */, route: '#/shop/fish/offer_k3', category: 'rare' });
   });
 
   it('focused (the toast is enough), hidden, not granted or the category off: nothing', () => {

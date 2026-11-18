@@ -10,21 +10,22 @@ import { Button, Toggle, formatMoney, Badge } from '@/ui/kit';
 import { go } from '@/ui/nav/router';
 import { findSpecies } from '@/data/species';
 import { FACILITY_LEVELS, PRODUCTION_LINE_SLOTS } from '@/data/facilities';
-import { lineSlots, productionLines, youngPlaces, youngSizeCm } from '@/sim/production';
+import { lineNoticeText, lineSlots, productionLines, youngPlaces, youngSizeCm } from '@/sim/production';
 import { lineView, type LineView, type StageId } from '@/sim/production/view';
 import { isHeld } from '@/sim/automation';
 import { CreaturePortrait } from '../common/Portrait';
 import { EmptyState } from '../common/parts';
-import { RouteStrip, StatusWord } from '../livestock/Production';
+import { RouteStrip, StatusWord, notReadyText, priceEach } from '../livestock/Production';
 import { Status, Kicker } from './parts';
 import { doLineSwitch } from './actions';
 import { eventLine } from '@/ui/common/notify'; // chunk 13: the member's name in a shared shop
 
-const STAGES: { id: StageId; label: string }[] = [
+/** `full`: the stage's whole name where the track's narrow label is short (Audit 2026-11-17, J22: screen readers said "QT"). */
+const STAGES: { id: StageId; label: string; full?: string }[] = [
   { id: 'breed', label: 'Breed' },
   { id: 'raise', label: 'Raise' },
   { id: 'sort', label: 'Sort' },
-  { id: 'quarantine', label: 'QT' },
+  { id: 'quarantine', label: 'QT', full: 'Quarantine' },
   { id: 'sell', label: 'Sell' },
 ];
 
@@ -35,22 +36,32 @@ const NEXT_STAGE_SHOWN_H = 48;
 
 /** "12 juveniles in Grow-out B · day 15 of 19 · next stage in 6 h", or what the line waits for. */
 function doing(g: GameState, line: ProductionLine, v: LineView): string {
+  if (v.status === 'waiting' && v.next.fullTank) return `Waits until ${v.next.fullTank.name} has room`; // Audit 2026-11-17 (H1)
+  if (v.status === 'waiting' && v.next.waitsOn) return `Waits until ${v.next.waitsOn.name} is well, or until you move ${v.next.waitsOn.name} out`; // H1 second review
   if (v.raising.count > 0) {
     const days = v.raising.dayOf !== undefined && v.raising.ofDays ? ` · day ${v.raising.dayOf} of ${v.raising.ofDays}` : '';
     const h = v.raising.nextStageIn;
     return `${v.raising.count} ${v.raising.word} in ${v.raise?.name ?? 'the raise tank'}${days}${h !== undefined && h <= NEXT_STAGE_SHOWN_H ? ` · next stage in ${h} h` : ''}`;
   }
-  if (v.quarantined.count > 0) return `${v.quarantined.count} ${v.quarantined.word} in ${v.quarantine?.name ?? 'quarantine'}${v.quarantined.listsDay ? ` · lists Day ${v.quarantined.listsDay}` : ''}`;
+  if (v.quarantined.count > 0) {
+    const why = v.quarantined.listsWhy; // past its hold, not listed yet: never a day that has passed (H1 records check)
+    return `${v.quarantined.count} ${v.quarantined.word} in ${v.quarantine?.name ?? 'quarantine'}${v.quarantined.listsDay ? ` · lists Day ${v.quarantined.listsDay}` : why ? ` · ${why.charAt(0).toLowerCase()}${why.slice(1)}` : ''}`;
+  }
+  const why = notReadyText(v); // Audit 2026-11-17 (H4): a due pair that can't get into condition says why
+  if (why) return `Not ready yet: ${why}`;
   if (v.next.days !== undefined) return `Next clutch in ${v.next.days} ${v.next.days === 1 ? 'day' : 'days'}`;
   return `${v.mother?.name ?? 'The pair'} and ${v.father?.name ?? 'its partner'} are getting ready`;
 }
 
 function Track({ v, held }: { v: LineView; held: boolean }) {
   const at = STAGES.findIndex((s) => s.id === v.active);
+  // Audit 2026-11-17 (review of J22): an aria-label on a plain div isn't read, so the stage is hidden text and the
+  // short segment words ("QT") are hidden from screen readers (the hover title keeps the full word)
   return (
-    <div className="ops-track" aria-label={`Stage: ${STAGES[at]?.label ?? ''}`}>
+    <div className="ops-track">
+      <span className="pn-sr">Stage: {STAGES[at]?.full ?? STAGES[at]?.label ?? ''}</span>
       {STAGES.map((s, i) => (
-        <span key={s.id} className={`ops-track__seg${i < at ? ' is-done' : ''}${i === at ? ' is-on' : ''}${i === at && held ? ' is-held' : ''}`}>
+        <span key={s.id} aria-hidden title={s.full} className={`ops-track__seg${i < at ? ' is-done' : ''}${i === at ? ' is-on' : ''}${i === at && held ? ' is-held' : ''}`}>
           {s.label}
         </span>
       ))}
@@ -136,11 +147,11 @@ function LineRow({ g, line, held, small, early }: { g: GameState; line: Producti
           {sp.commonName} · {v.mother?.name ?? '?'} × {v.father?.name ?? '?'}
         </span>
         {!small && <Track v={v} held={stuck} />}
-        <span className={stuck ? 'ops-amber' : 'ops-row__sub'}>{v.status === 'paused_by_you' ? 'Paused by you · animals stay where they are' : doing(g, line, v)}</span>
+        <span className={stuck ? 'ops-amber' : 'ops-row__sub'}>{v.status === 'paused_by_you' ? 'Paused by you · animals stay where they are' : v.status === 'paused' ? lineNoticeText(g, line) /* Audit 2026-11-17 (H3): why, not "Next clutch in 3 days" */ : doing(g, line, v)}</span>
         {early && v.selling.listed > 0 && (
           <span className="ops-row__sub ops-num" data-testid={`line-listed-${line.id}`}>
             Listed now {v.selling.listed}
-            {v.selling.bestBid ? ` · best bid ${formatMoney(v.selling.bestBid)}` : ''}
+            {v.selling.each !== undefined ? ` · Buy now ${v.selling.listings > 1 ? 'from ' : ''}${priceEach(v.selling.each)}${v.selling.listed > 1 ? ' each' : ''}` : v.selling.bestBid ? ` · best bid ${formatMoney(v.selling.bestBid)}` : ''}
           </span>
         )}
       </div>
@@ -225,7 +236,7 @@ function ComingUp({ g, lines }: { g: GameState; lines: ProductionLine[] }) {
     const v = lineView(g, line);
     if (!v) continue;
     const short = line.name.replace(/ line$/, '');
-    if (v.quarantined.listsDay) events.push({ day: v.quarantined.listsDay, text: `${short} lists ${v.quarantined.count}` });
+    if (v.quarantined.listsDay) events.push({ day: v.quarantined.listsDay, text: `${short} lists ${v.quarantined.count} ${v.quarantined.word}` });
     if (v.next.days !== undefined && v.status === 'running') events.push({ day: today + v.next.days, text: `${short} spawns` });
     if (v.status === 'waiting' && v.next.restartDay) events.push({ day: v.next.restartDay, text: `${short} restarts` });
   }

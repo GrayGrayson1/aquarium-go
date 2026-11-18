@@ -110,7 +110,7 @@ export const coralBeauty: SpeciesDefinition = {
         mode: 'additive',
         alleles: [
           { id: 'std', name: 'Typical', dominance: 1, frequency: 0.8 },
-          { id: 'hi', name: 'High orange', dominance: 1, frequency: 0.2 },
+          { id: 'hi', name: 'High Orange', dominance: 1, frequency: 0.2 },
         ],
         note: 'The amount of orange on the flanks varies by locality in the wild, and ORA has line-bred a "high orange" coral beauty. Modelled as additive.',
       },

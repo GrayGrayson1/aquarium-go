@@ -85,7 +85,7 @@ const cfg: PairSpawnerConfig = {
     spawn: (m, f, sp, n, tank, guardian, duds = 0) =>
       duds >= n
         ? `${f.name} laid ${plural(n, 'egg case')} ${where(sp)}, but ${n === 1 ? 'it is a dud' : 'both are duds'}: not every case is fertile. Lift duds out, or they rot.`
-        : `${f.name} laid ${plural(n, 'egg case')} ${where(sp)}.${duds > 0 ? ' One is a dud, with no embryo inside.' : ''} A case takes about ${approxDuration(eggCaseIncubation(sp, tank)).replace(/^~/, '')} to hatch, and tankmates eat them: a nursery tank keeps them safe.`,
+        : `${f.name} laid ${plural(n, 'egg case')} ${where(sp)}.${duds > 0 ? ' One is a dud, with no embryo inside.' : ''} A case takes about ${approxDuration(eggCaseIncubation(sp, tank)).replace(/^~/, '')} to hatch, and tank mates eat them: a nursery tank keeps them safe.`,
     dudNotes: (f, sp, n) => `${n === 1 ? 'A dud' : 'Duds'}: no embryo inside. Lift ${n === 1 ? 'it' : 'them'} out, or ${n === 1 ? 'it rots' : 'they rot'}.`,
   },
 };

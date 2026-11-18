@@ -103,7 +103,7 @@ export const neonTetra: SpeciesDefinition = {
         mode: 'mendelian',
         alleles: [
           { id: 'N', name: 'Normal', dominance: 3, frequency: 0.9 },
-          { id: 'dh', name: 'Diamond head', dominance: 2, frequency: 0.04 },
+          { id: 'dh', name: 'Diamond Head', dominance: 2, frequency: 0.04 },
           { id: 'g', name: 'Gold', dominance: 1, frequency: 0.04 },
           { id: 'a', name: 'Albino', dominance: 1, frequency: 0.03 },
         ],

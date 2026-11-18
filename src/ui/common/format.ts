@@ -18,6 +18,7 @@ import type {
 import { ageDays, dayOf, formatClock, hourOfDay } from '@/sim/time';
 import { getFoodDef } from '@/data/catalog/foods';
 import { findSpecies } from '@/data/species';
+import { moduleFor } from '@/sim/life/breeding/registry'; // review E (E17)
 
 export { formatClock, dayOf, hourOfDay };
 
@@ -35,15 +36,9 @@ export function sentenceCase(id: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export const WATER_CLASS_LABEL: Record<WaterClass, string> = {
-  freshwater_cool: 'Cool freshwater',
-  freshwater_tropical: 'Tropical freshwater',
-  freshwater_planted: 'Tropical planted',
-  marine_fowlr: 'Marine · fish only',
-  marine_live_rock: 'Marine · live rock',
-  reef: 'Reef',
-  brackish: 'Brackish',
-};
+// Audit 2026-11-17 (J4): one table for the water types' names (the tank card's chip said "Tropical planted" where
+// Tanks said "Planted freshwater")
+export { WATER_CLASS_LABEL, WATER_CLASS_WORDS } from '@/data/tankLabels';
 
 /** Tone per water class, used for chips (cool = aqua, tropical = gold/green, marine = blue). */
 export const WATER_CLASS_TONE: Record<WaterClass, 'aqua' | 'good' | 'gold' | 'violet' | 'neutral'> = {
@@ -143,13 +138,16 @@ export const EQUIPMENT_KIND_LABEL: Record<EquipmentKind, string> = {
   ato: 'Auto top-off',
   co2: 'CO₂',
   autofeeder: 'Autofeeder', // lane:qa-r3 — one spelling everywhere
-  uv: 'UV sterilizer',
+  uv: 'UV steriliser',
   refugium: 'Refugium',
   wavemaker: 'Wavemaker',
   lid: 'Lid',
   water_changer: 'Water changer', // lane:automation (0.5 §10.3)
   doser: 'Live-food doser', // lane:automation (chunk 5)
 };
+
+/** Audit 2026-11-17 (J14): how a food reaches the animals, in the feed picker's words (Supplies said "Slow Sink"). */
+export const FOOD_DELIVERY_WORD: Record<string, string> = { floating: 'Floats', slow_sink: 'Sinks slowly', fast_sink: 'Sinks fast', live: 'Live food', target: 'Target fed' };
 
 export function cToF(c: number) {
   return c * 1.8 + 32;
@@ -175,12 +173,21 @@ function tidyCelsius(text: string): string {
 /** A temperature *difference* ("by ~2 °C", "1 °C below the chiller", "1–2 °C of cooling", "~2 °C cooler") scales by
  *  1.8 with no +32 offset. Only "by …" before the value or a comparison word right after "°C" marks one: a bare "~"
  *  does not ("breeding slows below ~21 °C" is a real temperature). */
-const TEMP_DELTA_BEFORE = /(?:\bby\s+(?:~\s*|about\s+|around\s+)?|±\s*)$/i;
+// Audit 2026-11-17 (review of D8): "Cools 1–2 °C by evaporation", "Cools about 2 °C", "Cools only about 2 °C" (care/fit.ts)
+// Audit 2026-11-17 (J1): "needs to drop about 2 °C" and a signed "−1 °C" are differences too (they read as 36 °F and
+// 30 °F before). The review: only the verb marks one ("Cools 2 °C", "cool about 2 °C", "drop about 2 °C"), never the
+// adjective ("a cool 18 °C room" is a temperature); a sign only when no digit or letter is right before it.
+const TEMP_DELTA_BEFORE = /(?:\bby\s+(?:~\s*|about\s+|around\s+)?|±\s*|\b(?:cools|warms|drops)\s+(?:only\s+)?(?:~\s*|about\s+|around\s+)?|\b(?:cool|warm|drop)\s+(?:only\s+)?(?:~\s*|about\s+|around\s+)|(?:^|[\s(])[−+]\s*)$/i;
 const TEMP_DELTA_AFTER = /^\s+(?:below|above|cooler|warmer|colder|hotter|lower|higher|of|per)\b/i;
 
 function fDelta(c: number): string {
   const f = c * 1.8;
   return Math.abs(f) >= 1 ? String(Math.round(f)) : f.toFixed(1);
+}
+
+/** Audit 2026-11-17 (J1): a temperature difference in the player's unit ("2 °C" → "4 °F"), never with the +32 offset. */
+export function formatTempDelta(c: number, unit: 'C' | 'F'): string {
+  return unit === 'F' ? `${fDelta(c)} °F` : `${String(c)} °C`;
 }
 
 /** Replace °C values inside report strings with °F when requested (and tidy "28.0 °C" → "28 °C"). */
@@ -195,6 +202,19 @@ export function convertTempText(text: string | undefined, unit: 'C' | 'F'): stri
     const dig = a.includes('.') ? 1 : 0;
     if (b != null) return `${fa.toFixed(dig)}–${cToF(Number(b)).toFixed(dig)} °F`;
     return `${fa.toFixed(dig)} °F`;
+  });
+}
+
+/**
+ * Audit 2026-11-17 (J1): a source's facts quote °C or °F as the source wrote them ("68–78 °F"); show both in the
+ * player's unit. The quoted values are temperatures, never differences.
+ */
+export function convertSourceTempText(text: string, unit: 'C' | 'F'): string {
+  if (unit === 'F') return convertTempText(text, 'F') ?? text;
+  const c = (f: string, dig: number) => ((Number(f) - 32) / 1.8).toFixed(dig);
+  return tidyCelsius(text).replace(/(-?\d+(?:\.\d+)?)(\s*[–-]\s*(-?\d+(?:\.\d+)?))?\s*°\s*F\b/g, (_m, a: string, _r, b: string | undefined) => {
+    const dig = a.includes('.') ? 1 : 0;
+    return b != null ? `${c(a, dig)}–${c(b, dig)} °C` : `${c(a, dig)} °C`;
   });
 }
 
@@ -245,6 +265,13 @@ export function sexRoleText(c: Creature, sp: SpeciesDefinition | undefined, nowH
         return { label: 'Female', detail: 'May become male if dominant.' };
     }
   }
+  // audit E17: a hermaphrodite never shows a sex, and a snail whose sex shows only at the end of its life can't be
+  // sexed by eye: "Not yet visible · Sex shows at around 14 days" was forever, or a promise for its last day
+  // (review E: the pairing advice only for a species that breeds in pairs here: not a tang, puffer or triggerfish the
+  // game never breeds, which fight their own kind, nor an anemone, which splits alone)
+  const pairs = !!sp && moduleFor(sp).breedable;
+  if (sp?.sexSystem === 'simultaneous_hermaphrodite') return pairs ? { label: 'Both sexes', detail: 'Any two adults can pair up — both can carry eggs.' } : { label: 'Both sexes' };
+  if (sp && c.sex === 'unknown' && sp.lifecycle.sexVisibleAtDays >= sp.lifecycle.lifespanDays) return pairs ? { label: 'Can’t be told by eye', detail: 'Keep a few together and they pair up on their own.' } : { label: 'Can’t be told by eye' };
   if (c.sex === 'unknown' || (sp && age < sp.lifecycle.sexVisibleAtDays && c.lifeStage !== 'adult')) {
     return { label: 'Not yet visible', detail: sp ? `Sex shows at around ${Math.round(sp.lifecycle.sexVisibleAtDays)} days.` : undefined };
   }
@@ -259,8 +286,8 @@ export function probabilityWord(p: number | undefined): string | null {
   if (p < 0.03) return 'rarely';
   if (p < 0.12) return 'occasionally';
   if (p < 0.3) return 'sometimes';
-  if (p < 0.6) return 'likely';
-  return 'very likely';
+  if (p < 0.6) return 'often'; // Audit 2026-11-17 (J17): "Happens often", not "Happens likely"
+  return 'very often';
 }
 
 export const EVENT_KIND_TONE: Record<GameEvent['kind'], 'aqua' | 'good' | 'watch' | 'danger' | 'gold' | 'violet' | 'neutral'> = {

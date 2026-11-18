@@ -5,19 +5,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { FlaskConical, Map as MapIcon, ScrollText, Trophy, Clock, Coins, Lock, Check, Gift, Star, Sparkles, X, CircleCheck, GraduationCap, MapPin } from 'lucide-react';
-import type { GameState, MasteryTrack } from '@/types';
+import type { GameState, MasteryTrack, TankTier } from '@/types';
 import { Button, Money, formatMoney, Modal } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { RESEARCH } from '@/data/research';
 import { ACHIEVEMENTS } from '@/data/achievements';
-import type { Reward } from '@/data/quests';
+import { QUEST_BOARD_SIZE, type Reward } from '@/data/quests';
 import { researchList, activeQuests, unlockProgress, masteryLevel, unlockLabel, evalCond, currentTutorialStep, type ResearchView, type QuestView, type UnlockProgressView } from '@/sim/facility';
 import { PanelLayout } from '../common/PanelLayout';
-import { usePanelGame, safe, useIsPhone } from '../common/hooks';
+import { usePanelGame, safe, useIsPhone, useMedia } from '../common/hooks';
 import { act } from '../common/act';
 import { Chip, Seg, EmptyState, SectionHead, Bar, Callout } from '../common/parts';
-import { Requirements } from '../common/Requirements';
+import { Requirements, RuleRequirements, ruleParts } from '../common/Requirements';
 import { NamedIcon } from '../common/icons';
 import { formatSpan, plural } from '../common/format';
 import './research.css'; // lane:w2-ui
@@ -26,11 +26,25 @@ import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
 import { glow } from '@/ui/common/glow'; // chunk 19 (QOL-004, QOL-006)
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { matches } from '../common/match'; // chunk 19 (QOL-003)
+import { FINE_POINTER, currentCoachStep } from '@/ui/tutorial/guideText'; // audit 2026-11-17 (A13)
+import { listSpecies } from '@/data/species'; // Audit 2026-11-17 (G5)
+import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks'; // Audit 2026-11-17 (G5)
+import { isUnlocked, tankTierFor, tankKeyFor } from '@/sim/facility'; // Audit 2026-11-17 (G5)
+import { requiredUnlocks } from '@/sim/economy'; // Audit 2026-11-17 (G5)
 
 type Tab = 'research' | 'unlocks' | 'quests' | 'achievements';
 const RESEARCH_TABS: readonly Tab[] = ['research', 'unlocks', 'quests', 'achievements'];
 
 const TRACK_LABEL: Record<MasteryTrack, string> = { husbandry: 'Husbandry', breeding: 'Breeding', aquascaping: 'Aquascaping', marine: 'Marine', business: 'Business', exhibition: 'Exhibition' };
+/** Audit 2026-11-17 (G10): what earns each track's points (src/sim: COUNTER_EFFECTS, the daily sample, sales, visitors, shows). */
+export const TRACK_HELP: Record<MasteryTrack, string> = {
+  husbandry: 'Feeding, water changes, cleaning and healthy tanks.',
+  breeding: 'Spawns and raising young.',
+  aquascaping: 'Placing decor and keeping beautiful tanks.',
+  marine: 'Caring for marine and reef tanks.',
+  business: 'Sales and claiming quests.',
+  exhibition: 'Visitors, friends’ visits and shows.',
+};
 const BRANCH_LABEL: Record<string, string> = { gear: 'Life support', freshwater: 'Freshwater', breeding: 'Breeding', marine: 'Marine', exhibition: 'Exhibition', facility: 'Facility' }; // facility: lane:automation (chunk 5, DESIGN-S3D §8.8)
 
 export function ResearchPanel() {
@@ -38,6 +52,8 @@ export function ResearchPanel() {
   const target = useUI((s) => s.panelTarget);
   const [tab, setTab] = useState<Tab>('research');
   const [unlockQ, setUnlockQ] = useState(''); // chunk 19 (QOL-003, QOL-004): the unlock map's search, set by a link
+  // audit B11: a project asked for by name starts the Research tab afresh, so its search or status filter can't hide it
+  const [asked, setAsked] = useState(0);
   const phone = useIsPhone(); // lane:qa-final
   useNavTab('research', tab); // lane:ui-shell (chunk 1)
   useEffect(() => {
@@ -53,6 +69,7 @@ export function ResearchPanel() {
     } else if (target?.startsWith('research:')) {
       // chunk 19 (QOL-004, QOL-006) — a project asked for by name ("Open in Research", Find anything): its card glows
       setTab('research');
+      setAsked((n) => n + 1);
       glow(`[data-testid="research-${CSS.escape(target.slice(9))}"]`);
       useUI.getState().set({ panelTarget: null });
     }
@@ -89,7 +106,7 @@ export function ResearchPanel() {
         />
       }
     >
-      {tab === 'research' && <ResearchTab g={g} />}
+      {tab === 'research' && <ResearchTab key={asked} g={g} />}
       {tab === 'unlocks' && <UnlocksTab g={g} q={unlockQ} setQ={setUnlockQ} />}
       {tab === 'quests' && <QuestsTab g={g} quests={quests} />}
       {tab === 'achievements' && <AchievementsTab g={g} />}
@@ -112,6 +129,16 @@ function StandingCard({ g }: { g: GameState }) {
           </span>
         </div>
         <Bar value={rep / 10} tone="gold" label="Reputation" />
+        {/* Audit 2026-11-17 (G6): what reputation opens and what moves it (most changes are silent) */}
+        <details className="pn-standing__help" data-testid="research-reputation-help">
+          <summary className="pn-small">How reputation grows</summary>
+          <p className="pn-small pn-muted" style={{ margin: '6px 0' }}>
+            Reputation grows when your tanks stay healthy, friends and visitors enjoy them, you raise young, sell animals, do well at shows and finish research or quests. It drops when an animal dies, a buyer is unhappy or visitors leave disappointed. It opens bigger tanks, new animals and bigger venues.
+          </p>
+          <Button size="sm" variant="ghost" onClick={() => useUI.getState().set({ panelTarget: 'tab:unlocks' })} data-testid="research-reputation-next">
+            See what’s next
+          </Button>
+        </details>
       </div>
       <div className="pn-mastery">
         {(Object.keys(TRACK_LABEL) as MasteryTrack[]).map((t) => {
@@ -123,9 +150,11 @@ function StandingCard({ g }: { g: GameState }) {
             <div key={t} className="pn-mastery__row">
               <div className="pn-metric__row">
                 <span>{TRACK_LABEL[t]}</span>
-                <span className="pn-metric__val">Lv {lvl}</span>
+                {/* Audit 2026-11-17 (G10): the points requirements ask for, beside the level */}
+                <span className="pn-metric__val">Lv {lvl} · {Math.floor(xp).toLocaleString('en-US')} points</span>
               </div>
               <Bar value={((xp - lo) / Math.max(1, hi - lo)) * 100} tone="aqua" label={`${TRACK_LABEL[t]} mastery`} thin />
+              <span className="pn-tiny pn-muted">{TRACK_HELP[t]}</span>
             </div>
           );
         })}
@@ -249,6 +278,31 @@ const grantLabel = (k: string): string => safe(() => unlockLabel(k), UNLOCK_KEYS
 /** chunk 6 (DES-011, desk-research.png): what an unlock also does elsewhere, as a chip beside its own. */
 const GRANT_EFFECTS: Record<string, string> = { genetics_lab: 'Shop: hidden carriers in Rare genes' };
 
+/**
+ * Audit 2026-11-17 (G5) — the animals a project opens that the shop still holds back for a bigger tank (ADR-0053
+ * decision 4), as one line for its card (null: none wait). "Opens" means every other key the animal needs is granted
+ * by the project or already unlocked, so koi count for Big-water Freshwater only once Cool-water Systems is in hand.
+ */
+export function researchTankLine(g: GameState, d: ResearchView['def']): string | null {
+  const grants = new Set<string>(d.grants);
+  const opened = listSpecies((sp) => {
+    const tk = tankKeyFor(sp);
+    const own = requiredUnlocks(sp).filter((k) => k !== tk);
+    return own.some((k) => grants.has(k)) && own.every((k) => grants.has(k) || isUnlocked(g, k));
+  });
+  const waiting = opened.map((sp) => tankTierFor(sp)).filter((t): t is TankTier => !!t?.unlock && !isUnlocked(g, t.unlock));
+  if (!waiting.length) return null;
+  waiting.sort((a, b) => a.gallons - b.gallons);
+  const first = waiting[0];
+  const hint = (first.unlock && UNLOCK_RULE_BY_KEY[first.unlock]?.hint) || '';
+  const route = hint ? ` (${hint.charAt(0).toLowerCase()}${hint.slice(1).replace(/\.$/, '')})` : '';
+  const larger = waiting.some((t) => t.gallons > first.gallons) ? ' and larger' : '';
+  return `${waiting.length < opened.length ? 'Some of its animals' : 'Its animals'} also need a bigger tank: the ${first.name}${route}${larger}.`;
+}
+
+/** Audit 2026-11-17 (G4): the unlocks a research project needs, each explained in its "How to unlock" box. */
+export const researchLockKeys = (d: ResearchView['def']): string[] => d.requires.flatMap((c) => (c.type === 'unlocked' ? [c.key] : []));
+
 function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boolean }) {
   const d = r.def;
   const status = r.status;
@@ -257,6 +311,7 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
   const owned = !!r.alreadyOwned;
   const fresh = r.grantsNew ?? d.grants;
   const cost = typeof r.cost === 'number' ? r.cost : d.cost;
+  const tankLine = safe(() => researchTankLine(g, d), null); // Audit 2026-11-17 (G5)
   return (
     <div className={clsx('pn-research', `is-${status}`)} data-testid={`research-${d.id}`} /* lane:w2-ui */>
       <span className={clsx('pn-research__icon', status === 'done' && 'is-done')}>{status === 'done' ? <Check size={18} /> : <NamedIcon name={d.icon} size={18} />}</span>
@@ -268,6 +323,7 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
           {status === 'active' && <Chip tone="aqua">In progress</Chip>}
         </div>
         <div className="pn-small pn-dim">{d.blurb}</div>
+        {tankLine && <div className="pn-small pn-muted" data-testid={`research-tankwait-${d.id}`}>{tankLine}</div> /* Audit 2026-11-17 (G5) */}
         <div className="pn-chips">
           {/* only what the project would still add counts as an unlock; the rest you already have */}
           {(status === 'done' ? d.grants : fresh).flatMap((k) =>
@@ -317,27 +373,30 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
             title={busy ? 'Only one project runs at a time. Finish or stop the current one first.' : !r.affordable ? `You need ${formatMoney(Math.max(0, cost - g.finance.money))} more to start this.` : undefined}
             onClick={() => act({ k: 'startResearch', project: d.id }, { sound: 'confirm' })}
           >
-            {busy ? 'One at a time' : !r.affordable ? 'Can’t afford' : 'Start'}
+            {busy ? 'One at a time' : !r.affordable ? `Need ${formatMoney(Math.ceil(cost - g.finance.money - 1e-6))} more` : 'Start'}
           </Button>
         )}
         {status === 'locked' && (
           // chunk 19 (ADR-0055 decision 5, QOL-006) — what it still needs, with progress and the way there
-          <LockedButton title={d.name} conds={d.requires} testId={`research-locked-${d.id}`} />
+          // Audit 2026-11-17 (G4): each unlock it needs also gets its own route (hint, progress, the research that grants it)
+          <LockedButton title={d.name} conds={d.requires} keys={researchLockKeys(d)} testId={`research-locked-${d.id}`} />
         )}
       </div>
     </div>
   );
 }
 
-const GROUPS: { id: string; label: string; test: (k: string) => boolean }[] = [
-  { id: 'livestock', label: 'Livestock', test: (k) => k.startsWith('fw_') || k.startsWith('marine_') || k === 'reef' || k === 'predators' || k === 'brackish' },
+// Audit 2026-11-17 (G2): every unlock key lands in exactly one group (tests/sim/audit-g-building.test.ts); sharks and
+// rays and the three Facility-research rooms were in none, so the map hid them
+export const GROUPS: { id: string; label: string; test: (k: string) => boolean }[] = [
+  { id: 'livestock', label: 'Livestock', test: (k) => k.startsWith('fw_') || k.startsWith('marine_') || k === 'reef' || k === 'predators' || k === 'brackish' || k === 'elasmobranchs' },
   { id: 'tanks', label: 'Tanks', test: (k) => k.startsWith('tank_') && k !== 'tank_auctions' },
   { id: 'gear', label: 'Equipment', test: (k) => k.startsWith('gear_') },
-  { id: 'facility', label: 'Venue & features', test: (k) => k.startsWith('facility_') || k.startsWith('shows') || ['market_listings', 'tank_auctions', 'visitors', 'signage', 'nursery', 'genetics_lab', 'photo_contests', 'party_mode', 'staff'].includes(k) },
+  { id: 'facility', label: 'Venue & features', test: (k) => k.startsWith('facility_') || k.startsWith('shows') || ['market_listings', 'tank_auctions', 'visitors', 'signage', 'nursery', 'genetics_lab', 'photo_contests', 'party_mode', 'staff', 'water_room', 'live_food_room', 'operations_desk'].includes(k) },
   { id: 'decor', label: 'Decor & corals', test: (k) => k.startsWith('decor_') },
 ];
 
-function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: string) => void }) {
+export function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: string) => void }) {
   const locked = useMemo(() => safe<UnlockProgressView[]>(() => unlockProgress(g), []), [g]);
   const byKey = new Map(locked.map((u) => [u.key, u]));
   const keys = Object.keys(UNLOCK_KEYS);
@@ -365,6 +424,12 @@ function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: string)
         )}
       </div>
       <SearchField value={q} onChange={setQ} placeholder="Search unlocks" label="Search the unlock map" testId="unlocks-search" />
+      {/* Audit 2026-11-17 (G2): a search that hides every group says so, as the Research tab does */}
+      {!!q.trim() && !keys.some((k) => GROUPS.some((grp) => grp.test(k)) && hit(k)) && (
+        <EmptyState icon={<MapIcon size={24} />} title="Nothing matches" action={<Button onClick={() => setQ('')} data-testid="unlocks-clear">Clear filters</Button>}>
+          Try other words.
+        </EmptyState>
+      )}
       {GROUPS.map((grp) => {
         const gk = keys.filter((k) => grp.test(k) && hit(k));
         if (q.trim() && !gk.length) return null;
@@ -385,19 +450,25 @@ function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: string)
             <div className="pn-col pn-gap-2">
               {closed.map((k) => {
                 const u = byKey.get(k);
+                // Audit 2026-11-17 (G11): "any of" rows split, each alternative with its progress, as the lock box does;
+                // a project offered as a route isn't also listed as a requirement
+                const routes = (u?.viaResearch ?? []).map((r) => r.id);
+                const parts = UNLOCK_RULE_BY_KEY[k] ? safe(() => ruleParts(g, UNLOCK_RULE_BY_KEY[k].when, routes), null) : null;
                 return (
                   <details key={k} className="pn-unlock">
                     <summary>
                       <Lock size={13} className="pn-muted" aria-hidden />
                       <span className="pn-grow">{u?.label ?? UNLOCK_KEYS[k as keyof typeof UNLOCK_KEYS]}</span>
-                      <span className="pn-unlock__pct">{Math.round((u?.progress ?? 0) * 100)}%</span>
+                      <span className="pn-unlock__pct">{u?.guide ? 'Guide' : `${Math.round((u?.progress ?? 0) * 100)}%`}</span>
                     </summary>
                     <div className="pn-unlock__body">
                       <div className="pn-small pn-dim">{u?.hint}</div>
-                      {u && u.requirements.length > 0 && <Requirements items={u.requirements} />}
+                      {/* Audit 2026-11-17 (G1, F8): while the guide holds it, the row is the guide's step (in u.hint and
+                          u.requirements), not the play rule's rows, which would read as already earned */}
+                      {u?.heldBy ? <Requirements items={u.requirements} /> : parts ? <RuleRequirements g={g} conds={UNLOCK_RULE_BY_KEY[k].when} routes={routes} /> : u && u.requirements.length > 0 && <Requirements items={u.requirements} />}
                       {u && u.viaResearch.length > 0 && (
                         <div className="pn-small pn-muted">
-                          <FlaskConical size={12} style={{ verticalAlign: '-2px' }} /> Or research: {u.viaResearch.map((r) => r.name).join(', ')}
+                          <FlaskConical size={12} style={{ verticalAlign: '-2px' }} /> {parts && !parts.requirements.length && !parts.either.length ? 'Research' : 'Or research'}: {u.viaResearch.map((r) => r.name).join(', ')}
                         </div>
                       )}
                     </div>
@@ -428,8 +499,17 @@ function RewardChips({ r }: { r: Reward }) {
   );
 }
 
+/**
+ * Audit B2 (the part that needs no decision) — finished quests keep their board slot until claimed, so a board full of
+ * them draws no new quest: say so where the rewards are. (exported for tests)
+ */
+export const boardFullOfRewards = (quests: readonly QuestView[]): boolean => quests.filter((q) => q.status === 'complete' && !q.isTutorial).length >= QUEST_BOARD_SIZE;
+
 function QuestsTab({ g, quests }: { g: GameState; quests: QuestView[] }) {
   const tut = safe(() => currentTutorialStep(g), null);
+  // audit 2026-11-17 (A13) — the step in the guide card's own words: the player's temperature unit, "Click" for a mouse
+  const fine = useMedia(FINE_POINTER);
+  const words = tut ? safe(() => currentCoachStep(g, fine), null) : null;
   const sorted = [...quests].sort((a, b) => Number(b.status === 'complete') - Number(a.status === 'complete'));
   return (
     <div className="pn-stack pn-stack--lg">
@@ -440,17 +520,22 @@ function QuestsTab({ g, quests }: { g: GameState; quests: QuestView[] }) {
           </span>
           <div className="pn-grow pn-col" style={{ gap: 6 }}>
             <div className="pn-tiny pn-muted" style={{ textTransform: 'uppercase', letterSpacing: '0.09em', fontWeight: 650 }}>
-              Tutorial · step {tut.index + 1} of {tut.total}
+              Guide · step {tut.index + 1} of {tut.total}
             </div>
-            <b className="pn-quest__title">{tut.title}</b>
-            <div className="pn-small pn-dim">{tut.body}</div>
-            <Bar value={(tut.index / Math.max(1, tut.total)) * 100} tone="aqua" label="Tutorial progress" thin />
+            <b className="pn-quest__title">{words?.title ?? tut.title}</b>
+            <div className="pn-small pn-dim">{words?.body ?? tut.body}</div>
+            <Bar value={(tut.index / Math.max(1, tut.total)) * 100} tone="aqua" label="Guide progress" thin />
           </div>
         </div>
       )}
+      {boardFullOfRewards(quests) && (
+        <Callout tone="gold" icon={<Gift size={15} />}>
+          <span data-testid="quests-board-full">Claim a reward to get new quests.</span>
+        </Callout>
+      )}
       {sorted.length === 0 ? (
         <EmptyState icon={<ScrollText size={24} />} title="The quest board is quiet">
-          {tut ? 'Finish the tutorial to open the quest board.' : 'New quests appear as you grow — check back soon.'}
+          {tut ? 'Finish the guide to open the quest board.' : 'New quests appear as you grow — check back soon.'}
         </EmptyState>
       ) : (
         <div className="pn-col pn-gap-3">

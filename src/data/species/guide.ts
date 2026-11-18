@@ -140,7 +140,7 @@ export function temperatureGuide(sp: Pick<SpeciesDefinition, 'tempC'>): { label:
   const limit = `${n(t.max)} °C`;
   if (t.idealMax <= 20) return { label: 'Cold water', text: `Ideal ${ideal}. No heater: most rooms are warmer than it likes, so in warm weather it needs a fan or a chiller to stay under ${limit}.` };
   if (t.idealMin >= 23) return { label: 'Tropical', text: `Ideal ${ideal}. Needs a heater: an ordinary room is too cool for it. Never let it go over ${limit}.` };
-  if (t.idealMax <= 23) return { label: 'Cool to room temperature', text: `Ideal ${ideal}. No heater in a normal room, and too cool for a tropical tank. Keep it under ${limit} in summer.` };
+  if (t.idealMax <= 23) return { label: 'Cool to room temperature', text: `Ideal ${ideal}. No heater in a normal room; it needs cooler water than a tropical tank. Keep it under ${limit} in summer.` };
   if (t.idealMin <= 20) return { label: 'Room temperature', text: `Ideal ${ideal}. Happy unheated in a normal room. Keep it under ${limit}.` };
   return { label: 'Warm room temperature', text: `Ideal ${ideal}. A heater keeps it steady if your room runs cool. Keep it under ${limit}.` };
 }

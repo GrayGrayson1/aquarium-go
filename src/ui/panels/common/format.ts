@@ -19,9 +19,12 @@ import type {
   Environment,
   StatusLevel,
   Clutch,
+  Creature,
+  SpeciesDefinition,
 } from '@/types';
 import type { BadgeTone } from '@/ui/kit';
 import { GAME_HOURS_PER_REAL_SECOND, formatClock } from '@/sim/time'; // lane:w2-ui (realIn)
+import { agoText, sexRoleText } from '@/ui/common/format'; // audit B23
 
 export const HOURS_PER_DAY = 24;
 
@@ -68,16 +71,12 @@ export function speedNote(speed: number): string {
   return speed > 0 ? ` at ${speed}×` : ' (paused)';
 }
 
-/** Relative game time for past events: "just now", "3 h ago", "yesterday", "4 days ago". */
+/**
+ * Relative game time for past events: "just now", "3 h ago", "yesterday", "4 days ago". Audit B23: the bell's rule
+ * (agoText), so the Log and the bell agree, and never "0 days ago" (from 23.5 h this floored to 0 days).
+ */
 export function relTime(hour: number, now: number): string {
-  const dh = now - hour;
-  if (dh < 0.25) return 'just now';
-  // lane:w2-ui — no "60 min ago" / "24 h ago" at the unit edges
-  if (dh * 60 < 59.5) return `${Math.round(dh * 60)} min ago`;
-  if (dh < 23.5) return `${Math.round(dh)} h ago`;
-  const days = Math.floor(dh / 24);
-  if (days === 1) return 'yesterday';
-  return `${days} days ago`;
+  return agoText(hour, now);
 }
 
 /** Time until a future game hour: "in 5 h", "ending now". */
@@ -111,14 +110,14 @@ export function nicePrice(v: number): number {
 }
 
 // chunk 6 (B-169): the labels the sim's tank edits use live in src/data
-export { WATER_CLASS_LABEL, PURPOSE_LABEL } from '@/data/tankLabels';
+export { WATER_CLASS_LABEL, WATER_CLASS_WORDS, PURPOSE_LABEL } from '@/data/tankLabels'; // Audit 2026-11-17 (J4): WATER_CLASS_WORDS
 
 export const WATER_CLASS_BLURB: Record<WaterClass, string> = {
   freshwater_cool: 'Unheated, clear and gentle. Axolotls, goldfish and white clouds.',
   freshwater_tropical: 'Warm community water for tetras, livebearers and bettas.',
   freshwater_planted: 'Warm water with rich soil and bright light for lush plants.',
-  marine_fowlr: 'Saltwater for hardy fish. Simple and robust.',
-  marine_live_rock: 'Saltwater with living rock — natural filtration and grazing.',
+  marine_fowlr: 'Saltwater for hardy fish. Simple and robust. No corals or anemones.', // Audit 2026-11-17 (G7)
+  marine_live_rock: 'Saltwater with living rock — natural filtration and grazing. Takes gorgonians and anemones, not reef corals.',
   reef: 'Stable saltwater and strong light for corals and anemones.',
   brackish: 'Part-salt estuary water (SG about 1.004–1.012) for puffers, gobies, mollies and archerfish.', // lane:brackish
 };
@@ -150,7 +149,7 @@ export const PURPOSE_HINT: Record<TankPurpose, string> = {
   display: 'Shown to visitors and scored as an exhibit.',
   nursery: 'Safe rearing for eggs and fry — no hungry adults.',
   quarantine: 'Observe new arrivals before they join a display.',
-  breeding: 'Conditioning and spawning away from tank mates.',
+  breeding: 'Getting ready to spawn, away from tank mates.',
 };
 
 export const VERDICT_LABEL: Record<CompatVerdict, string> = {
@@ -329,7 +328,22 @@ export const MOOD_LABEL: Record<VisitorReaction['mood'], string> = {
   concerned: 'Concerned',
 };
 
-export const SEX_LABEL = { male: 'Male', female: 'Female', unknown: 'Unsexed' } as const;
+export const SEX_LABEL = { male: 'Male', female: 'Female', unknown: 'Sex not known yet' } as const;
+
+/**
+ * Audit 2026-11-17 (review of J22) — an animal's sex in the Shop (its card, the chip, the pick grid and the icon's name):
+ * Male or Female; for one whose sex doesn't show, the creature card's words for its species (`sexRoleText`: "Both
+ * sexes" for a hermaphrodite, "Can’t be told by eye" where the sex never shows, "Not yet differentiated" before a
+ * clownfish or a goby takes its role); and "Sex not known yet" only where the sex will show as it grows.
+ */
+export function sexLabel(c: Creature, sp: SpeciesDefinition | undefined, hour: number): string {
+  if (c.sex === 'male' || c.sex === 'female') return SEX_LABEL[c.sex];
+  const card = sexRoleText(c, sp, hour).label;
+  return card === 'Not yet visible' ? SEX_LABEL.unknown : card;
+}
+
+/** What a player types to find an animal whose sex isn't known (the Shop's search). */
+export const SEX_UNKNOWN_SEARCH = 'unsexed';
 
 export function titleCase(s: string): string {
   return s

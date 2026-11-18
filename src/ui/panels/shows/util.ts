@@ -2,6 +2,7 @@
  * Small helpers for the Shows panel: real-time countdowns (at 1×, like the market), game-time labels. OWNER: lane "shows".
  */
 import { formatClock } from '@/sim/time';
+import { formatMoney } from '@/ui/kit';
 import { dayOfHour } from '../common/format';
 
 /** "about 6 min" — how long a span of game hours lasts in real time (lane:w2-ui: shared with the market; pass the clock speed). */
@@ -12,7 +13,7 @@ export function gameWhen(hour: number): string {
   return `Day ${dayOfHour(hour)}, ${formatClock(hour)}`;
 }
 
-export const money = (v: number) => `$${Math.round(v).toLocaleString('en-US')}`;
+export const money = (v: number) => formatMoney(Math.round(v));
 
 export function purseRange(purses: number[]): string {
   if (!purses.length) return '';

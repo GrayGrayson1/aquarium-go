@@ -67,6 +67,22 @@ describe('AUTO-035: a line paused for room', () => {
   });
 });
 
+describe('Audit 2026-11-17 (H3): a line stopped by a missing parent or tank', () => {
+  it('is a problem (the dots and the all-clear see it) with the line’s own notice and a Fix that opens Production', () => {
+    const { g } = lineFarm(17);
+    const line = productionLines(g)[0];
+    expect(automationProblems(g).some((p) => p.kind === 'line_broken')).toBe(false);
+    line.broken = { ref: 'mother', id: line.pair.motherId, name: 'Cinder', sinceHour: g.clock.hour };
+    const p = automationProblems(g).find((x) => x.kind === 'line_broken');
+    expect(p).toMatchObject({ lineId: line.id, name: line.name, tone: 'watch', text: `${line.name} paused: Cinder is no longer in your care. Choose another pair, or end the line.` });
+    expect(problemCounts(automationProblems(g)).total).toBe(1);
+    const v = issueViews(g, automationProblems(g)).find((i) => i.kind === 'line_broken')!;
+    expect(v.title).toBe(`${line.name} paused`);
+    expect(v.reason).toBe(p!.kind === 'line_broken' ? p!.text : '');
+    expect(v.action).toEqual({ id: 'fix-line', label: 'Fix', short: 'Fix' });
+  });
+});
+
 describe('NOTIFY-012: the "Out of salt mix" Automation notification', () => {
   it('fires once a game day when salt mix is out and no reorder is coming, worded for the reason', () => {
     const { g } = facility({ fresh: 0, marine: 2, salt: 0, rosa: null, hour: 24 * 3 + 9 });
@@ -84,9 +100,9 @@ describe('NOTIFY-012: the "Out of salt mix" Automation notification', () => {
   it('names the stock manager when her budget or switch is why', () => {
     const { g } = facility({ fresh: 0, marine: 2, salt: 0, rosa: 0 });
     const p = salt(g)!;
-    expect(saltOutText(g, p)).toMatch(/^Rosa couldn't reorder salt mix — today's stock budget is spent\./);
+    expect(saltOutText(g, p)).toMatch(/^Rosa couldn’t reorder salt mix — today’s stock budget is spent\./); // Audit 2026-11-17 (J18): the sim writes ’, as the rest of the game
     g.staff!.ordersOff = true;
-    expect(saltOutText(g, salt(g)!)).toMatch(/^Rosa's orders are switched off, so nobody reorders salt mix\./);
+    expect(saltOutText(g, salt(g)!)).toMatch(/^Rosa’s orders are switched off, so nobody reorders salt mix\./);
   });
 });
 

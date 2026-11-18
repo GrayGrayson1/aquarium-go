@@ -6,6 +6,8 @@
  */
 import type { GameState, Creature, ValueBreakdown, ValueFactor, TankValuation, Tank, CompatVerdict, SpeciesDefinition, ListingKind, PersonalityTag } from '@/types';
 import { findSpecies } from '@/data/species';
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15)
+import { illnessName } from '../life/illness'; // Audit 2026-11-17 (J14)
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
@@ -21,7 +23,7 @@ import type { DecorInstance } from '@/types'; // lane:frags
 import { propagationFor } from '@/data/catalog/propagation'; // lane:frags
 import { showValueFactors } from '../shows/titles'; // lane:shows
 import { saleWarnings } from './warnings'; // lane:fix-econ
-import { clamp, clamp01, finite, roundCents, normSeverity, exhibitPopularity, RARITY_SCORE, DIFFICULTY_INDEX, DIFFICULTY_LABEL, difficultyIndex, speciesPlural, nicePrice } from './util';
+import { clamp, clamp01, finite, roundCents, normSeverity, exhibitPopularity, RARITY_SCORE, DIFFICULTY_INDEX, DIFFICULTY_LABEL, difficultyIndex, speciesPlural, nicePrice, withArticle } from './util'; // Audit 2026-11-17 (J16): withArticle
 import * as dmath from '../dmath';
 
 const NEUTRAL_EPS = 0.01;
@@ -142,7 +144,7 @@ export function creatureValue(state: GameState, c: Creature): ValueBreakdown {
   if (c.illness) {
     const sev = normSeverity(c.illness.severity);
     hm *= 1 - 0.45 * Math.max(0.2, sev);
-    hNote = `Currently ill (${c.illness.kind.replace(/_/g, ' ')}) — most buyers wait for recovery`;
+    hNote = `Currently ill with ${illnessName(c.illness.kind, findSpecies(c.speciesId))} — most buyers wait for recovery`; // Audit 2026-11-17 (J14); not in brackets (the review: the name may carry its own brackets, "white spot (ich)")
   }
   const stress = clamp(finite(c.stats?.stress, 0), 0, 100);
   if (stress > 60) hm *= 1 - (stress - 60) / 400;
@@ -189,7 +191,7 @@ export function creatureValue(state: GameState, c: Creature): ValueBreakdown {
     const tier = strainTier(sp, strain);
     const want = STRAIN_VALUE[tier] ?? 1;
     const sm = Math.max(1, Math.min(want, MAX_GENETIC_MULTIPLIER / Math.max(1e-6, morphMult * pm)));
-    m *= pushFactor(factors, `Named strain: ${strain.name}`, sm, sm < want - 1e-9 ? `A ${TIER_WORD[tier]} strain — already at the collector ceiling for genetics` : `A recognised ${TIER_WORD[tier]} strain — collectors pay a premium`);
+    m *= pushFactor(factors, `Named strain: ${strain.name}`, sm, sm < want - 1e-9 ? `${withArticle(TIER_WORD[tier], true)} strain — already at the collector ceiling for genetics` /* Audit 2026-11-17 (J16): "An uncommon strain" */ : `A recognised ${TIER_WORD[tier]} strain — collectors pay a premium`);
   }
 
   // 5b. lane:genetics — Prismatic: an ultra-rare individual. One factor, applied once; nothing else multiplies by it.
@@ -303,7 +305,7 @@ export function livestockSummary(creatures: Creature[]): string {
   const parts: string[] = [];
   for (const [sid, arr] of by) {
     const morphs = [...new Set(arr.map((c) => c.morphName).filter((m) => m && !/^wild type$/i.test(m)))].slice(0, 3);
-    const name = arr.length === 1 ? (findSpecies(sid)?.commonName ?? sid).toLowerCase() : speciesPlural(sid);
+    const name = arr.length === 1 ? lowerName(findSpecies(sid)?.commonName ?? sid) : speciesPlural(sid); // Audit 2026-11-17 (J15)
     parts.push(`${arr.length} ${name}${morphs.length ? ` (${morphs.join(', ')})` : ''}`);
   }
   return parts.join(', ');
@@ -633,7 +635,7 @@ export function fragValue(state: GameState, item: DecorInstance): FragValue {
   const wave = 0.9 + (hashStr(`${def.id}|${week}`) % 1000) / 1000 * 0.22;
   m *= pushFactor(factors, wave >= 1 ? 'In demand this week' : 'Quiet week for these', wave);
   const supply = fragSupplyFactor(state);
-  if (supply.recent > 0) m *= pushFactor(factors, 'Frags on the market', supply.mult, `${supply.recent} recent frag sale${supply.recent === 1 ? '' : 's'} have filled some buyers' tanks`);
+  if (supply.recent > 0) m *= pushFactor(factors, 'Frags on the market', supply.mult, `${supply.recent} recent frag sale${supply.recent === 1 ? '' : 's'} have filled some buyers’ tanks`);
   const expected = roundCents(base * clamp(m, 0.1, 6));
   return { expected, low: roundCents(expected * 0.85), high: roundCents(expected * 1.2), base: roundCents(base), factors };
 }

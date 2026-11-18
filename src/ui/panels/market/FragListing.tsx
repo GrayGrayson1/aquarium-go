@@ -55,7 +55,7 @@ export function FragPicker({ g, ids, setIds }: { g: GameState; ids: string[]; se
       <h3 className="pn-wizard__h">Which frags and cuttings?</h3>
       {pool.length === 0 ? (
         <EmptyState icon={<Scissors size={24} />} title="No frags in storage">
-          Grown corals and plants can be propagated: open Build → Decor and use “Take frag” or “Take cutting” on a piece that has grown in.
+          Grown corals and plants can be propagated: open Build › Decor and use “Take frag” or “Take cutting” on a piece that has grown in.
         </EmptyState>
       ) : (
         <>
@@ -144,7 +144,7 @@ export function FragValueDetails({ g, ids }: { g: GameState; ids: string[] }) {
             </KV>
           ))}
           <p className="pn-tiny pn-muted" style={{ margin: '8px 0 0' }}>
-            Coral frags fetch more than plant cuttings, and LPS and SPS more than soft corals. Healed, grown-out frags are worth more. Many recent frag sales soften prices for a few days.
+            Coral frags fetch more than plant cuttings, and stony corals more than soft corals. Healed, grown-out frags are worth more. Many recent frag sales soften prices for a few days.
           </p>
         </div>
       )}

@@ -7,7 +7,7 @@ import { clownfishModule } from './systems/clownfish';
 import { seahorseModule } from './systems/seahorse';
 import { livebearerModule } from './systems/livebearer';
 import { shrimpBerriedModule, shrimpLarvalMarineModule } from './systems/shrimp';
-import { eggScatterModule, substrateSpawnerModule, caveSpawnerModule, mouthbrooderModule, snailClutchModule, genericEggLayerModule, cichlidSubstrateModule, damselNestModule } from './systems/spawners';
+import { eggScatterModule, substrateSpawnerModule, caveSpawnerModule, mouthbrooderModule, snailClutchModule, genericEggLayerModule, cichlidSubstrateModule, damselNestModule, marineCaveSpawnerModule, brackishCaveSpawnerModule, copepodEggLayerModule } from './systems/spawners';
 import { fragmentationModule, notInGameModule } from './systems/inert';
 import { fissionModule } from './systems/fission';
 import { eggCaseModule } from './systems/eggCase';
@@ -43,7 +43,26 @@ function modules(): Record<BreedingSystemId, BreedingModule> {
   return MODULES;
 }
 
+/**
+ * audit E10: a few species run their system's module with their own young's foods (their notes: copepods for the marine
+ * cave spawners and the mandarin, infusoria for the bumblebee goby). Each keeps its system id; only these species are
+ * affected.
+ */
+let SPECIES_MODULES: Record<string, BreedingModule> | null = null;
+function speciesModules(): Record<string, BreedingModule> {
+  SPECIES_MODULES ??= {
+    royal_gramma: marineCaveSpawnerModule,
+    firefish: marineCaveSpawnerModule,
+    watchman_goby: marineCaveSpawnerModule,
+    bumblebee_goby: brackishCaveSpawnerModule,
+    mandarin_dragonet: copepodEggLayerModule,
+  };
+  return SPECIES_MODULES;
+}
+
 export function moduleFor(sp: SpeciesDefinition): BreedingModule {
+  const own = speciesModules()[sp.id];
+  if (own && own.id === sp.breeding?.system) return own;
   return modules()[sp.breeding?.system] ?? notInGameModule;
 }
 

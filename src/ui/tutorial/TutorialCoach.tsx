@@ -11,17 +11,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
-import { Compass, ChevronDown, ChevronUp, X, ArrowRight, Hand, Check, FastForward, Sparkles, FlaskConical } from 'lucide-react';
+import { Compass, ChevronDown, ChevronUp, X, ArrowRight, Hand, Check, FastForward, Sparkles, FlaskConical, Play, Store, ScrollText } from 'lucide-react';
 import type { GameSpeed, GameState } from '@/types';
-import { inSharedShop } from '@/state/sharedMode';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
 import { sfx } from '@/audio/sfx';
-import { tutorialChain, type TutorialStepDef, type Objective } from '@/data/quests';
+import { TUTORIAL_QUEST_REWARD, type Objective } from '@/data/quests';
 import { currentTutorialStep } from '@/sim/facility';
-import { interpolate } from '@/sim/facility/progression';
-import { findSpecies } from '@/data/species';
 import { useShell } from '../common/shellStore';
 import { safe, SHORT_LANDSCAPE_QUERY, useIsMobile, useMedia } from '../common/safe';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
@@ -29,64 +26,35 @@ import { ProgressDots, Button } from '../kit';
 import { guideTarget, openPanel } from '../hud/Dock';
 import { MORE_ITEMS } from '../hud/TabBar'; // lane:ui-shell (chunk 1)
 import { toggleTankCard } from '../hud/TankBar';
-import { useDockedCard } from '../hud/cardDock';
+import { useDockedCard, type DockedCard } from '../hud/cardDock';
 import { setCameraMode } from '../hud/ToolRail';
 import { setSpeed } from '../hud/TopBar';
-import { convertTempText, personalityLabel } from '../common/format';
+import { personalityLabel } from '../common/format';
+import { tutorialFlag } from '../common/actions';
 import { Spotlight, useSpotlightTarget } from './Spotlight'; // chunk 19 (ADR-0055 decision 7, QOL-008)
 import { guideAim } from './guideTargets'; // chunk 19 (QOL-008)
 import { startTour, useTour } from './tourStore'; // chunk 19 (QOL-008)
+import { FINE_POINTER, currentCoachStep, friendWait, guideAnimal } from './guideText'; // audit 2026-11-17 (A1, A13)
 
-export interface CoachStep {
-  index: number;
-  total: number;
-  step: TutorialStepDef;
-  title: string;
-  body: string;
-  /** "Done" line of the step before this one (shown briefly when the guide advances). */
-  prevDone: string | null;
-  /** Numbering the player sees: an opening step that completes by itself (meeting the starter) isn't counted. */
-  shownIndex: number;
-  shownTotal: number;
+// (the step's words moved to ./guideText, shared with Research › Quests)
+export { currentCoachStep, type CoachStep } from './guideText';
+
+/**
+ * Audit 2026-11-17 (P1) — the side card that folds the guide into its pill: the left tank card that shares its column
+ * on desktop, or either card's bottom sheet on a phone (the animal's card covered the guide's next step, "Have a look
+ * around", right after "Meet them" opened it). The creature card's desktop sheet is on the right, clear of the guide.
+ */
+export function guideFold(card: DockedCard, bottomSheets: boolean): 'tank' | 'creature' | null {
+  if (card === 'tank') return 'tank';
+  if (card === 'creature' && bottomSheets) return 'creature';
+  return null;
 }
 
-/** Mouse players click; touch players tap. The chain copy is written for touch ("Tap Feed…"). */
-const FINE_POINTER = '(hover: hover) and (pointer: fine)';
-
-function fill(t: string, name: string, species: string, fine: boolean, g?: GameState) {
-  // {temp} / {salinity}: the sim's own wording of the starter's ideal band (same numbers as the tank card), shown in
-  // the player's unit and tidied the same way ("24.5–28 °C")
-  if (g && /\{(temp|salinity)\}/.test(t)) t = safe('interpolate', () => interpolate(g, t), t);
-  t = convertTempText(t, useSettings.getState().tempUnit) ?? t;
-  let s = t.replace(/\{name\}/g, name).replace(/\{species\}/g, species);
-  if (fine) s = s.replace(/\bTap\b/g, 'Click').replace(/\btap\b/g, 'click').replace(/ or pinch/g, '');
-  return s;
-}
-
-export function currentCoachStep(g: GameState | null, fine = false): CoachStep | null {
-  if (!g || g.isShowcase) return null;
-  if (inSharedShop()) return null; // chunk 13 (ADR-0045 decision 5): a shared shop has no guide
-  const tut = g.progress?.tutorial;
-  if (!tut || tut.done || tut.skipped) return null;
-  const chain = safe('tutorialChain', () => tutorialChain(tut.starterId || g.starterId), []);
-  if (!chain.length || tut.step >= chain.length) return null;
-  const step = chain[Math.max(0, tut.step)];
-  const starter = Object.values(g.creatures).find((c) => c.isStarter && c.status === 'alive') ?? Object.values(g.creatures)[0];
-  const name = starter?.name ?? 'your companion';
-  const species = (findSpecies(starter?.speciesId ?? g.starterId)?.commonName ?? 'animal').toLowerCase();
-  const prev = tut.step > 0 ? chain[tut.step - 1] : null;
-  const auto = chain[0]?.id === 'meet' && !chain[0].done && tut.step > 0 ? 1 : 0;
-  return {
-    shownIndex: Math.max(0, tut.step - auto),
-    shownTotal: chain.length - auto,
-    index: tut.step,
-    total: chain.length,
-    step,
-    title: fill(step.title, name, species, fine, g),
-    body: fill(step.body, name, species, fine, g),
-    prevDone: prev?.done ? fill(prev.done, name, species, fine, g) : null,
-  };
-}
+/**
+ * A11 — the water step counts the reading as read once the tank card has been on screen this long (the guide opens
+ * it with the reading already expanded, and points at it meanwhile). It used to end the moment the card opened.
+ */
+export const WATER_READ_MS = 2500;
 
 // ───────────── objective progress (waiting steps) ─────────────
 
@@ -162,7 +130,7 @@ function restoreGuideSpeed(): boolean {
 }
 
 /** "Show me": do the first half of the step for the player (open the thing), never complete it for them. */
-function showMe(target: string, g: GameState) {
+export function showMe(target: string, g: GameState) {
   const ui = useUI.getState();
   sfx('open');
   switch (target) {
@@ -203,18 +171,15 @@ function showMe(target: string, g: GameState) {
         const id = target.slice(5) as Parameters<typeof openPanel>[0];
         // "show me" never closes the panel it points at (openPanel toggles): an open one is pointed at the step's section
         if (ui.panel !== id) openPanel(id);
-        else ui.set({ panelTarget: guideTarget(id) });
+        else {
+          ui.set({ panelTarget: guideTarget(id) });
+          // audit 2026-11-17 (A9): a panel already open when its step began ("The market" with the Market open) counts
+          // now; its flag is only raised as a panel opens, so the step used to wait and this button did nothing
+          tutorialFlag(`opened_${id}`);
+          tutorialFlag(`opened_panel:${id}`);
+        }
       }
   }
-}
-
-/**
- * lane:guide — the animal "Show me" points at: the starter while it is with you, otherwise another animal (in the
- * focused tank first). "Show me" used to do nothing at all once the starter had been sold or had died.
- */
-function guideAnimal(g: GameState, focusedTankId: string | null) {
-  const alive = Object.values(g.creatures).filter((c) => c.status === 'alive' && c.tankId);
-  return alive.find((c) => c.isStarter) ?? alive.find((c) => c.tankId === focusedTankId) ?? alive[0] ?? null;
 }
 
 /** Button-sized name: "Tango the Magnificent" → "Tango" (long names would push the guide's buttons off the card). */
@@ -240,6 +205,7 @@ const SHOW_ME_LABEL: Record<string, string> = {
   'creature-name': 'Meet them',
   scene: 'Try the camera',
   'dock-build': 'Open Build',
+  'dock-tanks': 'Open Tanks', // audit 2026-11-17 (A3): the betta's and seahorse's nursery step (a tank's purpose)
   'dock-market': 'Open the Market',
   'dock-research': 'Open Research',
   'hud-money': '',
@@ -257,6 +223,11 @@ function useCoachLayout(active: boolean) {
       return;
     }
     const tick = () => {
+      // audit 2026-11-17 (P1) — the animal's bottom sheet is as tall as its content: hud.css lifts the folded guide
+      // above its real top (its layout height: the slide-in transform doesn't count)
+      const ccard = document.querySelector<HTMLElement>('.ag-ccard.ag-sheet--bottom');
+      if (ccard && ccard.offsetHeight > 0) root.style.setProperty('--coach-ccard-h', `${ccard.offsetHeight}px`);
+      else root.style.removeProperty('--coach-ccard-h');
       const wrap = document.querySelector<HTMLElement>('.ag-hud__coach');
       const card = wrap?.querySelector<HTMLElement>('.ag-coach, .ag-coach-pill') ?? null;
       const dock = document.querySelector<HTMLElement>('.ag-dock');
@@ -296,6 +267,7 @@ function useCoachLayout(active: boolean) {
       window.clearInterval(id);
       window.removeEventListener('resize', tick);
       root.style.removeProperty('--coach-clear');
+      root.style.removeProperty('--coach-ccard-h');
       document.querySelector('.ag-hud__coach')?.classList.remove('is-raised');
       if (useShell.getState().coachSide) useShell.getState().set({ coachSide: null });
     };
@@ -314,12 +286,12 @@ export function TutorialCoach() {
   // The left tank card shares the guide's column on desktop: the guide folds into its pill meanwhile.
   const bottomSheets = useMedia(BOTTOM_SHEET_QUERY);
   const dockedCard = useDockedCard();
-  const leftSheet = dockedCard === 'tank' && !bottomSheets;
   // lane:qa-final — on phones the tank card is a bottom sheet that hid the expanded guide (after the water step the
-  // next step sat unseen under it). It folds into the pill too, which hud.css lifts just above the sheet.
-  const phoneSheet = dockedCard === 'tank' && bottomSheets;
+  // next step sat unseen under it). It folds into the pill too, which hud.css lifts just above the sheet; and so does
+  // the animal's card (audit 2026-11-17, P1), whose sheet the guide measures (useCoachLayout).
+  const fold = guideFold(dockedCard, bottomSheets);
   const mobile = useIsMobile(); // lane:ui-shell (chunk 1) — the tab bar's layout, where some destinations live in More
-  const collapsed = userCollapsed || leftSheet || phoneSheet;
+  const collapsed = userCollapsed || fold !== null;
   const [confirmSkip, setConfirmSkip] = useState(false);
   const cur = currentCoachStep(game, fine);
   const lastIdx = useRef<number | null>(null);
@@ -381,21 +353,30 @@ export function TutorialCoach() {
   const visible = ((!!cur && hints) || finale) && !!game && !touring;
   useCoachLayout(visible);
   const tankCardOpen = useShell((s) => s.tankCardOpen);
-  const aimNow = cur && game && hints && !touring && !collapsed ? guideAim(cur.step.id, cur.step.hintTarget === 'tool-feed' && /target-feed/i.test(cur.step.body) ? 'tool-target-feed' : cur.step.hintTarget, game.progress.tutorial?.starterId || game.starterId, { panel, popover, tool, tankCardOpen, mobile }, cur.step.reward?.unlocks ?? []) : null;
+  // A11 — the water step: while the tank card is on screen the guide is folded beside it, but it still points at the
+  // reading it asks about, and counts it as read after a moment (opening the card used to end the step at once)
+  const waterCard = cur?.step.id === 'water' && dockedCard === 'tank';
+  useEffect(() => {
+    if (!waterCard) return;
+    const t = window.setTimeout(() => tutorialFlag('read_water'), WATER_READ_MS);
+    return () => window.clearTimeout(t);
+  }, [waterCard]);
+  const aimNow = cur && game && hints && !touring && (!collapsed || (waterCard && !userCollapsed)) ? guideAim(cur.step.id, cur.step.hintTarget === 'tool-feed' && /target-feed/i.test(cur.step.body) ? 'tool-target-feed' : cur.step.hintTarget, game.progress.tutorial?.starterId || game.starterId, { panel, popover, tool, tankCardOpen, mobile }, cur.step.reward?.unlocks ?? []) : null;
   const spotRect = useSpotlightTarget(aimNow?.candidates ?? [], { scrollIntoView: true });
 
   if (touring) return null;
-  if (finale && game) return <GuideFinale game={game} onClose={() => setFinale(false)} />;
+  if (finale && game) return <GuideFinale game={game} mobile={mobile} onClose={() => setFinale(false)} />;
   if (!cur || !hints || !game) return null;
   // Slow feeders (seahorses) are taught target feeding: point at that tool instead of plain Feed.
   const target = cur.step.hintTarget === 'tool-feed' && /target-feed/i.test(cur.step.body) ? 'tool-target-feed' : cur.step.hintTarget;
   // "Watch the gills" style steps: the helpful action is following the starter, not orbiting.
   const observing = cur.step.id === 'observe' && target === 'scene';
   const action = observing ? 'follow-starter' : target;
-  const starterName = Object.values(game.creatures).find((c) => c.isStarter && c.status === 'alive')?.name;
+  const starterName = guideAnimal(game)?.name; // A1: the animal "Follow" follows (the starter while it is with you)
   // the CTA follows the state: once the food picker / Build is open the button gives way to a plain hint saying what
   // to do there (pressing "Open Build" again used to close Build, and re-opening an open food picker did nothing).
-  // The upgrade step only waits for reputation: with Build open there is nothing more to point at.
+  // The upgrade step only waits for reputation: with its panel (Build, or Tanks for a nursery) open there is nothing
+  // more to point at.
   const starterId = game.progress.tutorial?.starterId || game.starterId;
   const opened =
     (target === 'tool-feed' && popover === 'food') || (target === 'tool-target-feed' && popover === 'target_food')
@@ -404,12 +385,19 @@ export function TutorialCoach() {
         ? cur.step.id === 'habitat'
           ? (HABITAT_PICK[starterId] ?? 'Pick a decoration')
           : ''
-        : null;
+        : cur.step.id === 'upgrade' && target === `dock-${panel}`
+          ? ''
+          : null;
   const showLabel = opened != null ? '' : observing ? (starterName ? `Follow ${shortName(starterName)}` : 'Follow') : SHOW_ME_LABEL[target] ?? (target.startsWith('dock-') ? `Open ${target.slice(5)}` : '');
   const canNext = cur.step.objective.type === 'flag' && !!cur.step.objective.fallbackHours;
   const waiting = isWaitingStep(cur.step.objective);
   const progress = waiting ? stepProgress(game, cur.step.objective) : null;
   const pct = progress ? Math.max(0, Math.min(1, progress.cur / Math.max(1, progress.max))) : 0;
+  // A1 — a step waiting on friends says why none can come (no animal on show, one unwell, night) instead of waiting in
+  // silence; "Speed up" is offered only when time is what's missing. A17 — and says when time is paused.
+  const wait = waiting ? friendWait(game, cur.step.id) : null;
+  const timeHelps = waiting && (!wait || wait.time);
+  const paused = timeHelps && speed === 0;
 
   // lane:ui-shell (chunk 1, §5.5) — on phones a destination that lives in More (Research) has no dock button to ring:
   // ring the More tab with a note saying so, then the destination's tile once the More sheet is open
@@ -434,7 +422,8 @@ export function TutorialCoach() {
             onClick={() => {
               sfx('open');
               setCollapsed(false);
-              if (leftSheet || phoneSheet) useShell.getState().set({ tankCardOpen: false });
+              if (fold === 'tank') useShell.getState().set({ tankCardOpen: false });
+              else if (fold === 'creature') useUI.getState().set({ selectedCreatureId: null });
             }}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -495,6 +484,12 @@ export function TutorialCoach() {
                 </div>
               </div>
             )}
+            {(wait || paused) && (
+              // audit 2026-11-17 (A1, A17) — what the step is waiting for, when playing on alone won't bring it
+              <p className="ag-coach__wait" role="status" data-testid="coach-wait">
+                {[wait?.text, paused ? 'Time is paused.' : null].filter(Boolean).join(' ')}
+              </p>
+            )}
             <div className="ag-coach__foot">
               <ProgressDots total={cur.shownTotal} index={cur.shownIndex} label="Guide progress" />
               <div className="ag-row" style={{ gap: 6 }}>
@@ -506,7 +501,11 @@ export function TutorialCoach() {
                       variant="danger"
                       data-testid="tutorial-skip"
                       onClick={() => {
-                        safe('tutorialSkip', () => void useGame.getState().dispatch({ k: 'tutorialSkip' }), undefined); // lane:ui-shell (B-179): a throw discards the draft
+                        // lane:ui-shell (B-179): a throw discards the draft. Audit 2026-11-17 (A5): a skip used to end in
+                        // silence, with nothing saying where the goals went
+                        safe('tutorialSkip', () => void useGame.getState().dispatch({ k: 'tutorialSkip' }, (r) => {
+                          if (!r || r.ok) useUI.getState().toast('Guide skipped. Your goals are in Research › Quests, and Settings › Play & access has a tour of the game.', 'info');
+                        }), undefined);
                         setConfirmSkip(false);
                       }}
                     >
@@ -528,19 +527,32 @@ export function TutorialCoach() {
                         Next <ArrowRight size={14} />
                       </Button>
                     )}
-                    {showLabel && (
-                      <Button size="sm" variant={waiting && speed > 0 && speed < 3 ? 'ghost' : 'primary'} onClick={() => showMe(action, game)} data-testid={canNext ? undefined : 'tutorial-next'} data-guide-showme="">
-                        <Hand size={14} /> {showLabel}
+                    {wait?.action === 'market' ? (
+                      // A1 — no animal on show: the way forward is a new animal (the step's own button can't help)
+                      <Button size="sm" variant="primary" data-testid="coach-wait-market" onClick={() => openPanel('market', 'tab:shop')}>
+                        <Store size={14} /> Open the Market
                       </Button>
+                    ) : (
+                      showLabel && (
+                        <Button size="sm" variant={timeHelps && speed > 0 && speed < 3 ? 'ghost' : 'primary'} onClick={() => showMe(action, game)} data-testid={canNext ? undefined : 'tutorial-next'} data-guide-showme="">
+                          <Hand size={14} /> {showLabel}
+                        </Button>
+                      )
                     )}
                     {opened && (
                       <span className="ag-coach__note ag-coach__note--do" data-testid="tutorial-hint">
                         <Hand size={13} aria-hidden /> {opened}
                       </span>
                     )}
-                    {waiting && speed > 0 && speed < 3 && (
+                    {timeHelps && speed > 0 && speed < 3 && (
                       <Button size="sm" variant="primary" onClick={speedUpForStep} title="Run time at ×3 until this step is done, then back to normal speed">
                         <FastForward size={14} /> Speed up
+                      </Button>
+                    )}
+                    {paused && (
+                      // A17 — a waiting step with time paused used to offer nothing at all
+                      <Button size="sm" variant="primary" data-testid="coach-play" onClick={() => { sfx('click'); setSpeed(useShell.getState().lastSpeed ?? 1); }}>
+                        <Play size={14} /> Play
                       </Button>
                     )}
                     {waiting && speed === 3 && guideSpeed.from != null && (
@@ -660,23 +672,41 @@ function TutorialHighlight({ target, gold }: { target: string; gold?: boolean })
   );
 }
 
+/**
+ * The finale's recap. Audit 2026-11-17 (A1): it said "{name} is settled, fed and healthy." (and "Your companion is
+ * one of a kind.") whatever had happened: the starter's lines now need the starter alive, and the first one its tank
+ * in good shape.
+ */
+export function finaleLines(game: GameState): string[] {
+  const starter = Object.values(game.creatures).find((c) => c.isStarter && c.status === 'alive');
+  const tank = starter?.tankId ? game.tanks[starter.tankId] : game.tanks[game.tankOrder[0]];
+  const traits = (starter?.personality ?? []).slice(0, 2).map((t) => safe('personality', () => personalityLabel(t).toLowerCase(), t));
+  const earned = Math.round(game.progress.counters?.tips_total ?? 0);
+  return [
+    starter && tank?.cache?.status === 'good' ? `${starter.name} is settled, fed and healthy.` : null,
+    tank ? `${tank.name} scores ${Math.round(tank.cache.beauty)} for beauty.` : null,
+    starter ? (traits.length ? `${starter.name}’s personality: ${traits.join(' and ')}. No two animals are alike.` : `${starter.name} is one of a kind.`) : null,
+    earned > 0 ? `Your first $${earned} from friends and visitors.` : 'Your first visitors have been by.',
+  ].filter(Boolean) as string[];
+}
+
+/**
+ * What comes next, and where: audit 2026-11-17 (A5) — the quest board and the guide's own reward ("First steps") are
+ * in Research › Quests, which the finale never said; (A10) phones have no dock, Shows is under More there.
+ */
+export function finaleNext(game: GameState, mobile: boolean): string {
+  const owed = game.progress.quests.some((q) => q.id === 'tutorial' && q.status === 'complete');
+  const goals = owed ? `Your first goals, and $${TUTORIAL_QUEST_REWARD.money ?? 0} for finishing the guide, are waiting in Research › Quests.` : 'Your first goals are waiting in Research › Quests.';
+  return `Next: breeding, bigger tanks and a shop of your own. Club shows are open too — find Shows ${mobile ? 'under More' : 'in the dock'}. ${goals}`;
+}
+
 /** End of the guide: what the player has learnt (care, beauty, individuals, business) and what unlocks next. */
-function GuideFinale({ game, onClose }: { game: GameState; onClose: () => void }) {
+function GuideFinale({ game, mobile, onClose }: { game: GameState; mobile: boolean; onClose: () => void }) {
   // (no auto-close: the recap is the one place that says what unlocks next, and "Later" is right there)
   useEffect(() => {
     sfx('celebrate');
   }, []);
-  const starter = Object.values(game.creatures).find((c) => c.isStarter && c.status === 'alive');
-  const tank = starter?.tankId ? game.tanks[starter.tankId] : game.tanks[game.tankOrder[0]];
-  const name = starter?.name ?? 'Your companion';
-  const traits = (starter?.personality ?? []).slice(0, 2).map((t) => safe('personality', () => personalityLabel(t).toLowerCase(), t));
-  const earned = Math.round(game.progress.counters?.tips_total ?? 0);
-  const lines = [
-    `${name} is settled, fed and healthy.`,
-    tank ? `${tank.name} scores ${Math.round(tank.cache.beauty)} for beauty.` : null,
-    traits.length ? `${name}’s personality: ${traits.join(' and ')}. No two animals are alike.` : `${name} is one of a kind.`,
-    earned > 0 ? `Your first $${earned} from friends and visitors.` : 'Your first visitors have been by.',
-  ].filter(Boolean) as string[];
+  const lines = finaleLines(game);
   return (
     <motion.section
       className="ag-coach ag-coach--finale"
@@ -704,13 +734,18 @@ function GuideFinale({ game, onClose }: { game: GameState; onClose: () => void }
           </li>
         ))}
       </ul>
-      <p className="ag-coach__body">Next: breeding, bigger tanks and a shop of your own. Club shows are open too — find Shows in the dock. The quest board has your first goals.</p>{/* lane:w2-ui — shows unlock as the guide ends */}
+      <p className="ag-coach__body">{finaleNext(game, mobile)}</p>{/* lane:w2-ui — shows unlock as the guide ends */}
       <div className="ag-coach__foot">
         <span />
         <div className="ag-row ag-wrap" style={{ gap: 6, justifyContent: 'flex-end' }}>
           <Button size="sm" variant="ghost" onClick={() => { sfx('close'); onClose(); }}>Later</Button>
-          <Button size="sm" onClick={() => { openPanel('research'); onClose(); }}>
+          {/* A6: with a target openPanel always opens (the last step ends as Research opens: a bare openPanel closed it) */}
+          <Button size="sm" onClick={() => { openPanel('research', 'tab:unlocks'); onClose(); }}>
             <FlaskConical size={14} /> See what unlocks
+          </Button>
+          {/* A5 — the quest board and the guide's reward */}
+          <Button size="sm" data-testid="coach-quests" onClick={() => { openPanel('research', 'tab:quests'); onClose(); }}>
+            <ScrollText size={14} /> See your quests
           </Button>
           {/* chunk 19 (ADR-0055 decision 7, QOL-008) — the tour of everything else */}
           <Button size="sm" variant="primary" data-testid="guide-tour" onClick={() => { onClose(); startTour(); }}>

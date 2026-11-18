@@ -45,7 +45,7 @@ export const SALT_KG_PER_LITRE = 0.036;
  * Auto Water Changer and a tank's conversion to salt water (B-169; a salt dose still raises the SG by a step its own way).
  */
 export const saltKgFor = (litres: number, sg: number): number => litres * SALT_KG_PER_LITRE * ((sg - 1) / 0.025);
-/** Price per kg used for the daily-cost estimate of marine salt (bought by the economy lane). */
+/** Price per kg of marine salt mix in the shop (it is paid for when bought, not in a tank's daily cost: Audit 2026-11-17 C2). */
 export const SALT_PRICE_PER_KG = 3;
 
 export interface ClassDefaults {
@@ -85,7 +85,7 @@ export const CLASS_DEFAULTS: Record<WaterClass, ClassDefaults> = noProto({ // ch
     startTempC: 25.5,
   },
   freshwater_planted: {
-    label: 'planted tropical tank',
+    label: 'planted freshwater tank', // Audit 2026-11-17 (J4): the water type's one name
     temp: { min: 21, max: 30, idealMin: 23.5, idealMax: 27.5 },
     pH: { min: 5.8, max: 8.0, idealMin: 6.3, idealMax: 7.5 },
     sg: null,
@@ -95,7 +95,7 @@ export const CLASS_DEFAULTS: Record<WaterClass, ClassDefaults> = noProto({ // ch
     startTempC: 25.5,
   },
   marine_fowlr: {
-    label: 'fish-only marine tank',
+    label: 'marine fish-only tank', // Audit 2026-11-17 (J4)
     temp: { min: 22, max: 29, idealMin: 24, idealMax: 27 },
     pH: { min: 7.8, max: 8.6, idealMin: 8.0, idealMax: 8.4 },
     sg: { min: 1.019, max: 1.028, idealMin: 1.022, idealMax: 1.026 },

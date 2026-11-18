@@ -4,7 +4,7 @@
  *
  * Public API (stable): placeDecor, moveDecor, removeDecor, beautyScore, starterAquascape, stepTankDecor,
  * tankHabitat, TankHabitat. Extra helpers for the editor/UI: checkPlacement, placementLimits, maxScaleFor,
- * substrateHeightAt, surfaceHeightAt, tankLightInfo, SELL_BACK_FRACTION.
+ * substrateHeightAt, surfaceHeightAt, tankLightInfo, SELL_BACK_FRACTION, decorSellValue.
  */
 import type { GameState, Tank, BeautyReport, DecorInstance } from '@/types';
 import type { ActionResult } from '../care';
@@ -17,7 +17,7 @@ import { tankHabitat as tankHabitatImpl, type TankHabitat as Habitat } from './h
 
 export type TankHabitat = Habitat;
 
-export { checkPlacement, placementLimits, maxScaleFor, resolveBaseY, SELL_BACK_FRACTION, type PlacementCheck, type PlacementPos } from './placement';
+export { checkPlacement, placementLimits, maxScaleFor, resolveBaseY, SELL_BACK_FRACTION, decorSellValue, type PlacementCheck, type PlacementPos } from './placement';
 export { substrateHeightAt, surfaceHeightAt, substrateShape } from './terrain';
 export { tankLightInfo, isLitAt } from './growth';
 export { STARTER_LAYOUTS, giftedLayoutShare } from './starters';

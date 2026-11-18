@@ -46,10 +46,18 @@ export function mapAreas(g: GameState): MapAreas {
   return out;
 }
 
-/** The tiles an area shows within `cap`: line tanks always, then the rest in order; `more` is what's left out. */
+/**
+ * The tiles an area shows within `cap`: line tanks always, then tanks that need the player (danger, then watch), then
+ * the rest in order; `more` is what's left out (Audit 2026-11-17, H25: a tank in danger hid in "+32 more").
+ */
 export function areaTiles(tanks: Tank[], cap: number, lineTanks: Map<string, string[]>): { shown: Tank[]; more: number } {
   const lined = tanks.filter((t) => lineTanks.has(t.id));
-  const rest = tanks.filter((t) => !lineTanks.has(t.id));
+  const need = (t: Tank) => (t.cache?.status === 'danger' ? 0 : t.cache?.status === 'watch' ? 1 : 2);
+  const rest = tanks
+    .filter((t) => !lineTanks.has(t.id))
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => need(a.t) - need(b.t) || a.i - b.i)
+    .map((x) => x.t);
   const room = Math.max(0, cap - lined.length);
   const shown = [...lined, ...rest.slice(0, room)];
   // keep the tanks' own order (tankOrder) among what's shown

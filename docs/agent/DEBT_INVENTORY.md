@@ -76,22 +76,22 @@ workarounds and B-190 missing, B-167 and B-161 understated), fixed here.
 | Item | Status | Impact |
 |---|---|---|
 | B-101 a world step that throws | partly fixed | Server rule: a shared world would need the same atomic step on the server. Chunk 6 added the failure banner (B-002). |
-| B-119 the Genetics Lab doesn't reveal alleles for some animals | open | Magnified slightly: hidden genes would matter in trades between players. |
-| B-121 UI and render re-derive sim numbers (admission projection) | open | Server rule: displays must read the authoritative number. |
+| B-119 the Genetics Lab doesn't reveal alleles for some animals | fixed (chunk 2, GEN-010; the row was stale until the 2026-11-11 audit) | Magnified slightly: hidden genes would matter in trades between players. |
+| B-121 UI and render re-derive sim numbers (admission projection) | partly fixed (the 2026-11-11 audit: the admission projection, the decor sell quote and the dock's lock hint read the sim's; the repair price and the quick wellbeing rule are left) | Server rule: displays must read the authoritative number. |
 | B-123 leaving can drop unsaved play | open | Server rule: a server copy would replace local saves. |
 | B-124 counter-offers push buyers past their ceiling | fixed (chunk 7) | None now; it was a farmable money loop. |
-| B-125 equipment failing during offline grace | partly fixed | Server rule: the catch-up's grace would run on the server. |
+| B-125 equipment failing during offline grace | fixed | Server rule: the catch-up's grace would run on the server. |
 | B-157 small copy defects | open | None. |
 | B-158 market timers during catch-up at the saved speed | open | Server rule: market time would be the server's. |
 | B-160 research gates enforced only in the UI | fixed (chunk 7) | Server rule: the rules hold them now; a server would still enforce them (TRUST_BOUNDARY.md). |
 | B-162 admission demand floor (revenue rises with price) | fixed (chunk 7) | None now; it was a farmable money loop. |
 | B-163 closing the welcome-back card overrides a pause | open | None (local). |
-| B-165 settings accept any JSON | open | None (settings stay on the device). |
+| B-165 settings accept any JSON | fixed (the 2026-11-11 audit) | None (settings stay on the device). |
 | B-130 no test hunts value-creating economy loops | fixed (chunk 7) | Server rule: the hunt covers the instant actions; a later feature's loops would still be exploits between players, so a feature that moves money adds its own loop test. |
 | B-167 the global compatibility cache | open | Server rule: line set-up asks the compatibility engine, and its answers near a threshold depend on what was asked before; a server would compute its own, uncached. |
-| B-181 the portrait cache never evicts | open | None (local memory). |
+| B-181 the portrait cache never evicts | fixed (the 2026-11-11 audit: a cap of 600, blob URLs released) | None (local memory). |
 | B-182 per-frame allocations | open | None (local performance). |
-| B-183 facility InstancedMeshes never disposed | open | None (local memory). |
+| B-183 facility InstancedMeshes never disposed | fixed (the 2026-11-11 audit) | None (local memory). |
 | B-184 TankAI creates its world during render | open | None (presentation). |
 | B-190 developer write tools in production builds behind `?dev=1` (`window.__AQ` is read-only without it) | fixed (chunk 7: the live site ignores `?dev=1`) | Server rule: the device is the player's own; a server trusts nothing it reports. |
 | B-203 save values outside ADR-0036's pinned tables that an older build resets after a rollback (water-room upgrades, rare-variant kinds: pinned since ADR-0037; cones, jars, staff skill and rare-variant origins since chunk 7); separately, a crafted save's removed show left its entries unjudged | fixed (chunk 7) | Server rule: a server copy of the save would not cross builds on the device; the server would validate against its own tables. |

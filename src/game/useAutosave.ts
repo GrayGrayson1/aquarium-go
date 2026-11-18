@@ -7,6 +7,7 @@
  * OWNER: lane "core".
  */
 import { useEffect } from 'react';
+import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
@@ -135,7 +136,7 @@ export async function autosaveNow(reason = 'manual'): Promise<boolean> {
         }
       } else if (res.code !== 'stale' && ++failures >= WARN_AFTER_FAILURES && !warnedFailing) {
         warnedFailing = true;
-        toastOnce('Autosave isn’t landing — export a copy from Settings › Saves to keep your progress safe.', 'danger');
+        toastOnce('Autosave isn’t working right now — export a copy from Settings › Saves to keep your progress safe.', 'danger'); // Audit 2026-11-17 (J20)
       }
     }
     return res.ok || mirrored;
@@ -143,7 +144,7 @@ export async function autosaveNow(reason = 'manual'): Promise<boolean> {
     if (typeof console !== 'undefined') console.warn(`[aquarium-go] autosave (${reason}) threw`, e);
     if (++failures >= WARN_AFTER_FAILURES && !warnedFailing) {
       warnedFailing = true;
-      toastOnce('Autosave isn’t landing — export a copy from Settings › Saves to keep your progress safe.', 'danger');
+      toastOnce('Autosave isn’t working right now — export a copy from Settings › Saves to keep your progress safe.', 'danger'); // Audit 2026-11-17 (J20)
     }
     return mirrored;
   } finally {
@@ -155,9 +156,39 @@ export async function autosaveNow(reason = 'manual'): Promise<boolean> {
 /** Tests: forget the in-flight flag and the warning state. */
 export function resetAutosaveState(): void {
   saving = false;
+  changedSinceSave = false;
   failures = 0;
   warnedFailing = false;
   lastSaveAt = -Infinity;
+}
+
+/**
+ * Audit 2026-11-17, I2 (B-123): with Autosave off nothing saves when the player leaves (that is what "off" means), so a
+ * close, a reload or an update's Reload would lose the play since the last save without a word. The aquarium on screen
+ * changed since its last save: a save's own stamp (`lastSavedRealMs`) makes it clean, any other change to the same
+ * aquarium dirty; another aquarium arriving (a load, a new game) starts clean. A paused game doesn't change.
+ */
+let changedSinceSave = false;
+
+/** Tests: the store's change, as the subscription in useAutosave sees it. */
+export function noteGameChange(next: GameState | null, prev: GameState | null): void {
+  if (next === prev) return;
+  if (!next || !prev || next.saveId !== prev.saveId) {
+    changedSinceSave = false;
+    return;
+  }
+  changedSinceSave = next.lastSavedRealMs === prev.lastSavedRealMs;
+}
+
+/** Would leaving now lose play (Autosave off, a game that could be saved, changed since its last save)? */
+/** The review of I2: the player chose "Reload anyway" in the game's own words: the browser needn't ask again. */
+let leaveAllowed = false;
+export function allowLeave(): void {
+  leaveAllowed = true;
+}
+
+export function leaveWouldLose(): boolean {
+  return changedSinceSave && !useSettings.getState().autosave && autosaveAllowed({ evenIfOff: true });
 }
 
 /** Is a save on leaving (tab hidden / page hide) due, i.e. no real save landed in the last few seconds? */
@@ -205,13 +236,23 @@ export function useAutosave(): void {
     const onPageHide = () => {
       if (leaveSaveDue()) void autosaveNow('pagehide');
     };
+    // audit I2: Autosave off and unsaved play: the browser asks before the page goes (its own "Leave site?" words)
+    const unsubChanges = useGame.subscribe((s, p) => noteGameChange(s.game, p.game));
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (leaveAllowed || !leaveWouldLose()) return;
+      e.preventDefault();
+      e.returnValue = ''; // older engines ask only when this is set
+    };
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('beforeunload', onBeforeUnload);
     return () => {
       unsub();
+      unsubChanges();
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('beforeunload', onBeforeUnload);
     };
   }, []);
 }

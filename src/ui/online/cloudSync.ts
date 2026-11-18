@@ -45,7 +45,8 @@ export const SNAPSHOT_GAP_MS = 30 * 60_000;
 const HIDDEN_SEND_WAIT_MS = 10_000;
 const MAX_SNAPSHOT = 200_000;
 
-export type CloudStatus = 'idle' | 'checking' | 'saving' | 'unreachable' | 'blocked';
+/** Audit 2026-11-17, I20: `tooBig`, the save is over the online limit (not a connection that failed). */
+export type CloudStatus = 'idle' | 'checking' | 'saving' | 'unreachable' | 'blocked' | 'tooBig';
 
 export interface CloudPromptState {
   kind: CloudPromptKind;
@@ -184,7 +185,7 @@ const active = (): boolean => socialMode() !== 'off' && !!user();
 function deviceCopy(g: GameState | null): DeviceCopy | null {
   if (!g) return null;
   const local = readLinks().local;
-  return { saveId: g.saveId, savedAt: g.lastSavedRealMs, localAt: local?.saveId === g.saveId ? local.at : 0 };
+  return { saveId: g.saveId, savedAt: g.lastSavedRealMs, localAt: local?.saveId === g.saveId ? local.at : 0, hour: g.clock.hour };
 }
 
 const dayOf = (g: GameState): number => Math.floor(g.clock.hour / 24) + 1;
@@ -328,7 +329,7 @@ async function runSend(g: GameState, userId: string): Promise<void> {
     const body = await encodeSaveBody(exportSaveText(stateForSaving(g)));
     if (body.body.length > MAX_CLOUD_BODY) {
       console.warn(`[aquarium-go] online save not sent: ${body.body.length} characters is over the ${MAX_CLOUD_BODY} limit`);
-      useCloud.setState({ status: 'unreachable' });
+      useCloud.setState({ status: 'tooBig' }); // audit I20: its own line, not "Can't reach Aquarium Go online"
       lastSentAt = Date.now(); // not again before the gap is up
       return;
     }
@@ -411,8 +412,16 @@ export async function keepDeviceCopy(): Promise<void> {
   }
 }
 
-/** Settings › Saves' own words for a save that won't load (src/ui/common/saves.ts). */
-const LOAD_FAILED = 'That save could not be loaded — it may be damaged. Try its previous copy or an exported file.';
+/**
+ * An online save that won't load (Audit 2026-11-17, J35): Settings › Saves' words pointed at a "previous copy", which
+ * only a slot on this device has; the game on this device is untouched whichever step failed.
+ */
+export const LOAD_FAILED = 'The online save couldn’t be loaded — it may be damaged. Your game on this device hasn’t changed.';
+
+/** The import's own words when they name a cause the player can act on (a newer build, storage); else LOAD_FAILED (its others say "That file…"). */
+export function onlineLoadError(r: { code?: string; error?: string }): string {
+  return (r.code === 'too_new' || r.code === 'storage') && r.error ? r.error : LOAD_FAILED;
+}
 
 
 /**
@@ -439,15 +448,23 @@ export async function loadOnlineCopy(): Promise<boolean> {
     const text = await decodeSaveBody(got);
     const check = await importSaveText(text); // validate first: a refused copy changes nothing on this device
     if (!check.ok || !check.state) {
-      useUI.getState().toast(check.error ?? LOAD_FAILED, 'danger');
+      useUI.getState().toast(onlineLoadError(check), 'danger');
       return false;
     }
     const incoming = check.state;
     const g = useGame.getState().game;
     // chunk 9 (B1): what the two writes below would push out of every save goes to a slot first; its messages show once
     // the load is done (a change of aquarium clears the toasts: the review's confirmation, C)
-    const parked = await keepAutosavedCopies([incoming, ...(g && !g.isShowcase ? [g] : [])].map((x) => ({ saveId: x.saveId, hour: x.clock.hour })));
-    if (!parked) return false;
+    // audit I3: the writes in order (this device's game, as a kept copy when it is the same aquarium, then the online
+    // copy); with every slot full, the box asks before a copy is deleted
+    const mine = g && !g.isShowcase ? [{ saveId: g.saveId, hour: g.clock.hour, kept: g.saveId === incoming.saveId }] : [];
+    const parked = await keepAutosavedCopies([incoming, ...(g && !g.isShowcase ? [g] : [])].map((x) => ({ saveId: x.saveId, hour: x.clock.hour })), { writes: [...mine, { saveId: incoming.saveId, hour: incoming.clock.hour }] });
+    if (!parked) {
+      // audit I5: the box closes for now (the link as it was, so the next check asks again): Settings › Saves, where a
+      // slot can be freed, is behind it
+      useCloud.setState({ prompt: null });
+      return false;
+    }
     if (user()?.id !== u.id) return false;
     // this device's game into the autosave slot, so storing the online copy rotates it into the backup; the same
     // aquarium as a kept copy (chunk 9: one write, not two, so nothing else is pushed out), as the backup lists only
@@ -470,7 +487,7 @@ export async function loadOnlineCopy(): Promise<boolean> {
     if (!imported.ok || !imported.state) {
       writeLink(u.id, previous);
       parked.forEach((m) => useUI.getState().toast(m, 'success')); // what was saved to a slot, it was
-      useUI.getState().toast(imported.error ?? LOAD_FAILED, 'danger');
+      useUI.getState().toast(onlineLoadError(imported), 'danger');
       return false;
     }
     if (user()?.id !== u.id) {

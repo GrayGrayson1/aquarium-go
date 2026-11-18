@@ -12,6 +12,7 @@ import { incomeCue, sfx } from '@/audio/sfx';
 import { formatClock, dayOf, hourOfDay } from '@/sim/time';
 import { formatMoney, Segmented } from '../kit';
 import { formatRep } from '../common/format';
+import { wholeMoney } from '../common/moneyShort'; // audit 2026-11-17 (F11)
 import { useShell } from '../common/shellStore';
 import { AlertsPopover, useAlertCount } from './AlertsPopover';
 import { AttnDot } from './AttnDot'; // lane:notify
@@ -69,7 +70,10 @@ function AnimatedMoney({ value, short }: { value: number; short?: boolean }) {
       from.current = value;
     };
   }, [value, reduced]);
-  return <>{short ? formatMoneyShort(Math.round(shown)) : formatMoney(Math.round(shown))}</>;
+  // audit 2026-11-17 (F11) — rounded down: never more than the player has (a $200 price is affordable at "$200")
+  // (a debt is written as the sim writes it, "−$12.40": review note)
+  const whole = Math.floor(shown + 1e-6);
+  return <>{shown < 0 && shown > -10_000 ? wholeMoney(shown) : short ? formatMoneyShort(whole) : formatMoney(whole)}</>;
 }
 
 /** Phones: "$54.4k" so the top bar never overlaps itself (the full amount stays in the label and tooltip). */
@@ -107,7 +111,19 @@ function MoneyPill({ compact }: { compact?: boolean }) {
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
   const debt = money < 0;
   return (
-    <div className={clsx('ag-hudpill ag-money-pill', debt && 'is-debt')} data-testid="hud-money" aria-label={`Money ${formatMoney(money)}`} title={formatMoney(money)} data-tutorial-id="hud-money">
+    // audit 2026-11-17 (F2) — the money pill opens Finances (in the red, it is where the ways to raise cash are)
+    <button
+      type="button"
+      className={clsx('ag-hudpill ag-money-pill', debt && 'is-debt')}
+      data-testid="hud-money"
+      aria-label={`Money ${wholeMoney(money)}. Open Finances`}
+      title={formatMoney(money, { cents: true }) /* F11: the exact balance */}
+      data-tutorial-id="hud-money"
+      onClick={() => {
+        sfx('open');
+        useUI.getState().set({ panel: 'finances', panelTarget: null });
+      }}
+    >
       <span className="ag-money-pill__coin" aria-hidden>$</span>
       <span className="ag-money-pill__val">
         <AnimatedMoney value={money} short={compact} />
@@ -126,7 +142,7 @@ function MoneyPill({ compact }: { compact?: boolean }) {
           </motion.span>
         ))}
       </AnimatePresence>
-    </div>
+    </button>
   );
 }
 
@@ -140,10 +156,19 @@ function ClockPill({ compact }: { compact?: boolean }) {
   const manual = useManual();
   const h = hourOfDay(hour);
   const night = h < 6.5 || h >= 20;
+  const paused = useGameSelector((g) => g.clock.speed === 0, false);
+  // audit B9: phones have no room for the shop's name, so the day sits above the time (Operations and notices count in
+  // days); B15: while the game is paused that line says so (phones hide the speed's "Paused", and the fish swim on)
+  const dayLine = compact ? (
+    <span className={clsx('ag-clock-pill__day', paused && 'is-paused')} data-testid="hud-day">
+      {paused ? 'Paused' : `Day ${dayOf(hour)}`}
+    </span>
+  ) : null;
   // lane:automation (chunk 5, AUTO-042) — phones turn the time pill amber with the Hand icon; it opens Manual mode
   if (compact && manual)
     return (
       <button type="button" className="ag-hudpill ag-clock-pill is-manual" data-testid="hud-manual-mode" aria-label="Manual mode is on. Open it" onClick={openManual}>
+        {dayLine}
         <div className="ag-clock-pill__time" data-testid="hud-clock">
           <Hand size={13} aria-hidden className="ag-clock-pill__icon" />
           <span className="ag-tabular">{formatClock(hour)}</span>
@@ -152,11 +177,11 @@ function ClockPill({ compact }: { compact?: boolean }) {
     );
   return (
     <div className="ag-hudpill ag-clock-pill">
-      {!compact && <div className="ag-clock-pill__shop" title={shop}>{shop}</div>}
+      {compact ? dayLine : <div className="ag-clock-pill__shop" title={shop}>{shop}</div>}
       <div className="ag-clock-pill__time" data-testid="hud-clock">
         {night ? <Moon size={13} aria-hidden className="ag-clock-pill__icon is-night" /> : <Sun size={13} aria-hidden className="ag-clock-pill__icon" />}
-        <span>Day {dayOf(hour)}</span>
-        <span className="ag-clock-pill__sep" aria-hidden>·</span>
+        {!compact && <span>Day {dayOf(hour)}</span>}
+        {!compact && <span className="ag-clock-pill__sep" aria-hidden>·</span>}
         <span className="ag-tabular">{formatClock(hour)}</span>
       </div>
     </div>
@@ -188,11 +213,12 @@ function SpeedControls() {
 
 function ReputationPill() {
   const rep = useGameSelector((g) => g.progress.reputation, 0);
+  // Audit 2026-11-17 (G6): a button to Research, whose standing card says what reputation opens and how it grows
   return (
-    <div className="ag-hudpill ag-rep-pill" title="Reputation" aria-label={`Reputation ${formatRep(rep)} of 1000`}>
+    <button type="button" className="ag-hudpill ag-rep-pill" data-testid="hud-reputation" title="Reputation: what it opens and how it grows" aria-label={`Reputation ${formatRep(rep)} of 1000. What it opens and how it grows`} onClick={() => openPanel('research', 'tab:research')}>
       <Star size={14} aria-hidden className="ag-rep-pill__icon" />
       <span className="ag-tabular">{formatRep(rep)}</span>
-    </div>
+    </button>
   );
 }
 

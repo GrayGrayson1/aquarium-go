@@ -3,6 +3,7 @@
  * no male, the dominant one — largest, then boldest, then oldest — becomes the male over a few days. The mirror of
  * the clownfish (protandrous) hierarchy, shared by every breeding module. Deterministic: no RNG draws.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { Creature, GameState, SpeciesDefinition, Tank } from '@/types';
 import type { SimContext } from '@/sim/context';
 import { addMastery, bumpCounter } from '@/sim/facility';
@@ -39,7 +40,7 @@ export function stepProtogynous(state: GameState, tank: Tank, sp: SpeciesDefinit
     addHistory(t, 'sex_change', 'Became the dominant fish of the group and changed into a male.', hour);
     bumpCounter(state, 'sexChanges');
     addMastery(state, 'breeding', 15);
-    const text = breeds ? `${t.name} has become the male of the group — the ${sp.commonName.toLowerCase()} pair can breed now.` : `${t.name} has become the male of the ${sp.commonName.toLowerCase()} group.`;
+    const text = breeds ? `${t.name} has become the male of the group — the ${lowerName(sp.commonName)} pair can breed now.` : `${t.name} has become the male of the ${lowerName(sp.commonName)} group.`;
     say(state, ctx, { kind: 'breeding', text, tankId: tank.id, creatureId: t.id, toast: true });
     return; // one change per tank per step
   }
@@ -55,7 +56,7 @@ export function stepProtogynous(state: GameState, tank: Tank, sp: SpeciesDefinit
   addHistory(top, 'milestone', 'Became the dominant fish of the group and began changing sex.', hour);
   say(state, ctx, {
     kind: 'breeding',
-    text: `${top.name} is the largest and boldest of the ${sp.commonName.toLowerCase()} group — and is beginning to change from female to male.`,
+    text: `${top.name} is the largest and boldest of the ${lowerName(sp.commonName)} group — and is beginning to change from female to male.`,
     tankId: tank.id,
     creatureId: top.id,
     toast: true,

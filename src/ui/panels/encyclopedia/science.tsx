@@ -73,7 +73,7 @@ export const ARTICLES: Article[] = [
           Beneficial bacteria living on filter media, rocks and substrate convert ammonia into <b>nitrite</b> (also toxic), and a second group converts nitrite into <b>nitrate</b>, which is far less harmful. Nitrate builds up slowly and is removed by water changes and by growing plants.
         </p>
         <p>
-          In Aquarium Go your filter’s bacteria are shown as <i>cycle progress</i>. A healthy, mature tank keeps ammonia and nitrite at zero.
+          In Aquarium Go your filter’s bacteria show as the <i>Biological filter</i> meter on the tank card’s Water tab. A healthy, mature tank keeps ammonia and nitrite at zero.{/* Audit 2026-11-17 (J5): the meter the game has */}
         </p>
       </>
     ),
@@ -146,7 +146,7 @@ export const ARTICLES: Article[] = [
             <b>Feeding</b> — slow, deliberate feeders such as seahorses lose out to fast, competitive eaters.
           </li>
         </ul>
-        <p>“Conditional” means it can work with the right setup — more cover, a bigger tank or target feeding. “High risk” and “Incompatible” mean real harm is likely.</p>
+        <p>“Conditional” means it can work with the right setup — more cover, a bigger tank or target feeding. “High risk” and “Incompatible” mean real harm is likely, or the mix is unsafe in a real aquarium.</p>
       </>
     ),
   },
@@ -189,6 +189,29 @@ export const ARTICLES: Article[] = [
         </p>
         <p>
           <b>Seeing what’s hidden.</b> The Genetics Lab reads both copies of every gene, so you can spot carriers in the shop and plan pairings before the first clutch.
+        </p>
+      </>
+    ),
+  },
+  // audit E15: the breeding words in one place (readiness, nurseries, first foods, rehoming)
+  {
+    id: 'how_breeding_works',
+    title: 'How breeding works',
+    teaser: 'Breeding condition, nurseries and first foods — and why most young go to new homes.',
+    isNew: true,
+    body: (
+      <>
+        <p>
+          <b>Breeding condition.</b> An adult breeds when it is healthy, calm, well fed and comfortable, in a tank that isn’t crowded. Its card shows this as <i>breeding readiness</i>: at 60% or more it is ready. Some species also need rich foods first (keepers call this <i>conditioning</i>), or a cue such as two cool water changes.
+        </p>
+        <p>
+          <b>Eggs and young.</b> Most adults eat eggs and fry, often even their own. A <b>nursery</b> is a tank set to Nursery in Tanks, or one with no adults in it: move eggs and young there from Livestock › Eggs &amp; fry. A parent that carries its young (a seahorse father, a shrimp with eggs under her tail, a pregnant guppy) can go to the nursery to give birth, then must come straight back out.
+        </p>
+        <p>
+          <b>First foods.</b> Newborn fry are too small for flakes. <i>Infusoria</i> are tiny water creatures for the very smallest fry; <i>baby brine shrimp</i> come next; many sea fish need <i>live copepods</i>. All three are sold in Market › Supplies, and a mature, planted tank grows a little of this food by itself.
+        </p>
+        <p>
+          <b>Why most young are rehomed.</b> You keep up to a set number of young from each clutch (the Eggs &amp; fry card says how many), and only as many as the tank has room for when they grow up. The rest go to local hobbyists, which earns you a little reputation.
         </p>
       </>
     ),

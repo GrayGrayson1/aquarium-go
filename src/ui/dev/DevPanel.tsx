@@ -4,8 +4,7 @@
  * OWNER: lane "ui-shell".
  */
 import { useEffect, useMemo, useState } from 'react';
-import clsx from 'clsx';
-import { Wrench, Coins, LockOpen, Clock, Fish, Droplets, Bot, Scale, FlaskConical, Egg, Hourglass, Store, Sparkles, RotateCcw } from 'lucide-react';
+import { Coins, LockOpen, Clock, Fish, Droplets, Bot, Scale, FlaskConical, Egg, Hourglass, Store, Sparkles, RotateCcw } from 'lucide-react';
 import { devOpenMarket, forceBuyerVisit } from '@/sim/economy';
 import type { GameSpeed, GameState, WaterState } from '@/types';
 import { useUI } from '@/state/ui';

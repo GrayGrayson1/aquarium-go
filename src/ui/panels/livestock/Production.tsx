@@ -4,14 +4,18 @@
  * the dialogs (End line, Add a quarantine tank, Sort, choosing another pair or tank). Setting up a line is in
  * ProductionSetup.tsx. The numbers come from src/sim/production/view.ts; the words are the designs' and ADR-0030's.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useState, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { Box, ChevronRight, CirclePlay, Egg, Factory, Gavel, Heart, ListFilter, Pause, ShieldCheck, Sprout, TrendingUp, TriangleAlert } from 'lucide-react';
 import type { GameState, ProductionLine } from '@/types';
 import { Badge, Button, Modal, Toggle, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
+import { convertTempText } from '@/ui/common/format'; // Audit 2026-11-17 (J1)
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
-import { spPlural } from '@/sim/life/breeding/common';
+import { foodTagNames, joinFoodNames } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3)
+import { fmtTemp, spPlural } from '@/sim/life/breeding/common';
 import { morphDisplayName } from '@/sim/life/genetics';
 import {
   facilityLevelName,
@@ -25,11 +29,11 @@ import {
   type LineStage,
 } from '@/sim/production';
 import { lineColour, lineView, slotsCaption, type LineView, type StageId } from '@/sim/production/view';
-import { doserOf } from '@/sim/automation';
+import { doserOf, doserShortWords } from '@/sim/automation';
 import { act } from '../common/act';
 import { Bar, EmptyState, Seg, Tile } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
-import { NewLine, PairPicker, SortSheet, TankPicker } from './ProductionSetup';
+import { LIST_AUTOMATICALLY, NewLine, PairPicker, SortSheet, TankPicker } from './ProductionSetup';
 import { go } from '@/ui/nav/router'; // lane:automation (chunk 5)
 import './production.css';
 
@@ -95,6 +99,68 @@ export function ProductionTab({ g, sel, onSelect }: { g: GameState; sel: string 
       )}
     </div>
   );
+}
+
+/**
+ * Who feeds what the raise tank holds (Audit 2026-11-17, H2): a brood gets its first foods from a live-food doser, on
+ * its keeper's rounds or by hand (an Autofeeder feeds animals, never fry); juveniles waiting there eat from the
+ * Autofeeder too.
+ */
+/** A price a head: whole dollars, or with cents when it isn't ("$0.80"; the line prices the lot, H1 review). */
+export const priceEach = (each: number) => formatMoney(each, { cents: Math.abs(each - Math.round(each)) > 0.004 });
+
+function raiseFeeding(g: GameState, v: LineView): string {
+  const brood = v.raising.dayOf !== undefined;
+  // a doser feeds a brood (never juveniles), and only from stock (H1 review)
+  if (brood && v.raise && doserOf(v.raise)) {
+    const short = doserShortWords(g, v.raise);
+    return short ? `the doser has no ${short} in stock: the young go hungry` : 'baby brine and infusoria from the doser';
+  }
+  if (!brood && v.raising.feeding) return `${v.raising.feeding.food} ${v.raising.feeding.meals}× a day from the Autofeeder`;
+  const keeper = v.raise ? (g.staff?.roster ?? []).find((m) => m.role === 'aquarist' && m.tankIds.includes(v.raise!.id)) : undefined;
+  if (keeper) return brood ? `first foods on ${keeper.name.split(' ')[0]}’s rounds` : `fed on ${keeper.name.split(' ')[0]}’s rounds`;
+  return brood ? 'first foods by hand, or from a keeper or a live-food doser' : 'fed by hand';
+}
+
+/**
+ * Audit 2026-11-17 (H4): why a due pair isn't spawning, from the biggest drag on its readiness ("Breed Tank is too warm
+ * for spawning (28 °C; they spawn below 26 °C)"); null when nothing holds it back. The tile and Operations › Lines say it.
+ */
+export function notReadyText(v: LineView): string | null {
+  const n = v.next.notReady;
+  if (!n) return null;
+  const t = n.tank.name;
+  const cond = v.sp.breeding.conditions;
+  const temp = fmtTemp(n.tank.water.tempC);
+  const inUnit = (text: string) => convertTempText(text, useSettings.getState().tempUnit) ?? text; // Audit 2026-11-17 (J1)
+  switch (n.drag) {
+    case 'too_warm':
+      return inUnit(`${t} is too warm for spawning (${temp}; they spawn below ${cond.maxTempC} °C)`);
+    case 'too_cool':
+      return inUnit(`${t} is too cool for spawning (${temp}; they spawn above ${cond.minTempC} °C)`);
+    case 'temp_range':
+      return inUnit(`${t} is ${temp}, outside their safe range (${v.sp.tempC.min}–${v.sp.tempC.max} °C)`);
+    case 'crowded':
+      return `${t} is crowded`;
+    case 'small_tank':
+      return `${t} is too small for spawning (they need ${cond.minTankGallons} gal)`;
+    case 'water':
+      return `${t}’s water isn’t quite right for them`;
+    case 'hunger':
+      return `${n.who.name} is hungry`;
+    case 'stress':
+      return `${n.who.name} is stressed`;
+    case 'health':
+    case 'illness':
+      return `${n.who.name} is unwell`;
+    case 'comfort':
+      return `${n.who.name} isn’t settled in ${t}`;
+    case 'conditioning': {
+      const foods = foodTagNames(cond.needsConditioningFood ?? [], { shelfOnly: true }); // Audit 2026-11-17 (J3): shop words
+      return `they need rich food (${joinFoodNames(foods) || 'live food'}) to get into condition`;
+    }
+  }
+  return null;
 }
 
 /** The line's status word (Running, Paused by you, Paused); Operations › Lines shows it too. */
@@ -163,6 +229,17 @@ type Fixing = null | { kind: 'pair' } | { kind: 'tank'; stage: LineStage; replac
 
 const daysLeft = (n: number | undefined) => `${n ?? 0} ${n === 1 ? 'day' : 'days'} left`;
 
+/** The Sell stage's foot: "12 juvenile bettas listed · Buy now $18 each", or this week's sales (Audit 2026-11-17, H1). */
+function sellFoot(v: LineView): string {
+  const s = v.selling;
+  if (s.listed > 0) {
+    const price = s.each !== undefined ? ` · Buy now ${s.listings > 1 ? 'from ' : ''}${priceEach(s.each)}${s.listed > 1 ? ' each' : ''}` : '';
+    return `${s.title ?? `${s.listed} ${s.listed === 1 ? lowerName(v.sp.commonName) : spPlural(v.sp)}`} listed${price}`;
+  }
+  if (v.week.sold > 0) return `Sold ${v.week.sold} ${v.week.sold === 1 ? lowerName(v.sp.commonName) : spPlural(v.sp)} this week · ${formatMoney(v.week.revenue)}`;
+  return 'Nothing listed';
+}
+
 /** One line: header card, the note while it's held up, four tiles, five stages, Line rules. */
 export function LineDetail({ g, line, onEnded }: { g: GameState; line: ProductionLine; onEnded?: () => void }) {
   const [ending, setEnding] = useState(false);
@@ -200,19 +277,30 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
   const next = (() => {
     if (v.status === 'paused_by_you') return { value: '—', hint: 'Paused by you' };
     if (v.status === 'paused') return { value: '—', hint: 'Paused' };
-    if (v.status === 'waiting') return { value: v.next.restartDay ? `Day ${v.next.restartDay}` : '—', hint: `${raiseName} is full` };
-    if (v.next.days === undefined) return { value: '—', hint: 'Pair conditioning' };
-    return { value: `~${v.next.days} ${v.next.days === 1 ? 'day' : 'days'}`, hint: `${v.breed?.name ?? 'Breed tank'} · day ${v.next.dayOf} of ${v.next.cycle}` };
+    if (v.status === 'waiting')
+      return v.next.fullTank
+        ? { value: '—', hint: `Waits until ${v.next.fullTank.name} has room` }
+        : v.next.waitsOn
+          ? { value: '—', hint: `Waits until ${v.next.waitsOn.name} is well` } // H1 second review: no day that has passed
+          : { value: v.next.restartDay ? `Day ${v.next.restartDay}` : '—', hint: `${raiseName} is full` };
+    const why = notReadyText(v);
+    if (why) return { value: 'Not ready', hint: why.charAt(0).toUpperCase() + why.slice(1) }; // Audit 2026-11-17 (H4)
+    if (v.next.days === undefined) return { value: '—', hint: 'Pair getting ready' };
+    return { value: `About ${v.next.days} ${v.next.days === 1 ? 'day' : 'days'}`, hint: `${v.breed?.name ?? 'Breed tank'} · day ${v.next.dayOf} of ${v.next.cycle}` };
   })();
   const growing = v.raising.count > 0
     ? { value: `${v.raising.count} ${v.raising.word}`, hint: v.raising.dayOf !== undefined ? `${raiseName} · day ${v.raising.dayOf} of ${v.raising.ofDays}` : `${raiseName}${v.raising.full ? ' · full' : ''}` }
     : { value: '—', hint: raiseName };
   const quarantine = v.quarantined.count > 0
-    ? { value: String(v.quarantined.count), hint: line.rules.autoList ? `Lists Day ${v.quarantined.listsDay}` : daysLeft(v.quarantined.daysLeft) }
+    ? { value: String(v.quarantined.count), hint: v.quarantined.waitsOn ? `Waits until ${v.quarantined.waitsOn.name} is well` : v.quarantined.listsWhy ? v.quarantined.listsWhy : line.rules.autoList ? `Lists Day ${v.quarantined.listsDay}` : daysLeft(v.quarantined.daysLeft) }
+    : v.quarantined.waitsOn
+      ? { value: '—', hint: `Waits until ${v.quarantined.waitsOn.name} is well` }
     : v.quarantined.busyTank
-      ? { value: '—', hint: `${v.quarantined.busyTank.name} is busy to Day ${v.quarantined.busyUntilDay}` }
+      ? { value: '—', hint: v.quarantined.busyUntilDay !== undefined ? `${v.quarantined.busyTank.name} is busy to Day ${v.quarantined.busyUntilDay}` : `${v.quarantined.busyTank.name} is busy` }
       : v.quarantined.uncycledTank
-        ? { value: '—', hint: `${v.quarantined.uncycledTank.name} isn’t cycled yet` }
+        ? { value: '—', hint: `${v.quarantined.uncycledTank.name} isn’t ready yet: its filter bacteria are still growing` } // Audit 2026-11-17 (J5)
+      : v.quarantined.unsold > 0
+        ? { value: `${v.quarantined.unsold} unsold`, hint: v.quarantined.fullTank ? `${v.quarantined.fullTank.name} is full` : v.quarantine?.name ?? 'Quarantine' }
       : { value: '—', hint: v.quarantine?.name ?? 'Quarantine' };
 
   return (
@@ -296,7 +384,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
         <Stage id="raise" n={2} icon={<Sprout size={16} />} title="Raise" active={v.active === 'raise'} pill={<TankPill g={g} tankId={line.tanks.raise} />}>
           <p>
             {v.raising.count > 0
-              ? `${v.raising.count} ${v.raising.word} · ${v.raise && doserOf(v.raise) ? 'baby brine and infusoria from the doser' : v.raising.feeding ? `${v.raising.feeding.food} ${v.raising.feeding.meals}× a day from the Autofeeder` : 'first foods by hand or on keepers’ rounds'}`
+              ? `${v.raising.count} ${v.raising.word} · ${raiseFeeding(g, v)}`
               : 'Waiting for the next clutch'}
           </p>
           {v.raising.dayOf !== undefined && v.raising.ofDays && (
@@ -314,7 +402,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
             {line.rules.keepPrismatic && <span className="pn-chip pn-chip--violet">Keep Prismatic</span>}
             {line.rules.keep.map((r, i) => (
               <span key={i} className="pn-chip pn-chip--aqua">
-                Keep best {r.count} {r.traitIds.map((t) => traits.get(t) ?? t).join(' ')}
+                Keep best {r.count} {r.traitIds.map((t) => traits.get(t) ?? v.sp.genetics.phenotypes.find((x) => x.id === t)?.name ?? t).join(' ') /* Audit 2026-11-17 (J14): a trait the new pair can't produce kept its id */}
               </span>
             ))}
             <span className="pn-chip">Sell the rest</span>
@@ -328,8 +416,10 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
                 {v.quarantined.count} {v.quarantined.word}
               </p>
               <Bar value={100 * (v.quarantined.holdFraction ?? 0)} tone="gold" thin label={daysLeft(v.quarantined.daysLeft)} />
-              <p className="pr-stage__foot">{daysLeft(v.quarantined.daysLeft)}</p>
+              <p className="pr-stage__foot">{v.quarantined.waitsOn ? `Waits until ${v.quarantined.waitsOn.name} is well, or until you move ${v.quarantined.waitsOn.name} out` : daysLeft(v.quarantined.daysLeft)}</p>
             </>
+          ) : v.quarantined.unsold > 0 ? (
+            <p>{v.quarantined.unsold} unsold · sell or move them</p>
           ) : (
             <p>Free</p>
           )}
@@ -337,8 +427,9 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
           {fixTank('quarantine') && <FixTank onClick={() => setFixing({ kind: 'tank', stage: 'quarantine', replace: broken?.id })} />}
         </Stage>
         <Stage id="sell" n={5} icon={<Gavel size={16} />} title="Sell" active={v.active === 'sell'} pill={<TankPill g={g} name="Market" />}>
-          <p>Auctions · reserve at fair value −10%</p>
-          <p className="pr-stage__foot">{v.selling.listed > 0 ? `${v.selling.listed} listed${v.selling.bestBid !== undefined ? ` · best bid ${formatMoney(v.selling.bestBid)}` : ''}` : 'Nothing listed'}</p>
+          {/* Audit 2026-11-17 (H1): the owner's "Sell by itself" — a buy-now price, a little lower each time it's listed again */}
+          <p>Buy now at fair value −10% · a little cheaper each time it’s listed again</p>
+          <p className="pr-stage__foot">{sellFoot(v)}</p>
         </Stage>
       </div>
 
@@ -348,7 +439,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
         <h4 className="pr-section">Line rules</h4>
         <Rule title="Pause when a tank is full" sub={`Stops spawning when ${raiseName} reaches its stocking limit.`} checked={line.rules.pauseWhenFull} testId="production-rule-pauseWhenFull" lineName={line.name} onChange={(on) => act({ k: 'setLineRule', line: line.id, rule: 'pauseWhenFull', on }, { quiet: true })} />
         <Rule title="Never sell Prismatic animals" sub={`A Prismatic youngster always moves to ${keepName} instead.`} checked={line.rules.keepPrismatic} testId="production-rule-keepPrismatic" lineName={line.name} onChange={(on) => act({ k: 'setLineRule', line: line.id, rule: 'keepPrismatic', on }, { quiet: true })} />
-        <Rule title="List automatically" sub="Juveniles go to auction the day quarantine ends." checked={line.rules.autoList} testId="production-rule-autoList" lineName={line.name} onChange={(on) => act({ k: 'setLineRule', line: line.id, rule: 'autoList', on }, { quiet: true })} />
+        <Rule title="List automatically" sub={LIST_AUTOMATICALLY} checked={line.rules.autoList} testId="production-rule-autoList" lineName={line.name} onChange={(on) => act({ k: 'setLineRule', line: line.id, rule: 'autoList', on }, { quiet: true })} />
       </section>
 
       <Modal
@@ -385,7 +476,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
           </>
         }
       >
-        <p>Its animals stay in the tanks they're in, the line slot frees up, and its numbers stay in its history.</p>
+        <p>Its animals stay in the tanks they’re in, the line slot frees up, and its numbers stay in its history.</p>
       </Modal>
       {addingQt && <AddQuarantine g={g} line={line} onClose={() => setAddingQt(false)} />}
       {sorting && <SortSheet g={g} line={line} onClose={() => setSorting(false)} />}
@@ -424,12 +515,16 @@ export function RouteStrip({ g, line, v }: { g: GameState; line: ProductionLine;
         ? 'Paused'
         : v.quarantined.count > 0
           ? `${v.quarantined.count} ${v.quarantined.word}`
+          : v.quarantined.waitsOn
+            ? `waits on ${v.quarantined.waitsOn.name}`
           : v.quarantined.busyTank
-            ? `busy to Day ${v.quarantined.busyUntilDay}`
+            ? v.quarantined.busyUntilDay !== undefined ? `busy to Day ${v.quarantined.busyUntilDay}` : 'busy'
             : v.quarantined.uncycledTank
-              ? 'isn’t cycled yet'
-              : undefined,
-      warn: gone('quarantine') || !!v.quarantined.busyTank || !!v.quarantined.uncycledTank,
+              ? 'isn’t ready yet: its filter bacteria are still growing' // Audit 2026-11-17 (J5)
+              : v.quarantined.unsold > 0
+                ? `${v.quarantined.unsold} unsold`
+                : undefined,
+      warn: gone('quarantine') || !!v.quarantined.busyTank || !!v.quarantined.uncycledTank || !!v.quarantined.fullTank || !!v.quarantined.waitsOn,
     },
     { key: 'market', name: 'Market', tag: v.selling.listed > 0 ? `${v.selling.listed} listed` : undefined, warn: false },
   ];
@@ -506,7 +601,7 @@ export function AddQuarantine({ g, line, onClose, onAdded }: { g: GameState; lin
                     onClose();
                     useUI.getState().toast(`${r.tankName} · ${r.tierName}`, 'success', {
                       label: `Set up · ${formatMoney(r.price ?? total)}`,
-                      detail: r.restartDay ? `The ${short} juveniles move in on Day ${r.restartDay} and the line restarts.` : 'The juveniles move in once it has cycled.',
+                      detail: r.restartDay ? `The ${short} juveniles move in on Day ${r.restartDay} and the line restarts.` : 'The juveniles move in once its filter bacteria have grown.' /* Audit 2026-11-17 (J5) */,
                     });
                   },
                 },
@@ -524,7 +619,7 @@ export function AddQuarantine({ g, line, onClose, onAdded }: { g: GameState; lin
       <div className="pr-rule">
         <div className="pr-rule__text">
           <div className="pr-rule__title">Seeded filter media · +{formatMoney(kit.seededPrice - kit.price)}</div>
-          <div className="pr-rule__sub">Ready for the juveniles at once. Without it the tank has to cycle first.</div>
+          <div className="pr-rule__sub">Ready for the juveniles at once. Without it the tank’s filter bacteria have to grow first.{/* Audit 2026-11-17 (J5) */}</div>
         </div>
         <Toggle checked={seeded} onChange={setSeeded} label="Seeded filter media" testId="production-add-qt-seeded" />
       </div>

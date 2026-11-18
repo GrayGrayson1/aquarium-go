@@ -295,6 +295,8 @@ describe('breeding: nursery vs display, capacity', () => {
     });
     expect(last).toBeLessThan(0.15);
     expect(s.state.log.some((e) => /larvae are hungry/.test(e.text))).toBe(true);
+    // Audit 2026-11-17 (J3): the foods in the shop's words ("baby brine" was a raw tag)
+    expect(s.state.log.some((e) => /larvae are hungry — offer live baby brine shrimp or daphnia several times a day\./.test(e.text))).toBe(true);
   });
 });
 

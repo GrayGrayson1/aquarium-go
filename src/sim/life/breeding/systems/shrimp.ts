@@ -37,7 +37,7 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
     explain: (sp) =>
       viable
         ? `${sp.commonName} females carry their eggs under the tail until tiny shrimplets hatch.`
-        : `${sp.commonName} larvae drift as plankton and need special ${sp.environment === 'marine' ? 'marine' : 'brackish'} larval rearing — beyond this shop for now.`,
+        : `${sp.commonName} larvae drift as plankton and need special ${sp.environment === 'marine' ? 'marine' : 'brackish'} larval rearing, which Aquarium Go doesn’t include.`,
 
     step(env: StepEnv) {
       const { state, tank, species: sp, members, hour, ctx } = env;
@@ -62,7 +62,8 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
           continue;
         }
         if (r.stage !== 'idle' && r.stage !== 'conditioning') continue;
-        const mate: Creature | undefined = males.find((m) => m !== f && m.stats.health >= 40);
+        // audit E8: her chosen partner, while he is here and healthy; else the first healthy male, as before
+        const mate: Creature | undefined = males.find((m) => m !== f && m.id === r.partnerId && m.stats.health >= 40) ?? males.find((m) => m !== f && m.stats.health >= 40);
         if (!mate || waterIssue || !goodTemp || !matureTank || colonyFull || berriedNow >= MAX_BERRIED_PER_TANK || f.stats.breedingReadiness < BERRY_READY) {
           if (r.stage === 'idle' && mate) setStage(f, 'conditioning', hour);
           continue;
@@ -103,10 +104,10 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
     check(cc) {
       const { tank, sp } = cc;
       if (!viable) {
-        const r = `${sp.commonName} larvae need specialised ${sp.environment === 'marine' ? 'marine' : 'brackish'} larval rearing that isn’t available yet.`;
+        const r = `${sp.commonName} larvae need specialised ${sp.environment === 'marine' ? 'marine' : 'brackish'} larval rearing, which Aquarium Go doesn’t include.`;
         cc.reasons.push(r);
         cc.startBlockers.push(r);
-        cc.steps.push('Females may still carry eggs — enjoy the sight, but the larvae can’t be raised in this shop yet.');
+        cc.steps.push('Females may still carry eggs — enjoy the sight, but the larvae can’t be raised in Aquarium Go.');
         return;
       }
       if (!tank) return;
@@ -143,7 +144,8 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
       if (c.repro.stage !== 'berried') return null;
       const cl = c.repro.clutchId ? state.clutches[c.repro.clutchId] : undefined;
       const due = (c.repro.carryingUntilHour ?? hour) - hour;
-      return { label: cl ? `Berried — ${plural(cl.count, 'egg')}` : 'Berried', detail: `Hatching in ${approxDuration(due)}`, progress: c.repro.progress };
+      // audit E15: plain words ('berried' is a keepers' term)
+      return { label: cl ? `Carrying ${plural(cl.count, 'egg')} under her tail` : 'Carrying eggs under her tail', detail: `Hatching in ${approxDuration(due)}`, progress: c.repro.progress };
     },
   };
 }
@@ -180,7 +182,7 @@ export const shrimpLarvalMarineModule = makeShrimp(
     hatchAtNight: true,
     larvaeViable: false,
     nonViableText:
-      'The shrimp eggs hatched overnight into drifting larvae. They need weeks of specialised brackish or marine larval rearing — something this shop can’t offer yet — so they were lost to the current.',
+      'The shrimp eggs hatched overnight into drifting larvae. They need weeks of specialised brackish or marine larval rearing, which Aquarium Go doesn’t include, so they were lost to the current.',
     starveSeverity: 1,
     coverShelter: 0,
     yolkFrac: 0,

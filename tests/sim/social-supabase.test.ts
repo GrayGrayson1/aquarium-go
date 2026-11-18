@@ -9,7 +9,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseSocialService, AUTH_STORAGE_KEY, type SupabaseLike, type SocialService } from '@/social';
-import { isNetworkFailure, mapAuthError, mapRpcError, safeSnapshot } from '@/social/supabase/service';
+import { isNetworkFailure, mapAuthError, mapRpcError, safeSnapshot, serverDownFetch } from '@/social/supabase/service';
 
 const PROJECT = { url: 'https://example.supabase.co', publishableKey: 'sb_publishable_test' };
 const PASSWORD = 'correct horse battery';
@@ -361,6 +361,20 @@ describe('error mapping', () => {
     expect(mapAuthError({ code: 'over_request_rate_limit', status: 429 }, 'signIn')).toEqual({ code: 'network' });
     expect(mapAuthError({ status: 500, code: 'unexpected_failure', message: 'Database error saving new user' }, 'signUp')).toEqual({ code: 'invite' });
     expect(mapAuthError({ status: 500, message: 'Database error saving new user' }, 'signIn')).toEqual({ code: 'network' });
+    // audit I7: a refusal (4xx) without a code we know is still the email and password; an answer with no status (a
+    // paused project's page that isn't JSON: AuthUnknownError) is the network message, not "don't match an account"
+    expect(mapAuthError({ status: 400, message: 'Invalid login credentials' }, 'signIn')).toEqual({ code: 'credentials' });
+    expect(mapAuthError({ name: 'AuthUnknownError', message: 'Unexpected token <' }, 'signIn')).toEqual({ code: 'network' });
+  });
+
+  it('audit I7: a server error supabase-js would read as a refusal (540) fails as the network instead; known ones pass', async () => {
+    const answer = { status: 540 };
+    const f = serverDownFetch(async () => new Response('<html>paused</html>', { status: answer.status }));
+    await expect(f('https://x.supabase.co/auth/v1/token')).rejects.toBeInstanceOf(TypeError);
+    answer.status = 503;
+    expect((await f('https://x.supabase.co/auth/v1/token')).status).toBe(503); // supabase-js keeps the session through it
+    answer.status = 400;
+    expect((await f('https://x.supabase.co/auth/v1/token')).status).toBe(400);
   });
 });
 
@@ -466,5 +480,29 @@ describe('chunk 9 (B2, REL-035): who is signed in, told across tabs', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe('audit 2026-11-17, I6: signing out while the server can’t be reached', () => {
+  it('on the real client: the device is signed out anyway, and no error is thrown', async () => {
+    const store = new Map<string, string>();
+    const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
+    const user = { id: 'u1', aud: 'authenticated', role: 'authenticated', email: 'sam@example.com', app_metadata: {}, user_metadata: {}, created_at: '2026-10-19T10:00:00Z' };
+    const session = { access_token: 'header.payload.sig', refresh_token: 'refresh-abc', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: 'bearer', user };
+    const fetchFake = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+      if (url.includes('/auth/v1/token')) return json(session);
+      if (url.includes('/auth/v1/logout')) throw new TypeError('Failed to fetch');
+      if (url.includes('/rest/v1/rpc/me')) return json(ME);
+      return json({ message: `unexpected ${url}` }, 404);
+    });
+    const client = createClient(PROJECT.url, PROJECT.publishableKey, { auth: { persistSession: true, autoRefreshToken: false, detectSessionInUrl: false, storageKey: AUTH_STORAGE_KEY, storage }, global: { fetch: fetchFake as unknown as typeof fetch } });
+    const s = createSupabaseSocialService(PROJECT, { client: async () => client as unknown as SupabaseLike, storage });
+    await s.signIn('sam@example.com', PASSWORD);
+    expect(store.has(AUTH_STORAGE_KEY)).toBe(true);
+    await expect(s.signOut()).resolves.toBeUndefined(); // before: rejected with { code: 'network' }, the screen stayed signed in
+    expect(store.has(AUTH_STORAGE_KEY)).toBe(false);
+    expect(await s.currentUser()).toBeNull();
   });
 });

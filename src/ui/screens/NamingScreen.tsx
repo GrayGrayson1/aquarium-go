@@ -2,9 +2,11 @@
  * Naming: the chosen individual gets a name (suggestion chips) and the shop gets its name. Begin creates the
  * real game from the exact individual the player saw. OWNER: lane "ui-shell".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Dices, Store } from 'lucide-react';
+import type { GameState } from '@/types';
 import { getSpecies } from '@/data/species';
 import { STARTER_SETUPS, newGame } from '@/sim/newGame';
 import { useGame } from '@/state/game';
@@ -19,6 +21,7 @@ import { aOrAn } from '@/sim/economy/util'; // lane:qa-play
 import { Button, Chip, TextField } from '../kit';
 import { saveNow } from '../common/saves';
 import { safe, SHORT_LANDSCAPE_QUERY, useIsMobile, useMedia } from '../common/safe';
+import { guideOnForNewGame } from '../tutorial/guideText'; // audit 2026-11-17 (A4)
 
 /** The sim keeps names to 24 characters (src/sim/life/actions.ts renameCreature). */
 const NAME_MAX = 24;
@@ -60,7 +63,27 @@ function warmLine(name: string, speciesId: string, personality: string[], morph:
     ocellaris_clownfish: `${who} is ${trait} ${morphText}clownfish, waddling through the live rock like it owns the place.`,
     lined_seahorse: `${who} is ${trait} ${morphText}lined seahorse, tail wrapped around a branch, watching the water drift by.`,
   };
-  return lines[speciesId] ?? `${who} is ${trait} ${sp.commonName.toLowerCase()}, settling into a brand-new home.`;
+  return lines[speciesId] ?? `${who} is ${trait} ${lowerName(sp.commonName)}, settling into a brand-new home.`;
+}
+
+/**
+ * A new solo aquarium on screen (the naming screen's "Begin"). Audit 2026-11-17 (A4): it starts with its guide showing,
+ * whoever switched the device's "Guide hints" off (tests/sim/audit-guide.test.ts calls this, as the screen does).
+ */
+export function enterNewGame(g: GameState): void {
+  guideOnForNewGame();
+  useGame.getState().setGame(g);
+  useUI.getState().set({
+    screen: 'game',
+    view: 'tank',
+    focusedTankId: g.tankOrder[0] ?? null,
+    selectedCreatureId: null,
+    cameraMode: 'front',
+    panel: null,
+    tool: 'none',
+    hudHidden: false,
+    pendingStarterId: null,
+  });
 }
 
 export function NamingScreen() {
@@ -103,18 +126,7 @@ export function NamingScreen() {
       useUI.getState().toast('Something went wrong creating your aquarium. Please try again.', 'danger');
       return;
     }
-    useGame.getState().setGame(g);
-    useUI.getState().set({
-      screen: 'game',
-      view: 'tank',
-      focusedTankId: g.tankOrder[0] ?? null,
-      selectedCreatureId: null,
-      cameraMode: 'front',
-      panel: null,
-      tool: 'none',
-      hudHidden: false,
-      pendingStarterId: null,
-    });
+    enterNewGame(g);
     await saveNow('auto', false);
   };
 
@@ -141,7 +153,7 @@ export function NamingScreen() {
           <div className="ag-grow">
             <div className="ag-overline">{shared ? SHARED_WORDS.newShop : sp.starterIdentity}</div>
             <h1 className="ag-naming__title">
-              Name your <em>{sp.commonName.toLowerCase()}</em>
+              Name your <em>{lowerName(sp.commonName)}</em>
             </h1>
             <div className="ag-naming__facts">
               {preview && !/^wild\s*type$/i.test(preview.morphName) && <span>{preview.morphName}</span>}

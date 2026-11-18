@@ -32,6 +32,8 @@ import { youngKindOf } from '@/data/species';
 import { withArticle } from '../economy/util'; // lane:w2-ui ("An ocellaris clownfish was stung…")
 import { fitsEnvironment, offIdealEnvironmentNote, sharedEnvironments, waterNeedPhrase } from './salinity'; // lane:brackish
 import * as dmath from '../dmath';
+import { SLIGHTLY_SMALL_TANK } from '../life/growth'; // Audit 2026-11-17 (D4)
+import { TEMP_TOLERANCE_C } from '../water/constants'; // Audit 2026-11-17 (D13)
 
 // ───────────────────────────── contracts ─────────────────────────────
 
@@ -135,6 +137,13 @@ const downgrade = (s: Sev): Sev => (s === 'critical' ? 'warning' : s === 'warnin
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 const clamp01 = (v: number) => clamp(v, 0, 1);
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
+
+/** Audit 2026-11-17 (J14): what makes a pair rule's incident less likely, in words ("Reduced (not removed) by tank size, hides"). */
+const MITIGATION_WORDS: Record<string, string> = { tank_size: 'a bigger tank', hides: 'hiding places', cover: 'plant cover', target_feeding: 'target feeding', sight_breaks: 'decor that blocks their view', nursery: 'a nursery tank' };
+export function mitigationText(by: readonly string[]): string {
+  const words = by.map((x) => MITIGATION_WORDS[x] ?? x.replace(/_/g, ' '));
+  return `${cap(joinAnd(words))} ${words.length === 1 ? 'makes' : 'make'} this less likely, but ${words.length === 1 ? 'doesn’t' : 'don’t'} stop it.`;
+}
 /** Per-day probability → chance of at least one incident per game-week. */
 const weekly = (pDay: number) => 1 - dmath.pow(1 - clamp(pDay, 0, 0.99), 7);
 
@@ -386,7 +395,12 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
     const t = ctx.expectedTempC;
     const r = sp.tempC;
     if (t > r.max + 0.2 || t < r.min - 0.2) {
-      add('warning', 'temperature', `This tank runs at about ${t.toFixed(0)} °C — too ${t > r.max ? 'warm' : 'cold'} for ${name} (${r.min}–${r.max}\u00a0°C).` /* lane:ui-panels (0.5 §7.5) — the range stays on one line */, {
+      // Audit 2026-11-17 (D13): like pH, the water report's bands: up to TEMP_TOLERANCE_C past the limit the sim only
+      // adds stress (Conditional); beyond it, harm (High risk). Near the limit the reading keeps a decimal, so 25.5 °C
+      // never reads as "about 26 °C — too cold" for a 26 °C minimum.
+      const past = t > r.max ? t - r.max : r.min - t;
+      const shown = past < 1 ? Number(t.toFixed(1)).toString() : t.toFixed(0);
+      add(past > TEMP_TOLERANCE_C ? 'warning' : 'caution', 'temperature', `This tank runs at about ${shown} °C — too ${t > r.max ? 'warm' : 'cold'} for ${name} (${r.min}–${r.max}\u00a0°C).` /* lane:ui-panels (0.5 §7.5) — the range stays on one line */, {
         // lane:guide — name the setting to aim for, and that a warm room needs cooling, not a lower heater
         mitigation:
           t > r.max
@@ -407,7 +421,7 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
     // and a warning beyond (DANGER: harm); tolerated but off-ideal is a note (GOOD).
     const past = p > r.max ? p - r.max : p < r.min ? r.min - p : 0;
     if (past > 0) {
-      add(past > 0.3 ? 'warning' : 'caution', 'chemistry', `This tank's pH is about ${p.toFixed(1)} — too ${p > r.max ? 'alkaline' : 'acidic'} for ${name} (pH ${r.min}–${r.max}).`, {
+      add(past > 0.3 ? 'warning' : 'caution', 'chemistry', `This tank’s pH is about ${p.toFixed(1)} — too ${p > r.max ? 'alkaline' : 'acidic'} for ${name} (pH ${r.min}–${r.max}).`, {
         mitigation: p > r.max ? 'Softer water, driftwood or almond leaves bring pH down slowly — or choose a species suited to this water.' : 'Buffer the water (and do regular water changes) to raise pH — or choose a species suited to this water.',
       });
     } else if (p > r.idealMax + 0.3 || p < r.idealMin - 0.3) {
@@ -425,16 +439,19 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
   const juvNote = m.adults === 0 && m.count > 0 ? ' Juveniles fit for now, but they grow.' : '';
   if (ctx.gallons < minGal * 0.5) {
     add('critical', 'size', `This tank is far too small for an adult ${lower(sp.commonName)} (${sp.adultSizeCm} cm) — it needs at least ${minGal} gallons.${juvNote}`);
-  } else if (ctx.gallons < minGal) {
+  } else if (ctx.gallons < minGal * SLIGHTLY_SMALL_TANK) {
     add('warning', 'size', `An adult ${lower(sp.commonName)} (${sp.adultSizeCm} cm) needs at least ${minGal} gallons; this tank holds ${ctx.gallons}.${juvNote}`, {
       mitigation: 'Plan a larger tank before it reaches adult size.',
     });
+  } else if (ctx.gallons < minGal) {
+    // Audit 2026-11-17 (D4, the owner's decision): only a little small (see SLIGHTLY_SMALL_TANK) is a note
+    add('info', 'size', `This tank is a little under the ${minGal} gallons an adult ${lower(sp.commonName)} likes (it holds ${ctx.gallons}). Fine with good care.`);
   } else if (sp.special?.outgrowsSmallTanks && ctx.gallons < minGal * 1.5) {
     add('info', 'size', `${cap(name)} grow large quickly — this tank is at the lower limit.`);
   }
   const fp = sp.recommendedFootprint;
   if (fp && ctx.dimsIn.l < fp.minLengthIn - 0.5) {
-    add(sp.activeSwimmer ? 'warning' : 'caution', 'size', sp.activeSwimmer ? 'This fish requires more swimming length than this tank provides.' : `${cap(name)} need a tank at least ${fp.minLengthIn} in long.`, {
+    add(sp.activeSwimmer ? 'warning' : 'caution', 'size', sp.activeSwimmer ? `${cap(name)} need more swimming length than this tank provides: a tank at least ${fp.minLengthIn} in long.` /* Audit 2026-11-17 (D21) */ : `${cap(name)} need a tank at least ${fp.minLengthIn} in long.`, {
       mitigation: `Choose a tank at least ${fp.minLengthIn} in long.`,
     });
   } else if (fp && ctx.dimsIn.w < fp.minWidthIn - 0.5) {
@@ -558,7 +575,7 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
     }
   }
   if (sn.glassStrikeRisk && ctx.material === 'glass' && (ctx.glassMm ?? 99) < 10) {
-    add('warning', 'tank', `${cap(name)} strike hard enough to crack thin glass — this tank's ${ctx.glassMm} mm glass is at risk.`, { mitigation: 'Use an acrylic tank or glass at least 10 mm thick.' });
+    add('warning', 'tank', `${cap(name)} strike hard enough to crack thin glass — this tank’s ${ctx.glassMm} mm glass is at risk.`, { mitigation: 'Use an acrylic tank or glass at least 10 mm thick.' });
   }
   if (ctx.anemones > 0) {
     switch (stingHandled && sp.anemoneRelationship === 'prey_risk' ? 'handled' : sp.anemoneRelationship) {
@@ -605,8 +622,9 @@ function conspecific(m: CompatMember, ctx: CompatContext, out: Collector): void 
     if (o === 'tension' && (ctx.habitat.sightBreak ?? 0) >= 0.6) sev = 'info';
     let text: string;
     if (who === 'juvenile') text = o === 'tension' ? `Young ${name} squabble when crowded.` : `Young ${name} bite each other when crowded or hungry.`;
-    else if (o === 'lethal') text = who === 'male' ? (selfRule?.reason ?? 'Two adult males are likely to fight — often to serious injury.') : `Two adult females are likely to fight — often to serious injury.`;
-    else if (o === 'fight') text = who === 'male' ? 'Two adult males are likely to fight.' : 'Two adult females are likely to fight.';
+    // Audit 2026-11-17 (D21): say whose males (the meta line lists the species twice)
+    else if (o === 'lethal') text = who === 'male' ? (selfRule?.reason ?? `Two adult male ${name} are likely to fight — often to serious injury.`) : `Two adult female ${name} are likely to fight — often to serious injury.`;
+    else if (o === 'fight') text = who === 'male' ? `Two adult male ${name} are likely to fight.` : `Two adult female ${name} are likely to fight.`;
     else text = who === 'male' ? `Male ${name} spar and chase each other.` : `Female ${name} squabble over space.`;
     out.add({
       severity: sev,
@@ -687,7 +705,7 @@ function conspecific(m: CompatMember, ctx: CompatContext, out: Collector): void 
     out.add({
       severity: r.maleMale === 'lethal' ? 'warning' : 'caution',
       category: 'social',
-      text: `Their sexes aren't visible yet — if two turn out to be males, they are likely to fight.`,
+      text: `Their sexes aren’t visible yet — if two turn out to be males, they are likely to fight.`,
       speciesIds: ids,
       creatureIds: unknownIds,
       key,
@@ -731,15 +749,16 @@ function mutual(A: CompatMember, B: CompatMember, ctx: CompatContext, out: Colle
   const ov = Math.min(a.tempC.max, b.tempC.max) - Math.max(a.tempC.min, b.tempC.min);
   const iov = Math.min(a.tempC.idealMax, b.tempC.idealMax) - Math.max(a.tempC.idealMin, b.tempC.idealMin);
   const rng = (s: SpeciesDefinition) => `${s.tempC.min}–${s.tempC.max} °C`;
-  if (ov < 0) add('critical', 'temperature', `Their temperature needs don't overlap at all (${lower(a.commonName)} ${rng(a)}, ${lower(b.commonName)} ${rng(b)}).`);
+  if (ov < 0) add('critical', 'temperature', `Their temperature needs don’t overlap at all (${lower(a.commonName)} ${rng(a)}, ${lower(b.commonName)} ${rng(b)}).`);
   // lane:fix-water — ranges that merely touch (axolotl ≤ 21 °C, betta ≥ 21 °C) are no overlap in practice: the only
   // shared temperature is the edge where one is as cold and the other as warm as it can bear.
   else if (ov < 0.5) add('critical', 'temperature', `Their temperature needs only meet at the edge (${lower(a.commonName)} ${rng(a)}, ${lower(b.commonName)} ${rng(b)}) — too cold for one, too warm for the other.`);
   else if (ov < 2) add('warning', 'temperature', `Temperature ranges barely overlap (${lower(a.commonName)} ${rng(a)}, ${lower(b.commonName)} ${rng(b)}).`);
-  else if (iov < 0) add('caution', 'temperature', `Their ideal temperatures don't overlap — one of them will always be a little outside its comfort zone.`);
+  else if (iov < 0) add('caution', 'temperature', `Their ideal temperatures don’t overlap — one of them will always be a little outside its comfort zone.`);
   // pH
   const pov = Math.min(a.pH.max, b.pH.max) - Math.max(a.pH.min, b.pH.min);
-  if (pov < -0.3) add('warning', 'chemistry', `Their pH needs don't overlap (${a.pH.min}–${a.pH.max} vs ${b.pH.min}–${b.pH.max}).`);
+  // Audit 2026-11-17 (D21): these three name which species wants what
+  if (pov < -0.3) add('warning', 'chemistry', `Their pH needs don’t overlap: ${plural(a)} need pH ${a.pH.min}–${a.pH.max}, ${plural(b)} pH ${b.pH.min}–${b.pH.max}.`);
   else if (pov < 0.1) add('caution', 'chemistry', `pH ranges barely overlap.`);
   // Salinity
   if (a.salinitySG && b.salinitySG) {
@@ -751,9 +770,12 @@ function mutual(A: CompatMember, B: CompatMember, ctx: CompatContext, out: Colle
   // Flow & light preferences
   const fd = Math.abs((FLOW_INDEX[a.flowPreference] ?? 1) - (FLOW_INDEX[b.flowPreference] ?? 1));
   if (fd >= 3) add('warning', 'flow', `They need very different water flow (${lower(a.commonName)}: ${FLOW_NAMES[FLOW_INDEX[a.flowPreference]]}, ${lower(b.commonName)}: ${FLOW_NAMES[FLOW_INDEX[b.flowPreference]]}).`);
-  else if (fd === 2) add('caution', 'flow', `Their flow preferences differ — one wants ${FLOW_NAMES[FLOW_INDEX[a.flowPreference]]} water, the other ${FLOW_NAMES[FLOW_INDEX[b.flowPreference]]}.`);
+  else if (fd === 2) add('caution', 'flow', `Their flow preferences differ: ${plural(a)} want ${FLOW_NAMES[FLOW_INDEX[a.flowPreference]]} water, ${plural(b)} ${FLOW_NAMES[FLOW_INDEX[b.flowPreference]]}.`);
   const ld = Math.abs((LIGHT_INDEX[a.lightPreference] ?? 1) - (LIGHT_INDEX[b.lightPreference] ?? 1));
-  if (ld >= 2) add('caution', 'light', `One wants dim, shaded water and the other bright light.`, { mitigation: 'Provide shaded areas under floating plants or overhangs.' });
+  if (ld >= 2) {
+    const [dim, bright] = (LIGHT_INDEX[a.lightPreference] ?? 1) < (LIGHT_INDEX[b.lightPreference] ?? 1) ? [a, b] : [b, a];
+    add('caution', 'light', `${cap(plural(dim))} want dim, shaded water; ${plural(bright)} want bright light.`, { mitigation: 'Provide shaded areas under floating plants or overhangs.' });
+  }
   // Same group / genus territorial conflict
   if (a.id !== b.id && !out.has(`rule:${key}`) && (a.group === b.group || a.genus === b.genus) && Math.max(a.territoriality, b.territoriality) >= 0.5) {
     const sameGenus = a.genus === b.genus;
@@ -790,6 +812,13 @@ function applyExceptionRules(A: CompatMember, B: CompatMember, ctx: CompatContex
     // environmental 'sting' incident above, so this pairwise rule would sting a second time, as 'harassment'; it stays
     // for an anemone the tank doesn't count yet (a purchase, a move from another tank, a species check)
     if (rule.other === 'tag:stinging_cnidarian' && (ctx.stinging ?? ctx.anemones) > 0) continue;
+    if (rule.incident === 'none') {
+      // Audit 2026-11-17 (D6): a mismatch of needs: the reason and its floor only (no incident, no attack or predation
+      // flag, so the pair's own predation check still speaks for itself)
+      out.add({ severity: SEV_OF_FLOOR(rule.verdictFloor) ?? 'caution', category: 'temperature', text: rule.reason, speciesIds: [a.id, b.id], key, floor: rule.verdictFloor });
+      out.flag(`rule:${key}`);
+      continue;
+    }
     let kind: IncidentRisk['kind'];
     let actor = A;
     let target = B;
@@ -833,7 +862,7 @@ function applyExceptionRules(A: CompatMember, B: CompatMember, ctx: CompatContex
         key,
         floor: rule.verdictFloor,
         probability: weekly(p),
-        mitigation: rule.mitigatedBy?.length ? `Reduced (not removed) by ${joinAnd(rule.mitigatedBy.map((x) => x.replace('_', ' ')))}.` : undefined,
+        mitigation: rule.mitigatedBy?.length ? mitigationText(rule.mitigatedBy) : undefined,
       });
     }
     out.incident({
@@ -908,7 +937,7 @@ function directional(A: CompatMember, B: CompatMember, ctx: CompatContext, out: 
       // No tag, but the prey plainly fits in the mouth of a meat-eater (ambush predators swallow slender fish whole).
       const predatory = a.temperament === 'predatory';
       const p = mitigate((predatory ? 0.25 : 0.07) * df, mitFactor(['cover', 'hides', 'tank_size'], ctx, A, B));
-      add(predatory ? 'warning' : 'caution', 'predation', `At ${b.adultSizeCm} cm, ${plural(b)} are small enough to fit in ${the(a)}'s mouth.`, { probability: weekly(p) });
+      add(predatory ? 'warning' : 'caution', 'predation', `At ${b.adultSizeCm} cm, ${plural(b)} are small enough to fit in ${the(a)}’s mouth.`, { probability: weekly(p) });
       out.incident({ kind: 'predation', actorSpeciesId: a.id, targetSpeciesId: b.id, actorIds, targetIds, perDay: p, lethal: true, maxPreyCm: Math.max(mouth * 1.15, b.adultSizeCm), text: `${cap(the(a))} may swallow ${plural(b)}.` });
       adultPredation = true;
       out.flag(`pred:${dir}`);
@@ -946,7 +975,7 @@ function directional(A: CompatMember, B: CompatMember, ctx: CompatContext, out: 
     const p = mitigate(a.finNipper * 0.35 * (0.4 + 0.6 * zoneOverlap(a, b)), mitFactor(['sight_breaks', 'cover'], ctx, A, B));
     const sev: Sev = capByRule(out, key, a.finNipper >= 0.5 ? 'warning' : a.finNipper >= 0.25 ? 'caution' : 'info');
     add(sev, 'aggression', `${Subj(a)} may nip the long fins of ${plural(b)}.`, { probability: weekly(p), mitigation: 'Choose short-finned tank mates instead.' });
-    out.incident({ kind: 'fin_nip', actorSpeciesId: a.id, targetSpeciesId: b.id, actorIds, targetIds, perDay: p, lethal: false, text: `${cap(the(a))} is nipping at the ${lower(b.commonName)}'s fins.` });
+    out.incident({ kind: 'fin_nip', actorSpeciesId: a.id, targetSpeciesId: b.id, actorIds, targetIds, perDay: p, lethal: false, text: `${cap(the(a))} is nipping at the ${lower(b.commonName)}’s fins.` });
     out.flag(`fin:${dir}`);
   }
 
@@ -954,8 +983,8 @@ function directional(A: CompatMember, B: CompatMember, ctx: CompatContext, out: 
   if ((b.preyTags ?? []).includes('gills_external') && a.category === 'fish' && !out.has(`gill:${dir}`) && ((a.finNipper ?? 0) >= 0.05 || a.aggression >= 0.25 || a.feedingStyle === 'picker')) {
     const sev: Sev = a.finNipper >= 0.3 || a.aggression >= 0.5 ? 'warning' : 'caution';
     const p = mitigate(0.08 + a.finNipper * 0.4 + a.aggression * 0.2, mitFactor(['cover', 'sight_breaks'], ctx, A, B));
-    add(sev, 'aggression', `${Subj(a)} may pick at ${the(b)}'s delicate external gills.`, { probability: weekly(p) });
-    out.incident({ kind: 'gill_nip', actorSpeciesId: a.id, targetSpeciesId: b.id, actorIds, targetIds, perDay: p, lethal: false, text: `${cap(the(a))} is picking at the ${lower(b.commonName)}'s gills.` });
+    add(sev, 'aggression', `${Subj(a)} may pick at ${the(b)}’s delicate external gills.`, { probability: weekly(p) });
+    out.incident({ kind: 'gill_nip', actorSpeciesId: a.id, targetSpeciesId: b.id, actorIds, targetIds, perDay: p, lethal: false, text: `${cap(the(a))} is picking at the ${lower(b.commonName)}’s gills.` });
     out.flag(`gill:${dir}`);
   }
 
@@ -1030,13 +1059,13 @@ function tankChecks(members: CompatMember[], ctx: CompatContext, out: Collector)
     out.add({
       severity: 'warning',
       category: 'tank',
-      text: `When grown, these animals would need ${Math.round(load * 100)}% of this tank's capacity — expect unstable water and constant stress.`,
+      text: `When grown, these animals would need ${Math.round(load * 100)}% of this tank’s capacity — expect unstable water and constant stress.`,
       speciesIds: ids,
       key: 'tank',
       mitigation: ctx.processCapUnits < ctx.spaceCapUnits ? 'A bigger filter helps; fewer animals help more.' : 'Use a larger tank or keep fewer animals.',
     });
   else if (load > 0.9)
-    out.add({ severity: 'caution', category: 'tank', text: `This stocking is near the tank's limit once everyone is full-grown (${Math.round(load * 100)}%).`, speciesIds: ids, key: 'tank' });
+    out.add({ severity: 'caution', category: 'tank', text: `This stocking is near the tank’s limit once everyone is full-grown (${Math.round(load * 100)}%).`, speciesIds: ids, key: 'tank' });
   const territoryRoom = Math.max(1, Math.floor(ctx.gallons / 10) + 1);
   if (territorial > territoryRoom && members.length > 1)
     out.add({

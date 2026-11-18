@@ -15,6 +15,10 @@ describe('convertTempText differences vs absolute temperatures', () => {
     expect(f('Chill the water by ~2 °C to trigger courtship.')).toBe('Chill the water by ~4 °F to trigger courtship.');
     expect(f('A cool water change (~2 °C cooler) often triggers spawning.')).toBe('A cool water change (~4 °F cooler) often triggers spawning.');
     expect(f('the new water shifted the temperature by 0.4 °C')).toBe('the new water shifted the temperature by 0.7 °F');
+    // Audit 2026-11-17 (review of D8): a fan's cooling (src/sim/care/fit.ts) is a difference too
+    expect(f('Cools 1–2 °C by evaporation — a mild fix for a slightly warm tank, not a chiller.')).toBe('Cools 2–4 °F by evaporation — a mild fix for a slightly warm tank, not a chiller.');
+    expect(f('Cools about 1.5 °C — enough to keep bettas under 30 °C. Expect to top off more often.')).toBe('Cools about 3 °F — enough to keep bettas under 86 °F. Expect to top off more often.');
+    expect(f('Cools only about 1 °C: bettas need 30 °C or less')).toBe('Cools only about 2 °F: bettas need 86 °F or less');
   });
 
   it('keeps absolute temperatures absolute, even after "~" or before "is warmer"', () => {

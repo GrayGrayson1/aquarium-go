@@ -97,9 +97,17 @@ export function ErrorNote({ children }: { children: ReactNode }) {
   );
 }
 
-/** The network error (§13.2): the game itself keeps running. */
-export function NetworkError() {
-  return <ErrorNote>{C.errorNetwork}</ErrorNote>;
+/** The network error (§13.2): the game itself keeps running. Audit I6: `onRetry` asks again (a Try again button). */
+export function NetworkError({ onRetry }: { onRetry?: () => void } = {}) {
+  if (!onRetry) return <ErrorNote>{C.errorNetwork}</ErrorNote>;
+  return (
+    <ErrorNote>
+      {C.errorNetworkRetry}{' '}
+      <Button size="sm" variant="ghost" onClick={onRetry} data-testid="net-retry">
+        {C.tryAgain}
+      </Button>
+    </ErrorNote>
+  );
 }
 
 /** chunk 8 (ADR-0040 decision 2) — a club's invite link, which is also its sign-up link. */
@@ -163,6 +171,28 @@ export function InviteLinkRow({ code }: { code: string }) {
         <Copy size={13} aria-hidden /> {C.copyLink}
       </button>
       {manual && <input className="ag-input so-input so-strip__url" readOnly value={url} aria-label={C.inviteLink(code)} onFocus={(e) => e.currentTarget.select()} autoFocus data-testid="social-invite-url" />}
+    </div>
+  );
+}
+
+/** Audit 2026-11-17, I13 — the player's own friend code at the top of Friends (it was only in Settings › Account), with Copy. */
+export function MyFriendCode({ code }: { code: string }) {
+  const [manual, setManual] = useState(false);
+  const copy = async () => {
+    const ok = await platform()
+      .clipboard.write(code)
+      .catch(() => false);
+    if (ok) useUI.getState().toast(C.codeCopied, 'success');
+    setManual(!ok);
+  };
+  return (
+    <div className="so-strip so-strip--invite" data-testid="social-my-code">
+      <UserPlus size={14} aria-hidden className="so-strip__icon" />
+      <span className="so-strip__text">{C.myFriendCode(code)}</span>
+      <button type="button" className="pn-link so-strip__link" onClick={() => void copy()} data-testid="social-copy-code">
+        <Copy size={13} aria-hidden /> {C.copyCode}
+      </button>
+      {manual && <input className="ag-input so-input so-strip__url" readOnly value={code} aria-label={C.myFriendCode(code)} onFocus={(e) => e.currentTarget.select()} autoFocus />}
     </div>
   );
 }
@@ -343,14 +373,14 @@ function LbRow({ row, kind }: { row: LeaderboardRow; kind: LeaderboardKind }) {
 }
 
 /** This week's leaderboard: Collection value · Prismatics · Show wins, the top four and the player's own row. */
-export function Leaderboard({ wide }: { wide?: boolean }) {
+export function Leaderboard({ wide, quiet, retryKey = 0 }: { wide?: boolean; /** audit I6: the Overview's one notice says it */ quiet?: boolean; /** asked again when it changes */ retryKey?: number }) {
   const [kind, setKind] = useState<LeaderboardKind>('collection_value');
-  const [q] = useSocialQuery(() => socialService().leaderboard(kind), [kind]);
+  const [q, reload] = useSocialQuery(() => socialService().leaderboard(kind), [kind, retryKey]);
   return (
     <SoCard title={C.leaderboardTitle} icon={<Trophy size={14} />} className={clsx('so-lb', wide && 'so-lb--wide')} testId="social-leaderboard">
       <Seg<LeaderboardKind> label={C.leaderboardTitle} value={kind} onChange={setKind} size="sm" className="so-lb__seg" testIdPrefix="social-lb-" items={LEADERBOARD_KINDS.map((k) => ({ id: k, label: C.lbKinds[k] }))} />
       {q.state === 'loading' && <Skeleton rows={5} />}
-      {q.state === 'error' && <NetworkError />}
+      {q.state === 'error' && !quiet && <NetworkError onRetry={reload} />}
       {q.state === 'ok' && <LeaderboardRows kind={kind} rows={q.data.rows} me={q.data.me} />}
     </SoCard>
   );

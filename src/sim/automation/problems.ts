@@ -16,7 +16,7 @@ import { BRINE, INFUSORIA, VEGETABLES } from '@/data/catalog/machines';
 import { emitEvent } from '../context';
 import { dayOf } from '../time';
 import { nextStockCheck, stockManager, type StockForecast } from '../staff/work';
-import { lineStatus, restartDay } from '../production';
+import { lineNoticeText, lineStatus, restartDay } from '../production';
 import { batchGal, freshCap, prepRate } from './reserve';
 import { isHeld } from './hold';
 import { waterRoomRun } from './forecast';
@@ -63,10 +63,21 @@ export interface LineProblem {
   tone: ProblemTone;
   lineId: string;
   name: string;
-  restartDay: number;
+  /** Null when no day can be promised: a full quarantine tank holds the line up until the player makes room (H1). */
+  restartDay: number | null;
 }
 
-export type Problem = SupplyProblem | LineProblem;
+/** Audit 2026-11-17 (H3): a line stopped by a missing parent or tank (it never restarts by itself). */
+export interface BrokenLineProblem {
+  kind: 'line_broken';
+  tone: ProblemTone;
+  lineId: string;
+  name: string;
+  /** The line's notice: what's missing and what to do. */
+  text: string;
+}
+
+export type Problem = SupplyProblem | LineProblem | BrokenLineProblem;
 
 const stockOf = (state: GameState, id: string) => Math.max(0, Math.floor(state.inventory.foods[id] ?? 0));
 
@@ -158,8 +169,15 @@ export function automationProblems(state: GameState, hour = state.clock.hour, kn
   }
 
   for (const line of state.production?.lines ?? []) {
-    if (lineStatus(line) !== 'waiting' || state.automation?.lineWait?.[line.id] !== undefined) continue;
-    out.push({ kind: 'line', tone: 'watch', lineId: line.id, name: line.name, restartDay: restartDay(state, line) });
+    if (lineStatus(line) === 'paused') {
+      out.push({ kind: 'line_broken', tone: 'watch', lineId: line.id, name: line.name, text: lineNoticeText(state, line) }); // Audit 2026-11-17 (H3)
+      continue;
+    }
+    if (lineStatus(line) !== 'waiting') continue;
+    const day = restartDay(state, line);
+    // a decided wait is a plain status, unless a full quarantine tank means it never ends by itself (Audit 2026-11-17, H1)
+    if (state.automation?.lineWait?.[line.id] !== undefined && day !== null) continue;
+    out.push({ kind: 'line', tone: 'watch', lineId: line.id, name: line.name, restartDay: day });
   }
   const rank = (p: Problem) => (p.tone === 'danger' ? 0 : 1);
   return out.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p) - rank(b.p) || a.i - b.i).map((x) => x.p);
@@ -197,8 +215,11 @@ export function problemCounts(list: readonly Problem[]): { total: number; danger
 /** Lines whose pause the player chose to wait out (or added a quarantine tank for), still waiting: "Resumes Day {d}". */
 export function decidedLines(state: GameState): { lineId: string; name: string; restartDay: number }[] {
   const out: { lineId: string; name: string; restartDay: number }[] = [];
-  for (const line of state.production?.lines ?? [])
-    if (lineStatus(line) === 'waiting' && state.automation?.lineWait?.[line.id] !== undefined) out.push({ lineId: line.id, name: line.name, restartDay: restartDay(state, line) });
+  for (const line of state.production?.lines ?? []) {
+    if (lineStatus(line) !== 'waiting' || state.automation?.lineWait?.[line.id] === undefined) continue;
+    const day = restartDay(state, line);
+    if (day !== null) out.push({ lineId: line.id, name: line.name, restartDay: day }); // else it's a problem again (H1)
+  }
   return out;
 }
 
@@ -206,16 +227,16 @@ export function decidedLines(state: GameState): { lineId: string; name: string; 
 export function saltOutText(state: GameState, p: SupplyProblem): string {
   const m = stockManager(state); // the name only: no dry run (PERF-004)
   const name = m ? m.name.split(' ')[0] : 'Your stock manager';
-  const lasts = p.shortDay !== undefined ? ` Salt water lasts until Day ${p.shortDay}.` : '';
+  const lasts = p.shortDay !== undefined ? ` At this rate, salt water lasts until about Day ${p.shortDay}.` : ''; // a forecast (Audit 2026-11-17, H22)
   switch (p.why) {
     case 'no_manager':
       return `No one reorders salt mix. Buy it, or hire a stock manager.${lasts}`;
     case 'orders_off':
-      return `${name}'s orders are switched off, so nobody reorders salt mix.${lasts}`;
+      return `${name}’s orders are switched off, so nobody reorders salt mix.${lasts}`;
     case 'cash':
-      return `${name} couldn't reorder salt mix: there isn't enough cash right now.${lasts}`;
+      return `${name} couldn’t reorder salt mix: there isn’t enough cash right now.${lasts}`;
     default:
-      return `${name} couldn't reorder salt mix — today's stock budget is spent.${lasts}`;
+      return `${name} couldn’t reorder salt mix — today’s stock budget is spent.${lasts}`;
   }
 }
 

@@ -632,6 +632,14 @@ export interface ShopOffer {
   label?: string;
   /** lane:market — price per animal when buying only part of a group (creatureIndexes). */
   unitPrice?: number;
+  /**
+   * Audit 2026-11-17 (F6, the owner's choice): the player has this offer open, so it stays in the shop past its
+   * `expiresHour` (and the morning restock) until this game hour. Renewed while the offer is open, like a bid's
+   * counter hold; released on close. Optional: absent, nothing is held.
+   */
+  holdUntilHour?: number;
+  /** When the current look began; the whole hold is capped from here (the bid hold's MAX_NEGOTIATION_HOLD_HOURS). */
+  holdStartHour?: number;
 }
 
 /** lane:market — a temporary demand swing for one species (shown in the market UI). */
@@ -975,7 +983,9 @@ export interface GameState {
    * (see src/persistence/offline.ts). While set, the sim is under a "maintenance grace period":
    * nothing may die (floor creature health at GRACE_HEALTH_FLOOR = 20, never set status 'dead'),
    * creatures receive minimal rations (hunger capped at GRACE_MAX_HUNGER = 60 without using inventory),
-   * and equipment should not fail. Core also enforces this as a safety net after every catch-up chunk.
+   * and equipment does not fail (src/sim/water/step.ts, PERSIST-012). After every catch-up chunk core's safety net
+   * (src/sim/catchUp.ts) also revives anything that died and floors health, hunger and the water; it does not cover
+   * equipment (B-125).
    */
   offlineGrace?: boolean;
   /** lane:staff — hired keepers, stock manager and docents (src/sim/staff). Absent in old saves; created lazily once unlocked. */
@@ -1393,6 +1403,13 @@ export interface ProductionBatch {
   released?: boolean;
   /** The line's listings for this batch that are still open, and those already counted in the stats. */
   listingIds?: Id[];
+  /** Times what didn't sell was listed again (each 10 % cheaper; Audit 2026-11-17, H1). Absent: never. */
+  relists?: number;
+  /**
+   * What the listing that just ended unsold asked a head, by part (the juveniles' lot, the adults'): a relisting never
+   * asks more (Audit 2026-11-17, H1: young grow while listed). Only with `relists`. Absent: the price ladder alone.
+   */
+  lastAsk?: { juveniles?: number; adults?: number };
 }
 
 /** lane:production — what a paused line is missing (ADR-0025 decision 10): a parent, or a stage's tank. */

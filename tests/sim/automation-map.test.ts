@@ -36,4 +36,15 @@ describe('AUTO-040: map areas', () => {
     expect(shown.length).toBe(4);
     expect(more).toBe(list.length - 4);
   });
+
+  it('Audit 2026-11-17 (H25): tanks that need you show before the rest (danger, then watch), and say so', () => {
+    const { g, tanks } = lineFarm(17);
+    const many = Array.from({ length: 10 }, (_, i) => createTank(g, 'g10', 'freshwater_tropical', { cycled: true, placement: { x: -12 + i, z: 6, rotY: 0 }, name: `Show ${i}` }));
+    for (const t of many) t.cache.status = 'good';
+    many[8].cache.status = 'watch';
+    many[9].cache.status = 'danger';
+    const a = mapAreas(g);
+    const { shown } = areaTiles([tanks.keep, ...many], 4, a.lineTanks);
+    expect(shown.map((t) => t.name)).toEqual(['Show 0', 'Show 8', 'Show 9', tanks.keep.name].sort((x, y) => [tanks.keep.name, ...many.map((t) => t.name)].indexOf(x) - [tanks.keep.name, ...many.map((t) => t.name)].indexOf(y)));
+  });
 });

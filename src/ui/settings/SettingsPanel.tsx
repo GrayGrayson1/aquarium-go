@@ -38,7 +38,7 @@ import { sfx } from '@/audio/sfx';
 import { Sheet } from '../common/Sheet';
 import { Button, Row, Segmented, Slider, Tabs, Toggle, Section, Modal } from '../kit';
 import { usePrefs } from '../common/prefs';
-import { listSlots, saveNow, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, timeAgo, isSameGame, loadKeepAdvice, freeSaveSlot, type SaveMeta } from '../common/saves';
+import { listSlots, saveNow, saveBeforeLeaving, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, timeAgo, isSameGame, loadKeepAdvice, freeSaveSlot, type SaveMeta } from '../common/saves';
 import { SaveRow } from '../screens/LoadDialog';
 import { useShell } from '../common/shellStore';
 import { buildDetail, versionLabel } from '../common/version';
@@ -185,10 +185,11 @@ function DisplayTab() {
         <Row label="Exact water values" description="Show numbers, not just Good / Watch / Danger." icon={<FlaskConical size={16} />}>
           <Toggle label="Exact water values" checked={s.advancedWater} onChange={(v) => up({ advancedWater: v })} />
         </Row>
-        <Row label="Autosave" description="Saves quietly every few minutes and when you leave." icon={<Save size={16} />}>
+        {/* audit 2026-11-17, I2: off, nothing saves on leaving either (the browser asks first), so the words say so */}
+        <Row label="Autosave" description={s.autosave ? 'Saves quietly every few minutes and when you leave.' : 'Off: nothing saves on its own. Use Save now to keep your progress.'} icon={<Save size={16} />}>
           <Toggle label="Autosave" checked={s.autosave} onChange={(v) => up({ autosave: v })} />
         </Row>
-        <Row label="Guide hints" description="Show the tutorial coach card." icon={<Lightbulb size={16} />}>
+        <Row label="Guide hints" description="Show the guide card. A new game always starts with it on." icon={<Lightbulb size={16} />}>
           <Toggle label="Guide hints" checked={s.showTutorialHints} onChange={(v) => up({ showTutorialHints: v })} />
         </Row>
         {inGameNow() && (
@@ -199,7 +200,7 @@ function DisplayTab() {
             </Button>
           </Row>
         )}
-        <Row label="Fade interface while watching" description="The HUD softly fades after a few quiet seconds in tank view. Move the pointer to bring it back." icon={<Eye size={16} />}>
+        <Row label="Fade interface while watching" description="The buttons fade after a few quiet seconds in tank view. Move the pointer or tap to bring them back." icon={<Eye size={16} />}>
           <Toggle label="Fade interface while watching" checked={calm} onChange={(v) => usePrefs.getState().update({ calmHud: v })} />
         </Row>
         <Row label="Party mode microphone" description="Let party lights follow your own music. Asked only when party mode starts." icon={<Mic size={16} />}>
@@ -362,10 +363,11 @@ function SoloSavesTab() {
               <Download size={14} /> Export save file
             </Button>
           )}
-          <Button size="sm" onClick={() => fileRef.current?.click()}>
-            <Upload size={14} /> Import into
-          </Button>
+          {/* audit 2026-11-17, I22: the slot is chosen first, and the button names it (the picker opened before the choice) */}
           <Segmented size="sm" label="Import slot" value={importSlot} onChange={setImportSlot} items={SAVE_SLOTS.filter((s) => s !== 'auto').map((s) => ({ id: s, label: slotLabel(s).replace('Slot ', '#') }))} />
+          <Button size="sm" onClick={() => fileRef.current?.click()}>
+            <Upload size={14} /> Import into {slotLabel(importSlot)}
+          </Button>
           <input
             ref={fileRef}
             type="file"
@@ -389,7 +391,8 @@ function SoloSavesTab() {
           <Button
             variant="danger"
             onClick={async () => {
-              await saveNow('auto', false);
+              // audit I10: a save that didn't land keeps the player here, and the toast says why
+              if (!(await saveBeforeLeaving())) return;
               sfx('close');
               useUI.getState().set({ panel: null, screen: 'title', selectedCreatureId: null, photoMode: false, partyMode: false, hudHidden: false, tool: 'none' });
             }}
@@ -402,7 +405,7 @@ function SoloSavesTab() {
         open={confirm?.kind === 'load'}
         onClose={() => setConfirm(null)}
         title={`Load ${slotLabel(confirm?.slot ?? '')}?`}
-        subtitle={sameAsRunning ? `This is an earlier copy of the aquarium you are playing. Your current progress (Day ${runningDay}) stays listed as “Previous autosave” until you switch again.` : 'Your current game is saved to Autosave first.'}
+        subtitle={sameAsRunning ? `This is an earlier copy of the aquarium you are playing. Your current progress (Day ${runningDay}) stays listed as “Previous autosave”.` : 'Your current game is saved to Autosave first.'}
         width={540}
         testId="load-confirm"
         actions={
@@ -510,15 +513,21 @@ function SoloSavesTab() {
   );
 }
 
-/** chunk 6 (0.5 spec §16, §21's release step; ADR-0034 decision 8) — Settings › About's "What’s new in 0.5". */
-export const WHATS_NEW_05 = [
-  'Links to every screen, and a tab bar on phones',
-  'Shop filters: Prismatic only and Rare genes',
-  'New betta genes: Cambodian and Metallic',
-  'Auto-feed and Auto-clean on the tank card',
-  'Notifications while the game is open',
-  'Production lines in Livestock',
-  'Operations: the Water room and the Live food room',
+/**
+ * chunk 6 (0.5 spec §16, §21's release step; ADR-0034 decision 8) — Settings › About's "What’s new". The audit of
+ * 2026-11-17 (findings B17 and J12; ADR-0056 decision 2): it still listed 0.5's seven lines in 0.9.2, so it now
+ * names the release it describes and lists what this one brings; each release that changes what players do
+ * replaces the lines and the version beside them.
+ */
+export const WHATS_NEW_VERSION = '0.10';
+export const WHATS_NEW = [
+  'Your first companion never dies of old age',
+  'A little food from the club if you run out of food and money',
+  'Move a whole group of animals at once',
+  'Sell spare equipment, and take down a tank you don’t need',
+  'Production lines sell by themselves, and keepers feed fry',
+  'Shop offers wait while you’re looking',
+  'Clearer advice everywhere: what’s wrong, why, and what to do',
 ] as const;
 
 function AboutTab() {
@@ -538,9 +547,9 @@ function AboutTab() {
           icon={<Tag size={16} />}
         />
       </Section>
-      <Section title="What’s new in 0.5">
+      <Section title={`What’s new in ${WHATS_NEW_VERSION}`}>
         <ul className="ag-whatsnew" data-testid="settings-whats-new">
-          {WHATS_NEW_05.map((line) => (
+          {WHATS_NEW.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
@@ -578,11 +587,12 @@ function AboutTab() {
 
 function SaveNowFooter() {
   const game = useGame((s) => s.game);
+  const autosave = useSettings((s) => s.autosave);
   const [busy, setBusy] = useState(false);
   if (!game || game.isShowcase) return null;
   return (
     <div className="ag-row" style={{ gap: 10 }}>
-      <span className="ag-grow ag-small ag-muted">Autosave keeps your progress. Save now any time.</span>
+      <span className="ag-grow ag-small ag-muted">{autosave ? 'Autosave keeps your progress. Save now any time.' : 'Autosave is off. Save now to keep your progress.'}</span>
       <Button
         variant="primary"
         size="sm"

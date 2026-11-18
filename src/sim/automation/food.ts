@@ -16,7 +16,7 @@
 import type { Clutch, EquipmentInstance, FoodRoomState, GameState, Tank } from '@/types';
 import { BRINE, DOSER, EGGS_SUPPLY, FOOD_ROOM, INFUSORIA, VEGETABLES } from '@/data/catalog/machines';
 import { getEquipmentDef } from '@/data/catalog/equipment';
-import { getFoodDef } from '@/data/catalog/foods';
+import { getFoodDef, FOOD_TAG_NAMES } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3 review): FOOD_TAG_NAMES
 import { findSpecies } from '@/data/species';
 import { emitEvent } from '../context';
 import { feedTank } from '../care';
@@ -27,7 +27,7 @@ import { asStaff } from '../staff/common';
 import { SALT_PRICE_PER_KG } from '../economy/purchases';
 import { isHeld } from './hold';
 import { dayWater, today } from './reserve';
-import { SALT_KG_PER_GAL, drawSalt, waterRoom } from './water';
+import { SALT_KG_PER_GAL, drawSalt, saltWaterReady, waterRoom } from './water';
 
 export type CultureKind = 'cone' | 'jar';
 
@@ -58,11 +58,19 @@ export function storeCap(room: FoodRoomState, foodId: string): number {
 
 const stock = (state: GameState, id: string) => Math.max(0, Math.floor(state.inventory.foods[id] ?? 0));
 
-/** A culture's state for the screens: growing (0..1 done), ready but waiting for room ("Full"), held, or empty. */
-export function cultureState(state: GameState, room: FoodRoomState, kind: CultureKind, i: number, hour = state.clock.hour): { status: 'growing' | 'full' | 'held' | 'empty'; progress: number; readyHour: number | null } {
+/**
+ * A culture's state for the screens: growing (0..1 done), ready but waiting for room ("Full"), held, empty, or (a cone
+ * with eggs in stock) waiting for salt water (Audit 2026-11-17, H14: it said "needs eggs" with 30 scoops in stock).
+ */
+export function cultureState(state: GameState, room: FoodRoomState, kind: CultureKind, i: number, hour = state.clock.hour): { status: 'growing' | 'full' | 'held' | 'empty' | 'no_salt_water'; progress: number; readyHour: number | null } {
   const c = (kind === 'cone' ? room.cones : room.jars)[i];
   const spec = SPEC[kind];
-  if (!c || c.startedHour === null) return { status: isHeld(state, 'food') ? 'held' : 'empty', progress: 0, readyHour: null };
+  if (!c || c.startedHour === null) {
+    if (isHeld(state, 'food')) return { status: 'held', progress: 0, readyHour: null };
+    const water = waterRoom(state);
+    const noSalt = kind === 'cone' && (state.inventory.brineShrimpEggs ?? 0) >= 1 && (!water || saltWaterReady(state, water, hour) + 1e-9 < FOOD_ROOM.coneSaltGal);
+    return { status: noSalt ? 'no_salt_water' : 'empty', progress: 0, readyHour: null };
+  }
   const readyHour = c.startedHour + spec.hours;
   const progress = Math.max(0, Math.min(1, (hour - c.startedHour) / spec.hours));
   if (hour < readyHour) return { status: 'growing', progress, readyHour };
@@ -150,6 +158,18 @@ export function doserNeeds(state: GameState, tank: Tank, hour = state.clock.hour
     out.push({ clutch: cl, foods, servings: Math.max(1, Math.ceil(cl.count / DOSER.youngPerServing)) });
   }
   return out;
+}
+
+/**
+ * Audit 2026-11-17 (H15): the live foods a doser's young need and none of which is in stock ("live baby brine shrimp
+ * or infusoria"), or null when every brood has something; the screens say "the young go hungry" instead of "Feeding".
+ */
+export function doserShortWords(state: GameState, tank: Tank, hour = state.clock.hour): string | null {
+  const dry = doserNeeds(state, tank, hour).filter((n) => !n.foods.some((f) => stock(state, f) >= 1));
+  if (!dry.length) return null;
+  // Audit 2026-11-17 (J3 review): the food-name table's words, as the keepers say them ("live baby brine shrimp")
+  const words = [...new Set(dry.flatMap((n) => n.foods))].map((f) => (f === BRINE ? FOOD_TAG_NAMES.baby_brine : f === INFUSORIA ? FOOD_TAG_NAMES.infusoria : getFoodDef(f)?.name.toLowerCase() ?? f));
+  return words.join(' or ');
 }
 
 /**

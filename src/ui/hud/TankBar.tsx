@@ -17,9 +17,12 @@ import { useShell } from '../common/shellStore';
 import { safe } from '../common/safe';
 import { tutorialFlag } from '../common/actions';
 import { PLACEMENT_TOOLS, useDockedCard } from './cardDock';
-import { tankStatusReason } from '../common/tankStatus';
+import { tankStatusReason, TANK_STATUS_WORD } from '../common/tankStatus'; // Audit 2026-11-17 (J10): TANK_STATUS_WORD
 import { nearestAttention, tankAttention, ATTENTION_WORD } from '../common/notify'; // lane:notify
 import { AttnDot, useTankAttentionLevel } from './AttnDot'; // lane:notify
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
+import { convertTempText } from '../common/format'; // Audit 2026-11-17 (J1)
+import { openPanel } from './Dock'; // Audit 2026-11-17 (G28 review)
 
 export function cycleTank(dir: 1 | -1) {
   const g = useGame.getState().game;
@@ -90,7 +93,8 @@ function useThrottledReason(tankId: string, status: string): { reason: string; e
       // lane:notify — what else needs a look beyond the status line (food running low, broken or idle gear)
       const att = g && tankId ? safe('tankAttention', () => tankAttention(g, tankId), null) : null;
       const said = reason.split('\n');
-      const extra = (att?.items ?? []).filter((i) => !said.includes(i.text)).map((i) => i.text);
+      const unit = useSettings.getState().tempUnit; // Audit 2026-11-17 (J1): gear verdicts carry the sim's °C
+      const extra = (att?.items ?? []).filter((i) => !said.includes(i.text)).map((i) => convertTempText(i.text, unit) ?? i.text);
       const gear = !!att?.items.some((i) => (i.source === 'gear' || i.source === 'fit') && !said.includes(i.text));
       setR((p) => (p.reason === reason && p.gear === gear && p.extra.join('\n') === extra.join('\n') ? p : { reason, extra, gear }));
     };
@@ -113,11 +117,12 @@ function useOtherTankCue(focused: string | null): { dir: 1 | -1; level: 'watch' 
 }
 
 const STATUS_ICON = { good: CircleCheck, watch: TriangleAlert, danger: OctagonAlert } as const;
-const STATUS_WORD = { good: 'Healthy', watch: 'Watch', danger: 'Danger' } as const;
+const STATUS_WORD = TANK_STATUS_WORD; // Audit 2026-11-17 (J10): one table
 
 export function TankBar() {
   const focused = useUI((s) => s.focusedTankId);
   const view = useUI((s) => s.view);
+  const placing = useUI((s) => s.tool === 'tank_place'); // Audit 2026-11-17 (G28 review)
   const tankCardOpen = useDockedCard() === 'tank';
   const info = useGame(
     useShallow((s) => {
@@ -163,7 +168,19 @@ export function TankBar() {
           {arrowCue(-1) && <AttnDot level={arrowCue(-1)!.level} className="ag-switcher__attn" testId="tank-prev-attn" />}
         </button>
         <div className="ag-switcher__label" aria-live="polite">
-          <span className="ag-switcher__name" title={id ? name : undefined}>{id ? name : 'No tank'}</span>
+          <span className="ag-switcher__name" title={id ? name : undefined}>
+            {id ? (
+              name
+            ) : n === 0 && !placing ? (
+              // Audit 2026-11-17 (G28): with every tank gone, the way to the next one (review: through openPanel, as every
+              // way into Build goes, and not while a tank is being placed or while other tanks exist)
+              <button type="button" className="ag-switcher__buy" data-testid="tank-buy-first" onClick={() => openPanel('build', 'tab:tanks')}>
+                No tank · Buy one
+              </button>
+            ) : (
+              'No tank'
+            )}
+          </span>
           <span className={clsx('ag-switcher__status', `is-${st}`)} title={why || undefined} data-testid="tank-status">
             <Icon size={12} aria-hidden /> {STATUS_WORD[st]}
             {food && (

@@ -161,7 +161,7 @@ describe('breeding: other systems complete', () => {
     expect(m.repro.stage).toBe('brooding');
     const [cl] = Object.values(state.clutches);
     expect(cl.stage).toBe('in_pouch');
-    expect(breedingStatus(state, m.id)?.label).toMatch(/Mouthbrooding/);
+    expect(breedingStatus(state, m.id)?.label).toMatch(/^Holding [\d,]+ eggs? in his mouth$/); // audit E15: plain words (was 'Mouthbrooding')
     run(state, 200, ['mysis', 'baby_brine', 'copepod_live'], { [tank.id]: 26 }, () => state.clutches[cl.id]?.stage === 'fry', 2);
     expect(state.clutches[cl.id]?.stage).toBe('fry');
     expect(m.repro.stage).toBe('resting');

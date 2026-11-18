@@ -1,14 +1,15 @@
 /**
  * Player actions on creatures. OWNER: lane "lifecycle". Signatures are contracts (UI calls them through `mutate`).
  */
-import type { GameState } from '@/types';
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
+import type { GameState, SpeciesDefinition, Tank } from '@/types';
 import type { ActionResult } from '../care';
 import { findSpecies } from '@/data/species';
 import { environmentGate } from '../compat';
 import { emitEvent } from '../context';
 import { applyAgeing, lifeMeta, pushHistory, throttle } from './step';
 import { tapSensitivityMul } from './personality';
-import { ageDaysOf, gallonsNeededNow } from './growth';
+import { ageDaysOf, gallonsNeededNow, SLIGHTLY_SMALL_TANK } from './growth';
 import { livingIn, tankGallons } from './welfare';
 import { touchResidents } from '../residents'; // lane:perf2
 import { settleTanks } from '../settle'; // B-127
@@ -37,7 +38,7 @@ export function moveCreature(state: GameState, creatureId: string, tankId: strin
   // B-127: both tanks catch up first, so the move happens at one world time; then the checks see the animal as it is
   // now (it may have died during the owed hours: the chunk 4 review)
   settleTanks(state, [c.tankId, tankId]);
-  if (c.status === 'dead' || c.status === 'sold') return { ok: false, message: `${c.name} can't be moved.` };
+  if (c.status === 'dead' || c.status === 'sold') return { ok: false, message: `${c.name} can’t be moved.` };
   if (c.tankId === tankId) return { ok: true, message: `${c.name} is already in ${tank.name}.` };
   const sp = findSpecies(c.speciesId);
   if (!sp) return { ok: false, message: 'Unknown species.' };
@@ -48,7 +49,7 @@ export function moveCreature(state: GameState, creatureId: string, tankId: strin
     /* compat lane mid-edit: fall back to the plain environment check above */
   }
   if (!gate.ok) {
-    return { ok: false, message: gate.reason ?? `${c.name} is a ${sp.environment} animal and can't live in a ${tank.environment} tank.` };
+    return { ok: false, message: gate.reason ?? `${c.name} is a ${sp.environment} animal and can’t live in a ${tank.environment} tank.` };
   }
   const from = c.tankId ? state.tanks[c.tankId]?.name ?? 'another tank' : 'holding';
   const hour = state.clock.hour;
@@ -61,12 +62,21 @@ export function moveCreature(state: GameState, creatureId: string, tankId: strin
   m.settledSinceHour = hour;
   delete m.targetFedUntil;
   pushHistory(c, { hour, kind: 'moved', text: `Moved from ${from} to ${tank.name}.` });
+  return { ok: true, message: `Moved ${c.name} to ${tank.name}.${moveHeadsUp(sp, tank) ?? ' Give it a little while to settle in.'}` };
+}
+
+/**
+ * The space warning a move into this tank carries (with its leading space), or null when the tank is big enough. Audit
+ * 2026-11-17 (D4): a little small isn't a heads-up; (D2) the group move gives it once, and tells it from a note.
+ */
+export function moveHeadsUp(sp: SpeciesDefinition, tank: Tank): string | null {
   const need = gallonsNeededNow(sp, sp.adultSizeCm);
-  const small = tankGallons(tank) < need;
-  return {
-    ok: true,
-    message: `Moved ${c.name} to ${tank.name}.${small ? ` Heads up: an adult ${sp.commonName.toLowerCase()} needs at least ${sp.recommendedMinTankGallons} gallons.` : ' Give it a little while to settle in.'}`,
-  };
+  return tankGallons(tank) < need * SLIGHTLY_SMALL_TANK ? ` Heads up: an adult ${lowerName(sp.commonName)} needs at least ${sp.recommendedMinTankGallons} gallons.` : null;
+}
+
+/** What an ordinary move of one animal says (moveCreature's own words), so a group can tell a breeding note from it. */
+export function plainMoveMessage(name: string, sp: SpeciesDefinition, tank: Tank): string {
+  return `Moved ${name} to ${tank.name}.${moveHeadsUp(sp, tank) ?? ' Give it a little while to settle in.'}`;
 }
 
 /**
@@ -107,7 +117,7 @@ const INTERACTION = {
 function bondMilestone(name: string, level: number, invert: boolean): string {
   if (level >= 100) return `${name} and you share a real bond.`;
   if (level >= 75) return `${name} is completely at ease with you.`;
-  if (level >= 50) return invert ? `${name} carries on calmly whenever you're near.` : `${name} now recognises you and comes over when you're near.`;
+  if (level >= 50) return invert ? `${name} carries on calmly whenever you’re near.` : `${name} now recognises you and comes over when you’re near.`;
   return `${name} is getting used to you.`;
 }
 

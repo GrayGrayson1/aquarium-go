@@ -6,7 +6,7 @@
  *   npx vite-node scripts/shared-smoke.ts             the smoke
  *   npx vite-node scripts/shared-smoke.ts --measure   the speed and data numbers on the free instance
  *
- * It makes a throwaway account (the first club's invite code, read with the CLI, never printed) and a throwaway club
+ * It makes a throwaway account (the invite code of a throwaway club it makes first, never printed) and a throwaway club
  * with a shared shop (through `supabase db query --linked --project-ref <ref>`, scoped to the project), plays the shop
  * on the live server as that account — sign-in, the build's identity, commands, fingerprints, a refused pause, a photo,
  * a wrong token, a refreshed one, the save when it empties, and (chunk 14) the money pool: the account on Asks first
@@ -161,9 +161,13 @@ try {
   check('it runs on the database, not the stub', health?.stub === false);
   check('/health allows the game’s site (CORS)', cors === ORIGIN, String(cors));
 
-  // 1. a throwaway account in the first club
-  const code = admin("select invite_code from public.clubs where name = 'Aquarium Go Friends' order by created_at limit 1")[0]?.invite_code as string | undefined;
-  if (!code) throw new Error('no first club');
+  // 1. a throwaway account, signed up with the invite code of a throwaway club made for it (B-229: since chunk 18 the
+  // owner can delete any club, and the first one, "Aquarium Go Friends", whose code this used, is gone since
+  // 2026-11-02). The cleanup below deletes it with the others and checks nothing of it is left.
+  const signup = admin(`insert into public.clubs (name, blurb, initials, color_a, color_b, invite_code) values (${lit(`Smoke sign-up ${stamp % 100000}`)}, '', 'SS', '#2fc4b2', '#127567', public.new_invite_code('SMOKE')) returning id, invite_code`)[0];
+  if (signup?.id) clubs.push(signup.id as string);
+  const code = signup?.invite_code as string | undefined;
+  if (!code) throw new Error('no sign-up club');
   const up = await sb.auth.signUp({ email: `smoke-shop-${stamp}@example.com`, password: `Smoke-${stamp}-${Math.random().toString(36).slice(2)}`, options: { data: { invite_code: code, display_name: 'Smoke Shop', age_ok: true } } });
   user = up.data.user?.id ?? null;
   const token = up.data.session?.access_token;

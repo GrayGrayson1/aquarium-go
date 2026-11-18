@@ -27,7 +27,7 @@ import { offerPlaceAgain } from './placeAgain';
 import { forwardToCamera } from '../camera/cameraFX'; // chunk 19 (ADR-0055 decision 4, QOL-005)
 import { ghostControls } from './ghostControls'; // chunk 19 (QOL-005): the hint's turn and size buttons
 import { useGame, getGame } from '@/state/game';
-import { checkPlacement, placementLimits, maxScaleFor, SELL_BACK_FRACTION, fragEligibility, fragLabel } from '@/sim/aquascape';
+import { checkPlacement, placementLimits, maxScaleFor, decorSellValue, fragEligibility, fragLabel } from '@/sim/aquascape';
 import { tankDims } from '@/sim/tankSpace';
 import { fragStoreOffer } from '@/sim/economy'; // lane:frags
 import { sfx } from '@/audio/sfx';
@@ -586,7 +586,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
   const hoverDef = hoverInst ? getDecorDef(hoverInst.defId) : undefined;
   // lane:frags — frags sell at the store's frag price; living pieces show whether F can take a frag right now
   const g0 = hoverInst ? getGame() : null;
-  const hoverSell = hoverInst && hoverDef ? (hoverInst.frag && hoverInst.frag.grownHour === undefined && g0 ? fragStoreOffer(g0, hoverInst) : Math.round(hoverDef.price * SELL_BACK_FRACTION)) : 0;
+  const hoverSell = hoverInst && hoverDef ? (hoverInst.frag && hoverInst.frag.grownHour === undefined && g0 ? fragStoreOffer(g0, hoverInst) : decorSellValue(hoverDef, hoverInst)) : 0; // B-121: what the sim will pay
   const hoverFrag = hoverInst && g0 ? fragEligibility(g0, tank, hoverInst) : null;
   const hoverFragHint = hoverFrag?.ok ? ` · F: ${hoverFrag.rule.action.toLowerCase()}` : hoverFrag?.code === 'recovering' ? ' · healing from a cut' : '';
   const sellArmed = !!hoverInst && sellArm?.id === hoverInst.id;

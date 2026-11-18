@@ -2,6 +2,7 @@
  * Starter reveal: five cards turn over in sequence; choosing one swaps the living tank behind the UI to that
  * starter's opening aquarium. OWNER: lane "ui-shell".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useEffect, useMemo, useRef } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
@@ -259,7 +260,7 @@ export function StarterReveal() {
         </div>
         <div className="ag-reveal__cta">
           <Button variant="primary" size="lg" data-testid="starter-confirm" disabled={!starterId} onClick={confirm}>
-            {starterId ? `Choose the ${getSpecies(starterId).commonName.toLowerCase()}` : 'Choose a companion'} <ArrowRight size={18} aria-hidden />
+            {starterId ? `Choose the ${lowerName(getSpecies(starterId).commonName)}` : 'Choose a companion'} <ArrowRight size={18} aria-hidden />
           </Button>
         </div>
       </div>

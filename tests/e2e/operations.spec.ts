@@ -151,6 +151,27 @@ test.describe('AUTO-036, AUTO-042: manual mode', () => {
   });
 });
 
+test.describe('AUTO-042 on a phone 390×844 (audit B3)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('Hold all turns the time pill amber with the Hand and the time; it opens Manual mode', async ({ page }) => {
+    await facility(page);
+    await go(page, '#/operations');
+    await expect(tid(page, 'panel-operations')).toBeVisible();
+    await tid(page, 'ops-hold-all').tap();
+    await expect(tid(page, 'manual-banner')).toContainText('Manual mode is on');
+    await aq(page, 'setUI', { panel: null });
+    const pill = tid(page, 'hud-manual-mode');
+    await expect(pill).toBeVisible();
+    await expect(pill).toHaveAttribute('aria-label', 'Manual mode is on. Open it');
+    await expect(pill.locator('svg.ag-clock-pill__icon')).toBeVisible();
+    await expect(pill.locator('[data-testid="hud-clock"] .ag-tabular')).toBeVisible();
+    await expect(pill.locator('[data-testid="hud-clock"] .ag-tabular')).toHaveText(/\d{1,2}:\d\d/);
+    await pill.tap();
+    await expect.poll(() => hash(page)).toBe('#/operations/manual');
+  });
+});
+
 test.describe('AUTO-040: the Map', () => {
   test('selecting a tank shows its details; selecting it again clears them', async ({ page }) => {
     const ids = await facility(page);

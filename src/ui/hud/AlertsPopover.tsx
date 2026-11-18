@@ -4,7 +4,7 @@
  * drawer) reads them, "Clear all" also hides them here (the Log panel keeps the full history; rules in
  * ../common/notify.ts). OWNER: lane "ui-shell" (lane:notify — clear all, links, live attention counts).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { motion } from 'motion/react';
 import { CircleCheck, TriangleAlert, OctagonAlert, ChevronRight, CheckCheck, ShoppingCart, PowerOff, Eraser, ScrollText, Wrench, Clock, BellRing, X } from 'lucide-react';
@@ -13,9 +13,10 @@ import { useGame, useGameSelector } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { sfx } from '@/audio/sfx';
 import { useShell } from '../common/shellStore';
-import { safe } from '../common/safe';
-import { tankStatusReason } from '../common/tankStatus';
-import { agoText, foodName } from '../common/format';
+import { safe, useMedia, TOUCH_FIRST_QUERY } from '../common/safe';
+import { tankStatusReason, TANK_STATUS_WORD } from '../common/tankStatus'; // Audit 2026-11-17 (J10): TANK_STATUS_WORD
+import { agoText, foodName, convertTempText } from '../common/format'; // Audit 2026-11-17 (J1): convertTempText
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
 import { buyFoodPack, openFoodInSupplies, tankFoodAlert, tankFoodLevel, type TankFoodAlert } from '../common/foodStock';
 import { getFoodDef } from '@/data/catalog/foods';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -26,12 +27,14 @@ import { attentionSummary, autofeedPaused, autofeedPausedText, drawerEvents, eve
 import { mark } from '../common/marks';
 import { Button } from '../kit';
 import { go } from '../nav/router'; // lane:notify (chunk 3)
+import { guardLeave } from '../panels/common/leaveGuard'; // audit B6 review
 import { useNotifyPermission } from '../notify/deliver'; // lane:notify (chunk 3)
 import { eventLink } from './eventLinks'; // lane:notify
 import { AutomationSection } from './AlertsAutomation'; // lane:automation (chunk 5)
 import { FixButton } from '../cards/FixButton'; // chunk 19 (QOL-002)
 import { fixForAttention, type FixLink } from '../common/fixLinks'; // chunk 19 (QOL-002)
 import { getWaterReport } from '@/sim/water'; // chunk 19 (QOL-002)
+import { cantAffordTitle } from '../common/moneyShort'; // audit 2026-11-17 (F1)
 
 /**
  * Failed equipment in a tank, listed under the bell until it is repaired or replaced (its log line scrolls away in a
@@ -85,9 +88,19 @@ const FILTERS: { id: Filter; label: string; kinds: GameEvent['kind'][] | null }[
   { id: 'market', label: 'Market', kinds: ['market'] },
 ];
 
-export function focusTank(tankId: string, openCard = true) {
-  useUI.getState().set({ focusedTankId: tankId, view: 'tank', panel: null });
-  if (openCard) useShell.getState().set({ tankCardOpen: true });
+/** audit B8: an event's animal, if it is still here (alive or listed): a dead or sold one's card would only flash. */
+export const liveAnimal = (g: GameState, id: string | undefined): boolean => !!id && (g.creatures[id]?.status === 'alive' || g.creatures[id]?.status === 'listed');
+
+/**
+ * The tank view on `tankId`, with its card (on `tab` when given). Audit B6 review: it closes the open panel, so a
+ * listing with typed prices asks first, and Leave finishes the whole move (Keep editing changes nothing).
+ */
+export function focusTank(tankId: string, openCard = true, tab?: 'gear') {
+  guardLeave(() => {
+    if (tab) useTankCardTab.setState({ want: tab });
+    useUI.getState().set({ focusedTankId: tankId, view: 'tank', panel: null });
+    if (openCard) useShell.getState().set({ tankCardOpen: true });
+  });
 }
 
 function TankAlerts({ game }: { game: GameState }) {
@@ -123,167 +136,176 @@ function TankAlerts({ game }: { game: GameState }) {
         <CircleCheck size={16} aria-hidden /> {game.tankOrder.length > 1 ? `All ${game.tankOrder.length} tanks look healthy.` : 'All tanks look healthy.'}
       </div>
     );
-  return (
-    <div className="ag-alert-list">
-      {food.map(({ t, a }) => {
-        const def = a.restockId ? getFoodDef(a.restockId) : undefined;
-        const poor = !!def && game.finance.money < def.price;
-        return (
-          <div key={`food-${t.id}`} className="ag-alert-split">
-            <button
-              type="button"
-              className={clsx('ag-alert-row', a.level === 'out' ? 'is-danger' : 'is-watch')}
-              data-testid="alert-food"
-              title="Open Market › Supplies"
-              onClick={() => {
-                sfx('open');
-                useShell.getState().set({ popover: null });
-                if (a.restockId) openFoodInSupplies(a.restockId);
-                else useUI.getState().set({ panel: 'market', panelTarget: 'tab:supplies' });
-              }}
-            >
-              <ShoppingCart size={16} aria-hidden />
-              <span className="ag-grow">
-                <span className="ag-alert-row__title">{t.name}</span>
-                <span className="ag-alert-row__text">
-                  <strong>{a.level === 'out' ? 'No food' : 'Low food'}</strong> — {a.text}.{a.restockId ? ` Buy ${foodName(a.restockId)}.` : ''}
-                </span>
-              </span>
-              <ChevronRight size={16} aria-hidden />
-            </button>
-            {def && (
-              <button
-                type="button"
-                className="ag-food__buy"
-                data-testid="alert-food-buy"
-                disabled={poor}
-                aria-label={`Buy a pack of ${def.name} (${def.servingsPerPack} servings) for ${formatMoney(def.price)}`}
-                title={poor ? `Not enough money (${formatMoney(def.price)} a pack)` : `Buy a pack: ${def.servingsPerPack} servings for ${formatMoney(def.price)}`}
-                onClick={() => buyFoodPack(def.id)}
-              >
-                <ShoppingCart size={13} aria-hidden /> {formatMoney(def.price)}
-              </button>
-            )}
-          </div>
-        );
-      })}
-      {gear.map(({ t, names, worn }) => {
-        const open = () => {
-          sfx('open');
-          useTankCardTab.setState({ want: 'gear' });
-          focusTank(t.id);
-          useShell.getState().set({ popover: null });
-        };
-        return (
-          <div key={`gear-${t.id}`} className="ag-alert-gear">
-            {names.length > 0 && (
-              <button type="button" className="ag-alert-row is-watch" data-testid="alert-equipment" title="Open the tank card's equipment" onClick={open}>
-                <PowerOff size={16} aria-hidden />
-                <span className="ag-grow">
-                  <span className="ag-alert-row__title">{t.name}</span>
-                  <span className="ag-alert-row__text">
-                    <strong>Equipment failed</strong> — {names.join(', ')}. Repair or replace {names.length > 1 ? 'them' : 'it'}.
-                  </span>
-                </span>
-                <ChevronRight size={16} aria-hidden />
-              </button>
-            )}
-            {/* chunk 19 (QOL-002) — gear wearing out lights the bell (common/notify.ts), so the drawer names it too */}
-            {worn.length > 0 && (
-              <button type="button" className="ag-alert-row is-watch" data-testid="alert-equipment-worn" title="Open the tank card's equipment" onClick={open}>
-                <Wrench size={16} aria-hidden />
-                <span className="ag-grow">
-                  <span className="ag-alert-row__title">{t.name}</span>
-                  <span className="ag-alert-row__text">
-                    <strong>Wearing out</strong> — {worn.join(', ')}. Repair {worn.length > 1 ? 'them before they fail' : 'it before it fails'}.
-                  </span>
-                </span>
-                <ChevronRight size={16} aria-hidden />
-              </button>
-            )}
-          </div>
-        );
-      })}
-      {paused.map(({ t, p }) => (
+  type T = GameState['tanks'][string];
+  const foodRow = (t: T, a: TankFoodAlert) => {
+    const def = a.restockId ? getFoodDef(a.restockId) : undefined;
+    const poor = !!def && game.finance.money < def.price;
+    return (
+      <div key={`food-${t.id}`} className="ag-alert-split">
         <button
           type="button"
-          key={`autofeed-${t.id}`}
-          className="ag-alert-row is-watch"
-          data-testid="alert-autofeed-paused"
-          title="Open the tank card's equipment"
+          className={clsx('ag-alert-row', a.level === 'out' ? 'is-danger' : 'is-watch')}
+          data-testid="alert-food"
+          title="Open Market › Supplies"
           onClick={() => {
             sfx('open');
             useShell.getState().set({ popover: null });
-            go({ kind: 'tankCard', tankId: t.id, tab: 'gear' }); // #/tanks/:id/equipment
+            if (a.restockId) openFoodInSupplies(a.restockId);
+            else useUI.getState().set({ panel: 'market', panelTarget: 'tab:supplies' });
           }}
         >
-          <Clock size={16} aria-hidden />
-          <span className="ag-grow">
-            <span className="ag-alert-row__title">{t.name}</span>
-            <span className="ag-alert-row__text">{autofeedPausedText(p)}</span>
-          </span>
-          <span className="ag-alert-row__fix">Fix</span>
-        </button>
-      ))}
-      {fit.map(({ t, items }) => (
-        <button
-          type="button"
-          key={`fit-${t.id}`}
-          className={clsx('ag-alert-row', items.some((i) => i.level === 'danger') ? 'is-danger' : 'is-watch')}
-          data-testid="alert-gear-fit"
-          title="Open the tank card's equipment"
-          onClick={() => {
-            sfx('open');
-            useTankCardTab.setState({ want: 'gear' });
-            focusTank(t.id);
-            useShell.getState().set({ popover: null });
-          }}
-        >
-          <Wrench size={16} aria-hidden />
+          <ShoppingCart size={16} aria-hidden />
           <span className="ag-grow">
             <span className="ag-alert-row__title">{t.name}</span>
             <span className="ag-alert-row__text">
-              <strong>Gear not helping</strong> — {items.map((i) => i.text).join(' ')}
+              <strong>{a.level === 'out' ? 'No food' : 'Low food'}</strong> — {a.text}.
+              {/* audit 2026-11-17 (F1) — the greyed quick-buy says why in words, not only in a hover tooltip */}
+              {poor && def ? (game.finance.money < 0 ? ' Not enough money: purchases are paused while you’re in debt.' : ` Not enough money for ${foodName(def.id)} (${formatMoney(def.price)} a pack).`) : a.restockId ? ` Buy ${foodName(a.restockId)}.` : ''}
             </span>
           </span>
           <ChevronRight size={16} aria-hidden />
         </button>
-      ))}
-      {rows.map((t) => {
-        // the restock row above already covers the food reason
-        const reason = reasons.get(t.id) ?? '';
-        if (!reason && t.cache.statusSource === 'food') return null;
-        const I = t.cache.status === 'danger' ? OctagonAlert : TriangleAlert;
-        // chunk 19 (ADR-0055 decision 2, QOL-002) — the row's own fix beside it (the row still opens the tank card)
-        const fix = rowFix(game, t);
-        return (
-          <div key={t.id} className="ag-alert-split">
+        {def && (
           <button
             type="button"
-            className={clsx('ag-alert-row', `is-${t.cache.status}`)}
-            onClick={() => {
-              sfx('open');
-              // a line about broken gear opens the card on its Equipment tab, where the repair is
-              if (t.equipment?.some((e) => e.failed) && /\bfailed\b|stuck on/.test(reason)) useTankCardTab.setState({ want: 'gear' });
-              focusTank(t.id);
-              useShell.getState().set({ popover: null });
-            }}
+            className="ag-food__buy"
+            data-testid="alert-food-buy"
+            disabled={poor}
+            aria-label={`Buy a pack of ${def.name} (${def.servingsPerPack} servings) for ${formatMoney(def.price)}`}
+            title={poor ? `${cantAffordTitle(game.finance.money, def.price)} (${formatMoney(def.price)} a pack)` : `Buy a pack: ${def.servingsPerPack} servings for ${formatMoney(def.price)}`}
+            onClick={() => buyFoodPack(def.id)}
           >
-            <I size={16} aria-hidden />
+            <ShoppingCart size={13} aria-hidden /> {formatMoney(def.price)}
+          </button>
+        )}
+      </div>
+    );
+  };
+  const gearRow = ({ t, names, worn }: (typeof gear)[number]) => {
+    const open = () => {
+      sfx('open');
+      focusTank(t.id, true, 'gear');
+      useShell.getState().set({ popover: null });
+    };
+    return (
+      <div key={`gear-${t.id}`} className="ag-alert-gear">
+        {names.length > 0 && (
+          <button type="button" className="ag-alert-row is-watch" data-testid="alert-equipment" title="Open the tank card’s equipment" onClick={open}>
+            <PowerOff size={16} aria-hidden />
             <span className="ag-grow">
               <span className="ag-alert-row__title">{t.name}</span>
               <span className="ag-alert-row__text">
-                <strong>{t.cache.status === 'danger' ? 'Danger' : 'Watch'}</strong> — {reason || 'Needs attention'}
+                <strong>Equipment failed</strong> — {names.join(', ')}. Repair or replace {names.length > 1 ? 'them' : 'it'}.
               </span>
             </span>
             <ChevronRight size={16} aria-hidden />
           </button>
-          <FixButton link={fix} testId={`alert-fix-${t.id}`} onGo={() => useShell.getState().set({ popover: null })} />
-          </div>
-        );
-      })}
-    </div>
+        )}
+        {/* chunk 19 (QOL-002) — gear wearing out lights the bell (common/notify.ts), so the drawer names it too */}
+        {worn.length > 0 && (
+          <button type="button" className="ag-alert-row is-watch" data-testid="alert-equipment-worn" title="Open the tank card’s equipment" onClick={open}>
+            <Wrench size={16} aria-hidden />
+            <span className="ag-grow">
+              <span className="ag-alert-row__title">{t.name}</span>
+              <span className="ag-alert-row__text">
+                <strong>Wearing out</strong> — {worn.join(', ')}. Repair {worn.length > 1 ? 'them before they fail' : 'it before it fails'}.
+              </span>
+            </span>
+            <ChevronRight size={16} aria-hidden />
+          </button>
+        )}
+      </div>
+    );
+  };
+  const pausedRow = ({ t, p }: (typeof paused)[number]) => (
+    <button
+      type="button"
+      key={`autofeed-${t.id}`}
+      className="ag-alert-row is-watch"
+      data-testid="alert-autofeed-paused"
+      title="Open the tank card’s equipment"
+      onClick={() => {
+        sfx('open');
+        useShell.getState().set({ popover: null });
+        go({ kind: 'tankCard', tankId: t.id, tab: 'gear' }); // #/tanks/:id/equipment
+      }}
+    >
+      <Clock size={16} aria-hidden />
+      <span className="ag-grow">
+        <span className="ag-alert-row__title">{t.name}</span>
+        <span className="ag-alert-row__text">{autofeedPausedText(p)}</span>
+      </span>
+      <span className="ag-alert-row__fix">Fix</span>
+    </button>
   );
+  const fitRow = ({ t, items }: (typeof fit)[number]) => (
+    <button
+      type="button"
+      key={`fit-${t.id}`}
+      className={clsx('ag-alert-row', items.some((i) => i.level === 'danger') ? 'is-danger' : 'is-watch')}
+      data-testid="alert-gear-fit"
+      title="Open the tank card’s equipment"
+      onClick={() => {
+        sfx('open');
+        focusTank(t.id, true, 'gear');
+        useShell.getState().set({ popover: null });
+      }}
+    >
+      <Wrench size={16} aria-hidden />
+      <span className="ag-grow">
+        <span className="ag-alert-row__title">{t.name}</span>
+        <span className="ag-alert-row__text">
+          <strong>Gear not helping</strong> — {convertTempText(items.map((i) => i.text).join(' '), useSettings.getState().tempUnit) /* Audit 2026-11-17 (J1) */}
+        </span>
+      </span>
+      <ChevronRight size={16} aria-hidden />
+    </button>
+  );
+  const statusRow = (t: T) => {
+    // the restock row above already covers the food reason
+    const reason = reasons.get(t.id) ?? '';
+    if (!reason && t.cache.statusSource === 'food') return null;
+    const I = t.cache.status === 'danger' ? OctagonAlert : TriangleAlert;
+    // chunk 19 (ADR-0055 decision 2, QOL-002) — the row's own fix beside it (the row still opens the tank card)
+    const fix = rowFix(game, t);
+    return (
+      <div key={t.id} className="ag-alert-split">
+        <button
+          type="button"
+          className={clsx('ag-alert-row', `is-${t.cache.status}`)}
+          onClick={() => {
+            sfx('open');
+            // a line about broken gear opens the card on its Equipment tab, where the repair is
+            focusTank(t.id, true, t.equipment?.some((e) => e.failed) && /\bfailed\b|stuck on/.test(reason) ? 'gear' : undefined);
+            useShell.getState().set({ popover: null });
+          }}
+        >
+          <I size={16} aria-hidden />
+          <span className="ag-grow">
+            <span className="ag-alert-row__title">{t.name}</span>
+            <span className="ag-alert-row__text">
+              <strong>{TANK_STATUS_WORD[t.cache.status]}</strong> — {reason || 'Needs attention'}
+            </span>
+          </span>
+          <ChevronRight size={16} aria-hidden />
+        </button>
+        <FixButton link={fix} testId={`alert-fix-${t.id}`} onGo={() => useShell.getState().set({ popover: null })} />
+      </div>
+    );
+  };
+  // audit B1: the rows by level across every kind, so a tank in danger never sits below a screenful of low-food rows:
+  // a tank's own status, no food and harmful gear first, then the watch rows (a stable sort keeps this order within each)
+  const list: { danger: boolean; el: ReactNode }[] = [];
+  for (const t of rows) {
+    const el = statusRow(t);
+    if (el) list.push({ danger: t.cache.status === 'danger', el });
+  }
+  for (const { t, a } of food) list.push({ danger: a.level === 'out', el: foodRow(t, a) });
+  for (const x of fit) list.push({ danger: x.items.some((i) => i.level === 'danger'), el: fitRow(x) });
+  for (const x of gear) list.push({ danger: false, el: gearRow(x) });
+  for (const x of paused) list.push({ danger: false, el: pausedRow(x) });
+  list.sort((x, y) => Number(y.danger) - Number(x.danger));
+  return <div className="ag-alert-list">{list.map((x) => x.el)}</div>;
 }
 
 /**
@@ -292,7 +314,8 @@ function TankAlerts({ game }: { game: GameState }) {
  */
 function NotifyCta() {
   const permission = useNotifyPermission((s) => s.permission);
-  if (permission !== 'default') return null;
+  const touch = useMedia(TOUCH_FIRST_QUERY); // audit B14: a phone never gets them (switching apps pauses the game)
+  if (permission !== 'default' || touch) return null;
   return (
     <div className="ag-alerts-cta" data-testid="alerts-notify-cta">
       <BellRing size={16} aria-hidden />
@@ -354,86 +377,89 @@ export function AlertsPopover() {
           <X size={18} />
         </IconButton>
       </div>
-      <AutomationSection game={game} />
-      <div className="ag-popover__section">
-        <div className="ag-popover__title">Tanks</div>
-        <TankAlerts game={game} />
-      </div>
-      <div className="ag-popover__section ag-grow ag-alerts-pop__log">
-        <div className="ag-row" style={{ gap: 8 }}>
-          <div className="ag-popover__title ag-grow">Recent events</div>
-          {unread > 0 && (
-            <button type="button" className="ag-linkbtn" data-testid="alerts-mark-read" title="Mark every event as read (they stay in this list)" onClick={() => mark('allRead')}>
-              <CheckCheck size={14} aria-hidden /> Mark read
-            </button>
-          )}
-          {anyEvents && (
-            <button
-              type="button"
-              className="ag-linkbtn"
-              data-testid="alerts-clear-all"
-              title="Clear these events from this list (the full log keeps them). Tank alerts above clear themselves once the problem is fixed."
-              onClick={() => {
-                sfx('click');
-                mark('clearAll');
-              }}
-            >
-              <Eraser size={14} aria-hidden /> Clear all
-            </button>
-          )}
+      {/* audit B1: everything under the title scrolls as one, so no row, "Full event log" or "Turn on" is cut off */}
+      <div className="ag-alerts-pop__body" data-testid="alerts-body">
+        <AutomationSection game={game} />
+        <div className="ag-popover__section">
+          <div className="ag-popover__title">Tanks</div>
+          <TankAlerts game={game} />
         </div>
-        <div className="ag-row ag-wrap" style={{ gap: 6 }}>
-          {FILTERS.map((f) => (
-            <Chip key={f.id} size="sm" selected={filter === f.id} onClick={() => setFilter(f.id)}>
-              {f.label}
-            </Chip>
-          ))}
-        </div>
-        <ul className="ag-eventlist" data-testid="alerts-events">
-          {events.length === 0 && (
-            <li className="ag-muted ag-small" style={{ padding: '10px 2px' }} data-testid="alerts-events-empty">
-              {anyEvents ? 'Nothing of this kind.' : game.log.length ? 'You’re all caught up. Older events are in the full log.' : 'Nothing here yet.'}
-            </li>
-          )}
-          {events.map((e) => {
-            const link = eventLink(e);
-            return (
-              <li key={e.id} className={clsx('ag-event', `ag-event--${e.kind}`, !e.read && 'is-unread')} data-testid="alerts-event">
-                <EventIcon kind={e.kind} />
-                <div className="ag-grow">
-                  <div className="ag-event__text">{eventLine(e)}</div>
-                  <div className="ag-event__meta">
-                    {agoText(e.hour, game.clock.hour)}
-                    {e.tankId && game.tanks[e.tankId] && (
-                      <button type="button" className="ag-linkbtn" onClick={() => { focusTank(e.tankId!, false); if (e.creatureId) useUI.getState().set({ selectedCreatureId: e.creatureId }); useShell.getState().set({ popover: null }); }}>
-                        {game.tanks[e.tankId].name}
-                      </button>
-                    )}
-                    {/* lane:notify — news with a home opens it (a show result → Shows › Results, which marks it seen) */}
-                    {link && (
-                      <button
-                        type="button"
-                        className="ag-linkbtn"
-                        data-testid="alerts-event-link"
-                        onClick={() => {
-                          sfx('open');
-                          useShell.getState().set({ popover: null });
-                          useUI.getState().set({ panel: link.panel, panelTarget: link.target });
-                        }}
-                      >
-                        {link.label} <ChevronRight size={11} aria-hidden style={{ verticalAlign: '-1px' }} />
-                      </button>
-                    )}
-                  </div>
-                </div>
+        <div className="ag-popover__section ag-alerts-pop__log">
+          <div className="ag-row" style={{ gap: 8 }}>
+            <div className="ag-popover__title ag-grow">Recent events</div>
+            {unread > 0 && (
+              <button type="button" className="ag-linkbtn" data-testid="alerts-mark-read" title="Mark every event as read (they stay in this list)" onClick={() => mark('allRead')}>
+                <CheckCheck size={14} aria-hidden /> Mark read
+              </button>
+            )}
+            {anyEvents && (
+              <button
+                type="button"
+                className="ag-linkbtn"
+                data-testid="alerts-clear-all"
+                title="Clear these events from this list (the full log keeps them). Tank alerts above clear themselves once the problem is fixed."
+                onClick={() => {
+                  sfx('click');
+                  mark('clearAll');
+                }}
+              >
+                <Eraser size={14} aria-hidden /> Clear all
+              </button>
+            )}
+          </div>
+          <div className="ag-row ag-wrap" style={{ gap: 6 }}>
+            {FILTERS.map((f) => (
+              <Chip key={f.id} size="sm" selected={filter === f.id} onClick={() => setFilter(f.id)}>
+                {f.label}
+              </Chip>
+            ))}
+          </div>
+          <ul className="ag-eventlist" data-testid="alerts-events">
+            {events.length === 0 && (
+              <li className="ag-muted ag-small" style={{ padding: '10px 2px' }} data-testid="alerts-events-empty">
+                {anyEvents ? 'Nothing of this kind.' : game.log.length ? 'You’re all caught up. Older events are in the full log.' : 'Nothing here yet.'}
               </li>
-            );
-          })}
-        </ul>
-        <button type="button" className="ag-linkbtn ag-alerts-pop__full" data-testid="alerts-open-log" onClick={openLog}>
-          <ScrollText size={14} aria-hidden /> Full event log
-        </button>
-        <NotifyCta />
+            )}
+            {events.map((e) => {
+              const link = eventLink(e);
+              return (
+                <li key={e.id} className={clsx('ag-event', `ag-event--${e.kind}`, !e.read && 'is-unread')} data-testid="alerts-event">
+                  <EventIcon kind={e.kind} />
+                  <div className="ag-grow">
+                    <div className="ag-event__text">{eventLine(e)}</div>
+                    <div className="ag-event__meta">
+                      {agoText(e.hour, game.clock.hour)}
+                      {e.tankId && game.tanks[e.tankId] && (
+                        <button type="button" className="ag-linkbtn" onClick={() => { useShell.getState().set({ popover: null }); guardLeave(() => { focusTank(e.tankId!, false); if (liveAnimal(game, e.creatureId)) useUI.getState().set({ selectedCreatureId: e.creatureId }); }); }}>
+                          {game.tanks[e.tankId].name}
+                        </button>
+                      )}
+                      {/* lane:notify — news with a home opens it (a show result → Shows › Results, which marks it seen) */}
+                      {link && (
+                        <button
+                          type="button"
+                          className="ag-linkbtn"
+                          data-testid="alerts-event-link"
+                          onClick={() => {
+                            sfx('open');
+                            useShell.getState().set({ popover: null });
+                            useUI.getState().set({ panel: link.panel, panelTarget: link.target });
+                          }}
+                        >
+                          {link.label} <ChevronRight size={11} aria-hidden style={{ verticalAlign: '-1px' }} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <button type="button" className="ag-linkbtn ag-alerts-pop__full" data-testid="alerts-open-log" onClick={openLog}>
+            <ScrollText size={14} aria-hidden /> Full event log
+          </button>
+          <NotifyCta />
+        </div>
       </div>
     </motion.div>
   );

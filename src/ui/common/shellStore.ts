@@ -13,6 +13,8 @@ interface ShellState {
   popover: Popover;
   /** Creature being moved (opens the move modal with a compatibility preview). */
   moveCreatureId: string | null;
+  /** Audit 2026-11-17 (D2): animals being moved together (a school, a colony, a Livestock selection), or null. */
+  moveCreatureIds: string[] | null;
   /** Speed to resume to after pause. */
   lastSpeed: Exclude<GameSpeed, 0>;
   /** Tank card: expanded water param key (tutorial "read a parameter"). */
@@ -37,6 +39,7 @@ export const useShell = create<ShellState>((set, get) => ({
   tankCardOpen: false,
   popover: null,
   moveCreatureId: null,
+  moveCreatureIds: null,
   lastSpeed: 1,
   openParam: null,
   partyNoteSeen: false,

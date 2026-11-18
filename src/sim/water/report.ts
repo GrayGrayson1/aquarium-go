@@ -2,12 +2,14 @@
  * Plain-language water reports and per-species water comfort. OWNER: lane "waterlab".
  * Priority: "what is wrong and why", judged against the actual inhabitants' ranges (intersection) and water class.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { pluralPhrase } from '../economy/util';
-import type { GameState, ParamStatus, SpeciesDefinition, StatusLevel, Tank, WaterResidents, WaterIssue, WaterParamKey, WaterReport } from '@/types';
+import type { EquipmentKind, GameState, ParamStatus, SpeciesDefinition, StatusLevel, Tank, WaterResidents, WaterIssue, WaterParamKey, WaterReport } from '@/types';
 import { clamp, fmt, ammoniaToxicityWeight, nitrateThresholds, nitrifierTempFactor } from './chem';
 import { CLASS_DEFAULTS, ROOM_TEMP_C, TEMP_TOLERANCE_C } from './constants';
-import { computeTankEnv, flowInfo, flowMismatch, FLOW_LABEL, type Inhabitant, type TankEnv, expectedTempC } from './env';
+import { computeTankEnv, flowInfo, flowMismatch, FLOW_LABEL, type Inhabitant, type TankEnv, expectedTempC, type EqEntry, type EquipmentSummary } from './env';
 import { tankDailyCostImpl } from './kits';
+import { fightAdvice, idealBand, MAX_PER_KIND } from '../care/tuning';
 import { lightsPastClose, photoperiodTooLong } from '../time';
 import * as dmath from '../dmath';
 
@@ -18,12 +20,21 @@ export function comfortStatus(comfort: number): StatusLevel {
   return comfort >= 70 ? 'good' : comfort >= 40 ? 'watch' : 'danger';
 }
 
+/**
+ * Audit 2026-11-17 C15 — the report's own lines, for screens that show the same thing in their own words (the tank
+ * card's Biological filter meter and Stocking meter, the Tanks panel): the cycle is ready from CYCLE_READY; stocking is
+ * WATCH from STOCKING_WATCH and DANGER from STOCKING_DANGER.
+ */
+export const CYCLE_READY = 0.75;
+export const STOCKING_WATCH = 0.85;
+export const STOCKING_DANGER = 1.05;
+
 /** pH units past a species' limits that only stress (WATCH, no harm); matches the welfare model's tolerance. */
 const PH_TOLERANCE = 0.3;
 
 // ───────────────────────────── naming helpers ─────────────────────────────
 
-const lower = (s: string) => s.toLowerCase();
+const lower = (s: string) => lowerName(s);
 const pluralName = (common: string): string => pluralPhrase(lower(common));
 
 /** "Mochi" / "your bettas" / "your betta" */
@@ -34,6 +45,37 @@ function whoOf(group: Inhabitant[]): string {
     return c.name && c.name !== sp.commonName ? `${c.name} (${lower(sp.commonName)})` : `your ${lower(sp.commonName)}`;
   }
   return `your ${pluralName(sp.commonName)}`;
+}
+
+/**
+ * Audit 2026-11-17 C3 — an installed unit of this kind that isn't running: failed first, then switched off.
+ * `equipmentSummary` lists only running heaters, chillers and lights, so with the only one down the advice said "add one".
+ */
+function idleUnit(s: EquipmentSummary, kind: EquipmentKind): EqEntry | undefined {
+  return s.failed.find((e) => e.def.kind === kind) ?? s.entries.find((e) => e.def.kind === kind && !e.inst.on);
+}
+const idleAdvice = (e: EqEntry): string => (e.inst.failed ? `Repair the ${e.def.name}.` : `The ${e.def.name} is switched off — switch it on.`);
+
+/**
+ * The highest KH (dKH) these animals prefer in this water class: the KH row turns WATCH a little above it, and a
+ * buffer dose is refused at it (Audit 2026-11-17 C4).
+ */
+export function khPreferredMax(tank: Tank, species: SpeciesDefinition[]): number {
+  const kr = (CLASS_DEFAULTS[tank.waterClass] ?? CLASS_DEFAULTS.freshwater_tropical).kh;
+  return Math.min(kr.max + 4, ...species.filter((x) => x.kh).map((x) => x.kh!.max));
+}
+
+/**
+ * Audit 2026-11-17 C10 — low oxygen: an airstone that's there but failed or off first, then one to add (up to the four
+ * a tank holds), and cooler water when it's warm. (It said "point a filter outlet at the surface", which the game
+ * has no control for.)
+ */
+function oxygenAdvice(s: EquipmentSummary, warm: boolean): string {
+  const idle = idleUnit(s, 'airstone');
+  if (idle) return idleAdvice(idle);
+  if (s.entries.filter((e) => e.def.kind === 'airstone').length >= (MAX_PER_KIND.airstone ?? 4))
+    return 'This tank has all the airstones it can hold. Cool the water a little (warm water holds less oxygen), or move some animals to another tank.';
+  return warm ? 'Add an airstone, or cool the water a little — warm water holds less oxygen.' : 'Add an airstone — its bubbles stir the surface, where oxygen gets in.';
 }
 
 function groupBySpecies(inh: Inhabitant[]): Inhabitant[][] {
@@ -241,7 +283,7 @@ export function speciesWaterComfortImpl(species: SpeciesDefinition, tank: Tank):
       pen += 8;
       stressors.push(
         species.environment === 'brackish' && sg < r.idealMin && tank.environment === 'freshwater'
-          ? `${name[0].toUpperCase()}${name.slice(1)} live in fresh water, but a little salt suits them best — that means a brackish tank (SG ${fmt(r.idealMin, 3)}–${fmt(r.idealMax, 3)}, from Research › Brackish Estuaries); salt can't go into a freshwater tank.`
+          ? `${name[0].toUpperCase()}${name.slice(1)} live in fresh water, but a little salt suits them best — that means a brackish tank (SG ${fmt(r.idealMin, 3)}–${fmt(r.idealMax, 3)}, from Research › Brackish Estuaries); salt can’t go into a freshwater tank.`
           : `Salinity ${fmt(sg, 3)} is slightly off ideal (${fmt(r.idealMin, 3)}–${fmt(r.idealMax, 3)}).`,
       );
     }
@@ -292,10 +334,10 @@ export function speciesWaterComfortImpl(species: SpeciesDefinition, tank: Tank):
     stressors.push(`${cap(name)} want ${FLOW_LABEL[species.flowPreference]} flow; this water is too still.`);
   } else if (fm === 'bit_strong') {
     pen += 4;
-    stressors.push(`Flow is a touch strong for ${name} — fine, though they'd like it ${FLOW_LABEL[species.flowPreference]}.`);
+    stressors.push(`Flow is a touch strong for ${name} — fine, though they’d like it ${FLOW_LABEL[species.flowPreference]}.`);
   } else if (fm === 'bit_still') {
     pen += 3;
-    stressors.push(`The water is a touch still for ${name} — fine, though they'd like ${FLOW_LABEL[species.flowPreference]} flow.`);
+    stressors.push(`The water is a touch still for ${name} — fine, though they’d like ${FLOW_LABEL[species.flowPreference]} flow.`);
   }
 
   // Low level for jumpers/air breathers doesn't hurt; skip. Recent shock handled by the life lane (water.shock).
@@ -367,25 +409,53 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
   {
     // lane:fix-water — up to TEMP_TOLERANCE_C past a limit is WATCH (stress, no harm), as for pH.
     const j = judgeRange(w.tempC, groups, (sp) => sp.tempC, d.temp, ' °C', 1, d.label, TEMP_TOLERANCE_C);
+    let reason = j.reason;
     let advice: string | undefined;
+    // Audit 2026-11-17 C6 — animals whose tolerated ranges don't meet (an axolotl with a betta), or water too warm for
+    // one group and too cold for another: no setting helps, as the pH row already says
+    const tRanges = species.map((sp) => sp.tempC);
+    const noCommon = tRanges.length > 1 && Math.max(...tRanges.map((r) => r.min)) > Math.min(...tRanges.map((r) => r.max));
+    const split = j.status !== 'good' && !s.stuckHeaters.length && (noCommon || (j.high && j.low));
     if (j.status !== 'good') {
+      // Audit 2026-11-17 C3 — a heater or chiller that's installed but failed or switched off is the fix, not a new one
+      const idleChiller = idleUnit(s, 'chiller');
+      const idleHeater = idleUnit(s, 'heater');
+      // Audit 2026-11-17 C6 — the setting that suits them all (as the setpoint note says), never a warmer one: the middle
+      // of their shared ideal range, else of the range they all tolerate, else of the water class's
+      const iLo = Math.max(...tRanges.map((r) => r.idealMin));
+      const iHi = Math.min(...tRanges.map((r) => r.idealMax));
+      const tLo = Math.max(...tRanges.map((r) => r.min));
+      const tHi = Math.min(...tRanges.map((r) => r.max));
+      const mid = tRanges.length && iLo <= iHi ? (iLo + iHi) / 2 : tRanges.length && tLo <= tHi ? (tLo + tHi) / 2 : (d.temp.idealMin + d.temp.idealMax) / 2;
+      const aim = Math.round(mid * 2) / 2;
       if (s.stuckHeaters.length) advice = 'A heater thermostat has stuck on — switch that heater off now.';
-      else if (j.high)
+      else if (split) {
+        reason = `${reason ?? ''} No temperature suits all of these animals at once — a compatibility problem, not a care one.`.trim();
+        advice = 'Rehome one group to a tank with water that suits it.';
+      } else if (j.high)
         advice = s.chillers.length
           ? `Lower the chiller setting${s.heaterSet !== null ? ' and the heater' : ''}.`
-          : s.heaterSet !== null && s.heaterSet > w.tempC - 1
-            ? `Turn the heater down to about ${fmt(Math.max(...species.map((x) => x.tempC.idealMin), d.temp.idealMin) + 0.5, 0)} °C.`
-            : `The room keeps this tank near ${ROOM_TEMP_C} °C. Add a chiller, or a clip-on fan for 1–2 °C of evaporative cooling.`;
+          : s.heaterSet !== null && s.heaterSet > w.tempC - 1 && aim < s.heaterSet - 0.25
+            ? // (Audit 2026-11-17 review) below the room's temperature no heater setting cools the water (and the dial
+              // stops at 18 °C): switch it off, and cool with what can
+              aim < ROOM_TEMP_C
+              ? `Switch the heater off — the room keeps this tank near ${ROOM_TEMP_C} °C. ${idleChiller ? idleAdvice(idleChiller) : 'For cooler water, add a chiller or a clip-on fan.'}`
+              : `Turn the heater down to about ${fmt(aim, aim % 1 ? 1 : 0)} °C.`
+            : idleChiller
+              ? idleAdvice(idleChiller)
+              : `The room keeps this tank near ${ROOM_TEMP_C} °C. Add a chiller, or a clip-on fan for 1–2 °C of evaporative cooling.`;
       else
         advice = s.heaters.length
           ? s.failed.some((e) => e.def.kind === 'heater')
             ? 'A heater has failed — repair or replace it.'
             : 'Raise the heater setting (or add a second heater if it cannot keep up).'
-          : 'Add a heater sized for this tank (about 3–5 W per gallon).';
+          : idleHeater
+            ? idleAdvice(idleHeater)
+            : 'Add a heater sized for this tank (about 3–5 W per gallon).';
     }
     add(
-      { key: 'temp', label: 'Temperature', value: w.tempC, unit: '°C', display: `${fmt(w.tempC, 1)} °C`, status: j.status, ideal: j.ideal, reason: j.reason, advice },
-      j.status === 'danger' ? (j.high ? 'Water is too warm' : 'Water is too cold') : j.high ? 'Water is a little warm' : 'Water is a little cool',
+      { key: 'temp', label: 'Temperature', value: w.tempC, unit: '°C', display: `${fmt(w.tempC, 1)} °C`, status: j.status, ideal: j.ideal, reason, advice },
+      split ? 'No temperature suits them all' : j.status === 'danger' ? (j.high ? 'Water is too warm' : 'Water is too cold') : j.high ? 'Water is a little warm' : 'Water is a little cool',
     );
   }
 
@@ -402,8 +472,11 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
       advice = j.low
         ? w.kh < 2
           ? 'Carbonate hardness (KH) is exhausted, so acids are pulling pH down. Dose buffer and do a water change.'
-          : 'Do a water change and dose buffer to raise KH. Check for rotting food or heavy CO₂ injection.'
-        : 'Do small water changes with softer water; remove limestone or aragonite from soft-water tanks.';
+          : w.kh >= khPreferredMax(tank, species) // Audit 2026-11-17 C4 — a buffer dose is refused there
+            ? 'Do a water change, and check for rotting food or heavy CO₂ injection.'
+            : 'Do a water change and dose buffer to raise KH. Check for rotting food or heavy CO₂ injection.'
+        : // Audit 2026-11-17 C13 — there is no choice of water to change with: say what the game can do
+          `Do a water change, and skip buffer${marine ? ' and coral supplement' : ''} for now.`;
       if (noCommon) {
         reason = `${reason ?? ''} No pH suits all of these animals at once — a compatibility problem, not a care one.`.trim();
         advice = 'Rehome one group to a tank with water that suits it.';
@@ -515,12 +588,14 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     const brackishTank = tank.waterClass === 'brackish';
     if (j.status !== 'good')
       advice = j.high
-        ? brackishTank
-          ? `Evaporation concentrates salt. Top off with fresh water, and mix the next water change a little weaker${s.ato ? '' : ' — an auto top-off keeps this steady'}.`
-          : `Evaporation concentrates salt. Top off with fresh (RO) water${s.ato ? '' : ' — an auto top-off keeps this steady'}.`
-        : brackishTank
-          ? 'Brackish water needs only a little marine salt — about a third of reef strength. Dose salt mix gradually (no more than 0.001 a day) or do water changes with slightly saltier water.'
-          : 'Dose salt mix gradually (about 0.001 per day) or do water changes with slightly saltier water.';
+        ? // Audit 2026-11-17 C13 — a full tank can't be topped off (and "RO" was never explained); a change's new water is
+          // mixed at the right strength, brackish or marine (there is no "mix it weaker" control)
+          w.level >= 0.995
+          ? 'Do a water change — new water is mixed at the right strength.'
+          : `Evaporation concentrates salt. Top off with fresh water (never salt water)${s.ato ? '' : ' — an auto top-off keeps this steady'}.`
+        : // Audit 2026-11-17 C1 — low salinity harms the animals at once and a dose shocks nothing, so the advice is to
+          // dose back up now (each dose adds 0.001), not "0.001 a day", which let the harm run for days.
+          `${brackishTank ? 'Brackish water needs only a little marine salt (about a third of reef strength). ' : ''}Dose salt mix until it reads at least ${fmt(idealBand(state, tank, 'salinitySG').min, 3)} — each dose adds 0.001.`;
     add(
       { key: 'salinity', label: 'Salinity', value: w.salinitySG, unit: 'SG', display: fmt(w.salinitySG, 3), status: j.status, ideal: j.ideal, reason: j.reason, advice },
       j.high ? 'Salinity is creeping up' : 'Salinity is low',
@@ -542,7 +617,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         status: st,
         ideal: `above ${Math.round(need * 100)}%`,
         reason: st === 'good' ? undefined : `Dissolved oxygen is ${Math.round(w.oxygen * 100)}%${warm ? ' — warm water holds less oxygen' : ''}${env.stockingLoad > 0.9 ? ' and the tank is heavily stocked' : ''}.`,
-        advice: st === 'good' ? undefined : 'Add an airstone or point a filter outlet at the surface — surface ripples are where oxygen gets in.',
+        advice: st === 'good' ? undefined : oxygenAdvice(s, warm), // Audit 2026-11-17 C10
       },
       st === 'danger' ? 'Oxygen is running low' : 'Oxygen is a little low',
     );
@@ -553,7 +628,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     const kr = d.kh;
     const spK = species.filter((x) => x.kh).map((x) => x.kh!);
     const kMin = Math.max(kr.min, ...spK.map((k) => k.min));
-    const kMax = Math.min(kr.max + 4, ...spK.map((k) => k.max));
+    const kMax = khPreferredMax(tank, species);
     const st: StatusLevel = w.kh < Math.min(1, kMin * 0.5) || w.kh < (marine ? 5.5 : 0.8) ? 'danger' : w.kh < kMin - 0.3 || w.kh > kMax + 1 ? 'watch' : 'good';
     add(
       {
@@ -565,7 +640,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         status: st,
         ideal: `${fmt(kMin, 0)}–${fmt(Math.max(kMin, kMax), 0)} dKH`,
         reason: st === 'good' ? undefined : w.kh < kMin ? `KH ${fmt(w.kh, 1)} is low — it is the buffer that stops pH crashing${marine ? ' and corals use it to build skeletons' : ''}.` : `KH ${fmt(w.kh, 1)} is higher than your animals prefer.`,
-        advice: st === 'good' ? undefined : w.kh < kMin ? `Dose buffer${marine ? ' or a coral supplement' : ''} and keep up with water changes.` : 'Use softer water for water changes.',
+        advice: st === 'good' ? undefined : w.kh < kMin ? `Dose buffer${marine ? ' or a coral supplement' : ''} and keep up with water changes.` : 'Do water changes and skip buffer for now.', // Audit 2026-11-17 C13
       },
       w.kh < kMin ? 'KH buffer is low' : 'KH is higher than ideal',
     );
@@ -594,7 +669,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
   // Cycle
   {
     const m = w.bioMaturity;
-    const st: StatusLevel = m >= 0.75 ? 'good' : m >= 0.4 || !hasAnimals ? 'watch' : 'danger';
+    const st: StatusLevel = m >= CYCLE_READY ? 'good' : m >= 0.4 || !hasAnimals ? 'watch' : 'danger';
     add(
       {
         key: 'cycle',
@@ -613,7 +688,8 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
             ? undefined
             : hasAnimals
               ? 'Dose bottled bacteria, move mature filter media from an established tank, and add animals slowly.'
-              : 'Bacteria need an ammonia source: dose bottled bacteria or move mature filter media in, and drop a pinch of food daily (a "fishless cycle") before adding animals.',
+              : // Audit 2026-11-17 C5 — how long, and that an empty tank left alone goes backwards
+                'Bacteria need an ammonia source: drop a pinch of food in daily (a "fishless cycle") before adding animals — about a week, or a few days with bottled bacteria or mature filter media. Without food or animals the bacteria fade.',
       },
       hasAnimals ? 'Tank is still cycling' : 'Filter is still cycling',
     );
@@ -622,7 +698,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
   // Stocking
   {
     const load = env.stockingLoad;
-    const st: StatusLevel = load < 0.85 ? 'good' : load < 1.05 ? 'watch' : 'danger';
+    const st: StatusLevel = load < STOCKING_WATCH ? 'good' : load < STOCKING_DANGER ? 'watch' : 'danger';
     const limit = env.processCapUnits < env.spaceCapUnits ? 'filter capacity' : 'water volume';
     // lane:w2-sim — say why when cool water is part of it (filter bacteria work slower in the cold)
     const coolNote = limit === 'filter capacity' && nitrifierTempFactor(w.tempC, w.lab?.bioTempC) < 0.9 ? ' Cool water slows the filter bacteria, so a cool tank needs more filter for the same animals.' : '';
@@ -635,7 +711,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         display: `${Math.round(load * 100)}%`,
         status: st,
         ideal: 'under 85% of capacity',
-        reason: st === 'good' ? undefined : `The animals produce ${Math.round(load * 100)}% of what this tank's ${limit} can comfortably handle — chemistry will swing.${coolNote}`,
+        reason: st === 'good' ? undefined : `The animals produce ${Math.round(load * 100)}% of what this tank’s ${limit} can comfortably handle — chemistry will swing.${coolNote}`,
         advice: st === 'good' ? undefined : limit === 'filter capacity' ? 'Upgrade or add a filter, or rehome some animals.' : 'Move some animals to another tank or upgrade to a larger aquarium.',
       },
       st === 'danger' ? 'Tank is overstocked' : 'Stocking is near the limit',
@@ -662,7 +738,8 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     } else if (turnover < 2 && !s.activeFilters.every((e) => e.def.visual === 'sponge_filter')) {
       st = 'watch';
       reason = `Water only passes through the filter ${fmt(turnover, 1)}× per hour.`;
-      advice = 'Aim for 4–10× turnover per hour (sponge filters in gentle tanks are the exception).';
+      // Audit 2026-11-17 C13 — the next step, not the jargon ("4–10× turnover")
+      advice = s.activeFilters.some((e) => (e.inst.setting ?? 1) < 0.95) ? 'Turn the filter’s flow up, or add a bigger filter.' : 'Add a bigger filter, or a second one.';
     } else if (failedFilter) {
       st = 'watch';
       reason = `The ${failedFilter.def.name} has failed; the remaining filters are carrying the load.`;
@@ -676,7 +753,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         unit: '×/h',
         display: `${fmt(turnover, 1)}× per hour`,
         status: st,
-        ideal: '4–10× per hour, capacity above the bioload',
+        ideal: '4–10× per hour, more capacity than the animals’ waste needs', // Audit 2026-11-17 (J5): no "bioload"
         reason,
         advice,
       },
@@ -745,10 +822,25 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     const lightLevel = par < 0.35 ? 0 : par < 0.75 ? 1 : 2;
     const dimLovers = groups.filter((g) => g[0].species.lightPreference === 'dim');
     const brightLovers = groups.filter((g) => g[0].species.lightPreference === 'bright');
+    // Audit 2026-11-17 C3 — a light that's installed but burned out or switched off: its Repair or its switch
+    const idleLight = s.lights.length === 0 ? idleUnit(s, 'light') : undefined;
+    let headline = 'Lighting is a poor match';
     if (s.lights.length === 0) {
       st = hasAnimals || env.habitat.nitrateUptake > 0 || env.corals > 0 ? 'watch' : 'good';
-      reason = s.failed.some((e) => e.def.kind === 'light') ? 'The light has burned out.' : 'No light is installed.';
-      advice = 'Install a light — animals need a day/night rhythm, and plants and corals need light to live.';
+      const why = 'animals need a day/night rhythm, and plants and corals need light to live.';
+      if (idleLight?.inst.failed) {
+        reason = `The ${idleLight.def.name} has burned out.`;
+        advice = `Repair the ${idleLight.def.name} — ${why}`;
+        headline = 'The light has burned out';
+      } else if (idleLight) {
+        reason = `The ${idleLight.def.name} is switched off.`;
+        advice = `Switch it on — ${why}`;
+        headline = 'The light is switched off';
+      } else {
+        reason = 'No light is installed.';
+        advice = `Install a light — ${why}`;
+        headline = 'No light installed';
+      }
     } else if (lightLevel === 2 && dimLovers.length) {
       st = 'watch';
       reason = `This light is bright for ${joinNames(dimLovers.map(whoOf))}, which prefer dim, shaded water.`;
@@ -760,7 +852,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     } else if (w.algae > 25 && photoperiodTooLong(tank.lighting, state.facility?.closeHour)) {
       // the same line setLighting draws (care/index.ts): a day that covers the open hours is fine; longer feeds algae
       st = 'watch';
-      reason = `Lights are on ${photoperiod} hours a day${lightsPastClose(tank.lighting, state.facility?.closeHour) ? ', past closing time' : ''} — long photoperiods feed algae.`;
+      reason = `Lights are on ${photoperiod} hours a day${lightsPastClose(tank.lighting, state.facility?.closeHour) ? ', past closing time' : ''} — long days of light feed algae.`; // Audit 2026-11-17 (J5): no "photoperiod"
       advice = 'Switch the lights off when the doors close, or shorten the day to about 8–10 hours while the algae clears.';
     }
     add(
@@ -775,7 +867,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         reason,
         advice,
       },
-      'Lighting is a poor match',
+      headline,
     );
   }
 
@@ -841,7 +933,8 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
               : w.algae > 50
                 ? 'Green water: free-floating algae.'
                 : 'Suspended detritus and leftover food are clouding the water.',
-        advice: st === 'good' ? undefined : bloom ? 'Be patient, feed lightly; a UV sterilizer clears it faster.' : 'Vacuum the substrate, rinse the filter sponge in tank water and feed less.',
+        // Audit 2026-11-17 C13 — green water is free-floating algae: vacuuming doesn't touch it, light and nutrients do
+        advice: st === 'good' ? undefined : bloom ? 'Be patient, feed lightly; a UV steriliser clears it faster.' : w.algae > 50 ? 'Shorten the lights to about 8 hours and change water; a UV steriliser clears it faster.' : 'Vacuum the substrate, rinse the filter sponge in tank water and feed less.',
       },
       'Water is cloudy',
     );
@@ -853,7 +946,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
       status: 'watch',
       param: 'temp',
       text: `The heater is set to ${fmt(s.heaterSet ?? 0, 1)} °C but the chiller to ${fmt(s.chillerSet ?? 0, 1)} °C, so they fight each other — wasting power and making the temperature swing.`,
-      advice: 'Set the heater at least 1 °C below the chiller setting.',
+      advice: fightAdvice(state, tank, s.heaterSet ?? 0, s.chillerSet ?? 0), // Audit 2026-11-17 C7
       headline: 'Heater and chiller are fighting',
       weight: 150,
     });
@@ -864,14 +957,15 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     const dangerous = e.def.kind === 'heater' || e.def.kind === 'chiller' || e.def.kind === 'ato';
     issues.push({
       status: stuck || (dangerous && hasAnimals) ? 'danger' : 'watch',
-      text: stuck ? `The ${e.def.name}'s thermostat has stuck on — it is cooking the tank.` : `The ${e.def.name} has failed.`,
+      text: stuck ? `The ${e.def.name}’s thermostat has stuck on — it is cooking the tank.` : `The ${e.def.name} has failed.`,
       advice: stuck ? 'Switch it off now, then repair or replace it.' : 'Repair or replace it.',
       headline: stuck ? 'Heater stuck on — overheating!' : `${e.def.name} has failed`,
       weight: stuck ? 300 : dangerous ? 205 : 110,
     });
   }
-  // Undersized heater
-  if (s.heaterSet !== null && !s.stuckHeaters.length) {
+  // Undersized heater (Audit 2026-11-17 C19, B-231 g: not while it fights a chiller — that line says what to do, and
+  // "too small" sent the player to buy a heater)
+  if (s.heaterSet !== null && !s.stuckHeaters.length && !s.conflict) {
     const reach = expectedTempC(tank, s);
     if (reach < s.heaterSet - 0.6) {
       issues.push({
@@ -885,16 +979,22 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     }
   }
   // Tropical animals without any heater (room is cool)
-  if (hasAnimals && s.heaterSet === null && !s.stuckHeaters.length) {
+  // Audit 2026-11-17 C3 — a heater that's installed but failed has its own "has failed" line above; one that's switched
+  // off is named, with its switch (this line used to say "There is no heater" either way).
+  const idleHeater = s.entries.find((e) => e.def.kind === 'heater' && !e.inst.on && !e.inst.failed);
+  if (hasAnimals && s.heaterSet === null && !s.stuckHeaters.length && (idleHeater || !s.failed.some((e) => e.def.kind === 'heater'))) {
     const cold = species.filter((sp) => sp.tempC.idealMin > ROOM_TEMP_C + 1);
     if (cold.length && w.tempC < Math.max(...cold.map((sp) => sp.tempC.idealMin))) {
+      const who = joinNames(cold.map((sp) => pluralName(sp.commonName)));
       issues.push({
         // DANGER only where the temperature row is DANGER too (more than TEMP_TOLERANCE_C below a species' minimum)
         status: w.tempC < Math.max(...cold.map((sp) => sp.tempC.min)) - TEMP_TOLERANCE_C ? 'danger' : 'watch',
         param: 'temp',
-        text: `There is no heater, and the room keeps this tank near ${ROOM_TEMP_C} °C — too cool for ${joinNames(cold.map((sp) => pluralName(sp.commonName)))}.`,
-        advice: 'Install a heater set to the middle of their range.',
-        headline: 'Tank needs a heater',
+        text: idleHeater
+          ? `The ${idleHeater.def.name} is switched off, and the room keeps this tank near ${ROOM_TEMP_C} °C — too cool for ${who}.`
+          : `There is no heater, and the room keeps this tank near ${ROOM_TEMP_C} °C — too cool for ${who}.`,
+        advice: idleHeater ? 'Switch it on.' : 'Install a heater set to the middle of their range.',
+        headline: idleHeater ? 'The heater is switched off' : 'Tank needs a heater',
         weight: 160,
       });
     }
@@ -920,7 +1020,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
   residents.sort((a, b) => b.harm - a.harm);
   let headline: string;
   if (issues.length && status !== 'good') headline = issues[0].headline;
-  else if (!hasAnimals) headline = w.bioMaturity >= 0.75 ? 'Water is ready for animals' : 'Water is clean — the filter is still maturing';
+  else if (!hasAnimals) headline = w.bioMaturity >= CYCLE_READY ? 'Water is ready for animals' : 'Water is clean — the filter is still maturing';
   else headline = (tank.water.lab?.swing ?? 0) < 0.1 && w.clarity > 0.95 ? 'Water is healthy and stable' : 'Water is healthy';
 
   return {

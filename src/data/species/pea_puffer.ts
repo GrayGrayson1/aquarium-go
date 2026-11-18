@@ -142,7 +142,7 @@ export const peaPuffer: SpeciesDefinition = {
     summary: 'A fully freshwater dwarf puffer — about the size of a thumbnail and every bit a predator.',
     nativeHabitat: 'Slow, heavily vegetated rivers, lakes and backwaters of south-western India.',
     socialStructure: 'Territorial. Solo works well; groups need many plants and more females than males.',
-    tankNeeds: 'Warm (about 24–27 °C), gentle water with dense plants and broken sight lines — about 5 gallons for one, plus 3 per extra puffer. Clean water: they are sensitive to nitrogen waste. Most refuse dry food; live snails help keep their beak worn.',
+    tankNeeds: 'Warm (about 24–27 °C), gentle water with dense plants and broken sight lines — about 5 gallons for one, plus 3 per extra puffer. Clean water: they are sensitive to nitrogen waste. Most refuse dry food; live snails help keep their beaks worn.',
     compatibilityNotes: 'Species-only setups are the safe expectation. Eats snails and dwarf shrimp; nips slow or long-finned fish. Fast, pushy feeders outcompete it. Otocinclus and larger shrimp are occasionally kept with it successfully.',
     breedingOverview: 'After a courtship chase, a pair scatters up to about ten eggs in moss or dense plants. They hatch in about five days; the tiny fry need microworms, then baby brine shrimp.',
     conservationNote: 'Listed Vulnerable; wild collection hurt native populations. Buy captive-bred.',

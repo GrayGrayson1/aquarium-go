@@ -248,7 +248,9 @@ export function equipmentEmitters(tank: Tank): EquipmentEmitter[] {
         break;
       }
       case 'airstone':
-        out.push({ kind: 'bubbles', pos: [p.pos[0], p.pos[1] + 0.008, p.pos[2]], rate: 34 * set, size: 0.0022, equipmentId: id });
+        // Audit 2026-11-17 C10 (review): full bubbles — its Flow control is gone (the sim never read it), so an old
+        // save's "Gentle" no longer leaves a third of the stream for good
+        out.push({ kind: 'bubbles', pos: [p.pos[0], p.pos[1] + 0.008, p.pos[2]], rate: 34, size: 0.0022, equipmentId: id });
         break;
       case 'co2_kit':
         out.push({ kind: 'bubbles', pos: [p.pos[0], p.pos[1] + 0.02, p.pos[2] + 0.012], rate: 22, size: 0.0007, equipmentId: id });

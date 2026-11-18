@@ -363,7 +363,10 @@ describe('brackish water', () => {
     expect(cb).toBeGreaterThan(0);
     expect(cb / cm).toBeGreaterThan(0.15);
     expect(cb / cm).toBeLessThan(0.5);
-    expect(tankDailyCost(g, b)).toBeLessThan(tankDailyCost(g, m));
+    // Audit 2026-11-17 C2 — the owner's choice: salt is paid for when bought, not in the running cost (this line used
+    // to pin the brackish tank's smaller salt bill), so a salt tank costs what the same gear would in fresh water
+    expect(tankDailyCost(g, b)).toBe(tankDailyCost(g, { ...b, waterClass: 'freshwater_tropical' }));
+    expect(tankDailyCost(g, m)).toBe(tankDailyCost(g, { ...m, waterClass: 'freshwater_tropical' }));
   });
 
   it('water reports explain low brackish salinity in plain words', () => {

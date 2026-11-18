@@ -3,6 +3,7 @@
  * Pure functions over GameState (Immer drafts). Randomness only via ctx.rng / simRng(state);
  * cosmetic anchor jitter uses a hash-seeded RNG so it never disturbs the simulation stream.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { pluralPhrase } from '@/sim/economy/util';
 import type {
   Creature,
@@ -26,7 +27,7 @@ import type { IncidentRisk } from '@/sim/compat';
 import { computeTankEnv, effectiveBioload } from '@/sim/water';
 import { fitsEnvironment } from '@/sim/compat/salinity';
 import { findSpecies } from '@/data/species';
-import { getDecorDef } from '@/data/catalog/decor';
+import { getDecorDef, isFloating } from '@/data/catalog/decor';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getTankTier } from '@/data/catalog/tanks';
 import type { TankInfo } from './types';
@@ -252,16 +253,10 @@ export function hurt(c: Creature, stress: number, health: number, injury: number
 
 // ───────────────────────────── naming / text ─────────────────────────────
 
-const PROPER_PREFIXES = ['Banggai', 'Endler', 'Amano', 'African', 'White Cloud', 'Kuhli', 'Royal'];
-
-/** Species name for running text: "axolotl", "betta", "Banggai cardinalfish". */
+/** Species name for running text: "axolotl", "betta", "Banggai cardinalfish". Audit 2026-11-17 (J15): one list of
+ *  proper nouns for the whole game (lowerName); "Royal" and "Kuhli" aren't place or people names in a sentence. */
 export function spName(sp: SpeciesDefinition): string {
-  const n = sp.commonName;
-  if (PROPER_PREFIXES.some((p) => n.startsWith(p))) {
-    const [first, ...rest] = n.split(' ');
-    return [first, ...rest.map((w) => w.toLowerCase())].join(' ');
-  }
-  return n.toLowerCase();
+  return lowerName(sp.commonName);
 }
 
 /** Plural species name for running text: "axolotls", "ocellaris clownfish", "cherry shrimp", "fancy guppies". */
@@ -291,8 +286,16 @@ export function toastWorthy(state: GameState, sp: SpeciesDefinition, kind: strin
  * milestones that toast, so a busy colony tank notifies as rarely as it toasts, and to an axolotl's finished clutch
  * (laying takes hours, so that line carries the count; one per clutch).
  */
-export function breedNotice(topic: 'eggs' | 'hatch' | 'birth', name: string | undefined, n: number, tank: Tank): EventNotice {
-  return { topic, vars: { ...(name ? { name } : {}), n, tank: tank.name } };
+export function breedNotice(topic: 'eggs' | 'hatch' | 'birth', name: string | undefined, n: number, tank: Tank, young?: string): EventNotice {
+  // audit E25: `young` names what hatched ("larvae", "wriggling fry"): not every hatch is free-swimming fry
+  return { topic, vars: { ...(name ? { name } : {}), n, tank: tank.name, ...(young ? { young } : {}) } };
+}
+
+/** audit E25: the singular of a young-stage label ("1 larva", not "1 larvae"; fry and young stay as they are). */
+export function youngSingular(label: string): string {
+  if (label === 'larvae') return 'larva';
+  if (/fry$|young$/.test(label)) return label;
+  return label.replace(/s$/, '');
 }
 
 /** The first name a clutch's notification uses: the mother, else the father, else whoever guards it. */
@@ -587,10 +590,14 @@ export function juvenileSlots(state: GameState, tank: Tank, sp: SpeciesDefinitio
   return Math.max(0, Math.floor((cap - used) / per + 1e-9));
 }
 
-/** Nursery = marked as nursery, or a tank holding no adult animals at all (species-only rearing tank). */
-export function isNurseryFor(state: GameState, tank: Tank, hour: number): boolean {
+/**
+ * Nursery = marked as nursery, or a tank holding no adult animals at all (species-only rearing tank). audit E12:
+ * `spare` — adults that don't count (a cichlid pair's own parents, which never eat their brood).
+ */
+export function isNurseryFor(state: GameState, tank: Tank, hour: number, spare?: readonly (string | null | undefined)[]): boolean {
   if (tank.purpose === 'nursery') return true;
   for (const c of livingIn(state, tank.id)) {
+    if (spare?.includes(c.id)) continue;
     const sp = findSpecies(c.speciesId);
     if (!sp) continue;
     if (sp.category === 'coral') continue;
@@ -619,6 +626,39 @@ export function youngWaterSeverity(tank: Tank, sp: SpeciesDefinition): number {
     if (s > sp.salinitySG.max) sev += (s - sp.salinitySG.max) * 150;
   }
   return Number.isFinite(sev) ? sev : 0;
+}
+
+/** "fresh" / "salt" / "brackish" (never "freshwater water"). */
+const waterName = (env: string) => (env === 'freshwater' ? 'fresh' : env === 'marine' ? 'salt' : env);
+
+/**
+ * audit E9: what in the water hurts this species' young most, in words ("Community is fresh water, and sailfin molly
+ * young do much better in brackish water"), or null when nothing does. The same terms as `youngWaterSeverity` (which
+ * is left exactly as it was, so the hazard doesn't move); the largest one is named.
+ */
+export function youngWaterCause(tank: Tank, sp: SpeciesDefinition): string | null {
+  if (!fitsEnvironment(sp, tank.environment)) return `${tank.name} is ${waterName(tank.environment)} water, which ${spName(sp)} young can’t live in`;
+  const w = tank.water;
+  const t = w.tempC;
+  const range = `${sp.tempC.min}–${sp.tempC.max} °C`;
+  const terms: [number, string][] = [
+    [tank.environment === sp.environment ? 0 : 0.5, `${tank.name} is ${waterName(tank.environment)} water, and ${spName(sp)} young do much better in ${waterName(sp.environment)} water`],
+    [Math.max(0, (w.ammonia ?? 0) - 0.2) * 1.6, 'there is ammonia in the water — change some water and check the filter'],
+    [Math.max(0, (w.nitrite ?? 0) - 0.2) * 1.6, 'there is nitrite in the water — change some water and check the filter'],
+    [Math.max(0, (w.nitrate ?? 0) - 60) / 100, 'the nitrate is high — a water change brings it down'],
+    [t < sp.tempC.min ? 0.3 + (sp.tempC.min - t) * 0.25 : 0, `it is too cold for them (they need ${range})`],
+    [t > sp.tempC.max ? 0.3 + (t - sp.tempC.max) * 0.25 : 0, `it is too warm for them (they need ${range})`],
+    [(w.oxygen ?? 1) < 0.55 ? (0.55 - w.oxygen) * 2 : 0, 'the water is short of oxygen — an airstone helps'],
+  ];
+  if (sp.salinitySG) {
+    const s = w.salinitySG;
+    const want = `${sp.salinitySG.min.toFixed(3)}–${sp.salinitySG.max.toFixed(3)}`;
+    terms.push([s < sp.salinitySG.min ? (sp.salinitySG.min - s) * 150 : 0, `the salinity is too low for them (they need ${want})`]);
+    terms.push([s > sp.salinitySG.max ? (s - sp.salinitySG.max) * 150 : 0, `the salinity is too high for them (they need ${want})`]);
+  }
+  let best: [number, string] | null = null;
+  for (const x of terms) if (Number.isFinite(x[0]) && x[0] > 0 && (!best || x[0] > best[0])) best = x;
+  return best ? best[1] : null;
 }
 
 /** Is the water good enough for spawning at all (adults)? Returns a reason when not. */
@@ -839,16 +879,60 @@ export function pickSite(tank: Tank, kind: SiteKind, key: string, extras = 0): {
   }
 }
 
-/** Does the tank offer a nest site (rock/tile/host/cave anchor, habitat nest sites, or any hardscape)? */
+/**
+ * audit E11 (B-223): nest-site capacity carried by plants (java moss, floating plants): cover to scatter eggs into, not a
+ * surface to lay on. The habitat's `nestSites` counts them, so the hard-site checks below take them back out.
+ */
+function plantNestSites(tank: Tank): number {
+  let n = 0;
+  for (const inst of tank.decor ?? []) {
+    const def = getDecorDef(inst.defId);
+    if (!def || def.category !== 'plant') continue;
+    for (const a of def.anchors) {
+      if (a.kind === 'nest_site') n += a.capacity ?? 1;
+      else if (a.kind === 'cave') n += 1;
+    }
+  }
+  return n;
+}
+
+const HARD_CATEGORIES = ['hardscape', 'ornament', 'coral', 'anemone', 'enrichment', 'substrate_feature'] as const;
+
+/**
+ * audit E11: a hard surface to lay on — any rock, wood, ornament or coral, or a nest site, cave or host on a piece that
+ * isn't a plant (a terracotta cave, oyster shells, the live-rock arch). A clump of moss or floating plants isn't one.
+ */
+export function hasHardSite(tank: Tank, habitat?: Pick<TankHabitat, 'nestSites'>): boolean {
+  if (habitat && habitat.nestSites - plantNestSites(tank) > 0) return true;
+  if (anchorsOn(tank, HARD_CATEGORIES, ['nest_site', 'host', 'cave']).length) return true;
+  return decorSpots(tank, ['hardscape', 'ornament', 'coral']).length > 0;
+}
+
+/** audit E11: a broad leaf to lay on — a leaf rest on a rooted plant (java fern, anubias, Amazon sword…), not floating plants. */
+export function hasBroadLeaf(tank: Tank): boolean {
+  for (const inst of tank.decor ?? []) {
+    const def = getDecorDef(inst.defId);
+    if (def && def.category === 'plant' && !isFloating(def) && def.anchors.some((a) => a.kind === 'leaf_rest')) return true;
+  }
+  return false;
+}
+
+/** audit E11: sand (or rubble) a male can clear a nest in (a damselfish, a ram's pit). */
+export function hasSandBed(tank: Tank): boolean {
+  const k = tank.substrate?.kind;
+  if (k === 'fine_sand' || k === 'sand' || k === 'aragonite') return true;
+  return decorSpots(tank, ['substrate_feature']).length > 0;
+}
+
+/** Does the tank offer a nest site to lay on (a hard surface, above, or a host)? audit E11: plants no longer count. */
 export function hasNestSite(tank: Tank, habitat: TankHabitat): boolean {
-  if (habitat.nestSites > 0 || habitat.hasHost) return true;
-  if (decorAnchorsOf(tank, ['nest_site', 'host', 'cave', 'rest']).length) return true;
-  return decorSpots(tank, ['hardscape', 'ornament']).length > 0;
+  if (habitat.hasHost) return true;
+  return hasHardSite(tank, habitat);
 }
 
 export function hasCave(tank: Tank, habitat: TankHabitat): boolean {
   if (decorAnchorsOf(tank, ['cave']).length) return true;
-  return habitat.hides >= 1 && habitat.nestSites > 0;
+  return habitat.hides >= 1 && habitat.nestSites - plantNestSites(tank) > 0;
 }
 
 // ───────────────────────────── tank info (per sub-step cache) ─────────────────────────────
@@ -874,34 +958,92 @@ export function makeTankInfo(state: GameState, tank: Tank, hour: number, risks: 
 
 // ───────────────────────────── readiness ─────────────────────────────
 
-/** Target breeding readiness 0..100 from welfare, water, conditioning foods, crowding and cooldown. */
-export function readinessTarget(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, info: TankInfo): number {
-  if (!isMature(c, sp, hour)) return 0;
+/** audit E4: one term of the breeding readiness target (what holds it down, for the pairing check's advice). */
+export type ReadinessFactorKey = 'water_type' | 'health' | 'stress' | 'hunger' | 'comfort' | 'illness' | 'temp_range' | 'too_cool' | 'too_warm' | 'conditioning' | 'crowded' | 'tank_small' | 'fertility';
+export interface ReadinessFactor {
+  key: ReadinessFactorKey;
+  mult: number;
+}
+
+/**
+ * The terms of the readiness target, in the order they multiply (null: the target is 0 outright — immature, held by a
+ * production line, resting, or water it can't live in). `readinessTarget` multiplies these in this order, so its value
+ * is bit-for-bit what it was before the terms were named.
+ */
+export function readinessFactors(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, info: TankInfo): ReadinessFactor[] | null {
+  if (!isMature(c, sp, hour)) return null;
   // lane:production — a line holding its pair (paused, waiting for room, missing a partner or tank) keeps them from
   // spawning, the same way resting does (PROD-010; the mechanism recorded in PLAN.md chunk 4).
-  if (c.repro?.lineHold) return 0;
-  if (isResting(c, hour)) return 0;
+  if (c.repro?.lineHold) return null;
+  if (isResting(c, hour)) return null;
   // Shared salinity model (same as the purchase gate / welfare): a tolerated environment breeds, but less keenly.
-  if (!fitsEnvironment(sp, tank.environment)) return 0;
+  if (!fitsEnvironment(sp, tank.environment)) return null;
   const s = c.stats;
-  let f = tank.environment === sp.environment ? 1 : 0.7;
-  f *= ramp(s.health, 45, 85);
-  f *= 1 - ramp(s.stress, 45, 90);
-  f *= 1 - ramp(s.hunger, 55, 90);
-  f *= 0.4 + 0.6 * ramp(s.comfort, 25, 65);
-  if (c.illness) f *= 0.3;
+  const out: ReadinessFactor[] = [];
+  const add = (key: ReadinessFactorKey, mult: number) => out.push({ key, mult });
+  add('water_type', tank.environment === sp.environment ? 1 : 0.7);
+  add('health', ramp(s.health, 45, 85));
+  add('stress', 1 - ramp(s.stress, 45, 90));
+  add('hunger', 1 - ramp(s.hunger, 55, 90));
+  add('comfort', 0.4 + 0.6 * ramp(s.comfort, 25, 65));
+  if (c.illness) add('illness', 0.3);
   const t = tank.water.tempC;
   const cond = sp.breeding.conditions;
-  if (t < sp.tempC.min || t > sp.tempC.max) f *= 0.15;
-  if (cond.minTempC !== undefined && t < cond.minTempC - 0.25) f *= 0.4;
-  if (cond.maxTempC !== undefined && t > cond.maxTempC + 0.25) f *= 0.35;
-  if (cond.needsConditioningFood?.length) f *= 0.45 + 0.55 * conditioningLevel(tank, c, sp, hour);
+  if (t < sp.tempC.min || t > sp.tempC.max) add('temp_range', 0.15);
+  if (cond.minTempC !== undefined && t < cond.minTempC - 0.25) add('too_cool', 0.4);
+  if (cond.maxTempC !== undefined && t > cond.maxTempC + 0.25) add('too_warm', 0.35);
+  if (cond.needsConditioningFood?.length) add('conditioning', 0.45 + 0.55 * conditioningLevel(tank, c, sp, hour));
   const load = info.loadRatio();
-  if (load > 1.05) f *= 0.15;
-  else if (load > 0.85) f *= 0.6;
-  if (cond.minTankGallons && gallonsOf(tank) < cond.minTankGallons) f *= 0.5;
-  f *= Math.min(1, 0.85 + 0.3 * ((c.genome?.potentials?.fertility ?? 50) / 100));
+  if (load > 1.05) add('crowded', 0.15);
+  else if (load > 0.85) add('crowded', 0.6);
+  if (cond.minTankGallons && gallonsOf(tank) < cond.minTankGallons) add('tank_small', 0.5);
+  add('fertility', Math.min(1, 0.85 + 0.3 * ((c.genome?.potentials?.fertility ?? 50) / 100)));
+  return out;
+}
+
+/** Target breeding readiness 0..100 from welfare, water, conditioning foods, crowding and cooldown. */
+export function readinessTarget(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, info: TankInfo): number {
+  const factors = readinessFactors(tank, c, sp, hour, info);
+  if (!factors) return 0;
+  // the first term (water type) is 1 or 0.7, so 1 × it is exact: the product is the one the inline code computed
+  let f = 1;
+  for (const x of factors) f *= x.mult;
   return 100 * clamp01(f);
+}
+
+/** What holds a pair's readiness down (Audit 2026-11-17, H4). */
+export type ReadinessDrag = 'water' | 'health' | 'stress' | 'hunger' | 'comfort' | 'illness' | 'temp_range' | 'too_cool' | 'too_warm' | 'conditioning' | 'crowded' | 'small_tank';
+
+/** review E: readinessFactors' keys in H4's names (fertility isn't one the player can change, so it has none). */
+const DRAG_OF: Partial<Record<ReadinessFactorKey, ReadinessDrag>> = {
+  water_type: 'water',
+  health: 'health',
+  stress: 'stress',
+  hunger: 'hunger',
+  comfort: 'comfort',
+  illness: 'illness',
+  temp_range: 'temp_range',
+  too_cool: 'too_cool',
+  too_warm: 'too_warm',
+  conditioning: 'conditioning',
+  crowded: 'crowded',
+  tank_small: 'small_tank',
+};
+
+/**
+ * Audit 2026-11-17 (H4): the term of `readinessTarget` that holds this animal back most (its smallest factor below 1),
+ * for the screens' "Not ready yet: …". Null when nothing the player can change holds it back (or it isn't an adult,
+ * rests, or is held by its line). Review E: read from `readinessFactors`, the target's own terms, so the two can't drift.
+ */
+export function readinessDrag(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, info: TankInfo): { drag: ReadinessDrag; factor: number } | null {
+  const factors = readinessFactors(tank, c, sp, hour, info);
+  if (!factors) return null;
+  let best: { drag: ReadinessDrag; factor: number } | null = null;
+  for (const { key, mult } of factors) {
+    const drag = DRAG_OF[key];
+    if (drag && mult < 1 - 1e-9 && (!best || mult < best.factor)) best = { drag, factor: mult };
+  }
+  return best;
 }
 
 export function updateReadiness(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, dt: number, info: TankInfo): void {

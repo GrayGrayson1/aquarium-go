@@ -127,7 +127,7 @@ export const astraeaSnail: SpeciesDefinition = {
     variation: 0.25,
     notes: 'Colour slots for the snail renderer: body/body2 = olive cone and its patches; accent = algae film; fin/belly = grey-tan foot (unsourced). A flat-sided cone of about 6 whorls with slanting folds that stand out as knobs at each keel, a nearly flat base.',
   },
-  visualMorphs: ['Astraea (shell colour varies)'],
+  visualMorphs: ['Astraea (no morphs; shell colour varies)'],
 
   behaviorSet: 'snail',
   behaviorTraits: { cruiseSpeed: 0.03, burstSpeed: 0.04, turnRate: 0.5, hoverTendency: 0, schoolingTightness: 0, restOnBottom: 1, hitching: 0, burrowing: 0, glassSurfing: 0, curiosity: 0.1, nocturnal: 0.6, pickRadiusMul: 1.5 },
@@ -142,7 +142,7 @@ export const astraeaSnail: SpeciesDefinition = {
     breedingOverview: 'Spawns into the water now and then in tanks; the eggs are eaten and young are rare.',
     conservationNote: 'Not assessed by the IUCN. Collected by the hundreds of thousands for the trade.',
     funFact: 'Its shell is a near-perfect pyramid — the knobbed folds on each whorl make a star when you look down on it.',
-    inGameBehavior: 'Creeps over the rock and glass grazing, busiest at dusk — and if it tumbles onto its back, it stays there until you help.',
+    inGameBehavior: 'Creeps over the rock and glass grazing, busiest at dusk.',
     feedingNote: 'Grazes film algae, diatoms, some hair algae and cyanobacteria. When the algae runs short, add a little seaweed or an algae wafer.',
     keeperTip: 'Check every day for snails on their backs and turn them over — an upturned Astraea starves or gets eaten.',
   },

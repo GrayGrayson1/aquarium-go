@@ -2,18 +2,20 @@
  * Finances — balance, 14-day income vs expenses chart, categorised ledger, operating cost by tank, and debt/loan
  * status with concrete advice. OWNER: lane "ui-panels".
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Wallet, TrendingUp, TrendingDown, Receipt, Gauge, TriangleAlert, HandCoins, Lightbulb, Landmark, Layers, Building2, Users } from 'lucide-react';
-import type { GameState, LedgerEntry } from '@/types';
+import { Wallet, TrendingUp, TrendingDown, Receipt, Gauge, TriangleAlert, HandCoins, Lightbulb, Landmark, Layers, Building2, Users, ChevronRight } from 'lucide-react';
+import type { LedgerEntry } from '@/types';
 import { Money, formatMoney } from '@/ui/kit';
-import { dailyOperatingCost, cashSuggestions, restartNeed, LOAN_AFTER_DEBT_HOURS, type OperatingCosts } from '@/sim/economy';
+import { dailyOperatingCost, cashIdeas, restartNeed, LOAN_AFTER_DEBT_HOURS, type OperatingCosts, type CashIdea } from '@/sim/economy';
 import { PanelLayout } from '../common/PanelLayout';
 import { usePanelGame, safe } from '../common/hooks';
-import { Chip, Seg, EmptyState, SectionHead, Tile, Callout, Bar } from '../common/parts';
+import { Chip, Seg, EmptyState, SectionHead, Callout, Bar } from '../common/parts';
 import { IncomeChart, type DayPoint } from './IncomeChart';
 import { orderedTanks, dailyCost } from '../common/derive';
 import { LEDGER_LABEL, dayOfHour, relTime, formatSpan } from '../common/format';
+import { needsCashIdeas, wholeMoney } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F1, F11)
+import { useUI, type PanelId } from '@/state/ui'; // audit 2026-11-17 (F2)
 
 type LedgerFilter = 'all' | 'income' | 'expenses';
 
@@ -21,6 +23,17 @@ export function FinancesPanel() {
   const g = usePanelGame(1000);
   const [filter, setFilter] = useState<LedgerFilter>('all');
   const [cat, setCat] = useState<LedgerEntry['category'] | 'all'>('all');
+  // review fix (audit 2026-11-17) — every "Ways to raise cash" link opens Finances with the target 'cash': the ideas
+  // show (whatever the balance) and come into view
+  const target = useUI((s) => s.panelTarget);
+  const [wantIdeas, setWantIdeas] = useState(() => useUI.getState().panelTarget === CASH_TARGET);
+  useEffect(() => {
+    if (target !== CASH_TARGET) return;
+    setWantIdeas(true);
+    useUI.getState().set({ panelTarget: null });
+    const t = window.setTimeout(() => document.querySelector('[data-testid="finance-ideas"]')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 120);
+    return () => window.clearTimeout(t);
+  }, [target]);
 
   const data = useMemo(() => {
     if (!g) return null;
@@ -67,7 +80,8 @@ export function FinancesPanel() {
   const debtHours = g.finance.debtSinceHour != null ? g.clock.hour - g.finance.debtSinceHour : 0;
   const loan = g.finance.loan;
   const runway = data.ops.total > 0 ? money / data.ops.total : Infinity;
-  const tips = inDebt || runway < 3 ? safe(() => cashSuggestions(g), []) : [];
+  // audit 2026-11-17 (F1) — also when money stands between the animals and their food (Supplies' "Ways to raise cash")
+  const tips = inDebt || runway < 3 || wantIdeas || safe(() => needsCashIdeas(g), false) ? safe(() => cashIdeas(g), []) : [];
   // lane:fix-integrate-ui — an empty room the player can't restock: the club lends a restart at its second midnight
   // (the first one only notes it), so say which midnight (P5-08)
   const stranded = safe(() => restartNeed(g), null);
@@ -80,12 +94,12 @@ export function FinancesPanel() {
   const ledgerCats = [...new Set(g.finance.ledger.map((e) => e.category))];
 
   return (
-    <PanelLayout title="Finances" icon={<Wallet size={20} />} subtitle={`${formatMoney(money)} in the bank · ${formatMoney(data.ops.total, { cents: data.ops.total < 20 })}/day to run everything`}>
+    <PanelLayout title="Finances" icon={<Wallet size={20} />} subtitle={`${wholeMoney(money)} in the bank · ${formatMoney(data.ops.total, { cents: data.ops.total < 20 })}/day to run everything`}>
       <div className="pn-stack pn-stack--lg">
         <div className="pn-balance">
           <div>
             <div className="pn-tiny pn-muted pn-balance__label">Balance</div>
-            <div className={clsx('pn-balance__v', inDebt && 'pn-tone-danger')}>{formatMoney(money)}</div>
+            <div className={clsx('pn-balance__v', inDebt && 'pn-tone-danger')}>{wholeMoney(money) /* F11: never more than you have */}</div>
           </div>
           <div className="pn-balance__deltas">
             {data.todayPt && (
@@ -106,7 +120,9 @@ export function FinancesPanel() {
             {inDebt && (
               <>
                 Bills still come due while you’re below zero, and new purchases are on hold.
-                {!loan && debtHours < LOAN_AFTER_DEBT_HOURS && <> If it lasts {formatSpan(LOAN_AFTER_DEBT_HOURS)}, the aquarium club will offer a one-time emergency loan.</>}{' '}
+                {!loan && debtHours < LOAN_AFTER_DEBT_HOURS && <> If it lasts {formatSpan(LOAN_AFTER_DEBT_HOURS)}, the aquarium club will offer a one-time emergency loan.</>}
+                {/* audit 2026-11-17 (F5) — once the loan has been used, say so, and what still helps */}
+                {loan && <> The aquarium club’s one-time loan has been used: sell an animal or decor to get back above zero. If your animals run out of food, the club drops off a little.</>}{' '}
               </>
             )}
             {loan && loan.outstanding > 0 && (
@@ -128,12 +144,27 @@ export function FinancesPanel() {
           </Callout>
         )}
         {tips.length > 0 && (
-          <div className="pn-card pn-advice">
+          <div className="pn-card pn-advice" data-testid="finance-ideas">
             <SectionHead title="Ways to raise cash" icon={<Lightbulb size={14} />} />
             <ul>
-              {tips.map((t, i) => (
-                <li key={i}>{t}</li>
-              ))}
+              {tips.map((t, i) => {
+                // audit 2026-11-17 (F2) — each idea goes where it happens
+                const to = CASH_IDEA_LINK[t.kind];
+                const target = to && (t.kind === 'quick_sell' || t.kind === 'starter') && t.creatureId ? `sell:${t.creatureId}` : (to?.target ?? null);
+                return (
+                  <li key={i} data-testid={`finance-idea-${t.kind}`}>
+                    {t.text}
+                    {to && (
+                      <>
+                        {' '}
+                        <button type="button" className="pn-link" data-testid={`finance-idea-go-${t.kind}`} onClick={() => useUI.getState().set({ panel: to.panel, panelTarget: target })}>
+                          {to.label} <ChevronRight size={12} aria-hidden style={{ verticalAlign: '-2px' }} />
+                        </button>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -151,7 +182,7 @@ export function FinancesPanel() {
 
         <div className="pn-grid pn-grid--2">
           <CategoryList title={`Income · ${data.truncated ? `last ${data.catDays} days` : '14 days'}`} icon={<TrendingUp size={14} />} rows={data.income} tone="income" />
-          <CategoryList title={`Spending · ${data.truncated ? `last ${data.catDays} days` : '14 days'}`} icon={<TrendingDown size={14} />} rows={data.expenses} tone="expense" />
+          <CategoryList title={`Expenses · ${data.truncated ? `last ${data.catDays} days` : '14 days'}`} icon={<TrendingDown size={14} />} rows={data.expenses} tone="expense" />
         </div>
         {data.truncated && (
           <p className="pn-tiny pn-muted" style={{ margin: '-6px 0 0' }}>
@@ -203,6 +234,18 @@ export function FinancesPanel() {
                     <span className="pn-opcost__v">{formatMoney(data.ops.wages ?? 0, { cents: true })}</span>
                   </div>
                 )}
+                {(data.ops.rooms ?? 0) > 0 && (
+                  // audit 2026-11-17 (F12) — the Water and Live food rooms' machines are in the total, so they get a row
+                  <div className="pn-opcost" data-testid="finance-rooms">
+                    <span className="pn-opcost__name pn-ellipsis">
+                      <Building2 size={12} className="pn-muted" aria-hidden style={{ flex: 'none' }} /> <span className="pn-ellipsis">{data.ops.roomNames}</span>
+                    </span>
+                    <div className="pn-grow">
+                      <Bar value={((data.ops.rooms ?? 0) / Math.max(0.01, data.ops.total)) * 100} tone="coral" label={`${data.ops.roomNames} running cost`} thin />
+                    </div>
+                    <span className="pn-opcost__v">{formatMoney(data.ops.rooms ?? 0, { cents: true })}</span>
+                  </div>
+                )}
                 <div className="pn-opcost pn-opcost--total">
                   <span className="pn-opcost__name">Total per day</span>
                   <div className="pn-grow" />
@@ -212,14 +255,14 @@ export function FinancesPanel() {
             )}
           </div>
           <p className="pn-tiny pn-muted" style={{ marginTop: 8 }}>
-            Electricity for filters, heaters and lights, wear on equipment, and salt for marine water changes. Empty tanks still cost money to run.
+            Electricity for filters, heaters and lights, and wear on equipment{(data.ops.rooms ?? 0) > 0 ? ', and the rooms’ machines' : ''}. Salt is a supply, like food: you pay when you buy it in Market › Supplies. Empty tanks still cost money to run.
             {(data.ops.wages ?? 0) > 0 && ' Staff wages are paid at midnight; if the cash runs out, they work a short notice period rather than putting you in debt.'}
           </p>
         </section>
 
         <section>
           <SectionHead title="Ledger" icon={<HandCoins size={14} />}>
-            <Seg<LedgerFilter> size="sm" label="Ledger filter" value={filter} onChange={setFilter} items={[{ id: 'all', label: 'All' }, { id: 'income', label: 'Income' }, { id: 'expenses', label: 'Spending' }]} />
+            <Seg<LedgerFilter> size="sm" label="Ledger filter" value={filter} onChange={setFilter} items={[{ id: 'all', label: 'All' }, { id: 'income', label: 'Income' }, { id: 'expenses', label: 'Expenses' }]} />
           </SectionHead>
           {ledgerCats.length > 1 && (
             <div className="pn-chips pn-chips--scroll" style={{ marginBottom: 10 }}>
@@ -259,6 +302,24 @@ export function FinancesPanel() {
   );
 }
 
+/** The Finances target every "Ways to raise cash" link opens with (moneyShort.CASH_LINK). */
+const CASH_TARGET = 'cash';
+
+/** Audit 2026-11-17 (F2) — where each way to raise cash is done (a quick sale opens that animal's quick-sell dialog). */
+const CASH_IDEA_LINK: Partial<Record<CashIdea['kind'], { panel: PanelId; target: string | null; label: string }>> = {
+  quick_sell: { panel: 'livestock', target: null, label: 'Quick sell' },
+  starter: { panel: 'livestock', target: null, label: 'Quick sell' },
+  list_animal: { panel: 'market', target: 'list', label: 'New listing' },
+  list_tank: { panel: 'market', target: 'list:tank', label: 'New listing' },
+  visitors: { panel: 'visitors', target: 'tab:visitors', label: 'Open Visitors' },
+  empty_tank: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' },
+  take_down: { panel: 'tanks', target: null, label: 'Open Tanks' }, // audit 2026-11-17 (G19 review)
+  spare_gear: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' }, // audit 2026-11-17 (G22 review)
+  trim: { panel: 'build', target: 'tab:equipment', label: 'Open equipment' },
+  decor: { panel: 'build', target: 'tab:decor', label: 'Open decor' },
+  open_market: { panel: 'market', target: 'tab:shop', label: 'Open the Market' },
+};
+
 /** lane:staff — ledger categories plus the 'wages' breakdown line (operating entries whose memo starts "Wages"). */
 type CatKey = LedgerEntry['category'] | 'wages';
 const catLabel = (k: CatKey) => (k === 'wages' ? 'Staff wages' : LEDGER_LABEL[k] ?? k);
@@ -274,7 +335,7 @@ function CategoryList({ title, icon, rows, tone }: { title: string; icon: React.
         </span>
       </SectionHead>
       {rows.length === 0 ? (
-        <span className="pn-small pn-muted">{tone === 'income' ? 'No income yet.' : 'No spending yet.'}</span>
+        <span className="pn-small pn-muted">{tone === 'income' ? 'No income yet.' : 'No expenses yet.'}</span>
       ) : (
         <div className="pn-col pn-gap-2">
           {rows.slice(0, 6).map((r) => (

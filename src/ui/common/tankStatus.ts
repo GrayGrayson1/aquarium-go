@@ -4,11 +4,28 @@
  * `cache.statusReasons` / `cache.statusReason`; older saves fall back to the water report's headline.
  */
 import type { GameState } from '@/types';
+import type { StatusLevel } from '@/types/reports';
 import { getWaterReport } from '@/sim/water';
 import { safe } from './safe';
+import { convertTempText } from './format'; // Audit 2026-11-17 (J1)
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
 
-/** Up to two reasons, most urgent first ("Ember is starving — feed right away. · Ammonia is rising"). */
-export function tankStatusReason(g: GameState, tankId: string, opts: { skipFood?: boolean; sep?: string } = {}): string {
+/**
+ * Audit 2026-11-17 (J10, B-157): a tank's status, and its water's, in one set of words everywhere (the tank bar, the
+ * tank card, Tanks, the bell, Find). A reading on the Water tab keeps Good · Watch · Danger (Settings names them).
+ */
+export const TANK_STATUS_WORD: Record<StatusLevel, string> = { good: 'Healthy', watch: 'Watch', danger: 'Danger' };
+
+/**
+ * Up to two reasons, most urgent first ("Ember is starving — feed right away. · Ammonia is rising"). Audit 2026-11-17
+ * (J1): temperatures in the player's unit (the sim writes °C); `unit` defaults to the setting.
+ */
+export function tankStatusReason(g: GameState, tankId: string, opts: { skipFood?: boolean; sep?: string; unit?: 'C' | 'F' } = {}): string {
+  const unit = opts.unit ?? useSettings.getState().tempUnit;
+  return convertTempText(statusReason(g, tankId, opts), unit) ?? '';
+}
+
+function statusReason(g: GameState, tankId: string, opts: { skipFood?: boolean; sep?: string }): string {
   const t = g.tanks[tankId];
   if (!t) return '';
   const c = t.cache;

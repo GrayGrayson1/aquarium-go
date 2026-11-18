@@ -54,15 +54,27 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    2026-11-02 (PLAN.md "Releases", 0.9.1; the live smoke 102 of 102). **Next:** B-228 to B-230. **Chunk 19, quality of
    life** (the owner, 2026-11-02, ADR-0055): panels stay open while their tools run, links to each problem's fix,
    search and Find anything, a decorating camera, every Locked explained, the shared shop's dropdown, the guide's
-   spotlight and tour. **Done** on `next` (`0cfb443`; the brief below). **Next:** the owner's yes to the new words
-   (the review page in the brief's status) and their go-ahead for 0.9.2.
-4. **Released:** 0.9.1 (chunk 18, the owner's deletes) on 2026-11-01; 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+   spotlight and tour. **Done and released as 0.9.2** (2026-11-02; the owner approved the words and asked for the
+   release: "Yeah go ahead and make sure this is on GitHub, everything's updated, and it's on Render"; "Releases").
+   **Next:** B-231's small notes; B-228 to B-230.
+4. **Released:** 0.10.0 (chunk 20, the audit of 2026-11-17) on 2026-11-17; 0.9.2 (chunk 19, quality of life) on 2026-11-02; 0.9.1 (chunk 18, the owner's deletes) on 2026-11-01; 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-5. Every owner question is answered (ADR-0024 to ADR-0049) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
-   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
+5. Every owner question is answered (ADR-0024 to ADR-0056) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005), and group M, the 41 decisions
+   the audit of 2026-11-17 left as they were (each row says what the game does today). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
+6. **The audit of 2026-11-11** (the owner: "Do a full audit … find all issues, and just fix them") was done from a
+   cloud sandbox that could not run `npm run build` or `npm run e2e`. On 2026-11-17 its branch `audit/2026-11-11`
+   passed typecheck, the unit tests (281 files, 4,269) and the build on the Mac, and `next` was fast-forwarded to it:
+   it is part of 0.10.0. Its brief, "Audit, 2026-11-11" below, has what it fixed and what it left for the owner
+   (dependency upgrades first among them).
+7. **The audit of 2026-11-17 is done and released as 0.10.0** (chunk 20 below; ADR-0056, the owner's request and his
+   ten answers): 257 findings from ten auditors, fixed by area, reviewed, the reviews' blockers fixed and reviewed
+   again. **Next:** a problem the owner reports; a line of `docs/agent/design/CHUNK-20/WORDS.md` he wants changed
+   (every new or changed line is there); his answers to group M; BACKLOG B-232 (what the round left open).
+   `docs/agent/SESSION_HANDOFF.md` has the order of work.
 
 ## Status
 
@@ -87,9 +99,15 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 16 | 31 new species (ADR-0052) | Done 2026-10-25 (released in 0.8.0; Chase, at the owner's request; the owner's answers, ADR-0052 rounds 1–4). 31 species (48 → 79) in three waves with real colour forms, young and male/female colours, their own behaviour and art; save format v3; the lab's "A friend's reef". Its full run (`96c950c`): typecheck, unit 3,814, build, e2e 335 of 335; the fresh review's, the confirmation's and the AI fixes' reviews' blockers fixed |
 | 17 | Big-tank species, and no animal in the shop before its tank (ADR-0053) | Brief and design written 2026-10-30 (Marshall, at the owner's request; `docs/agent/design/CHUNK-17/BIG-TANKS.md`); handed to Skye to build |
 | 18 | The owner deletes anything in Social, from the database (ADR-0054) | Done 2026-11-01 (released in 0.9.1). Its full run (`f15b8d7`): typecheck, unit 4,138, build, e2e 341 of 341; the fresh review found no blockers (its notes fixed, `a780b79`), the re-check's one blocker fixed (`f15b8d7`) and re-checked clean |
-| 19 | Quality of life: panels stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) | Done 2026-11-02 but for the owner's word review; not released. On `0cfb443`: typecheck, unit 4,214, build, e2e 381 of 381; the fresh review's ten blockers and the re-check's two fixed, its last re-check clean |
+| 19 | Quality of life: panels stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) | Done 2026-11-02 (released in 0.9.2). On `0cfb443`: typecheck, unit 4,214, build, e2e 381 of 381; the fresh review's ten blockers and the re-check's two fixed, its last re-check clean |
+| Audit | A full audit, with what it found fixed (the owner, 2026-11-11): B-210, B-165, B-181, B-183, B-125, parts of B-121, the shop server's meters, the Pages workflow, unused imports | Done 2026-11-11 in a cloud sandbox (typecheck, unit 4,269 on a stand-in toolchain; the fresh review's two blockers fixed); on the Mac on 2026-11-17 its branch passed typecheck, unit 281 files and 4,269 tests, and the build, and `next` was fast-forwarded to it. Released in 0.10.0 with chunk 20 |
+| 20 | The audit of 2026-11-17: a friendlier game with no dead ends (ADR-0056) | Done 2026-11-17 (released in 0.10.0; Chase, at the owner's request). 257 findings in ten areas fixed; the owner's ten answers built (AUD-001 to AUD-010). Its full run on `658f720`: typecheck, unit 4,761, build, e2e 414 of 415 (the one failure B-204's route walk in WebKit, 10 of 10 alone); `cf0f5cb` before it 415 of 415. Nine area reviews (6 blockers, fixed), three confirmation reviews (2 more, fixed) and a final review (no blockers; its four notes fixed) |
 
-**Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
+**Last full test runs:** chunk 20's final code `658f720`, the owner's Mac, 2026-11-17, from the internal-disk clone under
+`caffeinate -i -s`: typecheck passed; unit 311 files, 4,761 tests passed; build passed; e2e 414 of 415 in Chromium and
+WebKit (48.4 minutes), the one failure B-204's route walk in WebKit, 10 of 10 alone in each browser. Chunk 20's
+"Checks" has the passes before it (`cf0f5cb`: all four green, e2e 415 of 415).
+Before chunk 20: chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
 WebKit, dev and both production builds (39.9 minutes). Before it: `f9c62ab` the same four green (e2e 335 of 335, 40.0
 minutes); `0bdc84c` the same four green (unit 3,341, e2e 335 of
@@ -1849,7 +1867,7 @@ site, with the smoke tests.
   loaded 0.8.0 again; fixed by the static site's 0.9.1 deploy. And Brave Shields blocks the shop server's `/health`,
   leaving "Waking the shared shop…" up for good (B-230).
 
-### 19. Quality of life: panels that stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) — done 2026-11-02, waiting for the owner's word review and 0.9.2's go-ahead
+### 19. Quality of life: panels that stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) — done and released as 0.9.2 on 2026-11-02
 
 **Why.** The owner (2026-11-02, verbatim in ADR-0055): Build closes after a decor piece is placed ("I'd rather probably
 close the page that I was working with than have it automatically close and have to go find it again"); the tank card
@@ -1930,7 +1948,7 @@ spotlight follows the feed step and the tour runs to the end); a fresh reviewer 
 `6f25ec3..HEAD` against this brief and its blockers are fixed; the owner has seen the new words with screenshots
 (ADR-0055 decision 8). Then 0.9.2 with the owner's go-ahead.
 
-**Status: done** (2026-11-02) but for the owner's word review; not released.
+**Status: done and released as 0.9.2** (2026-11-02; "Releases").
 - *Commits:* `e8e3c33` (the brief, ADR-0055), `fd5550f` (QOL-001; `src/state/ui.ts`, a core file, named there),
   `e24ff20` (QOL-007), `c2ec156` (QOL-006), `ac5fc67` (QOL-002 to QOL-004), `be2c50f` (QOL-005, one shared lock box),
   `ad4b534` (QOL-008), `120aecc` (e2e, docs), `e4d9202` (the fresh review's ten blockers and the full run's three
@@ -1951,8 +1969,154 @@ spotlight follows the feed step and the tour runs to the end); a fresh reviewer 
   tests; build exit 0; e2e 381 of 381 (51.2 min), the perf test included.**
 - *The owner's word review:* the page https://claude.ai/artifact/A88guJcyx17PooaThmqjc7 (private to the owner) has
   every new piece of wording with screenshots, this round's included ("Buy a chiller", the bell's "Wearing out", Find
-  anything's "Needs a reef tank", the phone pill's "👥 {n} ▾" against the brief's one line). Changes the owner asks for
-  go in before 0.9.2; B-231's small notes can ride with them.
+  anything's "Needs a reef tank", the phone pill's "👥 {n} ▾" against the brief's one line). Approved as shown
+  (ADR-0055 decision 8, answered 2026-11-02). Open: B-231.
+
+### 20. The audit of 2026-11-17: a friendlier game with no dead ends (ADR-0056) — done 2026-11-17 (Chase); released as 0.10.0
+
+The owner, 2026-11-17 (in full in ADR-0056): "Do a full audit on our codebase and our release and specifically look
+for logical issues or things that are not super friendly. I want this to be the most user-friendly,
+easiest-to-navigate game that has no logical issues and helps you along the way. […] Do the audit, find issues, and
+go ahead and just fix them."
+
+- *How it ran.* It started from the audit of 2026-11-11's branch (below), whose build and e2e had never run: its
+  typecheck, unit tests (281 files, 4,269) and build passed on the Mac, and `next` was fast-forwarded to it. Then, at
+  `cfdc5c0`: ten auditors (Opus 5.5, max effort), one area each, read the code and wrote findings; the lead played
+  the live site as a new player on a phone and a computer; nine fixers (Opus 5.5), one area each in its own git
+  worktree under `/Volumes/Dev/Projects/AquariumGo-wt/`, fixed their area's findings on a branch; nine fresh
+  reviewers (Opus 5.5, max effort) reviewed each branch against its findings, and the fixers fixed what they found;
+  two more fixers did the game-wide wording sweep on the merged code; three confirmation reviewers reviewed the
+  second-round fixes and both halves of the sweep. The lead merged everything, fixed what only showed up where
+  areas met, and asked the owner ten questions (ADR-0056). The working files (findings, reports, reviews, logs) are
+  kept outside the repo, in `/Volumes/Dev/Projects/AquariumGo-audit-2026-11-17/`.
+- *What was found.* 257 findings: A, the first hour and the guide (17, and two from the lead's play); B, getting
+  around (23); C, tank care (22); D, the animals (21); E, breeding (30); F, money (23); G, building, research and
+  unlocks (28); H, staff, lines, shows and visitors (26); I, saves, online and shared shops (25); J, the words
+  game-wide (40). Six were rated high: a water change with too little salt crashed salinity (C1); a production
+  line's unsold young stalled it for good while every screen said it restarts today (H1); the guide waited for ever
+  with no animal on show (A1); the bell's drawer couldn't scroll, so its danger rows were cut off (B1); a shared shop
+  never opened and never said why while the online service was down (I1); a parent moved into the nursery, as the
+  game advised, ate its young, and a brood raised in a full tank was given away without warning (E1, E2).
+- *The owner's ten answers* (ADR-0056, each built; AUD-001 to AUD-010): the first companion never dies of old age,
+  and every other card shows a lifespan; a food parcel from the club when there is no food and no money; production
+  lines sell by themselves (a buy-now price, then cheaper relistings down to half); an aquarium about to fall out of
+  "Previous autosave" is saved to a free slot, and the game asks when every slot is full; salt is paid only when
+  bought; group-living animals are sold in pairs and the tank-size warning is graded; stored equipment sells back at
+  half price and an empty tank can be taken down; keepers feed fry; a shop offer waits while it is open; a scheduled
+  job keeps the online project awake (`.github/workflows/keep-online-awake.yml`).
+- *What changed besides.* The CHANGELOG's 0.10.0 entry is the player's summary. For the code: three new commands
+  (`moveCreatures`, `sellEquipment`, `takeDownTank`) and `holdOffer`, each with its catalogue case and its row in
+  TRUST_BOUNDARY.md; two optional save fields (`ProductionBatch.relists`, a shop offer's hold), validated in
+  `repairState`, absent leaves `stateHash` unchanged; no `SCHEMA_VERSION` change, no new dependency, no migration.
+  `src/sim`, `src/data` and `src/types` changed, so **the shared build hash changes**: the game and the shop server go
+  out together. Nothing under `src/ai` changed.
+- *Every new or changed line of text* is in `docs/agent/design/CHUNK-20/WORDS.md`, for the owner to read in one
+  place (ADR-0056 decision 2). The decisions that were the owner's and weren't among the ten keep their rule, with
+  honest words, and wait in `docs/agent/OWNER_QUESTIONS.md` group M (ADR-0056 decision 3).
+- *The reviews.* The nine area reviews found six blockers: the group move's message swallowed the breeding warnings
+  a single move gives, and its button pushed the phone footer off the sheet (D); a fix made the trochus snail breed
+  without limit (4 became about 200 in a month; reverted), and 27 species were told to "keep a few together and they
+  pair up" (E); the bell's drawer still ended under the tab bar on a phone held sideways, and a new e2e case could
+  not pass (B). All fixed, with about 35 smaller items. The confirmation reviews found one more of substance (the
+  stock manager's young-food plan ordered up to fifteen times what keepers use, crowding out the adults' food;
+  fixed) and a flaky new e2e case (fixed).
+- *Where the areas met.* Three failures appeared only on the merged code: keepers gave big broods a serving per 20
+  young, and two snail broods' worth took a display tank's ammonia to danger for an hour (keepers now give a pinch:
+  at most two servings a brood a round); Build's "Nest site" labels disagreed with the breeding rule as the breeding
+  fixer left it (a guard test compares them piece by piece); two areas had each built "the guide is holding this
+  unlock" (one mechanism now). One seeded test's expectation changed on purpose: `staff-sim`'s fortnight counted a
+  baby snail born in the run and eaten by the tank's seahorse as a keeper's death; it now counts the animals the
+  team was hired to keep, and any young that die of hunger or water.
+- *Left open* (BACKLOG B-232 and group M): on a phone a placed decor piece can't be resized or turned without an
+  undocumented gesture (G15); the listing wizard's "Take photo" step doesn't step the sheet aside on a phone; the
+  server keeping a replaced online copy needs a migration (I4); the owner's VoiceOver pass (F1).
+- *What happened on the way.* The Playwright browsers in `~/LocalTest/playwright` had lost their large binaries (the
+  pinned builds were reinstalled). The Supabase project was paused and could not be woken from the session (ADR-0056
+  decision 4). Nine fixers running the unit suite at once, beside another project's builds, took the Mac's load past
+  300, so the first e2e passes ran slow and their timing tests failed; the internal disk filled (another project's
+  build folders); and the Mac was restarted mid-session, which emptied the temporary folder the working files were
+  in (they were rebuilt from the agents' transcripts and moved to the Dev drive).
+
+**Checks.** On the final code `658f720` (the owner's Mac, 2026-11-17, the internal-disk clone under `caffeinate -i -s`, the
+machine quiet): typecheck exit 0; unit 311 files, 4,761 tests passed; build exit 0; e2e 414 of 415 in Chromium and
+WebKit (48.4 minutes). The one failure, `nav-routes-matrix` "phone 390×844: visitors to log" in WebKit (at its
+`#/more` step the More sheet didn't open), then passed 10 of 10 alone in each browser and its whole spec 55 of 55
+over three repeats, though one earlier three-repeat run of a variant failed twice in WebKit: the walk is
+intermittent there. A probe of the router's history writes in both engines (`probe-history.mjs` in the working
+folder) found one write at start, none while idle, about two a route and no refusals. The same case failed on the
+pre-audit code that morning (Chromium, under load): it is B-204's route walk, and it was re-run alone as "How a
+chunk runs" says. Before it, `3882472` (the same game code; one e2e case's pacing differs): the same three green
+and e2e 414 of 415, the failure the new swipe-to-close case in WebKit, which sent its ten mouse moves in one burst
+(7 failures in 8 alone); paced a move a frame it passed 16 of 16 in both browsers. `cf0f5cb` (before the wording
+sweep's last review fixes and the production lines' last ones): all four green, unit 310 files and 4,747 tests, e2e
+415 of 415 (54.0 minutes). `08e734b` (before the sweep's first half): unit 309 files and 4,694 tests, build, e2e 413
+of 415 (57.4 minutes: a new phone-footer case that measured too early, fixed, and WebKit's perf test at a load
+average over 100). The passes before those ran while nine fixers were testing at once and are not counted.
+
+### Audit, 2026-11-11 (Cowork, a cloud sandbox) — merged on 2026-11-17 and released in 0.10.0 with chunk 20
+
+The owner, 2026-11-11: "Do a full audit on Aquarium Go and upgrade everything that you can find. Just do an audit,
+find all issues, and just fix them. If you have my permission, just do everything you need to do."
+
+- *Where it ran, and what that allowed.* A Cowork session in Anthropic's cloud, linked to the Mac's
+  `/Volumes/Dev/Projects` folder through a Linux VM. Neither could reach the npm registry (the proxy answers 403), and
+  an agent there may look at Terminal but not type into it. So: `npm run typecheck` ran as it is; the unit tests ran
+  on a stand-in toolchain (the Mac's `node_modules`, with esbuild 0.28.2 in place of 0.25.12 and Rollup's `parseAst`
+  pointed at acorn 8.18: Vitest needs the parser, not the bundler); **`npm run build` and `npm run e2e` could not run**
+  (they need Rollup's own binary, and e2e WebKit); `npm audit` and `npm outdated` could not run; the Supabase
+  connector there holds another project, so the database's advisors were not read. Before any change, on `582e640`:
+  typecheck exit 0; unit 277 files, 4,214 tests passed (the Mac's own count on `0cfb443`).
+- *What was read.* All of `server/`; the stage 1 migration; the build, deploy and platform files (`deploy.yml`,
+  `render.yaml`, the Vite configs, `public/sw.js`, `index.html`); the online save's loop and the shared shop's
+  connection; settings, portraits, the facility's render components. Pattern scans over `src` (no `innerHTML`, `eval`
+  or `target="_blank"` without `rel`; listeners and intervals that are never removed; GPU objects made and never
+  disposed). A typecheck with `noUnusedLocals`, `noImplicitReturns`, `noImplicitOverride` and unreachable code as
+  errors. Every open BACKLOG row that names app code, checked against today's code. The public endpoints' limits
+  (`/health`, `/stats`, the socket slots) are as TRUST_BOUNDARY.md already records them: nothing new there.
+- *Fixed* (each with its test, in its own commit; the backlog rows say more):
+  - **B-210** (`7fcaaa6`, `887459a`): `repairState` drops a `visitors.live` the visitor sim can't step with and keeps
+    only fixtures the layout can read. A probe found more shapes than the two recorded; the review found one more
+    (a fixture whose kind is `"__proto__"`). `scenario-build`'s test of refused patches changed on purpose: the save
+    path now repairs two of its five.
+  - **B-165** (`6cfa6f3`, `887459a`): stored settings are checked when they load and when the game sets them.
+  - **B-181, B-183** (`49809d2`, `887459a`): the portrait cache keeps 600 and releases the blob URLs of what it
+    drops; the facility's hand-made instanced meshes are disposed with their geometry.
+  - **B-121**, three of its parts (`ef53320`): the admission projection uses the sim's `admissionDraw` (it showed
+    +20% where the sim gave −42%); the decorating tools quote `decorSellValue`; the dock's locked Visitors item says
+    the rule's hint. Players see different numbers in the Visitors panel, "$0" on a broken-down almond leaf's sale
+    line, and the design's line on the dock; no new words.
+  - **The shop server's meters** (`6aaacdf`, a new finding): with the database down and 50 MB waiting, every frame
+    sent started another `usageAdd` call (501 calls for 1,000 frames in the test); a failed flush now waits 30 s.
+  - **B-125** (`e5c1ddd`), a comment. **B-119** was already fixed by `9f0985c` (GEN-010); its row was stale.
+  - **`deploy.yml`** (`b6fc2da`): checkout and setup-node v5, upload-pages-artifact v4, deploy-pages v5 (Node 24).
+    0.5.3's note had left this file for the owner; **it has not run**: the next push to `main` is its first test, and
+    if that Pages run fails the old site stays up (revert the commit).
+  - **49 unused imports and locals** in 34 files (`31a2c83`); a typecheck with `noUnusedLocals` is now clean
+    (`tsconfig.json` unchanged: turning it on would make an unused import stop a deploy, the owner's call).
+  - `src/persistence/migrations.ts`, `src/sim` and `src/types` changed, so **the shared build hash changes**: the game
+    and the shop server release together.
+- *Found and left*, with why:
+  - **Dependencies.** The pin (`core-dependencies.test.ts`) changes only with an ADR, and the sandbox had no
+    registry. vite.dev's release page (read 2026-11-11) lists Vite 6.4 for security patches only, 8.3 as current;
+    Vitest 3, `@vitejs/plugin-react` 4 and TypeScript 5.9 are a major behind or more; `@types/node` is ^26 while
+    Pages, Render and the server run Node 22. Run `npm audit` and `npm outdated` on the Mac first.
+  - **No security headers** on either static site (`render.yaml` sets cache headers only; Pages can set none): a
+    Content-Security-Policy would need a pass in a browser (three.js, the fonts, Supabase, the shop server's socket).
+  - **B-123** (leaving can drop unsaved play; medium), **B-163**, **B-230**, **B-222**, **B-224**, **B-227**, **B-157**:
+    each needs words from the owner. **B-223**, **B-225**, **B-226**: balance. **B-206**: closing it takes `?perf` off
+    the live site, which the perf lane uses. **B-184**, **B-182**: for a render pass with a browser.
+  - The Mac's `.git` has three stray temporary pack files (413 KiB; `git count-objects -v` calls them garbage):
+    harmless, `git gc` clears them.
+- *The checks on the final code `887459a`* (2026-11-11, the sandbox): typecheck exit 0; unit 281 files, 4,269 tests passed on the
+  stand-in toolchain; **build and e2e not run**. *One fresh review* (Opus, max effort, the brief and
+  `git diff 582e640..HEAD`): two blockers (the `"__proto__"` kind; unknown keys inside `volume` no longer surviving a
+  load), both fixed in `887459a` with its notes; what it could not check is what a browser shows.
+- *To finish it* (the owner's one line, for this branch; then `git checkout next && git merge --ff-only
+  audit/2026-11-11 && git push origin next`):
+
+```bash
+cd ~/LocalTest/AquariumGo && git fetch dev audit/2026-11-11 && git checkout --detach FETCH_HEAD && npm ci && mkdir -p .agent-runs && { git log --oneline -1; for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright npm run $c; echo "=== $c exit $?"; done; } 2>&1 | tee .agent-runs/checks-audit.log
+```
 
 ## Releases
 
@@ -2094,6 +2258,24 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   there (the five in `private` SECURITY DEFINER, their `public` wrappers invoker; execute for `authenticated` only,
   not `anon` or `service_role`), and `node scripts/online-smoke.mjs` passed 102 of 102 (a player and anon refused
   all five, and the refused deletes changed nothing).
+- **0.9.2, released 2026-11-02** at the owner's go-ahead in the session, which also approved chunk 19's words as shown
+  ("Yeah go ahead and make sure this is on GitHub, everything's updated, and it's on Render. Make sure it's updated
+  everywhere and it's pushed."): chunk 19, quality of life (ADR-0055). Step 1's "the owner has played it" waived by
+  that answer. The four checks passed in full on the code `0cfb443` (e2e 381 of 381); the release commit `8177014`
+  (version, CHANGELOG, ADR-0055's answer) passed typecheck, unit 4,214, build and the release specs (production,
+  prod-mode, base-path, boot, deeplink-boot: 25 of 25). Merged in the internal clone onto a fresh `origin/main` as
+  `74c9302` (its tree `8177014`'s) and pushed with `next`. Pages run `41537971056` deployed it (its tests first);
+  `version.json` reads `{"id":"74c9302-…","version":"0.9.2"}`. Then the shop server from `74c9302`
+  (`dep-dbkh3g8n74is73bavfa0`): `/health` 0.9.2, `build` `f128a63f7d57f4b9`, unchanged since 0.9.0, so nobody in a
+  shared shop was asked to reload. `scripts/shared-smoke.ts` first stopped at "no first club": the club named
+  "Aquarium Go Friends", whose invite code it signed up with, is gone (deleted from Manage, B-229; 3 clubs remain), so
+  that code no longer signs anyone up. The smoke now makes its own throwaway sign-up club (`scripts/shared-smoke.ts`,
+  on `next`) and passed 27 of 27 against the live 0.9.2 server, nothing left behind. The Render static site: at the
+  owner's "You do it for me please so it can be live on Render", the agent's `render deploys create
+  srv-dath0mfavr4c73dgk3j0 --confirm --wait` (no `--commit`: the latest commit, `74c9302`, as the dashboard's "Deploy
+  latest commit"; run alone, in the background) went through this time (`dep-dbkh6lp5efls73d5kt40`, about 10 min, its
+  tests first). All three read 0.9.2: both `version.json` files `{"id":"74c9302-…","version":"0.9.2"}`, the shop
+  server's `/health` 0.9.2.
 
 ## Product decisions in force
 

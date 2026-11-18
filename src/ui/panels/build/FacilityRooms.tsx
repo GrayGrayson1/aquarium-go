@@ -95,9 +95,13 @@ export function Rooms({ g, onOpen }: { g: GameState; onOpen: (r: RoomId) => void
       </div>
       {row('water', 'Water room', <Droplets size={17} aria-hidden />, !!water, isHeld(g, 'water') || isHeld(g, 'salt') ? <Status tone="watch">Held</Status> : <Status tone="good">Running</Status>)}
       {row('food', 'Live food room', <Egg size={17} aria-hidden />, !!food, isHeld(g, 'food') ? <Status tone="watch">Held</Status> : <Status tone="good">Running</Status>)}
-      <button type="button" className="pn-link" onClick={() => toOps('overview')}>
-        Buy and upgrade machines here. Operations runs them day to day. <ChevronRight size={14} aria-hidden />
-      </button>
+      {/* Audit 2026-11-17 (G26): only the part that leaves Build is the link (the whole line read as "buy here") */}
+      <div className="pn-small pn-muted">
+        Buy and upgrade machines here.{' '}
+        <button type="button" className="pn-link" onClick={() => toOps('overview')} data-testid="rooms-to-operations">
+          Operations runs them day to day <ChevronRight size={14} aria-hidden />
+        </button>
+      </div>
     </div>
   );
 }
@@ -179,7 +183,7 @@ export function RoomPage({ g, room, onBack }: { g: GameState; room: RoomId; onBa
           <Machine
             icon={<FlaskConical size={16} aria-hidden />}
             name="Salt Mixing Station"
-            sub={`${batchGal(w)} gal batches · 12 h · $${WATER_ROOM.mixerUpkeep.toFixed(2)}/day`}
+            sub={`${batchGal(w)} gal batches · 12 hours each · $${WATER_ROOM.mixerUpkeep.toFixed(2)}/day` /* Audit 2026-11-17 (J19) */}
             status={isHeld(g, 'salt') ? <Status tone="watch">Held</Status> : !needed ? <Status tone="neutral">Idle · not needed</Status> : w.mix && w.mix.readyHour > g.clock.hour ? <Status tone="good">Mixing</Status> : <Status tone="neutral">Idle</Status>}
           />
         </div>
@@ -265,7 +269,6 @@ function LockedRoom({ g, room, back }: { g: GameState; room: RoomId; back: React
           <Badge tone="aqua">New</Badge>
         </div>
         <span className="pn-small">{tier.desc}.</span>
-        <span className="pn-small pn-muted">Links to this page keep working; they show this until it opens.</span>
         <ul className="ops-reqs">
           {tier.reqs.map((r, i) => (
             <li key={i} className={r.met ? 'is-met' : undefined}>

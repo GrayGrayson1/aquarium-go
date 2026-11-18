@@ -19,7 +19,7 @@ const QUIET = !process.env.PLAYTHROUGH_LOG;
 /** Wrong "+s" plurals of species whose real plural differs ("otocincluss", "chromiss", "clownfishs", "gobys"). */
 const NAIVE_PLURALS = listSpecies()
   .map((sp) => sp.commonName.toLowerCase())
-  .filter((n) => pluralName(n) !== `${n}s`)
+  .filter((n) => pluralName(n).toLowerCase() !== `${n}s`) // Audit 2026-11-17 (J15): pluralName keeps proper nouns’ capitals
   .map((n) => `${n}s `);
 
 const tag = (id: string, seed: number) => `${id} seed ${seed}`;

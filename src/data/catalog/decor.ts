@@ -50,7 +50,7 @@ export const DECOR: DecorDef[] = [
     visual: 'rock_seiryu',
     anchors: [a('graze', 0.02, 0.07, 0.03), a('rest', -0.03, 0.02, 0.04)],
     palette: ['#6f777d', '#9aa2a7', '#e3e2da'],
-    description: 'Blue-grey limestone with white calcite veins and sharp, craggy ridges — the classic Iwagumi stone. Slowly raises hardness.',
+    description: 'Blue-grey limestone with white calcite veins and sharp, craggy ridges — the classic Iwagumi stone.', // Audit 2026-11-17 C13: the game doesn't model the hardness it adds
   },
   {
     id: 'dragon_stone',
@@ -811,7 +811,7 @@ export const DECOR: DecorDef[] = [
     visual: 'ornament_shell_pile',
     anchors: [a('hide', 0.02, 0.015, 0.01, 2), a('graze', -0.02, 0.02, -0.01)],
     palette: ['#efe2cc', '#d8b890', '#b07a5a'],
-    description: 'Empty turban and whelk shells. Growing hermit crabs need spares to move into, or they fight over them.',
+    description: 'Empty turban and whelk shells. Small reef animals hide and forage among them.', // ADR-0056 d3 (audit D7): hermits' shell swapping isn't modelled
   },
   // lane:frags — a grow-out rack for coral frags (plugs sit in its holes; see src/sim/aquascape/frags.ts fragRackSlots).
   {

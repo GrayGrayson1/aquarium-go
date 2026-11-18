@@ -15,7 +15,7 @@
  *   GameState.inventory.frags       frags waiting to be planted or sold (kept apart from bought decor)
  * Deterministic: the only randomness is the new frag's rotation, drawn from simRng.
  */
-import type { GameState, Tank, DecorDef, DecorInstance, DecorPropagation } from '@/types';
+import type { GameState, Tank, DecorInstance, DecorPropagation } from '@/types';
 import type { ActionResult } from '../care';
 import { getDecorDef, isEpiphyte, isFloating, isLiving } from '@/data/catalog/decor';
 import { propagationFor, fragNounWithArticle, isCoralDef, fragLabel } from '@/data/catalog/propagation';
@@ -81,7 +81,7 @@ export function fragEligibility(state: GameState, tank: Tank | undefined, inst: 
   const no = (code: FragBlock, message: string, progress = 0, hoursLeft?: number): FragEligibility => ({ ok: false, code, rule, message, progress: clamp01(progress), hoursLeft });
   if (!tank || !inst || !def) return no('unknown', 'That piece could not be found.');
   if (!isLiving(def)) return no('not_living', rule.why ?? 'Only living plants and corals can be propagated.');
-  if (!rule.can) return no('cannot', rule.why ?? `${def.name} can't be propagated by hand.`);
+  if (!rule.can) return no('cannot', rule.why ?? `${def.name} can’t be propagated by hand.`);
   if (!isUnlocked(state, def.unlock)) {
     const label = def.unlock ? (UNLOCK_KEYS as Record<string, string>)[def.unlock] ?? def.unlock : '';
     return no('locked', `Needs the “${label}” research first.`);
@@ -99,7 +99,7 @@ export function fragEligibility(state: GameState, tank: Tank | undefined, inst: 
   if (growth < rule.minGrowth) {
     return no('growth', `Still growing — ${Math.round(growth * 100)}% of the ${Math.round(rule.minGrowth * 100)}% it needs before a cut.`, growth / rule.minGrowth);
   }
-  if (storedFrags(state).length >= MAX_STORED_FRAGS) return no('storage', `Your holding system is full (${MAX_STORED_FRAGS} frags). Plant or sell some first.`, 1);
+  if (storedFrags(state).length >= MAX_STORED_FRAGS) return no('storage', `Frag storage is full (${MAX_STORED_FRAGS} frags). Plant or sell some first.`, 1);
   return { ok: true, code: 'ok', rule, message: `Ready — cut ${fragNounWithArticle(rule)}.`, progress: 1 };
 }
 
@@ -175,12 +175,12 @@ export function takeFrag(state: GameState, tankId: string, decorId: string): Act
     emitEvent(state, {
       kind: 'tip',
       // lane:w2-ui (copy) — say where storage is, and use the › path style the rest of the UI uses
-      text: `Your first ${coral ? 'frag' : 'cutting'}! It waits in storage (Build › Decor). Plant it on a frag rack, a rock or the substrate to grow a new ${coral ? 'colony' : 'plant'}, or sell it: Market › New listing › Frags & cuttings.`,
+      text: `Your first ${coral ? 'frag' : 'cutting'}! It waits in storage (Build › Decor). Plant it on a frag rack, a rock or the substrate to grow a new ${coral ? 'colony' : 'plant'}, or sell it: Market › My listings › New listing › Frags & cuttings.`, // Audit 2026-11-17 (J20): New listing is on My listings
       tankId,
       toast: true,
     });
   }
-  return { ok: true, message: `Took ${fragNounWithArticle(rule)} from the ${def.name.toLowerCase()} — it's in storage. The ${coral ? 'colony' : 'plant'} heals for ${hoursText(rule.recoveryHours)}.`, fragId: item.id };
+  return { ok: true, message: `Took ${fragNounWithArticle(rule)} from the ${def.name.toLowerCase()} — it’s in storage. The ${coral ? 'colony' : 'plant'} heals for ${hoursText(rule.recoveryHours)}.`, fragId: item.id };
 }
 
 // ───────────────────────────── frag racks & planting ─────────────────────────────

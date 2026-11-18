@@ -34,6 +34,61 @@ async function waitCalm(page: Page) {
 
 const panel = (page: Page) => page.evaluate(() => (window as unknown as { __AQ: { ui(): { panel: string | null } } }).__AQ.ui().panel);
 
+/**
+ * Audit B1: a bell with many rows (nine stocked tanks, an empty cupboard, every tank's gear wearing out). The drawer's
+ * body scrolls, the danger rows lead, and once scrolled to its end "Full event log" is on screen and takes the tap.
+ */
+async function crowdedBell(page: Page, touch = false) {
+  await plainGame(page);
+  await aq(page, 'dev.setSpeed', 0);
+  await aq(page, 'dev.fillTestFacility', 8);
+  type Api = { __AQ: { mutate(fn: (s: { tankOrder: string[]; inventory: { foods: Record<string, number> }; tanks: Record<string, { cache: { foodLevel?: string }; equipment: { condition?: number; failed?: boolean }[] }> }) => void): void } };
+  // (paused: the sim never steps, so the cupboard and the cached food levels stay as set here)
+  await page.evaluate(() =>
+    (window as unknown as Api).__AQ.mutate((s) => {
+      s.inventory.foods = {};
+      for (const id of s.tankOrder) {
+        s.tanks[id].cache.foodLevel = 'out';
+        for (const e of s.tanks[id].equipment) if (!e.failed) e.condition = 0.1;
+      }
+    }),
+  );
+  const bell = tid(page, 'hud-alerts');
+  if (touch) await bell.tap();
+  else await bell.click();
+  await expect(page.locator('.ag-alerts-pop')).toBeVisible();
+  const before = await page.evaluate(() => {
+    const body = document.querySelector('[data-testid="alerts-body"]') as HTMLElement | null;
+    const rows = [...document.querySelectorAll('.ag-alert-list .ag-alert-row')];
+    return {
+      scrolls: !!body && getComputedStyle(body).overflowY === 'auto' && body.scrollHeight > body.clientHeight + 40,
+      first: rows[0]?.className ?? '',
+      dangerAfterWatch: rows.some((r, i) => r.classList.contains('is-danger') && rows.slice(0, i).some((x) => x.classList.contains('is-watch'))),
+    };
+  });
+  expect(before.scrolls).toBe(true);
+  expect(before.first).toContain('is-danger');
+  expect(before.dangerAfterWatch).toBe(false);
+  await page.evaluate(() => {
+    const body = document.querySelector('[data-testid="alerts-body"]') as HTMLElement;
+    body.scrollTop = body.scrollHeight;
+  });
+  await page.waitForTimeout(200);
+  const reach = await page.evaluate(() => {
+    const pop = document.querySelector('.ag-alerts-pop')!.getBoundingClientRect();
+    const b = document.querySelector('[data-testid="alerts-open-log"]')!.getBoundingClientRect();
+    const x = b.left + b.width / 2;
+    const y = b.top + b.height / 2;
+    if (y > pop.bottom || y < pop.top || y > innerHeight) return 'off screen';
+    return document.querySelector('[data-testid="alerts-open-log"]')!.contains(document.elementFromPoint(x, y)) ? 'reachable' : 'covered';
+  });
+  expect(reach).toBe('reachable');
+  const log = tid(page, 'alerts-open-log');
+  if (touch) await log.tap();
+  else await log.click();
+  await expect.poll(() => panel(page)).toBe('log');
+}
+
 test.describe('desktop 1440×900', () => {
   test('the alerts popover opens above the creature card and above a panel', async ({ page }) => {
     await plainGame(page);
@@ -49,6 +104,25 @@ test.describe('desktop 1440×900', () => {
     await tid(page, 'hud-alerts').click();
     await page.waitForTimeout(600);
     expect(await popoverHits(page)).toBe(1);
+  });
+
+  test('audit B1: a bell with many rows scrolls, leads with danger and reaches Full event log', async ({ page }) => {
+    await crowdedBell(page);
+  });
+
+  test('audit B20: with a panel just opened, Space scrolls its list and doesn’t pause the game', async ({ page }) => {
+    await plainGame(page);
+    for (let i = 0; i < 10; i++) await aq(page, 'dev.addShopOffer', 'mystery_snail'); // a list long enough to scroll
+    const speed = () => page.evaluate(() => (window as unknown as { __AQ: { game(): { clock: { speed: number } } } }).__AQ.game().clock.speed);
+    expect(await speed()).toBeGreaterThan(0);
+    await tid(page, 'dock-market').click();
+    // focus lands on the panel's title, in its header (outside the scrolling body)
+    await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('[data-testid="panel-market"]'))).toBe(true);
+    const body = tid(page, 'panel-market').locator('.pn-body');
+    expect(await body.evaluate((el) => el.scrollHeight > el.clientHeight + 50)).toBe(true);
+    await page.keyboard.press('Space');
+    await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(50);
+    expect(await speed()).toBeGreaterThan(0);
   });
 
   test('a calm HUD still takes the click of a mouse resting on a control', async ({ page }) => {
@@ -90,6 +164,82 @@ test.describe('phone 390×844 (touch)', () => {
       return d.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)) ? 'delta' : 'covered';
     });
     expect(await hit.jsonValue()).toBe('delta');
+  });
+
+  test('audit B1: a bell with many rows scrolls, leads with danger and reaches Full event log', async ({ page }) => {
+    await crowdedBell(page, true);
+  });
+
+  test('audit B9: the clock pill shows the day over the time, and the top bar still fits with a five-digit balance', async ({ page }) => {
+    await plainGame(page);
+    await aq(page, 'dev.addMoney', 54_000);
+    await expect(tid(page, 'hud-day')).toHaveText(/^Day \d+$/);
+    await expect(tid(page, 'hud-clock')).toHaveText(/\d{1,2}:\d\d/);
+    const b = await page.evaluate(() => {
+      const r = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
+      const clock = r('.ag-topbar .ag-clock-pill');
+      const speed = r('.ag-topbar .ag-speed');
+      return { clock: clock.right, clockH: clock.height, speedL: speed.left, speedR: speed.right, money: r('[data-testid="hud-money"]').left, bell: r('[data-testid="hud-alerts"]').right };
+    });
+    expect(b.clock).toBeLessThanOrEqual(b.speedL);
+    expect(b.speedR).toBeLessThanOrEqual(b.money);
+    expect(b.bell).toBeLessThanOrEqual(390);
+    expect(b.clockH).toBeLessThanOrEqual(48);
+  });
+
+  test('audit B12: in the room view the guide card leaves Reset view on screen, just above it', async ({ page }) => {
+    await openApp(page);
+    await quickGame(page, 'betta');
+    await expect(tid(page, 'tutorial-card')).toBeVisible();
+    await aq(page, 'setUI', { view: 'facility' });
+    const reset = tid(page, 'camera-room-reset');
+    await expect(reset).toBeVisible();
+    await expect(page.locator('.ag-hud__coach .ag-coach')).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const chip = document.querySelector('[data-testid="camera-room-reset"]')!.getBoundingClientRect();
+          const coach = document.querySelector('.ag-hud__coach .ag-coach')!.getBoundingClientRect();
+          return chip.bottom <= coach.top + 1 && chip.top > 0;
+        }),
+      )
+      .toBe(true);
+    await reset.tap();
+  });
+
+  test('audit B19: over an open sheet a tapped toast gets out of the way; its own button still goes', async ({ page }) => {
+    await plainGame(page);
+    await aq(page, 'setUI', { panel: 'market' });
+    await page.waitForTimeout(1200);
+    type Api = { __AQ: { game(): { tankOrder: string[] }; ui(): { toast(t: string, k: string, parts?: { tankId?: string; actionLabel?: string }): void } } };
+    const raise = (text: string, button: boolean) =>
+      page.evaluate(
+        ([t, b]) => {
+          const A = (window as unknown as Api).__AQ;
+          A.ui().toast(t as string, 'success', { tankId: A.game().tankOrder[0], ...(b ? { actionLabel: 'See them' } : {}) });
+        },
+        [text, button] as const,
+      );
+    await raise('Ember is settling into the Starter tank', false);
+    const toast = tid(page, 'toast').filter({ hasText: 'Ember is settling' });
+    await expect(toast).toBeVisible();
+    await toast.locator('.ag-toast__text').tap();
+    await expect(toast).toHaveCount(0);
+    expect(await panel(page)).toBe('market');
+    await raise('Mochi is settling into the Starter tank', true);
+    const second = tid(page, 'toast').filter({ hasText: 'Mochi is settling' });
+    await expect(second.getByTestId('toast-action')).toHaveText('See them');
+    await second.getByTestId('toast-action').tap();
+    await expect.poll(() => panel(page)).toBeNull();
+  });
+
+  test('audit B15: the pause segment puts “Paused” in the clock pill; 1× brings the day back', async ({ page }) => {
+    await plainGame(page);
+    await tid(page, 'hud-speed-0').tap();
+    await expect(tid(page, 'hud-day')).toHaveText('Paused');
+    await expect(tid(page, 'hud-day')).toBeVisible();
+    await tid(page, 'hud-speed-1').tap();
+    await expect(tid(page, 'hud-day')).toHaveText(/^Day \d+$/);
   });
 
   test('a calm HUD: the first tap on the hidden dock only wakes it, the quick retry lands, the drawn bell acts at once', async ({ page }) => {
@@ -149,6 +299,10 @@ test.describe('phone held sideways 844×390 (touch)', () => {
       return !t || !body ? 'none' : t.bottom <= body.top ? 'clear' : 'over the list';
     });
     expect(['none', 'clear']).toContain(r);
+  });
+
+  test('audit B1: a bell with many rows scrolls, leads with danger and reaches Full event log', async ({ page }) => {
+    await crowdedBell(page, true);
   });
 });
 

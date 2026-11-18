@@ -24,7 +24,7 @@ import { acquire, release } from './common/cache';
 import { critterTiers } from './common/tiers';
 import { createCritterMaterial, createCritterUniforms } from './common/materials';
 import { applyAppearance } from './common/palette';
-import { damp, smoothstep, TAU } from './common/math';
+import { damp, TAU } from './common/math';
 import { useGame } from '@/state/game';
 
 /** Half the disc's length (front to back) and width; its top dome and its flat underside. */

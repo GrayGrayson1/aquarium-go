@@ -25,7 +25,6 @@ import {
   setStage,
   spPlural,
   startResting,
-  throttleTank,
   throttleTankBackoff,
   tickTimers,
   breedNotice,
@@ -87,7 +86,8 @@ export const livebearerModule: BreedingModule = {
           const seen = state.progress.counters[key] ?? 0;
           bumpCounter(state, key);
           const cover = habitatOf(state, tank).cover;
-          const tip = tank.purpose === 'nursery' ? '' : cover >= 0.5 ? ' The dense plants give them places to hide.' : ' Adults eat fry — dense plants or a nursery tank will save more of them.';
+          // audit E1: a mother moved to a nursery to drop her fry eats them there: say to move her back out
+          const tip = tank.purpose === 'nursery' ? (b.predationWithoutNursery > 0 ? ` Move ${f.name} back out — adults eat fry.` : '') : cover >= 0.5 ? ' The dense plants give them places to hide.' : ' Adults eat fry — dense plants or a nursery tank will save more of them.';
           say(state, ctx, { kind: 'breeding', text: `${f.name} dropped ${plural(n, 'fry', 'fry')}!${tip}`, tankId: tank.id, creatureId: f.id, toast: seen < 3, ...(seen < 3 ? { notice: breedNotice('birth', f.name, n, tank) } : {}) });
         }
         continue;
@@ -98,8 +98,11 @@ export const livebearerModule: BreedingModule = {
         continue;
       }
       let mated = false;
-      if (activeMale) {
-        r.partnerId = activeMale.id;
+      // audit E8: the male the player paired her with (Start breeding sets partnerId) fathers the brood while he is here
+      // and healthy; otherwise the first healthy male, as before. No draw depends on which one it is.
+      const mate = males.find((m) => m.id === r.partnerId && m.stats.health >= 40) ?? activeMale;
+      if (mate) {
+        r.partnerId = mate.id;
         r.storedBroods = STORED_BROODS;
         mated = true;
       } else if ((r.storedBroods ?? 0) > 0) {
@@ -142,7 +145,8 @@ export const livebearerModule: BreedingModule = {
     const r = c.repro;
     if (r.stage === 'gravid') {
       const due = (r.carryingUntilHour ?? hour) - hour;
-      return { label: due > 0 ? `Gravid — fry due in ${approxDuration(due)}` : 'Gravid — fry due any moment', detail: (r.storedBroods ?? 0) > 0 ? `Stored sperm for ${plural(r.storedBroods ?? 0, 'more brood')}` : undefined, progress: r.progress };
+      // audit E15: 'pregnant', the word a child knows ('gravid' is a keepers' term)
+      return { label: due > 0 ? `Pregnant — fry due in ${approxDuration(due)}` : 'Pregnant — fry due any moment', detail: (r.storedBroods ?? 0) > 0 ? `Stored sperm for ${plural(r.storedBroods ?? 0, 'more brood')}` : undefined, progress: r.progress };
     }
     return null;
   },

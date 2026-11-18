@@ -57,6 +57,8 @@ export interface ExhibitInfo {
   concernText?: string;
   /** The animal visitors are worried about (unwell first, then starving) — reaction lines name this one, not the star. */
   concernCreature?: Creature;
+  /** What worries them (Audit 2026-11-17, H6): the reaction line follows it. */
+  concernCause?: 'sick' | 'starving' | 'water' | 'stress';
   empty: boolean;
   speciesIds: string[];
   groups: string[];
@@ -206,7 +208,8 @@ export function exhibitInfo(state: GameState, tank: Tank): ExhibitInfo {
     if (c.illness || (st && (st.health < 45 || st.stress > 78))) sick++;
     // Same line as the tank status: a starving animal (hunger ≥ 90) is suffering, and visitors notice.
     if (st && (st.health < 25 || st.hunger >= 90)) suffering++;
-    if (sp?.conservation?.status && !/least concern|not evaluated|domesticated/i.test(sp.conservation.status)) conservation = Math.max(conservation, 0.8);
+    // Audit 2026-11-17 (J40): "not assessed" is the same as not evaluated, not a threatened species
+    if (sp?.conservation?.status && !/least concern|not evaluated|not assessed|domesticated/i.test(sp.conservation.status)) conservation = Math.max(conservation, 0.8);
     else conservation = Math.max(conservation, 0.35);
     const s = appeal * (0.6 + v) + (c.isStarter ? 0.15 : 0) + (c.visitorWows ?? 0) * 0.002 + (c.awards?.titles?.length ?? 0) * 0.1; // lane:shows: titled animals star
     if (s > starScore) {
@@ -258,11 +261,13 @@ export function exhibitInfo(state: GameState, tank: Tank): ExhibitInfo {
   const concerned = !empty && (sickFrac > 0 || suffering > 0 || welfare < 0.42 || tank.cache?.status === 'danger');
   let concernText: string | undefined;
   let concernCreature: Creature | undefined;
+  let concernCause: ExhibitInfo['concernCause'];
   if (concerned) {
     const sickOne = creatures.find((c) => c.illness || (c.stats && (c.stats.health < 45 || c.stats.stress > 78)));
     const starving = creatures.find((c) => (c.stats?.hunger ?? 0) >= 90);
     concernCreature = sickOne ?? starving;
     concernText = sickOne ? `${sickOne.name} doesn’t look well` : starving ? `${starving.name} looks half-starved` : (tank.cache?.waterStatus ?? tank.cache?.status) === 'danger' ? 'the water looks wrong' : 'the animals seem stressed';
+    concernCause = sickOne ? 'sick' : starving ? 'starving' : (tank.cache?.waterStatus ?? tank.cache?.status) === 'danger' ? 'water' : 'stress';
   }
 
   let main: string | null = null;
@@ -285,6 +290,7 @@ export function exhibitInfo(state: GameState, tank: Tank): ExhibitInfo {
     concerned,
     concernText,
     concernCreature,
+    ...(concernCause ? { concernCause } : {}),
     empty,
     speciesIds: [...bySpecies.keys()],
     groups: [...groups],
@@ -310,7 +316,14 @@ export function exhibitReport(state: GameState, tankId: string): ExhibitReport {
   if (info.factors.clarity < 0.6) notes.clarity = 'Algae or cloudy water dulls the view.';
   if (info.empty) notes.charisma = 'No animals yet.';
   else if (info.awardNote) notes.charisma = info.awardNote; // lane:shows
-  const factors = (Object.keys(EXHIBIT_WEIGHTS) as ExhibitFactorKey[]).map((k) => ({ label: FACTOR_LABELS[k], value: Math.round(info.factors[k] * 100), note: notes[k] }));
+  // Audit 2026-11-17 (H9): the factors with the most to gain first — a tip to act on (a sign, clearer water, welfare),
+  // then the weightiest shortfall — so the tank card's first four always show what would help most
+  const tips: ReadonlySet<ExhibitFactorKey> = new Set<ExhibitFactorKey>(['welfare', 'signage', 'clarity']);
+  const gain = (k: ExhibitFactorKey) => (tips.has(k) && notes[k] ? 1e6 : 0) + EXHIBIT_WEIGHTS[k] * (1 - info.factors[k]);
+  const factors = (Object.keys(EXHIBIT_WEIGHTS) as ExhibitFactorKey[])
+    .map((k, i) => ({ k, i, g: gain(k) }))
+    .sort((a, b) => b.g - a.g || a.i - b.i)
+    .map(({ k }) => ({ label: FACTOR_LABELS[k], value: Math.round(info.factors[k] * 100), note: notes[k] }));
   if (info.welfareGate < 1) factors.push({ label: 'Welfare gate', value: Math.round(info.welfareGate * 100), note: 'Score multiplier from animal welfare.' });
   return { score: info.score, factors, visitorAppeal: Math.round(info.appeal * 100) / 100 };
 }

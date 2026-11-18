@@ -8,7 +8,7 @@ import type { GameState } from '@/types';
 import type { ActionResult } from '../care';
 import { cleanTank, dose, feedTank, installEquipment, removeEquipment, repairEquipment, setEquipment, setLighting, topOff, waterChange } from '../care';
 import { autoFeedPatch } from '../care/autofeed';
-import { buyEggs, buyEquipment, buyFood, buyOffer, buySalt, buyTank } from '../economy/purchases';
+import { buyEggs, buyEquipment, buyFood, buyOffer, buySalt, buyTank, holdOffer } from '../economy/purchases';
 import { acceptBid, counterBid, createListing, declineBid, holdBidForCounter, quickSell, quickSellFrags, withdrawListing, type ListingSpec } from '../economy/listings';
 import { placeTank, setAdmission, setOpenToPublic, toggleSignage, upgradeFacility } from '../facility/actions';
 import { cancelResearch, claimQuest, startResearch, tutorialAdvance, tutorialSkip } from '../facility/progression';
@@ -17,11 +17,13 @@ import { moveDecor, placeDecor, removeDecor } from '../aquascape';
 import { plantFrag, takeFrag } from '../aquascape/frags';
 import { moveCreature, notePhoto, noteInteraction, registerGlassTap, renameCreature, toggleFavorite } from '../life/actions';
 import { liftOutClutch, moveClutch, separateCreature, startBreeding } from '../life/breeding/actions';
+import { moveCreatures } from '../life/groupMove'; // Audit 2026-11-17 (D2)
 import { addCulture, addReservoir, setStockOrders, upgradePrep, waitForLine } from '../automation';
 import { holdAll, resumeAll, setHold } from '../automation/hold';
 import { assignTank, autoAssignAll, fireStaff, hireStaff, setStockBudget } from '../staff/roster';
 import { addQuarantineTank, createLine, endLine, setKeepRules, setLinePair, setLineRule, setLineRunning, setLineTank } from '../production';
 import { enterShow, withdrawEntry } from '../shows';
+import { sellStoredEquipment, takeDownTank } from '../economy/sellBack'; // Audit 2026-11-17 (G19, G22)
 import { POOL_FAILED_TEXT } from '../pool';
 import type { Command } from './kinds';
 
@@ -121,6 +123,8 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
       return repairEquipment(state, cmd.tank, cmd.equip);
     case 'removeEquipment':
       return removeEquipment(state, cmd.tank, cmd.equip);
+    case 'sellEquipment':
+      return sellStoredEquipment(state, cmd.instance);
     case 'setLighting': {
       const patch: Parameters<typeof setLighting>[2] = {};
       if (cmd.preset !== undefined) patch.preset = cmd.preset;
@@ -152,6 +156,8 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
     }
     case 'placeTank':
       return placeTank(state, cmd.tank, cmd.x, cmd.z, cmd.rotY);
+    case 'takeDownTank':
+      return takeDownTank(state, cmd.tank);
     case 'placeDecor': {
       // a piece in storage is placed from there, else bought (DecorEditor used to read this before the action)
       const owned = state.inventory.decor.some((d) => d.defId === cmd.def);
@@ -192,6 +198,8 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
       return moveCreature(state, cmd.creature, cmd.to);
     case 'separateCreature':
       return separateCreature(state, cmd.creature, cmd.to);
+    case 'moveCreatures':
+      return moveCreatures(state, cmd.creatures, cmd.to);
     case 'moveClutch':
       return moveClutch(state, cmd.clutch, cmd.to);
     case 'liftOutClutch':
@@ -219,6 +227,8 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
       }
       return buyOffer(state, cmd.offer, cmd.tank, picks);
     }
+    case 'holdOffer':
+      return holdOffer(state, cmd.offer, !!cmd.release);
     case 'buyFood':
       return buyFood(state, cmd.food, cmd.packs);
     case 'buySalt':

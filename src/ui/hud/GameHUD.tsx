@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Eye } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
+import { useSettings } from '@/state/settings'; // audit B20 review
 import { sfx } from '@/audio/sfx';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 
@@ -70,7 +71,7 @@ function canCalm(keyboard: boolean): boolean {
   const shell = useShell.getState();
   if (!usePrefs.getState().calmHud || ui.screen !== 'game' || ui.view !== 'tank') return false;
   if (ui.panel || ui.tool !== 'none' || ui.selectedCreatureId || ui.photoMode || ui.hudHidden || ui.partyMode) return false;
-  if (shell.popover || shell.tankCardOpen || shell.moveCreatureId || shell.photo) return false;
+  if (shell.popover || shell.tankCardOpen || shell.moveCreatureId || shell.moveCreatureIds || shell.photo) return false;
   if (document.querySelector('.ag-modal-backdrop, [data-pn-modal], .ag-tut-ring, .ag-welcome, .ag-spot__ring, .ag-tour, .ag-find-backdrop')) return false;
   // keyboard users keep the HUD while a control has visible focus (a mouse click leaves plain focus behind)
   const a = document.activeElement as HTMLElement | null;
@@ -169,6 +170,29 @@ export function isOnControl(e: KeyboardEvent) {
   return !!t && !!t.closest?.('button, a, [role="button"], [role="switch"], [role="radio"], [role="tab"], [role="slider"], summary');
 }
 
+/**
+ * Audit B20 — Space inside a panel, a sheet or a popover scrolls it: opening a panel puts focus on its title, and Space
+ * there used to pause the game instead of scrolling the list.
+ */
+export function isInSheet(e: Pick<KeyboardEvent, 'target'>) {
+  const t = e.target as HTMLElement | null;
+  return !!t && !!t.closest?.('.pn-sheet, .ag-sheet, .ag-popover');
+}
+
+/**
+ * The list Space scrolls: the nearest scrolling box around the focus, else the sheet's own body (review: from the
+ * panel's title, in the header outside its body, the browser scrolled nothing).
+ */
+export function sheetScroller(t: HTMLElement): HTMLElement | null {
+  const root = t.closest<HTMLElement>('.pn-sheet, .ag-sheet, .ag-popover');
+  if (!root) return null;
+  for (let el: HTMLElement | null = t; el && el !== root.parentElement; el = el.parentElement) {
+    const y = getComputedStyle(el).overflowY;
+    if ((y === 'auto' || y === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+  }
+  return root.querySelector<HTMLElement>('.pn-body, .ag-sheet__body, .ag-alerts-pop__body');
+}
+
 /** Keyboard: Space pause · 1/2/3 speed · F feed · T tank card · V view · [ ] tanks · H watch · P photo · Esc back out. */
 function useHudKeys() {
   useEffect(() => {
@@ -190,6 +214,14 @@ function useHudKeys() {
       switch (e.key) {
         case ' ':
           if (isOnControl(e)) return;
+          if (isInSheet(e)) {
+            const list = sheetScroller(e.target as HTMLElement);
+            if (list) {
+              e.preventDefault();
+              list.scrollBy({ top: (e.shiftKey ? -1 : 1) * list.clientHeight * 0.85, behavior: useSettings.getState().reducedMotion ? 'auto' : 'smooth' });
+            }
+            return;
+          }
           e.preventDefault();
           togglePause();
           sfx('click');

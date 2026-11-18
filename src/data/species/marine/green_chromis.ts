@@ -46,13 +46,13 @@ export const greenChromis: SpeciesDefinition = {
   aggression: 0.1,
   finNipper: 0.05,
   hasLongFins: false,
-  social: { kind: 'shoal', minGroup: 3, idealGroup: 7, note: 'Shoals over branching coral in the wild. Keep 5–7 or more, added together, in a long tank to spread the pecking order.' },
+  social: { kind: 'shoal', minGroup: 3, idealGroup: 7, note: 'Shoals over branching coral in the wild. Keep at least three, ideally five to seven or more, added together, in a long tank to spread the pecking order.' },
   sameSpeciesRule: {
     maleMale: 'fight',
     femaleFemale: 'ok',
     mixed: 'ok',
     juvenile: 'ok',
-    note: 'Mature males set up territories and a dominance hierarchy forms; bullied subordinates can waste away. Groups of three collapse fastest, groups of five to seven in a six-foot tank fare best.',
+    note: 'Mature males set up territories and a dominance hierarchy forms; bullied subordinates can waste away. Small groups collapse fastest; groups of five to seven in a six-foot tank fare best.',
   },
 
   predatorTags: ['copepod', 'eggs', 'shrimp_fry'],

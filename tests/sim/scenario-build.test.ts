@@ -406,11 +406,22 @@ describe('LAB-002: the fresh review\u2019s notes', () => {
       expect(b!.repairs, JSON.stringify(patch)).toEqual([]); // the world it returns is already what the save path loads
       expect(() => advanceWorld(b!.state, 1, {}), JSON.stringify(patch)).not.toThrow();
     }
+    // BACKLOG B-210 (the 2026-11-11 audit): these two used to be the first of the crashers below (the save path loaded
+    // them and the first step threw, so they were built without their patch). `repairState` now repairs both, so they
+    // belong with the patches above: built with the patch, the repair said, and the world plays
+    for (const [patch, repaired] of [
+      [{ visitors: { live: 5 } }, 'visitors.live'],
+      [{ facility: { fixtures: 'none' } }, 'facility.fixtures'],
+    ] as const) {
+      const b = buildScenario(R({ name: 'Repaired', shop: { facility: 'specialty_shop' }, tanks: [{ name: 'T' }], patch: patch as Record<string, unknown> }));
+      expect(errors(b), JSON.stringify(patch)).toEqual([]);
+      expect(b.issues.filter((i) => i.level === 'warning' && i.at === 'patch').map((i) => i.message).join(' | '), JSON.stringify(patch)).toContain(`The save check repaired what the patch did: ${repaired}`);
+      expect(b.repairs, JSON.stringify(patch)).toEqual([]);
+      expect(() => advanceWorld(b.state, 1, { forceFull: true }), JSON.stringify(patch)).not.toThrow();
+    }
     // one the save path loads but the game can't play (its first step would throw) is built without the patches:
-    // the game's own, a tank's or an animal's
+    // a tank's or an animal's
     const crashers: ScenarioRecipe[] = [
-      R({ name: 'Crash', shop: { facility: 'specialty_shop' }, tanks: [{ name: 'T' }], patch: { visitors: { live: 5 } } }),
-      R({ name: 'Crash', shop: { facility: 'specialty_shop' }, tanks: [{ name: 'T' }], patch: { facility: { fixtures: 'none' } } }),
       R({ name: 'Crash', tanks: [{ name: 'T', patch: { water: { lab: 5 } }, animals: [{ species: 'neon_tetra' }] }] }),
       R({ name: 'Crash', tanks: [{ name: 'T', animals: [{ species: 'neon_tetra', patch: { life: 7 } }] }] }),
       R({ name: 'Crash', tanks: [{ name: 'T', patch: { tierId: 'nope' } }] }), // the build itself can't finish it

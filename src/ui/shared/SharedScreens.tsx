@@ -9,12 +9,14 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useSharedMode } from '@/state/sharedMode';
 import { useGame } from '@/state/game';
+import { useUI } from '@/state/ui';
+import { guardedReload } from '../common/reload'; // the review of I2
 import { Button, Modal, Toggle } from '../kit';
 import { Wordmark } from '../screens/TitleScreen';
 import { BUILD_ID, parseBuildId, versionUrl } from '../hud/updateCheck';
 import { useShared } from './store';
-import { dismissClosing, grantPause, leaveSharedShop, stillHere } from './session';
-import { RELOAD_CLOSINGS, SHARED_WORDS as W, closingText } from './words';
+import { dismissClosing, grantPause, leaveSharedShop, stillHere, tryAgainShared } from './session';
+import { RELOAD_CLOSINGS, RETRY_CLOSINGS, SHARED_WORDS as W, closingText } from './words';
 import { MemberSpending } from './SharedMoney';
 import './shared.css';
 
@@ -25,7 +27,8 @@ const CATCH_UP_LINE_AFTER_MS = 1500;
 export function SharedOpening() {
   const phase = useShared((s) => s.phase);
   const from = useShared((s) => s.from);
-  const opening = phase === 'saving' || phase === 'waking' || phase === 'joining';
+  // B-230 (audit I1): the checks before the wake show the card too (the button behind it only went grey)
+  const opening = phase === 'checking' || phase === 'saving' || phase === 'waking' || phase === 'joining';
   const [slow, setSlow] = useState(false);
   useEffect(() => {
     setSlow(false);
@@ -43,9 +46,9 @@ export function SharedOpening() {
         <div className="ag-boot__bar" aria-hidden>
           <span />
         </div>
-        {phase !== 'saving' && (
+        {phase !== 'saving' && phase !== 'checking' && (
           <Button variant="ghost" size="sm" onClick={() => void leaveSharedShop()} data-testid="shared-opening-back">
-            <ArrowLeft size={14} aria-hidden /> {from === 'title' ? 'Title' : W.back}
+            <ArrowLeft size={14} aria-hidden /> {from === 'title' ? 'Back to the title screen' : W.back}
           </Button>
         )}
       </div>
@@ -127,19 +130,20 @@ export function SharedFirstTime() {
 
 /**
  * §5.1: after a release the server can be newer than the page this tab loaded, and Pages may serve the old page for a
- * few minutes more, so `build` offers Reload once the site's version.json names a build other than this one.
+ * few minutes more, so `build` offers Reload once the site's version.json names a build other than this one. Audit
+ * 2026-11-17, I8: `same`, the site still serves this very build (it hasn't been redeployed), so a reload can't help.
  */
-function useNewBuildOut(watch: boolean): boolean {
-  const [out, setOut] = useState(BUILD_ID === 'dev');
+function useNewBuildOut(watch: boolean): 'new' | 'same' | null {
+  const [out, setOut] = useState<'new' | 'same' | null>(BUILD_ID === 'dev' ? 'new' : null);
   useEffect(() => {
-    if (!watch || out) return;
+    if (!watch || out === 'new') return;
     let live = true;
     const look = () =>
       fetch(versionUrl(import.meta.env.BASE_URL ?? '/', Date.now()), { cache: 'no-store' })
         .then((r) => (r.ok ? r.json() : null))
         .then((b) => {
           const id = parseBuildId(b);
-          if (live && id && id !== BUILD_ID) setOut(true);
+          if (live && id) setOut(id !== BUILD_ID ? 'new' : 'same');
         })
         .catch(() => {});
     void look();
@@ -152,14 +156,19 @@ function useNewBuildOut(watch: boolean): boolean {
   return out;
 }
 
-/** Why the visit ended (§8 "Closing: …"), over wherever the player went back to; `build` and `outofstep` offer Reload. */
+/** Why the visit ended (§8 "Closing: …"), over wherever the player went back to; `build` offers Reload, RETRY_CLOSINGS Try again. */
 export function SharedClosingCard() {
   const closing = useShared((s) => s.closing);
   const club = useShared((s) => s.club?.name ?? '');
   const [now] = useState(() => Date.now());
   const newBuild = useNewBuildOut(closing?.why === 'build');
+  const onTitle = useUI((s) => s.screen === 'title');
   if (!closing) return null;
-  const reload = RELOAD_CLOSINGS.has(closing.why);
+  // audit I8: the site serves this tab's own build still: say so, rather than a Reload that never turns on
+  const siteBehind = closing.why === 'build' && newBuild === 'same';
+  const reload = RELOAD_CLOSINGS.has(closing.why) && !siteBehind;
+  // B-230 (audit I1): a shop that couldn't be reached offers Try again, and the way back to the aquarium behind the card
+  const retry = RETRY_CLOSINGS.has(closing.why);
   return (
     <Modal
       open
@@ -168,14 +177,27 @@ export function SharedClosingCard() {
       labelledBy="shared-closing-text"
       actions={
         reload ? (
-          <Button variant="primary" disabled={closing.why === 'build' && !newBuild} onClick={() => location.reload()} data-testid="shared-closing-reload">
+          <Button variant="primary" disabled={closing.why === 'build' && newBuild !== 'new'} onClick={guardedReload} data-testid="shared-closing-reload">
             {W.reload}
           </Button>
+        ) : retry ? (
+          <>
+            {!onTitle && (
+              <Button variant="ghost" onClick={dismissClosing} data-testid="shared-closing-back">
+                {W.back}
+              </Button>
+            )}
+            {!closing.noRetry && (
+              <Button variant="primary" onClick={() => void tryAgainShared()} data-testid="shared-closing-retry">
+                {W.tryAgain}
+              </Button>
+            )}
+          </>
         ) : undefined
       }
     >
       <p className="ag-shared-first" id="shared-closing-text" data-why={closing.why} data-testid="shared-closing-text">
-        {closingText(closing.why, { club, until: closing.until, savedAt: closing.savedAt, now })}
+        {siteBehind ? W.siteBehind : closingText(closing.why, { club, until: closing.until, savedAt: closing.savedAt, now, onTitle })}
       </p>
     </Modal>
   );

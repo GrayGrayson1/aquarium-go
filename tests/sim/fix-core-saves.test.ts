@@ -443,3 +443,14 @@ describe('S06-08: out of space', () => {
     expect(st.warning).toMatch(/until this tab closes/);
   });
 });
+
+describe('audit 2026-11-17, I16: the two-tabs banner', () => {
+  it('says how to stop it, and what Keep does on the button itself (not only in a hover tip)', async () => {
+    const { STALE_WORDS } = await import('@/game/StaleTabBanner');
+    expect(STALE_WORDS).toEqual({
+      text: 'This aquarium was played further in another tab, so this tab has stopped saving to keep that progress safe. Close the other tab to stop this.',
+      load: 'Load the newer copy',
+      keep: 'Keep this one (replaces the other tab’s progress)',
+    });
+  });
+});

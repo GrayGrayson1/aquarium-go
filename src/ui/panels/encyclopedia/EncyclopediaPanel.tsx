@@ -21,13 +21,16 @@ import { Chip, Seg, EmptyState, SectionHead, Callout } from '../common/parts';
 import { SpeciesPortrait } from '../common/Portrait';
 import { CareChips } from '../common/Profile';
 import { VerdictBadge } from '../common/CompatPreview';
-import { ENV_LABEL, RARITY_LABEL, RARITY_TONE, DIFFICULTY_LABEL, DIFFICULTY_TONE, VERDICT_RANK, titleCase } from '../common/format';
+import { ENV_LABEL, RARITY_LABEL, RARITY_TONE, DIFFICULTY_LABEL, DIFFICULTY_TONE, VERDICT_RANK, titleCase, TEMPERAMENT_LABEL, DIET_LABEL } from '../common/format'; // Audit 2026-11-17 (J14): TEMPERAMENT_LABEL, DIET_LABEL
 import { DietGuideView, HabitatGuideView, RealLifeTips } from './SpeciesGuide'; // lane:guide
 import { ARTICLES } from './science';
 import { seenMorphChips, discoveredMorphNames, hasNoNamedMorphs, noMorphsNote } from './morphs';
 import { GeneticsSections } from './MorphCatalog'; // lane:genetics
 import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { convertSourceTempText } from '@/ui/common/format'; // Audit 2026-11-17 (J1)
+import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
+import { lifespanDaysText } from '@/ui/common/lifespan'; // Audit 2026-11-17 (D20)
 
 type Tab = 'species' | 'science';
 type Show = 'all' | 'discovered' | 'freshwater' | 'marine' | 'brackish'; // lane:brackish: + 'brackish'
@@ -70,6 +73,8 @@ export function EncyclopediaPanel() {
       icon={<BookOpen size={20} />}
       subtitle={`${known.size} of ${total} species discovered · ${g.progress.discoveredMorphs.length} ${g.progress.discoveredMorphs.length === 1 ? 'morph' : 'morphs'} seen${(g.progress.prismaticFinds?.length ?? 0) > 0 ? ` · ${g.progress.prismaticFinds!.length} Prismatic` : ''}`}
       scrollKey={`${tab}:${speciesId ?? ''}`}
+      listKey={tab /* audit B7: back from a species page, the list is where it was */}
+      subOpen={!!speciesId}
       toolbar={
         // chunk 6 (DES-011): a species page keeps the strip, Species selected, as the 0.5 screens draw it
         <Seg<Tab>
@@ -179,7 +184,7 @@ function SpeciesGrid({ g, known, onOpen }: { g: GameState; known: Set<string>; o
         </section>
       ))}
       <Callout tone="good" icon={<Leaf size={16} />}>
-        Every animal here stays in your care or goes to another keeper. Aquarium animals should never be released into the wild.
+        Every animal here stays in your care or goes to another fishkeeper. Aquarium animals should never be released into the wild.
       </Callout>
     </div>
   );
@@ -218,7 +223,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
     return { good, bad };
   }, [sp]);
   const breeding = useMemo(() => (sp ? safe(() => breedingSystemInfo(sp.id), null) : null), [sp]);
-  const { t: tempText } = useTempText();
+  const { t: tempText, unit: tempUnit } = useTempText();
 
   if (!sp)
     return (
@@ -305,15 +310,18 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
         <FactRow icon={<Ruler size={15} />} label="Adult size">
           About {sp.adultSizeCm} cm · needs {sp.recommendedMinTankGallons}+ gallons ({sp.recommendedFootprint.minLengthIn}″ long or more)
         </FactRow>
+        <FactRow icon={<Hourglass size={15} />} label="Lifespan">
+          About {lifespanDaysText(sp)} in the game
+        </FactRow>
         {/* lane:guide — diet by food TYPE (dry / frozen / live / fresh) + whether an autofeeder can feed it */}
-        <FactRow icon={<Utensils size={15} />} label={`Diet · ${titleCase(sp.diet)}`}>
+        <FactRow icon={<Utensils size={15} />} label={`Diet · ${DIET_LABEL[sp.diet] ?? titleCase(sp.diet)}`}>
           <DietGuideView sp={sp} />
         </FactRow>
         <FactRow icon={<Thermometer size={15} />} label="Temperature & flow">
           <HabitatGuideView sp={sp} />
         </FactRow>
         <FactRow icon={<Shield size={15} />} label="Temperament">
-          {titleCase(sp.temperament)}
+          {TEMPERAMENT_LABEL[sp.temperament] ?? titleCase(sp.temperament) /* Audit 2026-11-17 (J14): "Semi-aggressive", not "Semi Aggressive" */}
           {sp.sameSpeciesRule.note ? ` — ${tempText(sp.sameSpeciesRule.note)}` : ''}
         </FactRow>
         <FactRow icon={<Users size={15} />} label="Social structure">
@@ -327,7 +335,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
         </FactRow>
         <FactRow icon={<Egg size={15} />} label="Breeding">
           {tempText(e.breedingOverview)}
-          {breeding && !breeding.breedable && <span className="pn-muted"> (Not bred in this build.)</span>}
+          {breeding && !breeding.breedable && <span className="pn-muted"> (Can’t be bred in Aquarium Go.)</span>}
         </FactRow>
         <FactRow icon={<Leaf size={15} />} label={`Conservation${sp.conservation?.status ? ` · ${sp.conservation.status}` : ''}`}>
           {tempText(e.conservationNote)}
@@ -406,6 +414,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
         sp.visualMorphs.length > 0 && (
           <section>
             <SectionHead title={`Morphs · ${morphsSeen.size}/${sp.visualMorphs.length} seen`} icon={<Palette size={14} />} />
+            <p className="pn-tiny pn-muted">A morph is a colour or fin form.{/* Audit 2026-11-17 (J5) */}</p>
             <div className="pn-chips" data-testid="enc-morph-chips">
               {sp.visualMorphs.map((m) => {
                 const seen = morphsSeen.has(m);
@@ -441,7 +450,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
                 ) : (
                   <span>{s.title}</span>
                 )}
-                {s.facts?.length > 0 && <span className="pn-tiny pn-muted">{s.facts.slice(0, 5).join(' · ')}</span>}
+                {s.facts?.length > 0 && <span className="pn-tiny pn-muted">{convertSourceTempText(s.facts.slice(0, 5).join(' · '), tempUnit) /* Audit 2026-11-17 (J1): °C or °F as quoted, in the player's unit */}</span>}
               </li>
             ))}
           </ul>

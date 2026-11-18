@@ -15,6 +15,7 @@ import { Chip, Select, EmptyState } from '../common/parts';
 import { orderedTanks } from '../common/derive';
 import { LOG_KIND_LABEL, relTime, dayOfHour } from '../common/format';
 import { formatClock } from '@/sim/time';
+import { LOG_CAP } from '@/sim/context'; // audit B23
 import { eventLink } from '@/ui/hud/eventLinks'; // lane:notify
 import { eventLine } from '@/ui/common/notify'; // chunk 13: the member's name in a shared shop
 
@@ -60,7 +61,7 @@ export function LogPanel() {
       .filter((e) => kind === 'all' || FILTER_KINDS[kind].includes(e.kind))
       .filter((e) => tank === 'all' || e.tankId === tank)
       .sort((a, b) => b.hour - a.hour)
-      .slice(0, 200);
+      .slice(0, LOG_CAP); // audit B23: all the game keeps (it showed 200 of 300, with no way to the rest)
     const out: { day: number; items: GameEvent[] }[] = [];
     for (const e of list) {
       const d = dayOfHour(e.hour);
@@ -83,7 +84,7 @@ export function LogPanel() {
 
   return (
     <PanelLayout
-      title="Log"
+      title="Event log"
       icon={<ScrollText size={20} />}
       subtitle={`${g.log.length} events · Day ${today}, ${formatClock(g.clock.hour)}`}
       toolbar={

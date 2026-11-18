@@ -15,6 +15,7 @@
  *   FIT_LABEL / FIT_TONE                      badge word and status colour for a FitLevel
  * and re-exports the autofeeder rules (canAutofeed, autofeedFoodsFor, planAutofeed, isAutofeederFood …).
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { EquipmentDef, EquipmentInstance, FoodDef, FoodForm, GameState, Tank } from '@/types';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getFoodDef, foodForm } from '@/data/catalog/foods';
@@ -98,7 +99,7 @@ const general = (text: string): FitVerdict => v('ok', text, { general: true });
 
 // ───────────────────────────── Text helpers ─────────────────────────────
 
-const lc = (s: string) => s.toLowerCase();
+const lc = (s: string) => lowerName(s);
 const capFirst = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const joinAnd = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 const num = (x: number) => (Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1));
@@ -289,7 +290,7 @@ function lightFit(c: FitCtx): FitVerdict {
 
 function airstoneFit(c: FitCtx): FitVerdict {
   const s0 = equipmentSummary(c.without);
-  if (s0.co2 > 0) return v('partial', 'Its bubbles drive off the injected CO₂ your plants use — run it only at night, when the plants aren’t using CO₂.');
+  if (s0.co2 > 0) return v('partial', 'Its bubbles drive off the injected CO₂ your plants use — switch it off while the lights are on, when the plants use CO₂.');
   const highOx = c.groups.filter((g) => g.sp.special?.highOxygen);
   if (highOx.length) return v('ok', `${capFirst(animals(highOx))} ${verb(highOx, 'need', 'needs')} cool, oxygen-rich water — this helps.`, { who: whoOf(highOx) });
   if (c.groups.length && (c.tank.water?.oxygen ?? 1) < 0.7) return v('ok', `Oxygen is on the low side here (${Math.round((c.tank.water.oxygen ?? 0) * 100)}% of saturation) — this raises it.`);
@@ -369,7 +370,7 @@ function co2Fit(c: FitCtx): FitVerdict {
     return v('useless', `CO₂ only feeds live plants — with none in this tank it would just lower the pH${c.groups.length ? ` and stress ${animals(c.groups)}` : ''}.`, { attention: c.groups.length > 0, who: whoOf(c.groups) });
   const s0 = equipmentSummary(c.without);
   const airstone = s0.entries.some((e) => e.def.kind === 'airstone' && e.inst.on && !e.inst.failed);
-  if (airstone) return v('partial', 'The airstone here drives the CO₂ straight back out — run the airstone only at night.');
+  if (airstone) return v('partial', 'The airstone here drives the CO₂ straight back out — switch the airstone off while the lights are on.');
   return v('ok', `Your ${living.plants} live plant${living.plants === 1 ? '' : 's'} will grow faster and pearl under good light. Keep the surface moving at night so the animals aren’t short of oxygen.`);
 }
 
@@ -469,6 +470,17 @@ function judge(c: FitCtx): FitVerdict {
 }
 
 /**
+ * Audit 2026-11-17 C17 — a one-per-tank kind that's already fitted. When the one fitted has failed, "one is all it
+ * needs" left the player stuck (the shop's Buy is off, the card said "replace or repair"): say how to get past it.
+ */
+export function oneOnlyText(tank: Tank, def: EquipmentDef): string {
+  const here = (tank.equipment ?? []).find((e) => getEquipmentDef(e.defId)?.kind === def.kind);
+  const hereDef = here ? getEquipmentDef(here.defId) : undefined;
+  if (here?.failed && hereDef) return `The ${hereDef.name} here has failed — repair it on the tank card, or move it to storage first.`;
+  return `This tank already has ${aOrAn(def.name)} ${lc(def.name)} — one is all it needs.`;
+}
+
+/**
  * Would one more unit of `defId` help the animals in this tank? (Before buying or installing it.)
  * The hypothetical unit gets the setting installEquipment would give it (thermostat for these animals, gentle pumps).
  */
@@ -481,7 +493,7 @@ export function equipmentFit(state: GameState, tankOrId: Tank | string, defId: s
   const same = (tank.equipment ?? []).filter((e) => getEquipmentDef(e.defId)?.kind === def.kind).length;
   const max = MAX_PER_KIND[def.kind] ?? 6;
   if (same >= max)
-    return v('useless', max === 1 ? `This tank already has ${aOrAn(def.name)} ${lc(def.name)} — one is all it needs.` : `This tank already has ${same} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that’s the most that fit.`, { blocked: true, label: 'Already fitted', soft: true }); // lane:qa-r3 — a fact, not a warning: neutral
+    return v('useless', max === 1 ? oneOnlyText(tank, def) : `This tank already has ${same} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that’s the most that fit.`, { blocked: true, label: 'Already fitted', soft: true }); // lane:qa-r3 — a fact, not a warning: neutral
   const setting = defaultSettingFor(state, tank, def.kind, def.stats.defaultSetting);
   const inst: EquipmentInstance = { id: '__fit_preview', defId, installedHour: state.clock?.hour ?? 0, condition: 1, on: true, setting };
   return judge(makeCtx(state, tank, def, inst, false));

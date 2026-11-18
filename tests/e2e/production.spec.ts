@@ -84,7 +84,7 @@ test.describe('Livestock › Production (desktop 1440×900)', () => {
 
     // End line (ADR-0030 decision 1)
     await tid(page, 'production-end-line').click();
-    await expect(tid(page, 'production-end-confirm')).toContainText("Its animals stay in the tanks they're in, the line slot frees up, and its numbers stay in its history.");
+    await expect(tid(page, 'production-end-confirm')).toContainText('Its animals stay in the tanks they’re in, the line slot frees up, and its numbers stay in its history.');
     await tid(page, 'production-end-confirm-yes').click();
     await expect.poll(() => lastToast(page)).toMatchObject({ text: 'Betta line ended', detail: 'Its animals stay where they are.' });
     await expect(page.getByText('No production line yet')).toBeVisible();

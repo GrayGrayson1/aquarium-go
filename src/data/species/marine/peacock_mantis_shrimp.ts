@@ -159,7 +159,7 @@ export const peacockMantisShrimp: SpeciesDefinition = {
     breedingOverview: 'The female guards a large egg mass in her burrow for weeks. The planktonic larvae have not been reared for the trade.',
     conservationNote: 'Not assessed by the IUCN. All are wild-caught (some arrive as live-rock hitchhikers), so give it a proper lifelong home.',
     funFact: 'Its club strike is among the fastest movements in the animal kingdom: it hits hard enough to create collapsing cavitation bubbles, so the prey is struck twice — once by the club and once by the bubble.',
-    inGameBehavior: 'Excavates and rearranges its burrow, peeks out with swivelling eyes, tracks your finger on the glass, and cracks open snails with an audible pop.',
+    inGameBehavior: 'Excavates and rearranges its burrow, peeks out with swivelling eyes, tracks your cursor or finger on the glass, and cracks open snails with an audible pop.',
     feedingNote: 'A hunter that smashes live snails and crabs, and takes thawed krill, mysis or sinking pellets from tongs. Feed every day or two and remove leftovers it drags into its burrow. It eats autofed sinking pellets, but hand-fed meaty food should be most of its diet.',
     keeperTip: 'Keep your fingers out of its reach: a smashing strike can badly bruise or cut a hand. Feed it and move rock with long tongs, and expect it to hit the tongs.',
   },
@@ -184,7 +184,7 @@ export const peacockMantisShrimp: SpeciesDefinition = {
     { other: 'tag:fish_small', verdictFloor: 'incompatible', reason: 'Small fish that rest near the rockwork are ambushed and killed.', incidentRisk: 0.3 },
     { other: 'tag:fish_benthic', verdictFloor: 'incompatible', reason: 'Bottom-resting fish such as gobies and dragonets are easy targets for a burrowing mantis.', incidentRisk: 0.35 },
     { other: 'tag:fish_medium', verdictFloor: 'high_risk', reason: 'Mid-sized fish can be struck at night or when they come too close to the burrow. A mantis is best kept alone.', incidentRisk: 0.12 },
-    { other: 'tag:fish_large', verdictFloor: 'high_risk', reason: 'Too big to eat, but large fish may harass the mantis or be struck by it. This is a species-only animal.', incidentRisk: 0.04 },
+    { other: 'tag:fish_large', verdictFloor: 'high_risk', reason: 'Too big to eat, but large fish may harass the mantis or be struck by it. It’s best in a tank of its own.', incidentRisk: 0.04 },
   ],
   special: {
     burrower: true,

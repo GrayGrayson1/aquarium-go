@@ -45,6 +45,7 @@ import { LogPanel } from './log/LogPanel';
 import { ShowsPanel } from './shows/ShowsPanel';
 import { OperationsPanel } from './operations/OperationsPanel'; // lane:automation (chunk 5)
 import { SocialPanel } from './social/SocialPanel'; // lane:social (chunk 6)
+import { PANEL_LABEL } from '../nav/routes'; // Audit 2026-11-17 (J14)
 import './panels.css';
 
 export type ManagedPanelId = Exclude<PanelId, 'settings' | 'dev'>;
@@ -200,7 +201,7 @@ export function PanelHost() {
             tabIndex={-1}
             role="dialog"
             aria-modal={false}
-            aria-label={`${shown} panel`}
+            aria-label={(PANEL_LABEL as Record<string, string>)[shown] ?? shown /* Audit 2026-11-17 (J14): "Event log", not "log panel" */}
             aria-hidden={isAside || undefined}
             inert={isAside}
             data-testid={`panel-${shown}`}

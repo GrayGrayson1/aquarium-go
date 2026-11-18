@@ -2,7 +2,7 @@
  * Derived report contracts consumed by the UI. OWNER: core. Lanes may ADD optional fields.
  */
 import type { CompatVerdict } from './species';
-import type { Sex } from './game';
+import type { Creature, Sex } from './game';
 
 export type StatusLevel = 'good' | 'watch' | 'danger';
 
@@ -134,6 +134,8 @@ export interface CandidateAddition {
   sizeCm?: number;
   /** Existing creatures being moved in (use their real sex/size/personality). */
   creatureIds?: string[];
+  /** Animals not yet in the game (a shop offer's pre-rolled individuals): previewed with their real sex and size. */
+  creatures?: Creature[];
 }
 
 export interface ValueFactor {

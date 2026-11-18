@@ -5,6 +5,7 @@
  * Deterministic (only ctx.rng), substeps internally (any dt up to many hours), clamps every stat, never NaN.
  */
 import { pluralName } from '../economy/util';
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15)
 import type { Creature, FoodTag, GameState, SpeciesDefinition, Tank } from '@/types';
 import type { SimContext } from '../context';
 import { findSpecies } from '@/data/species';
@@ -15,7 +16,7 @@ import { lightsOn } from '../time';
 import { feedingPersonalityMul } from './personality';
 import { canAutofeed, handFoodPhrase } from '../care/autofeed'; // lane:fit — text only (no RNG)
 import { getEquipmentDef } from '@/data/catalog/equipment'; // lane:fit
-import { ageDaysOf, gallonsNeededNow, lifeStageFor, observableSex, sexVisible, sizeAtAge } from './growth';
+import { ageDaysOf, gallonsNeededNow, lifeStageFor, observableSex, sexVisible, sizeAtAge, SLIGHTLY_SMALL_TANK } from './growth';
 import { ILLNESSES, eligibleIllnesses, illnessDef, type IllnessKind } from './illness';
 import {
   buildTankEnv,
@@ -86,6 +87,31 @@ export function pushHistory(c: Creature, ev: Creature['history'][number]): void 
   c.history.push(ev);
   if (c.history.length > HISTORY_CAP) c.history.splice(0, c.history.length - HISTORY_CAP);
 }
+
+/**
+ * Audit 2026-11-17 (D11): the tank mate that last hurt this animal, from its History ("Hurt by Rex the tiger barb (fin
+ * nip)."), so a death or a healing note can name it without a new save field. Null when nothing hurt it.
+ */
+export function lastHurtBy(c: Creature, nowHour: number): { label: string; verb: 'nipping' | 'chasing' | 'stinging' | 'attacking' } | null {
+  const h = Array.isArray(c.history) ? c.history : [];
+  for (let i = h.length - 1; i >= 0; i--) {
+    // review: only a recent hurt counts (about two game days), never a tank mate from weeks ago or another tank
+    if (!(nowHour - (h[i]?.hour ?? -Infinity) <= HURT_BY_WINDOW_H)) break;
+    const text = h[i]?.kind === 'note' ? h[i].text ?? '' : '';
+    // Audit 2026-11-17 (J14): "Hurt by Rex the tiger barb, which nips fins." (older saves: "… (fin nip).")
+    const m = /^Hurt by (.+?)(, which nips[^.]*| in a fight|, which keeps chasing (?:it|her|him|them)|, which stings)\.$/.exec(text) ?? /^Hurt by (.+) \(([a-z ]+)\)\.$/.exec(text);
+    if (m) return { label: m[1], verb: /nip/.test(m[2]) ? 'nipping' : /harassment|chasing/.test(m[2]) ? 'chasing' : /sting/.test(m[2]) ? 'stinging' : 'attacking' };
+  }
+  return null;
+}
+
+/** How far back (game hours) a "Hurt by" note still names who is hurting an animal. */
+export const HURT_BY_WINDOW_H = 48;
+
+/** Audit 2026-11-17 (J14): how a tank mate hurt an animal, for its History ("Hurt by Rex the tiger barb, which nips fins."). */
+// (J14 review: the hurt animal by its pronoun, as the card says it: "which keeps chasing her", not "it")
+const HURT_HOW: Record<string, (them: string) => string> = { fin_nip: () => ', which nips fins', gill_nip: () => ', which nips at gills', coral_nip: (them) => `, which nips at ${them}`, harassment: (them) => `, which keeps chasing ${them}`, aggression: () => ' in a fight', sting: () => ', which stings' };
+const objectPronoun = (c: Creature): string => (c.sex === 'female' ? 'her' : c.sex === 'male' ? 'him' : 'them');
 
 export function lifeMeta(c: Creature): NonNullable<Creature['life']> {
   if (!c.life) c.life = {};
@@ -172,7 +198,7 @@ function sanitize(c: Creature): void {
 }
 
 function lc(s: string): string {
-  return s.toLowerCase();
+  return lowerName(s); // Audit 2026-11-17 (J15): proper nouns keep their capitals
 }
 
 function pronoun(c: Creature): { they: string; their: string } {
@@ -241,7 +267,7 @@ function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
           ? 'regular feeding (or an autofeeder) keeps everyone in condition'
           : `${pluralName(spName)} only eat ${handFoodPhrase(sp)}, so they need regular feeding by hand — an autofeeder can’t feed them`;
       const p = pronoun(c);
-      return { kind: 'starvation', cause: 'not enough food', text: `${name} has passed away. ${cap(p.they)} ${p.they === 'they' ? "weren't" : "wasn't"} getting enough to eat — ${hint}.` };
+      return { kind: 'starvation', cause: 'not enough food', text: `${name} has passed away. ${cap(p.they)} ${p.they === 'they' ? "weren’t" : "wasn’t"} getting enough to eat — ${hint}.` };
     }
     case 'water': {
       const wv = env.water.get(sp.id);
@@ -258,14 +284,23 @@ function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
       const f = stressFactors(state, env, c, sp, hour)[0];
       return { kind: 'stress', cause: 'long-term stress', text: `${name} has passed away after a long period of stress${f ? ` (${f.label})` : ''}.` };
     }
-    case 'injury':
-      return { kind: 'injury', cause: 'injuries from tank mates', text: `${name} has passed away from injuries caused by tank mates. Some animals simply can't share a tank.` };
+    case 'injury': {
+      // Audit 2026-11-17 (D11): name the tank mate that kept hurting it (its History has the last one)
+      const by = lastHurtBy(c, hour);
+      if (by) {
+        const p = pronoun(c);
+        const obj = p.they === 'she' ? 'her' : p.they === 'he' ? 'him' : 'them';
+        const did = by.verb === 'stinging' ? `stung ${obj}` : `kept ${by.verb} ${obj}`;
+        return { kind: 'injury', cause: `injuries from ${by.label}`, text: `${name} has passed away from injuries — ${by.label} ${did}. Keep them apart.` };
+      }
+      return { kind: 'injury', cause: 'injuries from tank mates', text: `${name} has passed away from injuries caused by tank mates. Some animals simply can’t share a tank.` };
+    }
     case 'harassment': {
       const p = pronoun(c);
-      return { kind: 'injury', cause: 'harassment by a tank mate', text: `${name} has passed away after being chased and bitten by a tank mate. A female must be moved out of a male's tank as soon as spawning is over, and ${p.they === 'they' ? 'harassed animals need' : 'a harassed animal needs'} a tank of ${p.their} own to recover.` };
+      return { kind: 'injury', cause: 'harassment by a tank mate', text: `${name} has passed away after being chased and bitten by a tank mate. A female must be moved out of a male’s tank as soon as spawning is over, and ${p.they === 'they' ? 'harassed animals need' : 'a harassed animal needs'} a tank of ${p.their} own to recover.` };
     }
     case 'fighting':
-      return { kind: 'injury', cause: 'fighting with a rival', text: `${name} has passed away from wounds taken fighting a rival. Two dominant ${pluralName(spName)} can't share a tank — separate rivals as soon as the fighting starts.` };
+      return { kind: 'injury', cause: 'fighting with a rival', text: `${name} has passed away from wounds taken fighting a rival. Two dominant ${pluralName(spName)} can’t share a tank — separate rivals as soon as the fighting starts.` };
     case 'age':
       return { kind: 'old_age', cause: 'old age', text: `${name} passed away peacefully of old age. Thank you for giving ${name} such a good life.` };
     default:
@@ -617,13 +652,13 @@ export function applyIncident(state: GameState, env: TankEnv, list: { c: Creatur
       damage = rng.range(2.5, 7) * (victim.sp.hasLongFins ? 1.3 : 1);
       injury = 10;
       stress = 16;
-      msg = `${actorLabel} is nipping ${v.name}'s fins. ${risk.text ?? ''}`;
+      msg = `${actorLabel} is nipping ${v.name}’s fins. ${risk.text ?? ''}`;
       break;
     case 'gill_nip':
       damage = rng.range(4, 9);
       injury = 12;
       stress = 18;
-      msg = `${actorLabel} nipped at ${v.name}'s delicate gills. ${risk.text ?? ''}`;
+      msg = `${actorLabel} nipped at ${v.name}’s delicate gills. ${risk.text ?? ''}`;
       break;
     case 'harassment':
       damage = rng.range(0.5, 3);
@@ -660,7 +695,7 @@ export function applyIncident(state: GameState, env: TankEnv, list: { c: Creatur
   actor.c.stats.stress = clamp(actor.c.stats.stress + 2, 0, 100);
   if (throttle(v, `inc:${risk.kind}:${actor.c.id}`, hour, 8)) {
     ctx.emit({ kind, text: msg.replace(/\s+/g, ' ').trim(), tankId: env.tank.id, creatureId: v.id });
-    pushHistory(v, { hour, kind: 'note', text: `Hurt by ${actorLabel} (${risk.kind.replace('_', ' ')}).` });
+    pushHistory(v, { hour, kind: 'note', text: `Hurt by ${actorLabel}${HURT_HOW[risk.kind]?.(objectPronoun(v)) ?? ''}.` }); // Audit 2026-11-17 (J14): words, not "(fin nip)"
   }
   if (v.stats.health <= 0) {
     // The cause is what did most of the harm, the rule a death from accumulated harm follows (explainDeath), not
@@ -1061,12 +1096,13 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
 
   // ── Tank size warnings (a juvenile growing beyond its tank)
   const need = gallonsNeededNow(sp, c.sizeCm, c.reproRole);
-  if (env.gallons < need && throttleGroup(state, ids, 'tank_small', hour, 48)) {
+  // Audit 2026-11-17 (D4): a tank only a little small (SLIGHTLY_SMALL_TANK) raises no alarm; compatibility notes it
+  if (env.gallons < need * SLIGHTLY_SMALL_TANK && throttleGroup(state, ids, 'tank_small', hour, 48)) {
     const adultNeed = sp.recommendedMinTankGallons;
     const text =
       c.lifeStage === 'juvenile'
         ? `${c.name} is outgrowing this ${env.gallons}-gallon tank. An adult ${lc(sp.commonName)} needs at least ${adultNeed} gallons — plan a bigger home soon.`
-        : `${c.name}'s tank is too small. An adult ${lc(sp.commonName)} needs at least ${adultNeed} gallons.`;
+        : `${c.name}’s tank is too small. An adult ${lc(sp.commonName)} needs at least ${adultNeed} gallons.`;
     ctx.emit({ kind: 'warning', text, tankId: env.tank.id, creatureId: c.id, toast: true });
   }
 
@@ -1117,7 +1153,9 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   const life = Math.max(1, sp.lifecycle.lifespanDays);
   if (age > life * 0.9 && !state.offlineGrace) {
     const pDay = clamp(0.01 * dmath.exp((age / life - 0.9) * 25) * (1.3 - 0.6 * hardy), 0, 0.9);
-    if (ctx.rng.chance(perStep(pDay, h))) {
+    // Audit 2026-11-17 (D20, the owner's decision): old age never takes the first companion. The draw is still made
+    // (and its result ignored for the companion), so every other animal's draws keep their order.
+    if (ctx.rng.chance(perStep(pDay, h)) && !c.isStarter) {
       m.damage.age = (m.damage.age ?? 0) + 1000;
       killCreature(state, c, explainDeath(state, env, c, sp, hour), hour, ctx.emit);
     }

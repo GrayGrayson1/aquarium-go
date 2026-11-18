@@ -7409,6 +7409,232 @@
         "ADR-0055"
       ],
       "note": ""
+    },
+    {
+      "id": "AUD-001",
+      "slice": "ALL",
+      "source": "ADR-0056; PLAN.md chunk 20",
+      "description": "The first companion never dies of old age, and every other animal's card says how long its kind lives and warns near the end.",
+      "acceptance": [
+        "Old age never takes the animal with the First companion badge (its old-age draw is still made and ignored, so no other draw moves); illness, hunger, the water and tank mates still apply to it.",
+        "The animal card's Lifespan row reads \"About {N} days\", and for an elder \"{Name} is in his/her/their last stretch: about {d} days left.\"; while the companion lives its row reads \"{Name} is your first companion and will stay with you as long as you look after him/her/them.\", and once it has died the plain \"About {N} days\".",
+        "The species page's Lifespan row reads \"About {N} days in the game\"."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/audit-2026-11-17-d.test.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 20",
+        "ADR-0056"
+      ],
+      "note": ""
+    },
+    {
+      "id": "AUD-002",
+      "slice": "ALL",
+      "source": "ADR-0056; PLAN.md chunk 20",
+      "description": "When very hungry animals have no food they eat and too little money for the cheapest pack, the aquarium club drops off a little of the right food, at most once a game day.",
+      "acceptance": [
+        "Once a game hour the finance step finds an animal at \"Very hungry\" (hunger 70) in a tank with no food it eats in stock and money (a debt counts) below the cheapest pack of that food on sale, and adds about two days' meals of it (at least one serving, at most a pack): hungriest first, one parcel per missing food, at most once a game day, with no random draw.",
+        "The log, the bell and a toast say \"The aquarium club dropped off a little food for {name}. Short on cash? Friends tip when your animals are healthy, or sell something in Livestock.\" with a \"Ways to raise cash\" link that opens Finances on its ideas.",
+        "A save that never had a parcel gains no field and keeps its stateHash; the club's two loans are unchanged."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/audit-money-f.test.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 20",
+        "ADR-0056"
+      ],
+      "note": ""
+    },
+    {
+      "id": "AUD-003",
+      "slice": "ALL",
+      "source": "ADR-0056; PLAN.md chunk 20",
+      "description": "A production line sells its young by itself through a buy-now price on the whole lot, and lists again what doesn't sell, a little cheaper each time.",
+      "acceptance": [
+        "A line lists each lot with a buy-now price (and reserve) of the lot's fair value less 10 %, so a buyer takes it without the player; an expired listing's animals go back to the batch and are listed again about 10 % and at least $1 cheaper each time, never below half of the lot's fair value ($1 at least), and no young one is dropped.",
+        "A relisting never asks more a head than the listing before it, though the young grow meanwhile: the batch remembers each part's last ask (the optional `lastAsk`, juveniles and adults apart) and asks the lower of the ladder's price and a whole dollar under it, and no more than last time once the ladder is at its floor; \", the lowest the line goes\" is said once, when the price can't go lower.",
+        "The log says \"{Line}: {lot} listed · Buy now {price} each\" and, on a relisting, \"{Line}: {lot} didn’t sell, so they’re listed again at {price} each\"; the Sell stage says \"Buy now at fair value −10% · a little cheaper each time it’s listed again\" and the set-up's step 3 \"Buy now at fair value −10%\".",
+        "An animal that falls unwell (an illness, or health under 45) takes its lot off sale (\"{Line}: off sale while {name} is unwell.\") and the line lists nothing with it until it is well or moved out; a batch past its hold that can't be listed says why instead of naming a day that has passed (\"The market’s 24 listing slots are all in use\", \"Held by manual mode\", the market's own not-open hint, or \"Lists as soon as it can\"), and no restart day is promised meanwhile; a listing withdrawn, cancelled, or left while \"List automatically\" is off ends with the line's notice that the young are back in its quarantine tank and that it won't list them again."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/production-line.test.ts",
+        "tests/sim/production-ui.test.ts",
+        "tests/sim/production-held-ui.test.ts",
+        "tests/sim/automation-problems-ui.test.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 20",
+        "ADR-0056"
+      ],
+      "note": ""
+    },
+    {
+      "id": "AUD-004",
+      "slice": "ALL",
+      "source": "ADR-0056; PLAN.md chunk 20",
+      "description": "Starting or loading another aquarium never deletes one kept only in the autosave: it is saved to a free slot first, or the game asks.",
+      "acceptance": [
+        "New Game, the title's Load and Continue, Settings' Load and Load online save move an aquarium the switch would push out of \"Previous autosave\" into a free slot first and say \"{Shop} was only in the autosave, so it was saved to Slot {n} first.\".",
+        "With every slot full a box says \"“Previous autosave” ({Shop}, Day {n}) will be deleted.\" with Cancel, which writes nothing, and Delete and continue.",
+        "A newer build's record in the autosave slot is never written over, parked or asked about, and the switch goes on."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/saves-kept-copies.test.ts",
+        "tests/sim/online-sync.test.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 20",
+        "ADR-0056"
+      ],
+      "note": ""
+    },
+    {
+      "id": "AUD-005",
+      "slice": "ALL",
+      "source": "ADR-0056; PLAN.md chunk 20",
+      "description": "Salt is paid for only when it is bought in Supplies, never again in a tank's nightly running cost.",
+      "acceptance": [
+        "A salt or brackish tank's daily running cost holds no salt, and the nightly bill, Finances' rows and total, the tank card, the Tanks tile and a production line's share all read that cost; water changes use the salt bought, as before.",
+        "Finances says \"Salt is a supply, like food: you pay when you buy it in Market › Supplies.\", the Tanks tile's hint is \"power & wear\", and Supplies' salt row says how many 25% water changes of the largest salt tank the stock covers."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/audit-1117-tank-care.test.ts",
+        "tests/sim/automation-water-changer.test.ts",
+        "tests/sim/species-brackish.test.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 20",
+        "ADR-0056"
+      ],
+      "note": ""
+    },
+    {
+      "id": "AUD-006",
+      "slice": "ALL",
+      "source": "ADR-0056; PLAN.md chunk 20",
+      "description": "Goldfish, comets, koi and African dwarf frogs are sold as pairs, and a tank only a little small gets a gentle note instead of High risk.",
+      "acceptance": [
+        "The shop offers these four group animals only two at a time (\"Pair of {species}\", noted \"Sold as a pair, so neither one is kept alone.\"), priced for two, and the pair's preview has no group-size warning.",
+        "A tank with at least 90 % of the gallons a species wants gets a note, \"This tank is a little under the {N} gallons an adult {species} likes (it holds {G}). Fine with good care.\", with no risk tick; below 90 % it stays High risk, below half critical, and the too-small toast, a move's Heads up and the offer's callout start at the same 90 %."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/audit-2026-11-17-d.test.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 20",
+        "ADR-0056"
+      ],
+      "note": ""
+    },
+    {
+      "id": "AUD-007",
+      "slice": "ALL",
+      "source": "ADR-0056; PLAN.md chunk 20",
+      "description": "The store buys stored equipment back at half its price, and an empty tank can be taken down for half the bare tank's price.",
+      "acceptance": [
+        "Build › Equipment's In storage lists every stored unit whatever the tank's water, each with \"Sell · {price}\" and a confirm (\"The store pays {price} for it: half its price.\"), a flat half of its catalogue price whatever its condition (the sellEquipment command).",
+        "The Tanks panel offers Take down on an empty tank with the confirm \"Take down {tank}?\" (what goes to storage, then \"You get {price} back for the tank.\"), and says why not for a tank with animals, eggs or young, a listing or a production line (the takeDownTank command); its gear and decor go to storage.",
+        "Finances' ways to raise cash name taking an empty tank down and selling spare stored equipment."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/audit-g-building.test.ts",
+        "tests/sim/commands-catalogue.test.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 20",
+        "ADR-0056"
+      ],
+      "note": ""
+    },
+    {
+      "id": "AUD-008",
+      "slice": "ALL",
+      "source": "ADR-0056; PLAN.md chunk 20",
+      "description": "Keepers feed fry their first foods on their rounds, and say so when there are none in stock.",
+      "acceptance": [
+        "On a round a keeper gives each brood past its yolk the first of its stage's foods in stock: at most two servings a brood a round (one while ammonia or nitrite is at Watch), and none in a tank a working live-food doser feeds or whose young were offered food in the last 4 hours; no random draw.",
+        "With none in stock the keeper says \"{Keeper} couldn’t feed the {young} in {tank}: no {foods} in stock. Buy food in Market › Supplies.\" and the day's report flags \"No first foods for the {young} in {tank}\"; a fry-only tank's keeper line reads \"{Keeper} feeds the fry their first foods and keeps the water clean.\" (with a working doser, that the doser feeds the fry, or that it has none of their food in stock).",
+        "The stock manager orders those first foods at what the keepers will give (the keeper's servings a round, for the rounds that tank gets), after the grown animals' food is covered."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/staff-keeper-fry.test.ts",
+        "tests/sim/staff-stock-young-food.test.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 20",
+        "ADR-0056"
+      ],
+      "note": ""
+    },
+    {
+      "id": "AUD-009",
+      "slice": "ALL",
+      "source": "ADR-0056; PLAN.md chunk 20",
+      "description": "A shop offer the player has open stays in the shop until they buy it or close it.",
+      "acceptance": [
+        "Opening an offer holds it (the holdOffer command) for about 2 real minutes, renewed every 15 seconds while it is open and through a New tank detour to Build, and never more than about 6 real minutes from its start; the morning restock runs around it with the same draws.",
+        "Closing it lets it go about 20 real seconds later, so another member still looking in a shared shop keeps it.",
+        "The offer says \"Leaves the shop {this morning / tomorrow morning / tonight / in 3 days}. It stays while you’re looking.\", and an offer that has gone says \"It has left the shop: bought, or its time ran out. New stock arrives every morning at 8.\"."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/audit-money-f.test.ts",
+        "tests/sim/commands-catalogue.test.ts",
+        "tests/sim/ui-shop-05.test.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 20",
+        "ADR-0056"
+      ],
+      "note": ""
+    },
+    {
+      "id": "AUD-010",
+      "slice": "ALL",
+      "source": "ADR-0056; PLAN.md chunk 20",
+      "description": "A free scheduled job keeps the online project from pausing for lack of use.",
+      "acceptance": [
+        ".github/workflows/keep-online-awake.yml runs on Mondays and Thursdays (and by hand) and makes one request to resolve_invite with a 48-character code, which the function answers with null before it reads anything, using the public address and publishable key from src/social/project.ts.",
+        "A request that doesn't answer 200 fails the job, so GitHub's email tells the owner to press Restore in the project's dashboard."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "PLAN.md chunk 20",
+        "ADR-0056"
+      ],
+      "note": "Built on next (55e1546); no unit test reads a workflow. GitHub runs a scheduled workflow only from the default branch, so it first runs once next is merged into main: then run it once by hand (Actions › Keep online awake › Run workflow) and check its log says HTTP 200, after the project has been restored (ADR-0056 decision 4). GitHub turns scheduled jobs off in a public repository after 60 days without a commit."
     }
   ]
 }

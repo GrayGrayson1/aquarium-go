@@ -100,6 +100,15 @@ export function illnessDef(kind: string): IllnessDef | undefined {
   return Object.hasOwn(ILLNESSES, kind) ? ILLNESSES[kind as IllnessKind] : undefined;
 }
 
+/**
+ * Audit 2026-11-17 (J3, J14): an illness in the words the creature card uses ("white spot (ich)", "fungal infection",
+ * "stress colouring"), never its id ("stress coloration"); an unknown kind still reads as words.
+ */
+export function illnessName(kind: string, sp: SpeciesDefinition | undefined): string {
+  const def = illnessDef(kind);
+  return def && sp ? def.name(sp) : kind.replace(/_/g, ' ');
+}
+
 /** Which illnesses a species can plausibly get. */
 export function eligibleIllnesses(sp: SpeciesDefinition): IllnessKind[] {
   const out: IllnessKind[] = ['stress_coloration'];

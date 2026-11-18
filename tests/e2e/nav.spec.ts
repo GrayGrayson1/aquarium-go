@@ -51,6 +51,73 @@ test.describe('hash routes (desktop 1440×900)', () => {
     await expect.poll(() => hash(page)).toBe('#/');
   });
 
+  test('audit B6: Back closes the listing wizard and stays in My listings; with prices typed it asks first', async ({ page }) => {
+    await offerGame(page);
+    await aq(page, 'dev.spawnSpecies', 'betta', undefined, { sex: 'female', count: 1 });
+    await goHash(page, '#/market/listings');
+    await expect(tid(page, 'listing-create')).toBeVisible();
+    await tid(page, 'listing-create').click();
+    await expect.poll(() => hash(page)).toBe('#/market/listings/new');
+    // nothing typed: Back just closes it
+    await page.goBack();
+    await expect.poll(() => hash(page)).toBe('#/market/listings');
+    await expect(tid(page, 'listing-create')).toBeVisible();
+    await expect(tid(page, 'panel-market')).toBeVisible();
+
+    // prices typed: Back asks; Keep editing stays (and its address comes back); Leave goes to My listings
+    /** New listing → an animal → its price, with the reserve nudged up (the wizard's kind, items and price steps). */
+    const typePrice = async () => {
+      await tid(page, 'listing-create').click();
+      await tid(page, 'listing-kind-creature').click();
+      await page.getByRole('button', { name: /^Next\b/ }).last().click(); // kind → animals
+      const row = page.locator('.pn-pickrow').filter({ hasNotText: 'Starter' }).first();
+      await expect(row).toBeVisible();
+      if (!(await row.evaluate((el) => el.classList.contains('is-on')))) await row.click();
+      await page.getByRole('button', { name: /^Next\b/ }).last().click(); // animals → price
+      await page.getByRole('button', { name: 'Increase Reserve price' }).click();
+    };
+    await typePrice();
+    await page.goBack();
+    await expect(tid(page, 'leave-confirm')).toContainText('Leave this listing?');
+    await expect(tid(page, 'leave-confirm')).toContainText('Your prices won’t be kept.'); // (no photo taken)
+    await tid(page, 'leave-keep').click();
+    await expect(tid(page, 'leave-confirm')).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Increase Reserve price' })).toBeVisible();
+    await expect.poll(() => hash(page)).toBe('#/market/listings/new');
+    await page.goBack();
+    await tid(page, 'leave-go').click();
+    await expect(tid(page, 'listing-create')).toBeVisible();
+    await expect.poll(() => hash(page)).toBe('#/market/listings');
+    // and the panel's close asks too
+    await typePrice();
+    await page.keyboard.press('Escape');
+    await expect(tid(page, 'leave-confirm')).toBeVisible();
+    await page.keyboard.press('Escape'); // Escape on the question keeps editing
+    await expect(tid(page, 'leave-confirm')).toBeHidden();
+    await expect(tid(page, 'panel-market')).toBeVisible();
+  });
+
+  test('audit B7: back from an offer, the shop list is where the player left it', async ({ page }) => {
+    await offerGame(page);
+    for (let i = 0; i < 12; i++) await aq(page, 'dev.addShopOffer', 'mystery_snail');
+    await goHash(page, '#/shop');
+    const body = tid(page, 'panel-market').locator('.pn-body');
+    await expect(body).toBeVisible();
+    await body.evaluate((el) => el.scrollTo({ top: 600 }));
+    await page.waitForTimeout(200);
+    const top = await body.evaluate((el) => el.scrollTop);
+    expect(top).toBeGreaterThan(300);
+    // an offer card in view at that place
+    const card = page.locator('[data-testid^="shop-offer-"]').filter({ visible: true });
+    const inView = await card.evaluateAll((els) => els.findIndex((el) => { const r = el.getBoundingClientRect(); return r.top > 200 && r.bottom < innerHeight - 40; }));
+    expect(inView).toBeGreaterThanOrEqual(0);
+    await card.nth(inView).click();
+    await expect(tid(page, 'buy-offer')).toBeVisible();
+    await page.goBack();
+    await expect(tid(page, 'buy-offer')).toBeHidden();
+    await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(top - 40);
+  });
+
   test('switching tabs rewrites the address, and arrow keys move between tabs', async ({ page }) => {
     await offerGame(page);
     await tid(page, 'dock-livestock').click();

@@ -334,7 +334,7 @@ export function FragStorage({ g, tankId }: { g: GameState; tankId: string }) {
           </Button>
         )}
       </SectionHead>
-      <p className="fr-intro">Waiting in your holding system, where they don’t grow (a game simplification). Plant them to grow them out, or sell them.</p>
+      <p className="fr-intro">Waiting in storage, where they don’t grow. Plant them to grow them out, or sell them.</p>
       <div className="fr-store">
         {frags.map((f) => {
           const def = getDecorDef(f.defId);

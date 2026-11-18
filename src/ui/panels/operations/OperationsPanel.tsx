@@ -100,6 +100,8 @@ export function OperationsPanel() {
         icon={<Gauge size={20} />}
         subtitle={<span data-testid="ops-sub">{subline(g, tier, snap, small)}</span>}
         scrollKey={`${tab}:${view ?? ''}`}
+        listKey={tab /* audit B7 */}
+        subOpen={!!view}
         headerExtra={
           holdAll ? (
             <Button

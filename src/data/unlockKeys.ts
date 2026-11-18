@@ -43,7 +43,7 @@ export const UNLOCK_KEYS = {
   tank_auctions: 'Auction whole aquariums',
   visitors: 'Open to visitors',
   signage: 'Educational signage',
-  nursery: 'Nursery & breeding tanks',
+  nursery: 'Breeding know-how', // audit 2026-11-17 (A3, G3, E13): it gates two research projects, not tanks (any tank can be a nursery)
   genetics_lab: 'Reveal precise genetics',
   photo_contests: 'Aquascape awards',
   party_mode: 'Party / music mode',

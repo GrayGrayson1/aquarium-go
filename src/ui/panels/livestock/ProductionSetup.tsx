@@ -27,6 +27,10 @@ import {
 import { act } from '../common/act';
 import { useSheet } from '../common/PanelLayout';
 import { CreaturePortrait } from '../common/Portrait';
+import { useTempText } from '../common/hooks'; // Audit 2026-11-17 (J1)
+
+/** The List automatically rule's line (set-up step 3 and the line's rules; Audit 2026-11-17, H1: the owner's "Sell by itself"). */
+export const LIST_AUTOMATICALLY = 'Juveniles go on sale the day quarantine ends: a buyer who likes the price buys them without you. What doesn’t sell is listed again a little cheaper.';
 
 type Pair = ReturnType<typeof candidatePairs>[number];
 const pairKey = (p: { motherId: string; fatherId: string }) => `${p.motherId}-${p.fatherId}`;
@@ -152,8 +156,9 @@ function FitBadge({ fit }: { fit: TankFit }) {
 }
 
 function TankChoices({ g, speciesId, stage, chosen, pair, onPick, ignoreLineId }: { g: GameState; speciesId: string; stage: LineStage; chosen: Partial<Record<LineStage, string>>; pair: { motherId: string; fatherId: string } | null; onPick: (id: string) => void; ignoreLineId?: string }) {
+  const { t: tempText } = useTempText(); // Audit 2026-11-17 (J1): "Breed Tank is 29 °C — outside the safe range…"
   return (
-    <div className="pr-choices" role="listbox" aria-label={`Tanks for ${stage}`}>
+    <div className="pr-choices" role="listbox" aria-label={`Tanks for the ${STAGES.find((s) => s.id === stage)?.word ?? stage} stage` /* Audit 2026-11-17 (J14): not "Tanks for keep" */}>
       {g.tankOrder.map((id) => {
         const t = g.tanks[id];
         if (!t) return null;
@@ -161,7 +166,7 @@ function TankChoices({ g, speciesId, stage, chosen, pair, onPick, ignoreLineId }
         return (
           <button key={id} type="button" role="option" aria-selected={chosen[stage] === id} disabled={!fit.ok} className={clsx('pr-choice', chosen[stage] === id && 'is-on')} onClick={() => onPick(id)}>
             <span className="pr-choice__name">{t.name}</span>
-            <span className="pr-choice__sub">{fit.ok ? why(g, stage, id, fit, pair, ignoreLineId) : fit.reason}</span>
+            <span className="pr-choice__sub">{fit.ok ? why(g, stage, id, fit, pair, ignoreLineId) : tempText(fit.reason)}</span>
             <FitBadge fit={fit} />
           </button>
         );
@@ -170,9 +175,10 @@ function TankChoices({ g, speciesId, stage, chosen, pair, onPick, ignoreLineId }
   );
 }
 
-function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, onPick }: { g: GameState; speciesId: string; stage: (typeof STAGES)[number]; chosen: Partial<Record<LineStage, string>>; pair: { motherId: string; fatherId: string } | null; open: boolean; onToggle: () => void; onPick: (id: string) => void }) {
+export function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, onPick }: { g: GameState; speciesId: string; stage: (typeof STAGES)[number]; chosen: Partial<Record<LineStage, string>>; pair: { motherId: string; fatherId: string } | null; open: boolean; onToggle: () => void; onPick: (id: string) => void }) {
   const id = chosen[stage.id];
   const fit = id ? tankFitFor(g, speciesId, stage.id, id, chosen, pair ? [pair.motherId, pair.fatherId] : []) : null;
+  const { t: tempText } = useTempText(); // Audit 2026-11-17 (J1)
   return (
     <div className={clsx('pr-tankrow', open && 'is-open')} data-testid={`production-new-tank-${stage.testId}`}>
       <button type="button" className="pr-tankrow__head" aria-expanded={open} onClick={onToggle}>
@@ -182,11 +188,21 @@ function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, onPick }:
         <span className="pr-tankrow__text">
           <span className="pr-tankrow__label">{stage.word}</span>
           <span className="pr-tankrow__name">{id ? g.tanks[id]?.name : '—'}</span>
-          <span className="pr-tankrow__sub">{id && fit ? (fit.ok ? why(g, stage.id, id, fit, pair) : fit.reason) : ''}</span>
+          <span className="pr-tankrow__sub">{id && fit ? (fit.ok ? why(g, stage.id, id, fit, pair) : tempText(fit.reason)) : ''}</span>
         </span>
         {fit && <FitBadge fit={fit} />}
         <ChevronDown size={16} aria-hidden className="pr-tankrow__chev" />
       </button>
+      {/* Audit 2026-11-17 (H10): a stage no tank can take says why, and where to get one */}
+      {!id && !g.tankOrder.some((t) => tankFitFor(g, speciesId, stage.id, t, chosen, pair ? [pair.motherId, pair.fatherId] : []).ok) && (
+        <p className="pr-hint" data-testid={`production-new-nofit-${stage.testId}`}>
+          {/* every tank taken by another stage, or some tank here that doesn't suit this one (H1 review) */}
+          {g.tankOrder.every((t) => Object.entries(chosen).some(([k, v]) => k !== stage.id && v === t)) ? 'No tank fits yet: each stage needs its own tank.' : 'No tank here suits this stage yet (open it to see why).'}{' '}
+          <button type="button" className="pn-link" onClick={() => useUI.getState().set({ panel: 'build', panelTarget: 'tab:tanks' })}>
+            Buy one in Build
+          </button>
+        </p>
+      )}
       {open && <TankChoices g={g} speciesId={speciesId} stage={stage.id} chosen={chosen} pair={pair} onPick={onPick} />}
     </div>
   );
@@ -267,7 +283,7 @@ export function PairPicker({ g, line, onClose }: { g: GameState; line: Productio
       testId="production-fix-pair-dialog"
       actions={
         <Button variant="primary" disabled={!picked} onClick={() => picked && act({ k: 'setLinePair', line: line.id, a: picked.motherId, b: picked.fatherId }, { quiet: true, after: (r) => r?.ok && onClose() })}>
-          Done
+          Use this pair
         </Button>
       }
     >
@@ -410,7 +426,7 @@ export function NewLine({ g, onStarted }: { g: GameState; onStarted: (lineId: st
             </div>
             <div className="pr-field">
               <span className="pr-field__label">Sell</span>
-              <span className="pr-fieldbtn pr-fieldbtn--static">Auctions · reserve at fair value −10%</span>
+              <span className="pr-fieldbtn pr-fieldbtn--static">Buy now at fair value −10%</span>
             </div>
           </section>
           <section className="pr-card" aria-label="Line rules">
@@ -419,7 +435,7 @@ export function NewLine({ g, onStarted }: { g: GameState; onStarted: (lineId: st
               [
                 ['pauseWhenFull', 'Pause when a tank is full', `Stops spawning when ${g.tanks[tanks.raise ?? '']?.name ?? 'the raise tank'} reaches its stocking limit.`],
                 ['keepPrismatic', 'Never sell Prismatic animals', `A Prismatic youngster always moves to ${g.tanks[tanks.keep ?? '']?.name ?? 'the keep tank'} instead.`],
-                ['autoList', 'List automatically', 'Juveniles go to auction the day quarantine ends.'],
+                ['autoList', 'List automatically', LIST_AUTOMATICALLY],
               ] as const
             ).map(([key, title, sub]) => (
               <div key={key} className="pr-rule">
@@ -442,7 +458,7 @@ export function NewLine({ g, onStarted }: { g: GameState; onStarted: (lineId: st
           </Button>
         )}
         {step < 3 ? (
-          <Button variant="primary" data-testid="production-new-next" disabled={step === 1 ? !pair : !tanksOk} onClick={() => setStep((step + 1) as 2 | 3)}>
+          <Button variant="primary" data-testid="production-new-next" disabled={step === 1 ? !pair : !tanksOk} title={step === 2 && !tanksOk ? 'Choose a tank for every stage' : undefined} onClick={() => setStep((step + 1) as 2 | 3)}>
             <ArrowRight size={14} aria-hidden /> {step === 1 ? 'Next: choose tanks' : 'Next: rules'}
           </Button>
         ) : (

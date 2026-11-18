@@ -21,7 +21,7 @@ import { recommendedServings } from '@/sim/water';
 import { inhabitantsOf } from '@/sim/water/env';
 import { keeperOf } from '@/sim/staff/common';
 import { isHeld } from '@/sim/automation/hold'; // lane:automation (chunk 5)
-import { doserNeeds } from '@/sim/automation'; // lane:automation (chunk 5)
+import { doserNeeds, doserShortWords } from '@/sim/automation'; // lane:automation (chunk 5)
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { sfx } from '@/audio/sfx';
@@ -34,7 +34,7 @@ import { Button, Section, Segmented, Toggle, formatMoney } from '../kit';
 export const AUTOFEEDER_ID = 'autofeeder';
 export { WATER_CHANGER_ID }; // chunk 11: the buyAutoClean command's
 /** §10.2: the hint while the Autofeeder (and so the Auto Water Changer, which shares its unlock) is locked. */
-export const AUTOMATION_LOCK_HINT = 'Research Better Life Support, or build husbandry mastery with regular care.';
+export const AUTOMATION_LOCK_HINT = 'Research Better Life Support, or raise husbandry mastery by caring for your tanks.';
 
 const kindOf = (e: EquipmentInstance) => getEquipmentDef(e.defId)?.kind;
 const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -280,6 +280,7 @@ function DoserRow({ g, tank }: { g: GameState; tank: Tank }) {
   if (!dev && !unlocked) return null;
   const needs = safe('doserNeeds', () => doserNeeds(g, tank), []);
   const young = needs.reduce((a, n) => a + n.clutch.count, 0);
+  const short = young ? safe('doserShortWords', () => doserShortWords(g, tank), null) : null; // Audit 2026-11-17 (H15)
   if (!dev)
     return (
       <div className="ag-auto is-missing" data-testid="tank-doser-row">
@@ -324,6 +325,11 @@ function DoserRow({ g, tank }: { g: GameState; tank: Tank }) {
       <div>
         <div className="ag-auto__title">Live-food doser</div>
         <div className="ag-auto__sub">{young ? `Feeding ${young} young · three times a day` : 'Idle until the next clutch hatches'}</div>
+        {short && dev.on && !dev.failed && !isHeld(g, 'food') && (
+          <div className="ag-auto__warn" data-testid="tank-doser-short">
+            No {short} in stock: the young go hungry.
+          </div>
+        )}
         {dev.on && isHeld(g, 'food') && (
           <div className="ag-auto__warn" data-testid="tank-doser-held">
             <Hand size={12} aria-hidden /> Held by manual mode — no doses until you resume.

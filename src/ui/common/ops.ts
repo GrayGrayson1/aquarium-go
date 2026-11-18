@@ -180,10 +180,10 @@ export interface LadderTier {
 
 const levelIndex = (id: FacilityLevelId) => FACILITY_LEVEL_ORDER.indexOf(id);
 
-/** A facility level as a requirement: "{Level}: you're past it", or what's missing ("{Level} · 42 of 100 reputation"). */
+/** A facility level as a requirement: "{Level}: reached", or what's missing ("{Level} · 42 of 100 reputation"). */
 function levelReq(g: GameState, level: FacilityLevelId): LadderReq[] {
   const def = getFacilityLevel(level);
-  if (levelIndex(g.facility.level) >= levelIndex(level)) return [{ met: true, text: `${def.name}: you’re past it` }];
+  if (levelIndex(g.facility.level) >= levelIndex(level)) return [{ met: true, text: `${def.name}: reached` }];
   const rule = def.unlockKey ? UNLOCK_RULE_BY_KEY[def.unlockKey] : undefined;
   const out: LadderReq[] = [];
   for (const c of rule?.when ?? []) {
@@ -202,6 +202,8 @@ function researchReq(g: GameState, id: string): LadderReq {
   const def = RESEARCH_BY_ID[id];
   const r = g.progress.research;
   if (r.completed.includes(id)) return { met: true, text: `${def.name}: researched` };
+  // Audit 2026-11-17 (G21): everything it teaches already earned through play (Research says "Learned through play")
+  if (r.activeId !== id && def.grants.length && def.grants.every((k) => g.progress.unlocked.includes(k))) return { met: true, text: `${def.name}: learned through play` };
   if (r.activeId === id) {
     const left = Math.max(1, Math.ceil((def.hours - r.progressHours) / HOURS_PER_DAY));
     return { met: false, text: `Researching ${def.name} · ${left} ${left === 1 ? 'day' : 'days'} left` };
@@ -232,6 +234,6 @@ export function tierLadder(g: GameState): LadderTier[] {
       reqs: [researchReq(g, 'central_water_supply'), researchReq(g, 'breeding_program'), researchReq(g, 'live_food_cultures')],
     },
     { tier: 4, key: 'lines', name: 'Breeding facility', desc: 'More production lines that share tanks', open: t.slots >= 2, reqs: [...slotsReq(t.slots), ...levelReq(g, 'specialty_shop')] },
-    { tier: 5, key: 'tools', name: 'Operations', desc: 'Bottlenecks, schedules, weekly money, manual mode', open: t.desk, reqs: [...levelReq(g, 'aquarium_store'), researchReq(g, 'operations_desk')] },
+    { tier: 5, key: 'tools', name: 'Operations Desk', desc: 'Bottlenecks, schedules, weekly money, manual mode', open: t.desk, reqs: [...levelReq(g, 'aquarium_store'), researchReq(g, 'operations_desk')] },
   ];
 }

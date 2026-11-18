@@ -4,9 +4,12 @@
  */
 import type { GameState } from '@/types';
 import { findSpecies } from '@/data/species';
+import { foodTagNames, joinFoodNames } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3)
 import { moduleFor } from './registry';
 import type { StatusOut } from './types';
-import { currentPhase, isCarried, youngLabel } from './clutch';
+import { incidentRisks } from '@/sim/compat';
+import { currentPhase, isCarried, predationInfo, youngLabel } from './clutch';
+import { fissionBlocker } from './systems/fission';
 import {
   READY,
   SURFACE_CALM_MAX,
@@ -15,12 +18,17 @@ import {
   clamp01,
   foodRecency,
   habitatOf,
+  inWindow,
   isAlive,
   isMature,
+  isNight,
   isNurseryFor,
   juvenileSlots,
+  makeTankInfo,
   plural,
+  spPlural,
   stageProgress,
+  youngSingular,
   surfaceAgitation,
 } from './common';
 
@@ -32,7 +40,13 @@ export function creatureBreedingStatus(state: GameState, creatureId: string): St
   const mod = moduleFor(sp);
   const hour = state.clock.hour;
   // an animal that breeds alone (the living anemone splitting) does reproduce: the owner's wording (ADR-0052 decision 11)
-  if (!mod.breedable) return { label: mod.asexual ? 'Splits by itself' : 'Not bred here', detail: mod.explain?.(sp) };
+  // audit E22: an anemone that won't split says why (settling, health, hunger, room), or that it may split any day
+  if (!mod.breedable && mod.asexual) {
+    const tank = c.tankId ? state.tanks[c.tankId] : undefined;
+    const why = tank ? fissionBlocker(state, tank, sp, c, state.clock.hour) : null;
+    return { label: 'Splits by itself', detail: why ? `Not splitting — ${why}` : 'Settled and well fed — it may split any day' };
+  }
+  if (!mod.breedable) return { label: 'Not bred here', detail: mod.explain?.(sp) };
   if (!isMature(c, sp, hour)) {
     const age = ageDaysAt(c, hour);
     return { label: 'Too young to breed', detail: `Matures in ${approxDuration((sp.breeding.maturityDays - age) * 24)}`, progress: clamp01(age / Math.max(1, sp.breeding.maturityDays)) };
@@ -50,7 +64,8 @@ export function creatureBreedingStatus(state: GameState, creatureId: string): St
 
   switch (r.stage) {
     case 'conditioning':
-      return { label: 'Conditioning', detail: readiness >= READY ? 'In breeding condition' : `Breeding readiness ${readiness}%`, progress: clamp01(c.stats.breedingReadiness / 100) };
+      // audit E15: plain words a child knows, not keepers' terms (conditioning, spermatophore, berried, spent…)
+      return { label: 'Getting into breeding shape', detail: readiness >= READY ? 'In breeding condition' : `Breeding readiness ${readiness}%`, progress: clamp01(c.stats.breedingReadiness / 100) };
     case 'nest_building': {
       const calm = tank ? surfaceAgitation(tank, habitatOf(state, tank).cover) <= SURFACE_CALM_MAX : true;
       return { label: 'Building a bubble nest', detail: calm ? 'Blowing bubbles beneath the leaves' : 'The surface is too choppy — the nest keeps breaking up', progress: clamp01(r.nestProgress ?? 0) };
@@ -64,27 +79,33 @@ export function creatureBreedingStatus(state: GameState, creatureId: string): St
     case 'spawning':
       return { label: `Spawning with ${pn}`, progress: prog };
     case 'depositing':
-      return { label: 'Depositing spermatophores', detail: `${pn} is following`, progress: prog };
+      return { label: 'Leaving sperm packets for her', detail: `${pn} is following`, progress: prog };
     case 'following':
-      return { label: 'Picking up a spermatophore', progress: prog };
+      return { label: 'Picking up a sperm packet', progress: prog };
     case 'laying':
       return { label: 'Laying eggs', detail: cl ? `${plural(cl.count, 'egg')} so far` : undefined, progress: prog };
     case 'guarding': {
       if (!cl) return { label: 'Guarding' };
       if (cl.stage === 'eggs') return { label: `Guarding ${plural(cl.count, 'egg')}`, detail: `Hatching in ${approxDuration(cl.nextStageHour - hour)}`, progress: clutchProgress(state, cl.id) };
-      if (cl.stage === 'larvae') return { label: `Tending ${plural(cl.count, 'larva', 'larvae')}`, detail: 'Returning strays to the nest', progress: clutchProgress(state, cl.id) };
+      // audit E25: a betta's larvae hang in a bubble nest; a cichlid's or pleco's wriggling fry lie on a stone or in a cave
+      if (cl.stage === 'larvae') {
+        const yl = youngLabel(cl, mod);
+        return { label: `Tending ${plural(cl.count, youngSingular(yl), yl)}`, detail: cl.visual === 'bubble_nest' || mod.id === 'bubble_nest' ? 'Returning strays to the nest' : 'Keeping them together and safe', progress: clutchProgress(state, cl.id) };
+      }
+      // audit E12: a cichlid pair herds its free-swimming fry and never eats them: no need to move either parent
+      if (moduleFor(sp).plan.pairGuards) return { label: 'Fry are free-swimming', detail: 'The pair herd them and keep them safe', progress: 1 };
       return { label: 'Fry are free-swimming', detail: `Move ${c.name} out — his job is done`, progress: 1 };
     }
     case 'brooding':
-      return { label: cl ? `Mouthbrooding ${plural(cl.count, 'egg')}` : 'Mouthbrooding', detail: 'Won’t eat until the young are released', progress: prog };
+      return { label: cl ? `Holding ${plural(cl.count, 'egg')} in his mouth` : 'Holding eggs in his mouth', detail: 'Won’t eat until the young are released', progress: prog };
     case 'pregnant': {
       const due = (r.carryingUntilHour ?? hour) - hour;
       return { label: due > 0 ? `Pregnant — due in ${approxDuration(due)}` : 'Pregnant — birth is imminent', detail: cl ? `Carrying about ${plural(cl.count, 'young', 'young')}` : undefined, progress: prog };
     }
     case 'berried':
-      return { label: cl ? `Berried — ${plural(cl.count, 'egg')}` : 'Berried', detail: `Hatching in ${approxDuration((r.carryingUntilHour ?? hour) - hour)}`, progress: prog };
+      return { label: cl ? `Carrying ${plural(cl.count, 'egg')} under her tail` : 'Carrying eggs under her tail', detail: `Hatching in ${approxDuration((r.carryingUntilHour ?? hour) - hour)}`, progress: prog };
     case 'spent':
-      return { label: 'Spent after spawning', detail: 'Move her to her own tank to recover' };
+      return { label: 'Worn out after spawning', detail: 'Move her to her own tank to recover' };
     case 'resting':
       return { label: `Resting — ready again in ${approxDuration((r.stageEndsHour ?? hour) - hour)}`, progress: prog };
     case 'bonding':
@@ -119,6 +140,24 @@ export interface ClutchStatus {
   warnings: string[];
   /** Juveniles that will fit when these young grow up. */
   nurserySlots: number;
+  /**
+   * audit E1/E2: nothing here eats these young or sweeps them away (a nursery with the parent still in it isn't safe;
+   * a cichlid pair alone with its brood is).
+   */
+  safe: boolean;
+  /** audit E3: "You can keep up to N young from this clutch…", when the clutch is bigger than that. */
+  keepNote?: string;
+  /** audit E25: due, but waits for the dark (a clownfish's or shark's eggs, a seahorse's birth). */
+  waitsForDark: boolean;
+  /** review E (E1): the one adult in a nursery that eats these young — the card offers to move it out. */
+  moveOut?: { id: string; name: string };
+}
+
+/** Short list of names: "Atlas", "Atlas and Coral", "Atlas, Coral and 2 more". */
+function nameList(n: string[]): string {
+  if (n.length <= 1) return n[0] ?? '';
+  if (n.length === 2) return `${n[0]} and ${n[1]}`;
+  return `${n[0]}, ${n[1]} and ${n.length - 2} more`;
 }
 
 /**
@@ -148,23 +187,99 @@ export function clutchStatus(state: GameState, clutchId: string): ClutchStatus |
   const remaining = cl.nextStageHour - hour;
   let detail: string;
   if (cl.infertile) detail = cl.notes ?? 'These eggs won’t hatch here.';
-  else if (cl.stage === 'in_pouch') detail = `Due in ${approxDuration(remaining)}`;
+  // audit E25: a seahorse gives birth only after lights-out or at first light; a mouthbrooder releases them at once
+  else if (cl.stage === 'in_pouch') detail = remaining > 0 ? `Due in ${approxDuration(remaining)}` : mod.id === 'seahorse_pouch' ? 'Due after lights-out or at first light' : 'Due any moment';
   else if (cl.stage === 'eggs' && cl.visual === 'egg_case' && remaining > 0) detail = `${candled(clutchProgress(state, cl.id))}. Hatching in ${approxDuration(remaining)}`;
   else if (cl.stage === 'eggs') detail = cl.pendingEggs ? 'Still being laid' : remaining > 0 ? `Hatching in ${approxDuration(remaining)}` : mod.plan.hatchAtNight ? 'Hatching tonight after lights-out' : 'Hatching any moment';
   else {
     const ph = currentPhase(cl, mod);
     const last = mod.plan.phases[mod.plan.phases.length - 1] === ph;
     detail = last ? `Juveniles in ${approxDuration(remaining)}` : `Next stage in ${approxDuration(remaining)}`;
-    if (ph && ph.foods.length && foodRecency(tank, ph.foods, hour, 10, 14) < 0.5 && (cl.fed ?? 1) < 0.6) warnings.push(`Hungry — offer ${ph.foods.slice(0, 2).map((f) => f.replace(/_/g, ' ')).join(' or ')}`);
+    if (ph && ph.foods.length && foodRecency(tank, ph.foods, hour, 10, 14) < 0.5 && (cl.fed ?? 1) < 0.6) warnings.push(`Hungry — offer ${joinFoodNames(foodTagNames(ph.foods, { max: 2, shelfOnly: true })) || 'tiny live foods'}`); // Audit 2026-11-17 (J3)
   }
-  if (!isCarried(cl) && !isNurseryFor(state, tank, hour) && sp.breeding.nurseryRequired) warnings.push('Adults share this tank — a nursery would save more of them');
+  // audit E1/E2/E12: who actually eats them here (the sim's own rule: a cichlid pair spares its brood, a parent moved
+  // into the nursery doesn't), not the tank's Nursery label or a head count of tank mates
+  const carried = isCarried(cl);
+  const nursery = isNurseryFor(state, tank, hour);
+  let safe = true;
+  let moveOut: ClutchStatus['moveOut'];
+  if (!carried && !cl.infertile) {
+    const info = makeTankInfo(state, tank, hour, () => {
+      try {
+        return (incidentRisks(state, tank.id) ?? []).filter((r) => r.youngOnly);
+      } catch {
+        return [];
+      }
+    });
+    const pred = predationInfo(state, cl, tank, sp, mod, hour, info);
+    const others = [...pred.others.keys()].map((id) => findSpecies(id)).filter((x): x is NonNullable<typeof x> => !!x);
+    if (pred.guardianEating) {
+      safe = false;
+      moveOut = { id: pred.guardianEating.id, name: pred.guardianEating.name };
+      warnings.push(`${pred.guardianEating.name} has started eating them — move ${pred.guardianEating.sex === 'female' ? 'her' : 'him'} out`);
+    } else if (pred.p >= 0.05 && (pred.conspecific.length || others.length)) {
+      safe = false;
+      const who = [...pred.conspecific.map((c) => c.name), ...others.map((o) => `the ${spPlural(o)}`)];
+      const one = who.length === 1 && pred.conspecific.length === 1;
+      const what = cl.stage === 'eggs' ? 'the eggs' : 'the young';
+      // in a nursery the eater was moved in with them: move it out; elsewhere the young go to a nursery
+      const fix = nursery ? `move ${pred.conspecific.length === 1 && !others.length ? (pred.conspecific[0].sex === 'female' || pred.conspecific[0].reproRole === 'female' ? 'her' : 'him') : 'them'} out` : 'a nursery tank would keep them safe';
+      warnings.push(`${nameList(who).replace(/^./, (ch) => ch.toUpperCase())} ${one ? 'eats' : 'eat'} ${what} here — ${fix}`);
+      if (nursery && pred.conspecific.length >= 1 && !others.length) moveOut = { id: pred.conspecific[0].id, name: pred.conspecific[0].name };
+    }
+    if (mod.plan.planktonic && cl.stage !== 'eggs' && !nursery) {
+      safe = false;
+      warnings.push('They drift into the filter and tank mates’ mouths here — move them to a nursery tank');
+    }
+  }
+  // audit E2: the room check, before it matters: the young that don't fit when they grow up are rehomed
   const slots = juvenileSlots(state, tank, sp, hour);
-  if (cl.stage !== 'eggs' && cl.stage !== 'in_pouch' && slots < Math.min(cl.count, sp.breeding.maxRaisedPerClutch)) warnings.push(slots <= 0 ? 'No room left in this tank for juveniles' : `Room for only ${plural(slots, 'juvenile')} here`);
+  if (!carried && !cl.infertile && slots < Math.min(cl.count, sp.breeding.maxRaisedPerClutch)) {
+    // review E: a parent's guarded eggs or nest larvae stay with it: they move once they're free-swimming
+    const move = cl.guardedById && cl.stage !== 'fry' ? 'once they’re free-swimming, move them to a bigger or emptier tank' : 'move them to a bigger or emptier tank';
+    warnings.push(slots <= 0 ? `No room in ${tank.name} for these young when they grow up — ${move}` : `Room for only ${slots} of these when they grow up — ${move}`);
+  }
+  // audit E3: the per-clutch cap (a game rule no screen showed): say it while the clutch is bigger than it
+  const max = sp.breeding.maxRaisedPerClutch;
+  const keepNote = !cl.infertile && cl.count > max ? `You can keep up to ${max} young from this clutch; the rest go to local hobbyists.` : undefined;
+  // (review E: only while it is still light: at night, or a seahorse's first light, it is imminent)
+  const dark = isNight(tank, hour);
+  const waitsForDark =
+    remaining <= 0 && ((cl.stage === 'eggs' && !!mod.plan.hatchAtNight && !dark) || (cl.stage === 'in_pouch' && mod.id === 'seahorse_pouch' && !dark && !inWindow(hour, tank.lighting.onHour, 1.5)));
   return {
-    label: `${plural(cl.count, label.replace(/s$/, ''), label)}`,
+    label: `${plural(cl.count, youngSingular(label), label)}`,
     detail,
     progress: clutchProgress(state, cl.id),
     warnings,
     nurserySlots: slots,
+    safe,
+    ...(keepNote ? { keepNote } : {}),
+    waitsForDark,
+    ...(moveOut ? { moveOut } : {}),
   };
+}
+
+/**
+ * audit E19: what moving this animal now would cost its brood, said before the move (the Move dialog), or null. The
+ * sale dialogs warned beforehand; the move only said so afterwards.
+ */
+export function moveWarning(state: GameState, creatureId: string): string | null {
+  const c = state.creatures[creatureId];
+  if (!c || !isAlive(c) || !c.repro) return null;
+  const sp = findSpecies(c.speciesId);
+  if (!sp) return null;
+  const mod = moduleFor(sp);
+  const cl = c.repro.clutchId ? state.clutches[c.repro.clutchId] : undefined;
+  const pron = c.sex === 'female' || c.reproRole === 'female' ? 'her' : 'him';
+  // (review E: eggs only — unguarded eggs fungus; hatched young lose nothing when the parent moves)
+  if (c.repro.stage === 'guarding' && cl && !isCarried(cl) && cl.guardedById === c.id && cl.stage === 'eggs' && cl.count > 0) {
+    // a cichlid pair's other parent goes on tending (pairGuards): no loss
+    const otherId = cl.motherId === c.id ? cl.fatherId : cl.motherId;
+    const other = otherId ? state.creatures[otherId] : undefined;
+    if (mod.plan.pairGuards && isAlive(other) && other.tankId === cl.tankId) return null;
+    if (!mod.plan.guardEggs) return null;
+    return `${c.name} is guarding ${plural(cl.count, 'egg')} — without a parent they may fungus or fall from the nest. Move ${pron} anyway?`;
+  }
+  if (c.repro.stage === 'laying' && cl && (cl.pendingEggs ?? 0) > 0) return `${c.name} is still laying — the rest of her eggs won’t come if she moves now.`;
+  return null;
 }

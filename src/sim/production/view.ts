@@ -2,6 +2,7 @@
  * Production lines: what the Production tab shows, as numbers (DESIGN-S3D §8.6; 0.5 §11.1). OWNER: lane "production".
  * Pure reads of the state: the screens add the words. Every figure comes from the same state the line runs on.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { Clutch, Creature, GameState, ProductionLine, SpeciesDefinition, Tank } from '@/types';
 import { findSpecies } from '@/data/species';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -9,11 +10,11 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { dayOf } from '../time';
 import { moduleFor } from '../life/breeding/registry';
 import { youngLabel } from '../life/breeding/clutch';
-import { spPlural } from '../life/breeding/common';
+import { makeTankInfo, readinessDrag, readinessTarget, READY, spPlural, type ReadinessDrag } from '../life/breeding/common';
 import { planAutofeed } from '../care/autofeed';
 import { bestOpenBid } from '../economy/listings';
 import { isLineYoung } from './costs';
-import { QUARANTINE_HOURS, lineStatus, productionLines, quarantineBusyUntil, quarantineReady, raiseTankFull, restartDay, youngPlaces, youngSizeCm, type LineStatus } from './index';
+import { QUARANTINE_HOURS, lineStatus, lineWaitsOn, listingHeldUp, productionLines, quarantineBusyUntil, quarantineFull, quarantineReady, raiseTankFull, restartDay, unsoldYoung, unwellMember, youngPlaces, youngSizeCm, type LineStatus } from './index';
 
 export type StageId = 'breed' | 'raise' | 'sort' | 'quarantine' | 'sell';
 
@@ -28,14 +29,15 @@ export interface LineView {
   quarantine?: Tank;
   keep?: Tank;
   /** Next clutch: days until the pair is due again (rounded up), the cycle and how far through it they are. */
-  next: { days?: number; dayOf?: number; cycle: number; restartDay?: number; conditioning: boolean };
+  next: { days?: number; dayOf?: number; cycle: number; restartDay?: number; conditioning: boolean; /** Audit 2026-11-17 (H1): the full quarantine tank a waiting line needs room in (no restart day then). */ fullTank?: Tank; /** Audit 2026-11-17 (H1 second review): the unwell animal a quarantine tank's batch waits on (no restart day then). */ waitsOn?: Creature; /** Audit 2026-11-17 (H4): due (or never spawned), but a parent can't get into condition: who, where, and the biggest drag. */ notReady?: { who: Creature; tank: Tank; drag: ReadinessDrag } };
   /** Growing out: the brood in the raise tank (or the young waiting there), its word, and its days. */
   raising: { count: number; word: string; dayOf?: number; ofDays?: number; full: boolean; waiting: number; feeding?: { food: string; meals: number }; places?: { used: number; cap: number }; /** Hours until the brood's next stage (chunk 6, DES-013: "next stage in 6 h"). */ nextStageIn?: number; /** The day the brood is raised and sorted (DES-013: "sorting on Day 42"). */ sortDay?: number };
   /** Quarantine: the batch in its hold (its word: "juveniles", or the species' plural once grown), days left, the day
    * it lists; or the day a busy shared tank frees up. */
-  quarantined: { count: number; word: string; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number; uncycledTank?: Tank };
-  /** Sell: the line's open listings and the best open bid among them. */
-  selling: { listed: number; bestBid?: number };
+  quarantined: { count: number; word: string; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number; uncycledTank?: Tank; /** Audit 2026-11-17 (H1): the line's young in its quarantine tanks that no batch tracks (the line never lists them again). */ unsold: number; /** A free, cycled quarantine tank with no room for the waiting batch. */ fullTank?: Tank; /** Past its hold, the batch waits on this unwell animal (H1 second review); `busyTank` without `busyUntilDay`: held past its hold for another reason. */ waitsOn?: Creature; /** Past its hold and not listed yet: why, or "Lists as soon as it can" (no `listsDay` then: never a day that has passed). */ listsWhy?: string };
+  /** Sell: the line's open listings and the best open bid among them; the buy-now price an animal (the lowest, when
+   * several listings are open), and the listing's title when there's one ("12 juvenile bettas"; Audit 2026-11-17, H1). */
+  selling: { listed: number; bestBid?: number; each?: number; title?: string; listings: number };
   week: { revenue: number; sold: number; net: number };
   /** The stage the line is busiest in (highlighted). */
   active: StageId;
@@ -64,7 +66,28 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     next.dayOf = Math.min(cycle, Math.floor(since));
     next.days = Math.max(1, Math.ceil(cycle - since));
   }
-  if (status === 'waiting') next.restartDay = restartDay(state, line);
+  // Audit 2026-11-17 (H4): due (or never spawned) and running, but a parent's readiness can't reach READY where it is
+  if (status === 'running' && (!Number.isFinite(last) || (next.days ?? 0) <= 1)) {
+    let worst: { c: Creature; tank: Tank; target: number } | null = null;
+    for (const c of [mother, father]) {
+      const tank = c?.tankId ? state.tanks[c.tankId] : undefined;
+      if (!c || !tank || c.stats.breedingReadiness >= READY) continue;
+      const target = readinessTarget(tank, c, sp, now, makeTankInfo(state, tank, now, () => []));
+      if (target < READY && (!worst || target < worst.target)) worst = { c, tank, target };
+    }
+    if (worst) {
+      const d = readinessDrag(worst.tank, worst.c, sp, now, makeTankInfo(state, worst.tank, now, () => []));
+      if (d) next.notReady = { who: worst.c, tank: worst.tank, drag: d.drag };
+    }
+  }
+  if (status === 'waiting') {
+    const day = restartDay(state, line);
+    if (day !== null) next.restartDay = day;
+    else {
+      next.fullTank = quarantineFull(state, line) ?? undefined;
+      next.waitsOn = lineWaitsOn(state, line) ?? undefined;
+    }
+  }
 
   // Growing out
   const brood = raise ? lineBrood(state, line, raise.id) : undefined;
@@ -99,43 +122,66 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
   }
 
   // Quarantine
-  const inHold = (line.batches ?? []).find((b) => b.tankId && b.quarantinedHour !== undefined && !b.released);
+  // a batch listed again has done its hold, unless it was taken off sale and waits on an unwell animal (H1 second review)
+  const inHold = (line.batches ?? []).find((b) => b.tankId && b.quarantinedHour !== undefined && !b.released && (!b.relists || !!unwellMember(state, b)));
+  const waitsOn = lineWaitsOn(state, line);
   const quarantine = (inHold?.tankId ? state.tanks[inHold.tankId] : undefined) ?? line.tanks.quarantine.map((id) => state.tanks[id]).find(Boolean);
-  const quarantined: LineView['quarantined'] = { count: 0, word: 'juveniles' };
+  const quarantined: LineView['quarantined'] = { count: 0, word: 'juveniles', unsold: unsoldYoung(state, line).length };
   if (inHold && inHold.quarantinedHour !== undefined) {
     const end = inHold.quarantinedHour + QUARANTINE_HOURS;
     quarantined.count = inHold.creatureIds.length;
     const members = inHold.creatureIds.map((id) => state.creatures[id]).filter(Boolean);
     const grown = members.length > 0 && members.every((c) => c.lifeStage !== 'juvenile');
-    quarantined.word = grown ? (quarantined.count === 1 ? sp.commonName.toLowerCase() : spPlural(sp)) : quarantined.count === 1 ? 'juvenile' : 'juveniles';
+    quarantined.word = grown ? (quarantined.count === 1 ? lowerName(sp.commonName) : spPlural(sp)) : quarantined.count === 1 ? 'juvenile' : 'juveniles';
     quarantined.daysLeft = Math.max(0, Math.ceil((end - now) / 24));
-    quarantined.listsDay = dayOf(end);
+    if (end > now + 1e-9) quarantined.listsDay = dayOf(end);
     quarantined.holdFraction = Math.max(0, Math.min(1, (now - inHold.quarantinedHour) / QUARANTINE_HOURS));
+    if (end <= now + 1e-9 && waitsOn) quarantined.waitsOn = waitsOn; // past its hold: it waits on the unwell one
+    // H1 records check; final review: with List automatically off the line never lists it, so no "lists" promise
+    else if (end <= now + 1e-9) quarantined.listsWhy = line.rules.autoList ? listingHeldUp(state) ?? 'Lists as soon as it can' : 'Yours to list or move';
   } else if ((line.batches ?? []).some((b) => !b.tankId)) {
-    // a batch waits: when does the first busy quarantine tank free up?
+    // a batch waits: when does the first busy quarantine tank free up? (a day ahead only: a tank held past its hold
+    // promises none, H1 second review)
     let best: { until: number; tank: Tank } | null = null;
+    let held: Tank | null = null;
     for (const id of line.tanks.quarantine) {
       const until = quarantineBusyUntil(state, id);
       const t = state.tanks[id];
-      if (until !== null && t && (!best || until < best.until)) best = { until, tank: t };
+      if (until === null || !t) continue;
+      if (until <= now + 1e-9) held ??= t;
+      else if (!best || until < best.until) best = { until, tank: t };
     }
     if (best) {
       quarantined.busyUntilDay = dayOf(best.until);
       quarantined.busyTank = best.tank;
+    } else if (held) {
+      if (waitsOn) quarantined.waitsOn = waitsOn;
+      else quarantined.busyTank = held;
     } else {
       // free but not cycled yet: the batch waits for it (the line's notice says so)
       quarantined.uncycledTank = line.tanks.quarantine.map((id) => state.tanks[id]).find((t) => !!t && !quarantineReady(t));
+      // free and cycled, but full (Audit 2026-11-17, H1)
+      if (!quarantined.uncycledTank) quarantined.fullTank = quarantineFull(state, line) ?? undefined;
     }
   }
 
   // Sell
   let listed = 0;
   let bestBid: number | undefined;
+  let each: number | undefined;
+  let title: string | undefined;
+  let listings = 0;
   for (const b of line.batches ?? []) {
     for (const id of b.listingIds ?? []) {
       const l = state.market.listings.find((x) => x.id === id);
       if (!l || l.status !== 'active') continue;
       listed += l.creatureIds.length;
+      listings += 1;
+      title = l.title;
+      if (l.buyNow && l.creatureIds.length) {
+        const e = l.buyNow / l.creatureIds.length;
+        if (each === undefined || e < each) each = e;
+      }
       const bid = bestOpenBid(l);
       if (bid && (bestBid === undefined || bid.amount > bestBid)) bestBid = bid.amount;
     }
@@ -155,7 +201,7 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     next,
     raising,
     quarantined,
-    selling: { listed, bestBid },
+    selling: { listed, bestBid, listings, ...(each !== undefined ? { each } : {}), ...(listings === 1 && title ? { title } : {}) },
     // whole dollars, as the tile shows them (a few cents' loss reads "$0", not "−$0")
     week: { revenue: s.revenue, sold: s.soldCount, net: Math.round(s.revenue - s.costs) || 0 },
     active,

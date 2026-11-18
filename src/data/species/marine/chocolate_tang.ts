@@ -150,14 +150,14 @@ export const chocolateTang: SpeciesDefinition = {
     funFact: 'Young mimics fed about 10% more when close to their model angelfish — apparently because territorial damselfish attack them less.',
     inGameBehavior: 'The young dart in and out of the rock like a pygmy angel; adults graze in steady laps along the base of the reef.',
     feedingNote: 'A grazer: seaweed clipped to the rock most days, spirulina flake or small pellets, and a little thawed mysis. An autofeeder can add pellets; the seaweed goes on by hand.',
-    keeperTip: 'Ask for the scientific name and where it was collected — "yellow tang", "lemon tang" and "mimic tang" labels are often mixed up.',
+    keeperTip: 'Ask for the scientific name and where it was collected — “yellow tang”, “lemon tang” and “mimic tang” labels are often mixed up.',
   },
   sourceReferences: [
     { id: 'fishbase-acanthurus-pyroferus', title: 'FishBase — Acanthurus pyroferus (Mimic surgeonfish)', url: 'https://www.fishbase.se/summary/Acanthurus-pyroferus.html', tier: 1, facts: ['29 cm TL', 'depth 0–60 m', 'base of reefs, usually alone', 'juveniles mimic Centropyge', 'IUCN Least Concern (2010)'] },
     { id: 'fao-acanthuridae-randall', title: 'FAO Species Identification Guide, Western Central Pacific vol. 6 — Acanthuridae (Randall)', url: 'https://www.fao.org/4/y0870e/y0870e30.pdf', tier: 1, facts: ['~25 cm TL', 'filamentous algae', 'orange patch over the pectoral, black gill band, white chin band', 'yellow tail border', 'four juvenile mimic phases', 'caudal rounded in young, lunate in adults'] },
     { id: 'eagle-jones-2004-mimicry', title: 'Eagle & Jones (2004) Mimicry in coral reef fishes: ecological and behavioural responses of a mimic to its model. J. Zool. 264:33–43', url: 'https://researchonline.jcu.edu.au/6757/', tier: 1, facts: ['juveniles stay within 1–2 m of the model', 'change when they outgrow the model', 'fed more near the model'] },
     { id: 'liveaquaria-mimic-tang', title: 'LiveAquaria — Lemon Tang (Acanthurus pyroferus)', url: 'https://www.liveaquaria.com/product/763/?pcatid=763', tier: 2, facts: ['180 gal', '72–78 °F, pH 8.1–8.4, SG 1.020–1.025, dKH 8–12', 'aggressive to other tangs and look-alikes', 'reef compatible', 'price ~$119'] },
-    { id: 'topshelf-chocolate-tang', title: 'Top Shelf Aquatics — Chocolate / Yellow Mimic Tang (Fiji)', url: 'https://topshelfaquatics.com/products/chocolate-yellow-mimic-tang-fiji', tier: 2, facts: ['125 gal', '7–10 in in aquaria', 'moderate care', 'from ~$90'] },
+    { id: 'topshelf-chocolate-tang', title: 'Top Shelf Aquatics — Chocolate / Yellow Mimic Tang (Fiji)', url: 'https://topshelfaquatics.com/products/chocolate-yellow-mimic-tang-fiji', tier: 2, facts: ['125 gal', '7–10 inches in aquaria', 'moderate care', 'from ~$90'] },
   ],
   confidenceNotes: [
     'Tank size: 125 gallons (Top Shelf, hobby guides) versus 180 (LiveAquaria); the game uses 125 with a six-foot footprint.',

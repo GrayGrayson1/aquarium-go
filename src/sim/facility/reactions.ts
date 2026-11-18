@@ -4,6 +4,7 @@
  * plural ("ocellaris clownfish", "neon tetras"), {tank} tank name, {gallons}, {morph}, {moment} (e.g. "a bubble nest"),
  * {who} friend's name. "a {placeholder}" becomes "an" when the value starts with a vowel sound ("an ocellaris clownfish").
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { VisitorReaction } from '@/types';
 import type { Rng } from '../rng';
 import { theTank, fixArticles, pluralName } from '../economy/util';
@@ -191,7 +192,7 @@ export interface ReactionVars {
 }
 
 export function fillTemplate(t: string, v: ReactionVars): string {
-  const species = (v.species ?? 'fish').toLowerCase();
+  const species = lowerName(v.species ?? 'fish'); // Audit 2026-11-17 (J15): proper nouns keep their capitals
   const tank = v.tank ?? 'tank';
   const values: Record<string, string | undefined> = { name: v.name ?? 'that one', species, Species: species, species_pl: pluralName(species), morph: v.morph ?? 'rare morph', moment: v.moment, who: v.who, region: v.region, gallons: v.gallons === undefined ? undefined : String(v.gallons) };
   t = fixArticles(t, (k) => values[k]);
@@ -219,6 +220,39 @@ export function fillTemplate(t: string, v: ReactionVars): string {
 export function pickLine(rng: Rng, ctx: ReactionContext, v: ReactionVars): string {
   const lines = REACTION_LINES[ctx];
   return fillTemplate(rng.pick(lines), v);
+}
+
+/**
+ * Audit 2026-11-17 (H6): a worried visitor's line follows what worries them (the exhibit's concern), so a thin fish in
+ * clean water isn't "The water looks off" and a healthy star isn't "sick". Lines from the "concerned" set, by cause.
+ */
+export type ConcernCause = 'sick' | 'starving' | 'water' | 'stress';
+export const CONCERN_LINES: Record<ConcernCause, string[]> = {
+  sick: ['Is {name} okay? It doesn’t look well.', 'Hmm, {name} looks sick. Someone should check on it.', 'Poor {name}. I hope they’re taking care of it.'],
+  starving: ['{name} looks so thin. Has it been fed?', 'Poor {name}. I hope they’re taking care of it.'],
+  water: ['The water in the {tank} looks off.', 'Something doesn’t feel right about the {tank}.'],
+  stress: ['That {species} seems really stressed.', 'I don’t think the animals in the {tank} are happy.', 'I’d rather see healthy animals than rare ones.'],
+};
+
+/** What put a critic off most (Audit 2026-11-17, H6). */
+export type CriticWhy = 'concern' | 'price' | 'crowd' | 'dull';
+
+/** An unimpressed critic's line, by what put them off. */
+export const CRITIC_BAD_LINES: Record<CriticWhy, string[]> = {
+  concern: ['A rare {species} doesn’t excuse poor husbandry.', 'Disappointing. The {tank} needs work.'],
+  price: ['Pricey for what’s on show.'],
+  crowd: ['Too crowded to see the tanks properly.'],
+  dull: ['Disappointing. The {tank} needs work.'],
+};
+
+/** A worried visitor's line for this cause (one draw, as pickLine). */
+export function pickConcernLine(rng: Rng, cause: ConcernCause, v: ReactionVars): string {
+  return fillTemplate(rng.pick(CONCERN_LINES[cause]), v);
+}
+
+/** An unimpressed critic's line for what put them off (one draw, as pickLine). */
+export function pickCriticLine(rng: Rng, why: CriticWhy, v: ReactionVars): string {
+  return fillTemplate(rng.pick(CRITIC_BAD_LINES[why]), v);
 }
 
 export const REACTIONS_CAP = 80;

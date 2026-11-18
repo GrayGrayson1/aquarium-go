@@ -2,20 +2,22 @@
  * Market › Supplies — foods, salt, equipment for a tank (buy & install), decor shortcut to Build.
  * OWNER: lane "ui-panels".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Utensils, Waves, Wrench, Mountain, Lock, Check, Package } from 'lucide-react';
+import { Utensils, Wrench, Mountain, Lock, Check, Package, Wallet } from 'lucide-react';
 import type { GameState, FoodDef, EquipmentDef } from '@/types';
 import { Button, Money, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { FOODS, eatsFood, madeForSpecies } from '@/data/catalog/foods';
 import { EQUIPMENT } from '@/data/catalog/equipment';
-import { buyFood, buySalt, buyEquipment, isFoodAvailable, soldWithWords, SALT_PRICE_PER_KG } from '@/sim/economy';
+import { isFoodAvailable, soldWithWords } from '@/sim/economy';
 import { act } from '../common/act';
-import { Chip, SectionHead, EmptyState, Select, Card } from '../common/parts';
+import { Chip, SectionHead, EmptyState, Select, Card, Callout } from '../common/parts';
 import { orderedTanks, ownedCreatures, speciesOf, gallonsOf, unlocked } from '../common/derive';
 import { titleCase } from '../common/format';
-import { safe } from '../common/hooks';
+import { EQUIPMENT_KIND_LABEL, FOOD_DELIVERY_WORD } from '@/ui/common/format'; // Audit 2026-11-17 (J14)
+import { safe, useTempText } from '../common/hooks'; // Audit 2026-11-17 (J1): useTempText
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { equipmentFit } from '@/sim/care/fit'; // lane:fit
 import { foodWhoEats } from '@/ui/common/foodStock'; // lane:fit
@@ -24,6 +26,7 @@ import { CulturesSection, DryFoodSection, LiveFoodSection, SaltRow, foodsShownAb
 import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { matches, queryWords } from '../common/match'; // chunk 19 (QOL-003)
+import { cantAffordTitle, cheapestFoodPrice, suppliesMoneyNote, CASH_LINK } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F1)
 
 /** How many foods show before "Show all" — foods you own (or have owned) and foods made for your animals always show. */
 const FOOD_PREVIEW = 8;
@@ -81,6 +84,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
   const [flash, setFlash] = useState<string | null>(null);
   useEffect(() => {
     if (!focusFood) return;
+    setQ(''); // audit B11: a search typed earlier ("pellet") hid the food the bell or Find asked for
     setFlash(focusFood.id);
     const t1 = window.setTimeout(() => {
       document.querySelector<HTMLElement>(`[data-food-row="${CSS.escape(focusFood.id)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -111,8 +115,29 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
     return [...m.entries()];
   }, [equipment]);
 
+  // audit 2026-11-17 (F1) — greyed "Buy" buttons say why, and how to raise the money (in debt, short of the cheapest
+  // food on sale, or animals with no food and not enough for a pack)
+  const cheapestFood = useMemo(() => cheapestFoodPrice(g), [g]);
+  const short = useMemo(() => suppliesMoneyNote(g, cheapestFood), [g, cheapestFood]);
+
   return (
     <div className="pn-stack pn-stack--lg">
+      {short && (
+        <div data-testid="supplies-money-short">
+          <Callout
+            tone={g.finance.money < 0 ? 'danger' : 'watch'}
+            icon={<Wallet size={16} />}
+            title={short.title}
+            action={
+              <Button size="sm" data-testid="supplies-raise-cash" onClick={() => useUI.getState().set({ ...CASH_LINK })}>
+                Ways to raise cash
+              </Button>
+            }
+          >
+            {short.text} {short.tip}
+          </Callout>
+        </div>
+      )}
       <div className="pn-findbar">
         <SearchField value={q} onChange={setQ} placeholder="Search food and equipment" label="Search food and equipment" testId="supplies-search" />
         {searching && <span className="pn-findbar__count" data-testid="supplies-count">{foods.length + equipment.length} found</span>}
@@ -142,8 +167,8 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
                   <div className="pn-grow">
                     <div className="pn-row pn-gap-2 pn-row--wrap">
                       <b>{f.name}</b>
-                      {specific && <Chip tone="aqua">Made for {eaters.length === 1 ? eaters[0].commonName.toLowerCase() : 'your animals'}</Chip>}
-                      <Chip>{titleCase(f.delivery)}</Chip>
+                      {specific && <Chip tone="aqua">Made for {eaters.length === 1 ? lowerName(eaters[0].commonName) : 'your animals'}</Chip>}
+                      <Chip>{FOOD_DELIVERY_WORD[f.delivery] ?? titleCase(f.delivery) /* Audit 2026-11-17 (J14): the feed picker's words */}</Chip>
                     </div>
                     <div className="pn-small pn-muted">
                       {f.description} · {f.servingsPerPack} servings per pack
@@ -165,7 +190,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
                         </span>
                       )
                     ) : (
-                      <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: f.id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>
+                      <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: f.id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price} title={cantAffordTitle(g.finance.money, f.price)}>
                         Buy · {formatMoney(f.price)}
                       </Button>
                     )}
@@ -197,12 +222,12 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
         ) : (
           <div className="pn-col pn-gap-3">
             <p className="pn-small pn-muted" style={{ margin: 0 }}>
-              For <b className="pn-dim">{tank.name}</b> · {gallonsOf(tank)} gallons. Manage installed gear in Build → Equipment.
+              For <b className="pn-dim">{tank.name}</b> · {gallonsOf(tank)} gallons. Manage installed gear in Build › Equipment.
             </p>
             {byKind.map(([kind, rows]) => (
               <div key={kind} className="pn-col pn-gap-2">
                 <div className="pn-tiny pn-muted" style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  {titleCase(kind)}
+                  {EQUIPMENT_KIND_LABEL[kind as keyof typeof EQUIPMENT_KIND_LABEL] ?? titleCase(kind) /* Audit 2026-11-17 (J14): screen readers read "Ato", "Uv" */}
                 </div>
                 {rows.map(({ e, fits, installed }) => (
                   <EquipRow key={e.id} g={g} e={e} fits={fits} installed={installed} tankId={tank.id} />
@@ -236,6 +261,7 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
   const locked = !unlocked(g, e.unlock);
   // lane:fit — will it help the animals in THIS tank? Shown before the purchase, and repeated in the purchase toast.
   const fit = useMemo(() => safeFit(() => equipmentFit(g, tankId, e.id)), [g, tankId, e.id]);
+  const { t: tempText } = useTempText(); // Audit 2026-11-17 (J1): "suffer above about 21 °C", "about 1–2 °C of cooling"
   const poor = !!fit && !fit.soft && (fit.level === 'useless' || fit.level === 'harmful'); // lane:qa-r3 — "Already fitted" is no warning
   // lane:qa-r3 — buyEquipment keeps the install's heads-up after the receipt (a caution result toasts as a warning)
   const buy = () => act({ k: 'buyEquipment', tank: tankId, def: e.id }, { sound: 'coin' });
@@ -257,14 +283,14 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
         {e.kind === 'water_changer' ? (
           // lane:automation (0.5 §10.3, §16 "Build/Supplies line") — what it unlocks, then its running cost
           <>
-            <div className="pn-small pn-muted">{e.description}</div>
+            <div className="pn-small pn-muted">{tempText(e.description)}</div>
             <div className="pn-small pn-muted" data-testid={`shop-equip-unlocks-${e.id}`}>
               Unlocks the Auto-clean switch on the tank card · upkeep {formatMoney(e.upkeep, { cents: e.upkeep < 10 })}/day
             </div>
           </>
         ) : (
           <div className="pn-small pn-muted">
-            {e.description} · upkeep {formatMoney(e.upkeep, { cents: e.upkeep < 10 })}/day
+            {tempText(e.description)} · upkeep {formatMoney(e.upkeep, { cents: e.upkeep < 10 })}/day
           </div>
         )}
         <FitLine verdict={fit} testId={`shop-equip-fit-${e.id}`} />
@@ -282,7 +308,7 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
             variant={installed || poor ? 'default' : 'primary'}
             silent
             disabled={g.finance.money < e.price || !!fit?.blocked}
-            title={fit?.blocked ? fit.text : poor ? `${fit?.label}: ${fit?.text}` : undefined}
+            title={fit?.blocked ? fit.text : cantAffordTitle(g.finance.money, e.price) ?? (poor ? `${fit?.label}: ${fit?.text}` : undefined)}
             onClick={buy}
           >
             {fit?.blocked ? fit.label : poor ? 'Buy anyway' : installed ? 'Buy another' : 'Buy & install'}

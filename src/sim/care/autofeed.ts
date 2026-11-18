@@ -9,37 +9,19 @@
  * Pure functions over catalog data only (no game state, no RNG), so the water sim (`runAutofeeder` in
  * src/sim/water/step.ts), the fit verdicts (./fit.ts) and any UI can share them without import cycles.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { EquipmentInstance, FoodDef, FoodTag, SpeciesDefinition } from '@/types';
-import { FOODS, foodForm, isAutofeederFood, autofeedFoodsForTags, eatsFood, madeForOtherSpecies, madeForOtherWater } from '@/data/catalog/foods';
+import { FOODS, foodForm, isAutofeederFood, autofeedFoodsForTags, eatsFood, madeForOtherSpecies, madeForOtherWater, FOOD_TAG_NAMES } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3): FOOD_TAG_NAMES
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { pluralName } from '../economy/util';
 
 export { isAutofeederFood, eatsFood };
 
-/** Plain words for food tags in running text ("live copepods", not "copepod_live"). */
-export const FOOD_TAG_WORDS: Partial<Record<FoodTag, string>> = {
-  flake: 'flakes',
-  pellet_small: 'small pellets',
-  pellet_sinking: 'sinking pellets',
-  pellet_large: 'large pellets',
-  bloodworm: 'bloodworms',
-  brine_shrimp: 'brine shrimp',
-  mysis: 'mysis',
-  daphnia: 'daphnia',
-  earthworm: 'earthworms',
-  snail_live: 'live snails',
-  algae_wafer: 'algae wafers',
-  vegetable: 'vegetables',
-  nori: 'seaweed',
-  copepod_live: 'live copepods',
-  coral_food: 'coral food',
-  infusoria: 'infusoria',
-  baby_brine: 'baby brine shrimp',
-  pellet_floating: 'floating sticks', // chunk 17
-  seafood: 'seafood',
-  shellfish: 'shell-on shellfish',
-  insect: 'insects',
-};
+/**
+ * Plain words for food tags in running text ("live copepods", not "copepod_live"). Audit 2026-11-17 (J3): the data
+ * layer's one table (src/data/catalog/foods.ts), so the shelf, the sim and the UI use the same words.
+ */
+export const FOOD_TAG_WORDS: Readonly<Record<FoodTag, string>> = FOOD_TAG_NAMES;
 
 /** Every dry (autofeeder) food, in catalog order. */
 export function autofeederFoods(): FoodDef[] {
@@ -172,7 +154,7 @@ export interface EaterGroup {
   name?: string;
 }
 
-const lc = (s: string) => s.toLowerCase();
+const lc = (s: string) => lowerName(s);
 const capFirst = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const joinAnd = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 const joinOr = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`);

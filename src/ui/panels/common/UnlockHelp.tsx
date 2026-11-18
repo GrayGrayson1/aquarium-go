@@ -16,7 +16,7 @@ import { useUI } from '@/state/ui';
 import { UNLOCK_RULE_BY_KEY, type Cond } from '@/data/unlocks';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { unlockProgress, researchList, unlockLabel, type UnlockProgressView, type ResearchView } from '@/sim/facility';
-import { Requirements, reqsFor } from './Requirements';
+import { Requirements, reqsFor, ruleParts } from './Requirements';
 import { safe } from './hooks';
 import { sfx } from '@/audio/sfx';
 
@@ -33,6 +33,8 @@ export interface LockView {
   research: { id: string; name: string; status: ResearchView['status'] | 'unknown' }[];
   /** A requirement is a venue (facility level): the box offers Build › Facility. */
   venue: boolean;
+  /** Audit 2026-11-17 (G1): the guide holds this back until one of its steps (the line saying which). */
+  guide?: string;
 }
 
 /** Does a condition (or any of its alternatives) ask for a venue? */
@@ -52,18 +54,19 @@ export function lockViews(g: GameState, keys: readonly (string | null | undefine
     const u = views.get(key);
     const rule = UNLOCK_RULE_BY_KEY[key];
     // an "any of" condition shows its alternatives, each with its own progress (one line "25 reputation or Raise a
-    // clutch" said nothing about how far along the player is)
-    const conds = rule?.when ?? [];
-    const flat = conds.filter((c) => c.type !== 'any');
-    const either = conds.filter((c): c is Extract<Cond, { type: 'any' }> => c.type === 'any').map((c) => reqsFor(g, c.of));
+    // clutch" said nothing about how far along the player is); Audit 2026-11-17 (G11): a project offered as a research
+    // route isn't also a requirement
+    const parts = ruleParts(g, rule?.when ?? [], (u?.viaResearch ?? []).map((r) => r.id));
     return {
       key,
       label: u?.label ?? safe(() => unlockLabel(key), (UNLOCK_KEYS as Record<string, string>)[key] ?? key),
       hint: u?.hint ?? rule?.hint ?? '',
-      requirements: rule ? reqsFor(g, flat) : u?.requirements ?? [],
-      either,
+      // audit 2026-11-17 (F8) — a key the guide holds back: its step, not the rule's alternatives (they read as met)
+      requirements: u?.heldBy ? u.requirements : rule ? parts.requirements : u?.requirements ?? [],
+      either: u?.heldBy ? [] : parts.either,
       research: (u?.viaResearch ?? []).map((r) => ({ id: r.id, name: r.name, status: research.get(r.id) ?? 'unknown' })),
       venue: (rule?.when ?? []).some(asksVenue),
+      ...(u?.guide ? { guide: u.guide } : {}),
     };
   });
 }
@@ -102,8 +105,9 @@ export function UnlockHelpBody({ g, keys, conds, lead, onGo }: { g: GameState; k
       )}
       {views.map((v) => (
         <section key={v.key} className="pn-unlockhelp__item" data-testid={`unlock-help-${v.key}`}>
-          {views.length > 1 && <h4 className="pn-unlockhelp__name">{v.label}</h4>}
+          {(views.length > 1 || condReqs.length > 0) && <h4 className="pn-unlockhelp__name">{v.label}</h4> /* Audit 2026-11-17 (G4): under a research checklist, say which unlock this route is for */}
           {v.hint && <p className="pn-unlockhelp__hint">{v.hint}</p>}
+          {v.guide && <p className="pn-unlockhelp__hint" data-testid={`unlock-guide-${v.key}`}>{v.guide}</p> /* Audit 2026-11-17 (G1) */}
           {v.requirements.length > 0 && <Requirements items={v.requirements} />}
           {v.either.map((alts, i) => (
             <div key={i} className="pn-unlockhelp__alts">

@@ -16,6 +16,7 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { BRINE, EGGS_SUPPLY, FOOD_ROOM, INFUSORIA, SALT_BAGS, SALT_SUPPLY_ID, VEGETABLES } from '@/data/catalog/machines';
 import { SALT_PRICE_PER_KG } from '@/sim/economy';
 import { pickAutofeedFood } from '@/sim/care/autofeed';
+import { waterChangeCost } from '@/sim/care'; // Audit 2026-11-17 C2
 import { inhabitantsOf } from '@/sim/water/env';
 import { formatClock, dayOf } from '@/sim/time';
 import { batchGal, batchSaltKg, cultureState, saltWaterNeeded, saltWaterPerDay, SALT_KG_PER_GAL, type SupplyProblem } from '@/sim/automation';
@@ -24,6 +25,7 @@ import { opsSnapshot } from '@/ui/common/ops';
 import { act } from '../common/act';
 import { SectionHead, Chip } from '../common/parts';
 import { buyEggTin, buySaltBag } from '../operations/actions';
+import { cantAffordTitle } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F1)
 
 /** The Autofeeder foods in use: food id → how many tanks' feeders drop it. */
 export function autofeederFoods(g: GameState): Map<string, number> {
@@ -80,7 +82,7 @@ export function LiveFoodSection({ g, flash }: { g: GameState; flash: string | nu
                 Hatchery <ChevronRight size={12} aria-hidden />
               </button>
             )}
-            <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: foodId, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>
+            <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: foodId, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price} title={cantAffordTitle(g.finance.money, f.price)}>
               Buy · {formatMoney(f.price)}
             </Button>
           </>
@@ -133,7 +135,7 @@ export function CulturesSection({ g, flash }: { g: GameState; flash: string | nu
           id={EGGS_SUPPLY.id}
           flash={flash}
           side={
-            <Button size="sm" silent data-testid="supplies-buy-eggs" onClick={() => buyEggTin()} disabled={g.finance.money < EGGS_SUPPLY.price}>
+            <Button size="sm" silent data-testid="supplies-buy-eggs" onClick={() => buyEggTin()} disabled={g.finance.money < EGGS_SUPPLY.price} title={cantAffordTitle(g.finance.money, EGGS_SUPPLY.price)}>
               Buy · {formatMoney(EGGS_SUPPLY.price)}
             </Button>
           }
@@ -150,7 +152,7 @@ export function CulturesSection({ g, flash }: { g: GameState; flash: string | nu
           id={VEGETABLES}
           flash={flash}
           side={
-            <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: VEGETABLES, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < veg.price}>
+            <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: VEGETABLES, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < veg.price} title={cantAffordTitle(g.finance.money, veg.price)}>
               Buy · {formatMoney(veg.price)}
             </Button>
           }
@@ -182,7 +184,7 @@ export function DryFoodSection({ g, flash }: { g: GameState; flash: string | nul
               side={
                 <>
                   <span className="pn-tiny pn-muted pn-num-t">{have} servings</span>
-                  <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>
+                  <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price} title={cantAffordTitle(g.finance.money, f.price)}>
                     Buy · {formatMoney(f.price)}
                   </Button>
                 </>
@@ -198,6 +200,23 @@ export function DryFoodSection({ g, flash }: { g: GameState; flash: string | nul
       </div>
     </section>
   );
+}
+
+/**
+ * Audit 2026-11-17 C2 — salt is paid for when bought, not in the running cost (the owner's choice): say what the stock
+ * buys, in the largest salt tank's 25% water changes.
+ */
+function saltLasts(g: GameState): string {
+  let best: { name: string; kg: number } | null = null;
+  for (const id of g.tankOrder) {
+    const t = g.tanks[id];
+    if (!t) continue;
+    const kg = waterChangeCost(g, id, 0.25).saltKg;
+    if (kg > 0 && (!best || kg > best.kg)) best = { name: t.name, kg };
+  }
+  if (!best) return '';
+  const n = Math.floor((g.inventory.salt + 1e-6) / best.kg);
+  return n === 0 ? ` · not enough for a 25% water change of ${best.name}` : ` · enough for about ${n} water ${n === 1 ? 'change' : 'changes'} (25% each) of ${best.name}`;
 }
 
 /** Marine salt mix in 5, 20 and 40 kg, with its status (§8.5; shown with a salt tank, salt in stock or a Water room). */
@@ -244,12 +263,12 @@ export function SaltRow({ g, flash }: { g: GameState; flash: string | null }) {
               {status.line}
             </div>
           ) : (
-            <div className="pn-tiny pn-muted pn-num-t">{kg} kg in stock</div>
+            <div className="pn-tiny pn-muted pn-num-t">{kg} kg in stock{saltLasts(g)}</div>
           )}
         </div>
         <div className="pn-row pn-gap-1" role="group" aria-label="Buy marine salt mix" style={{ flexBasis: '100%', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           {SALT_BAGS.map((size) => (
-            <Button key={size} size="sm" silent className={size === 40 ? 'ops-buy' : undefined} data-testid={`supplies-salt-buy-${size}`} disabled={g.finance.money < size * SALT_PRICE_PER_KG} onClick={() => buySaltBag(size)}>
+            <Button key={size} size="sm" silent className={size === 40 ? 'ops-buy' : undefined} data-testid={`supplies-salt-buy-${size}`} disabled={g.finance.money < size * SALT_PRICE_PER_KG} title={cantAffordTitle(g.finance.money, size * SALT_PRICE_PER_KG)} onClick={() => buySaltBag(size)}>
               {size} kg · {formatMoney(size * SALT_PRICE_PER_KG)}
             </Button>
           ))}

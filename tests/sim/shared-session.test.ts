@@ -21,7 +21,7 @@ import { provideSocialService, type SharedShops, type SocialService } from '@/so
 import type { ConnectionDeps, ConnectionEvents, Welcome } from '@/ui/shared/connection';
 import { useShared } from '@/ui/shared/store';
 import { APPLIED_UNSEEN } from '@/ui/shared/dispatch';
-import { leaveSharedShop, openSharedShop } from '@/ui/shared/session';
+import { leaveSharedShop, openSharedShop, tryAgainShared } from '@/ui/shared/session';
 import { forgetSharedShops } from '@/ui/shared/shopsCache';
 
 interface Fake {
@@ -337,3 +337,67 @@ describe('chunk 13: a visit', () => {
   });
 });
 
+
+describe('audit 2026-11-17, I1 (B-230): a shop that can’t be reached', () => {
+  it('the database not answering at all closes at once as offline, before anything wakes the server', async () => {
+    provideSocialService({
+      accessToken: async () => 'stub:a:Ann',
+      sharedShops: async () => {
+        throw { code: 'network' };
+      },
+    } as unknown as SocialService);
+    const g = await ownGame();
+    await openSharedShop(CLUB, { from: 'game', shopName: 'Club Shop' });
+    expect(fakes.conns).toHaveLength(0);
+    expect(useShared.getState().closing).toEqual({ why: 'offline' });
+    expect(useShared.getState().shopName).toBe('Club Shop');
+    expect(useGame.getState().game).toBe(g);
+  });
+
+  it('another failed check still goes on to the server, as before', async () => {
+    provideSocialService({
+      accessToken: async () => 'stub:a:Ann',
+      sharedShops: async () => {
+        throw { code: 'invalid' };
+      },
+    } as unknown as SocialService);
+    await ownGame();
+    await openSharedShop(CLUB, { from: 'game' });
+    expect(fakes.conns).toHaveLength(1);
+  });
+
+  it('the connection giving up goes back to your own aquarium and says why; Try again opens the shop again', async () => {
+    provideSocialService(service());
+    const own = await ownGame();
+    await openSharedShop(CLUB, { from: 'game', shopName: 'Club Shop' });
+    conn().events.unreachable?.('server');
+    await vi.waitFor(() => expect(useShared.getState().phase).toBe('closed'));
+    expect(useShared.getState().closing).toEqual({ why: 'unreachable' });
+    expect(useShared.getState().club).toEqual(CLUB);
+    expect(inSharedShop()).toBe(false);
+    await vi.waitFor(() => expect(useGame.getState().game?.saveId).toBe(own.saveId));
+    await tryAgainShared();
+    expect(fakes.conns).toHaveLength(2);
+    expect(useShared.getState().closing).toBeNull();
+    expect(useShared.getState().shopName).toBe('Club Shop');
+    expect(useShared.getState().from).toBe('game');
+  });
+
+  it('the review: Try again tapped while the way back is still loading waits for it, so your aquarium is saved first', async () => {
+    provideSocialService(service());
+    const own = await ownGame();
+    await openSharedShop(CLUB, { from: 'game', shopName: 'Club Shop' });
+    conn().events.unreachable?.('server');
+    await tryAgainShared(); // at once: the leave is still loading your own aquarium
+    expect(fakes.conns).toHaveLength(2);
+    expect(readSharedAway()).toMatchObject({ club: CLUB.id, saveId: own.saveId, from: 'game' }); // before: none (no game on screen)
+  });
+
+  it('an online failure says offline; an owner’s create that never got in offers no Try again', async () => {
+    provideSocialService(service());
+    await ownGame();
+    await openSharedShop(CLUB, { from: 'game', create: { kind: 'create', name: 'New Shop', starter: 'betta', starterName: 'Blue', seed: 1 } });
+    conn().events.unreachable?.('online');
+    await vi.waitFor(() => expect(useShared.getState().closing).toEqual({ why: 'offline', noRetry: true }));
+  });
+});

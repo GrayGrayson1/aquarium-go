@@ -10,7 +10,7 @@ import type { Creature, GameState, ListingKind, Tank } from '@/types';
 import { Button, Money, formatMoney, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import type { CommandOf } from '@/sim/commands';
-import { suggestPricing, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
+import { suggestPricing, typicalOpening, reserveBand, quickSellQuote, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
 import { capturePhoto } from '@/render/camera/photo';
 import { inSharedShop } from '@/state/sharedMode'; // chunk 13
 import { captureSharedPhoto } from '@/ui/shared/photos';
@@ -18,8 +18,9 @@ import { isPrismatic } from '@/sim/life'; // lane:genetics
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { safe } from '../common/hooks';
+import { LockedButton } from '../common/UnlockHelp'; // audit 2026-11-17 (F8)
 import { act, toast } from '../common/act';
-import { Chip, Card, EmptyState, Callout, SectionHead, NumberField, Checkbox, KV, Seg, Bar, LoadMore, usePaged } from '../common/parts';
+import { Chip, EmptyState, Callout, SectionHead, NumberField, Checkbox, KV, Bar, LoadMore, usePaged } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
 import { OffspringOdds } from '../common/Offspring';
 import { TankThumb } from '../common/TankThumb';
@@ -27,7 +28,8 @@ import { VerdictBadge } from '../common/CompatPreview';
 import { orderedTanks, livingInTank, clutchesIn, valueOf, speciesOf, isListed, tierOf, gallonsOf, creatureCondition, morphName } from '../common/derive';
 import { FragPicker, FragReview, FragValueDetails } from './FragListing'; // lane:frags
 import { useExpandSheet } from '../common/PanelLayout';
-import { LISTING_KIND_LABEL, DIFFICULTY_LABEL, WATER_CLASS_LABEL, LIFE_STAGE_LABEL, SEX_LABEL, nicePrice, plural, nameList, formatSpan, titleCase, VERDICT_RANK } from '../common/format';
+import { LeaveConfirm, guardLeave, setLeaveGuard } from '../common/leaveGuard'; // audit B6
+import { LISTING_KIND_LABEL, DIFFICULTY_LABEL, WATER_CLASS_LABEL, WATER_CLASS_WORDS /* Audit 2026-11-17 (J4) */, LIFE_STAGE_LABEL, SEX_LABEL, sexLabel, nicePrice, plural, nameList, formatSpan, titleCase, VERDICT_RANK } from '../common/format';
 
 export interface WizardSeed {
   kind?: ListingKind;
@@ -62,6 +64,10 @@ const durationPreset = (h: number) => DURATIONS.find((d) => d.hours === h);
 
 const isYoung = (c: Creature) => c.lifeStage === 'juvenile' || c.lifeStage === 'fry' || c.lifeStage === 'larva';
 
+/** Audit B6 — what leaving the wizard throws away, in the question's words. */
+export const leaveDetail = (prices: boolean, photo: boolean): string =>
+  prices && photo ? 'Your prices and photo won’t be kept.' : photo ? 'Your photo won’t be kept.' : 'Your prices won’t be kept.';
+
 export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; seed: WizardSeed; onCancel: () => void; onDone: (listingId?: string) => void }) {
   useExpandSheet(); // lane:fix-integrate-ui — the wizard is not a SubView: expand the phone sheet while it is open (P4-09)
   const [step, setStep] = useState<Step>(seed.kind ? 'items' : 'kind');
@@ -77,6 +83,15 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
   const [photo, setPhoto] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [titleTouched, setTitleTouched] = useState(false);
+  // audit B6: once prices are typed or a photo is taken, Back, Cancel, ×, Escape or going elsewhere asks first, naming
+  // what would be lost
+  const hasPhoto = photo != null;
+  useEffect(() => {
+    if (!priceTouched && !hasPhoto) return;
+    setLeaveGuard({ panel: 'market', title: 'Leave this listing?', detail: leaveDetail(priceTouched, hasPhoto) });
+    return () => setLeaveGuard(null);
+  }, [priceTouched, hasPhoto]);
+  const cancel = () => guardLeave(onCancel);
 
   // lane:fix-panels — residents of a tank listed as a whole aquarium can't be listed on their own either (sim rule)
   const listedTanks = useMemo(() => new Set(g.market.listings.filter((l) => l.status === 'active' && l.kind === 'tank' && l.tankId).map((l) => l.tankId as string)), [g.market.listings]);
@@ -122,6 +137,8 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, ids.join(','), tankId, g.market.demand, preview?.expected, fragIds.join(',')]);
 
+  const opening = useMemo(() => safe(() => typicalOpening(pricing.expected), { low: 0, high: 0 }), [pricing.expected]); // F3
+
   useEffect(() => {
     if (priceTouched) return;
     setReserve(nicePrice(pricing.reserve));
@@ -130,7 +147,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
 
   const autoTitle = useMemo(() => {
     if (!kind) return '';
-    if (kind === 'tank') return tank ? `${tank.name} — ${tierOf(tank)?.gallons ?? ''} gal ${WATER_CLASS_LABEL[tank.waterClass].toLowerCase()} setup` : 'Complete aquarium';
+    if (kind === 'tank') return tank ? `${tank.name} — ${tierOf(tank)?.gallons ?? ''} gal ${WATER_CLASS_WORDS[tank.waterClass]} setup` : 'Complete aquarium';
     if (kind === 'frag') return preview?.title ?? 'Frags & cuttings'; // lane:frags
     if (chosen.length === 0) return '';
     const sp = speciesOf(chosen[0].speciesId);
@@ -177,7 +194,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
     }
   };
   const back = () => {
-    if (idx === 0) onCancel();
+    if (idx === 0) cancel();
     else go(STEPS[idx - 1].id);
   };
 
@@ -201,7 +218,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
   return (
     <div className="pn-wizard">
       <div className="pn-wizard__top">
-        <button type="button" className="pn-back" onClick={onCancel}>
+        <button type="button" className="pn-back" onClick={cancel}>
           <span aria-hidden>←</span> Cancel
         </button>
         {/* Compact stepper: every step keeps a numbered dot, only the current one spells out its name (all six fit in a
@@ -230,7 +247,16 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
         <section className="pn-col pn-gap-3">
           <h3 className="pn-wizard__h">What would you like to sell?</h3>
           {access.hint && (
-            <Callout tone={access.listings ? 'info' : 'watch'} icon={<Info size={15} />}>
+            <Callout
+              tone={access.listings ? 'info' : 'watch'}
+              icon={<Info size={15} />}
+              action={
+                // audit 2026-11-17 (F8) — the whole route, with progress (chunk 19's unlock help)
+                <LockedButton title={access.listings ? 'Whole-aquarium auctions' : 'Listings'} keys={[access.listings ? 'tank_auctions' : 'market_listings']} testId="listing-unlock-help">
+                  How to unlock
+                </LockedButton>
+              }
+            >
               {access.hint}
             </Callout>
           )}
@@ -279,19 +305,20 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
             <span className="pn-pricehero__v">
               <Money value={pricing.expected} />
             </span>
-            {pricing.low > 0 && pricing.high > 0 && (
-              <span className="pn-small pn-dim">
-                Buyers typically offer {formatMoney(pricing.low)} – {formatMoney(pricing.high)}
+            {/* audit 2026-11-17 (F3) — where buyers' first offers really land (the bid model), not the valuation's range */}
+            {opening.low > 0 && opening.high > 0 && (
+              <span className="pn-small pn-dim" data-testid="listing-opening">
+                Buyers usually open at {formatMoney(opening.low)} – {formatMoney(opening.high)}; a counter can bring them up.
               </span>
             )}
             <span className="pn-small pn-muted">{kind === 'frag' ? 'Based on the coral or plant, how far it has grown out, healing, condition and recent frag sales.' : 'Based on species, condition, looks, lineage and today’s demand.'}</span>
           </div>
-          <PriceScale expected={pricing.expected} reserve={reserve} buyNow={buyNowOn ? buyNow : 0} />
+          <PriceScale expected={pricing.expected} reserve={reserve} buyNow={buyNowOn ? buyNow : 0} opening={opening} />
           <div className="pn-grid pn-grid--2">
             <div className="pn-field">
               <span className="pn-field__label">Reserve (lowest you’ll take)</span>
               <NumberField value={reserve} onChange={(v) => { setReserve(v); setPriceTouched(true); }} min={1} max={1e6} step={1} bigStep={reserve < 200 ? 5 : 25} prefix="$" label="Reserve price" />
-              <span className="pn-field__hint">{reserve > pricing.expected * 1.15 ? 'Above fair value — expect fewer bids.' : reserve < pricing.expected * 0.7 ? 'Low reserve — you may sell below value.' : 'A reserve near fair value attracts steady bidding.'}</span>
+              <span className="pn-field__hint" data-testid="listing-reserve-hint">{reserveHint(reserve, pricing.expected)}</span>
             </div>
             <div className="pn-field">
               <span className="pn-field__label pn-row pn-gap-2">
@@ -306,6 +333,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
               <span className="pn-field__hint">{buyNowOn ? (buyNow <= reserve ? 'Buy-now must be above your reserve.' : 'A keen buyer can end the auction instantly at this price.') : 'Turn on to let a buyer purchase immediately.'}</span>
             </div>
           </div>
+          {kind !== 'tank' && kind !== 'frag' && <QuickSellLine g={g} ids={ids} /> /* audit 2026-11-17 (F21) */}
           {kind === 'frag' ? <FragValueDetails g={g} ids={fragIds} /> : <ValueDetails g={g} kind={kind} chosen={chosen} tankId={tankId} />}
           <div className="pn-row pn-gap-2">
             <Button size="sm" variant="ghost" onClick={() => { setPriceTouched(false); }}>
@@ -407,6 +435,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
         />
       )}
 
+      <LeaveConfirm />
       <div className="pn-wizard__nav">
         <Button onClick={back}>{idx === 0 ? 'Cancel' : 'Back'}</Button>
         <span className="pn-grow pn-small pn-muted pn-wizard__why">{step === 'items' && !itemsValid.ok ? itemsValid.why : step === 'price' && !priceValid ? 'Set a reserve, and a buy-now above it.' : ''}</span>
@@ -424,10 +453,10 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
   );
 }
 
-function SexIcon({ c }: { c: Creature }) {
+function SexIcon({ c, hour }: { c: Creature; hour: number }) {
   if (c.sex === 'male') return <Mars size={12} className="pn-sex pn-sex--m" aria-label="Male" />;
   if (c.sex === 'female') return <Venus size={12} className="pn-sex pn-sex--f" aria-label="Female" />;
-  return <CircleDashed size={11} className="pn-sex" aria-label="Unsexed" />;
+  return <CircleDashed size={11} className="pn-sex" aria-label={sexLabel(c, speciesOf(c.speciesId), hour)} />;
 }
 
 function CreaturePicker({ g, kind, eligible, ids, setIds }: { g: GameState; kind: ListingKind; eligible: Creature[]; ids: string[]; setIds: (v: string[]) => void }) {
@@ -503,7 +532,7 @@ function CreaturePicker({ g, kind, eligible, ids, setIds }: { g: GameState; kind
                     <span className="pn-grow pn-col" style={{ gap: 2 }}>
                       <span className="pn-row pn-gap-1">
                         <b className="pn-serif">{c.name}</b>
-                        <SexIcon c={c} />
+                        <SexIcon c={c} hour={g.clock.hour} />
                         {c.isStarter && <Chip tone="gold">Starter</Chip>}
                       </span>
                       <span className="pn-tiny pn-muted pn-ellipsis">
@@ -642,14 +671,54 @@ function warningIcon(w: string) {
   return <TriangleAlert size={16} />;
 }
 
-function PriceScale({ expected, reserve, buyNow }: { expected: number; reserve: number; buyNow: number }) {
+/**
+ * Audit 2026-11-17 (F21) — the instant alternative to an auction: what the local fish store pays today for these
+ * animals, and a way to Livestock's quick-sell dialog for them (a child in debt tapping Sell met only a six-step auction).
+ */
+export function QuickSellLine({ g, ids }: { g: GameState; ids: string[] }) {
+  const quote = safe(() => (ids.length ? quickSellQuote(g, ids) : null), null);
+  if (!quote?.ok || !(quote.total > 0)) return null;
+  return (
+    <div className="pn-row pn-gap-2 pn-row--wrap" style={{ alignItems: 'center' }} data-testid="listing-quick-sell">
+      <span className="pn-small pn-muted pn-grow">Or sell now to the local fish store for about {formatMoney(quote.total)}.</span>
+      <Button size="sm" data-testid="listing-quick-sell-go" onClick={() => useUI.getState().set({ panel: 'livestock', panelTarget: `sell:${ids.join(',')}` })}>
+        Quick sell
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Audit 2026-11-17 (F3) — what a reserve does to first offers: a bid under the reserve is turned down automatically
+ * (the sim's rule), so the advice is measured against where first offers land, not against fair value.
+ */
+export function reserveHint(reserve: number, expected: number): string {
+  // review fix: the bands are measured on the bid model (reserveBand in the sim)
+  switch (safe(() => reserveBand(reserve, expected), null)) {
+    case 'most_below':
+      return 'Above most first offers: most will be turned down automatically.';
+    case 'over_half':
+      return 'More than half of first offers will be below this and turned down automatically.';
+    case 'half':
+      return 'About half of first offers will be below this and turned down automatically.';
+    case 'some':
+      return 'Some first offers will be below this and turned down automatically.';
+    case 'most_reach':
+      return 'Most first offers will reach this. You still choose which one to accept.';
+    default:
+      return 'Bids under your reserve are turned down automatically.';
+  }
+}
+
+function PriceScale({ expected, reserve, buyNow, opening }: { expected: number; reserve: number; buyNow: number; opening: { low: number; high: number } }) {
   const lo = Math.max(0, Math.min(reserve, expected) * 0.6);
   const hi = Math.max(expected * 1.8, buyNow * 1.1, reserve * 1.2, 10);
   const pos = (v: number) => `${Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100))}%`;
   return (
     <div className="pn-pricescale" aria-hidden>
       <div className="pn-pricescale__track">
-        <div className="pn-pricescale__fair" style={{ left: pos(expected * 0.9), width: `calc(${pos(expected * 1.1)} - ${pos(expected * 0.9)})` }} />
+        {/* F3: the band is where first offers usually land */}
+        <div className="pn-pricescale__fair" style={{ left: pos(opening.low || expected * 0.75), width: `calc(${pos(opening.high || expected)} - ${pos(opening.low || expected * 0.75)})` }} />
         <span className="pn-pricescale__mark pn-pricescale__mark--exp" style={{ left: pos(expected) }}>
           <i />
           <em>Fair {formatMoney(expected)}</em>

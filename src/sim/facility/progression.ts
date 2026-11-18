@@ -6,7 +6,8 @@
  * (the max over the aliases other lanes may bump plus what this module derives from the market history and the
  * creature records), so an activity is never rewarded twice even if two lanes both count it.
  */
-import type { GameState, MasteryTrack, QuestState, SpeciesDefinition, TankTier, WaterClass } from '@/types';
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
+import type { GameState, MasteryTrack, QuestState, SpeciesDefinition, Tank, TankTier, WaterClass } from '@/types';
 import type { SimContext } from '../context';
 import type { ActionResult } from '../care';
 import type { Rng } from '../rng';
@@ -21,6 +22,7 @@ import { ACHIEVEMENTS } from '@/data/achievements';
 import { FACILITY_LEVEL_ORDER, getFacilityLevel } from '@/data/facilities';
 import { findSpecies } from '@/data/species';
 import { getTankTier, TANK_TIERS } from '@/data/catalog/tanks';
+import { getFoodDef } from '@/data/catalog/foods';
 import { withArticle } from '../economy/util'; // lane:w2-ui
 import { giftedLayoutShare } from '../aquascape/starters';
 
@@ -416,7 +418,8 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
       return { met: p.reputation >= cond.min, current: Math.floor(p.reputation), target: cond.min, label: `${cond.min} reputation` };
     case 'mastery': {
       const v = p.mastery[cond.track] ?? 0;
-      return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `${cond.min} ${cond.track} mastery` };
+      // Audit 2026-11-17 (G10): points, as Research's standing card now shows them beside the level
+      return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `${cond.min} ${cond.track} mastery points` };
     }
     case 'counter': {
       const v = counterValue(state, cond.key);
@@ -455,9 +458,10 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
       return { met: done, current: done ? 1 : 0, target: 1, label: `Research: ${RESEARCH_BY_ID[cond.id]?.name ?? cond.id}` };
     }
     case 'facility': {
-      const cur = levelIdx(state.facility.level);
-      const need = levelIdx(cond.level);
-      return { met: cur >= need, current: cur, target: need, label: getFacilityLevel(cond.level).name };
+      // Audit 2026-11-17 (G11): done or not ("Aquarium Store 1/2" showed positions in the venue list)
+      const met = levelIdx(state.facility.level) >= levelIdx(cond.level);
+      const name = getFacilityLevel(cond.level).name;
+      return { met, current: met ? 1 : 0, target: 1, label: met ? name : `Move into the ${name}` };
     }
     case 'unlocked': {
       const has = p.unlocked.includes(cond.key);
@@ -482,6 +486,8 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
         n++;
       }
       const what = cond.minGallons ? `${cond.minGallons}+ gal tank` : cond.reef ? 'reef tank' : cond.env ? `${cond.env} tank` : 'tank';
+      // Audit 2026-11-17 (G11): "1 500+ gal tank" read as 1,500 gallons
+      if (cond.minGallons && cond.min === 1) return { met: n >= 1, current: n, target: 1, label: `a ${cond.minGallons}+ gallon tank` };
       return { met: n >= cond.min, current: n, target: cond.min, label: `${cond.min} ${what}${cond.min === 1 ? '' : 's'}` };
     }
     case 'visitors': {
@@ -505,7 +511,7 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
     }
     case 'tutorial_done': {
       const d = p.tutorial.done;
-      return { met: d, current: d ? 1 : 0, target: 1, label: 'Finish the tutorial' };
+      return { met: d, current: d ? 1 : 0, target: 1, label: 'Finish the guide' };
     }
     case 'money': {
       return { met: state.finance.money >= cond.min, current: Math.floor(state.finance.money), target: cond.min, label: `$${cond.min.toLocaleString('en-US')}` };
@@ -574,7 +580,7 @@ export function grantReward(state: GameState, reward: Reward | undefined, memo: 
   }
   for (const [foodId, n] of Object.entries(reward.foods ?? {})) {
     state.inventory.foods[foodId] = (state.inventory.foods[foodId] ?? 0) + n;
-    out.push(`${n} servings of food`);
+    out.push(`${n} servings of ${getFoodDef(foodId)?.name.toLowerCase() ?? 'food'}`); // Audit 2026-11-17 (J27): say which food
   }
   return out;
 }
@@ -649,14 +655,16 @@ function relativeKey(obj: Objective): string | null {
 // ───────────────────────────── tutorial ─────────────────────────────
 
 export function interpolate(state: GameState, text: string): string {
-  const starter = Object.values(state.creatures).find((c) => c.isStarter && (c.status === 'alive' || c.status === 'listed'));
+  // audit 2026-11-17 (A1): a starter that died or was sold isn't named; the animal the guide shows instead is
+  const here = (c: GameState['creatures'][string]) => c.status === 'alive' || c.status === 'listed';
+  const starter = Object.values(state.creatures).find((c) => c.isStarter && here(c)) ?? Object.values(state.creatures).find((c) => here(c) && !!c.tankId);
   const sp = findSpecies(state.progress.tutorial.starterId || state.starterId);
   // Ideal bands are formatted exactly like the tank card's water report ("24.5–28.0 °C", "1.023–1.026").
   const temp = sp ? `${sp.tempC.idealMin.toFixed(1)}–${sp.tempC.idealMax.toFixed(1)} °C` : 'the right temperature';
   const sal = sp?.salinitySG ? `${sp.salinitySG.idealMin.toFixed(3)}–${sp.salinitySG.idealMax.toFixed(3)}` : 'marine salinity';
   return text
     .replace(/\{name\}/g, starter?.name ?? sp?.commonName ?? 'your starter')
-    .replace(/\{species\}/g, (sp?.commonName ?? 'fish').toLowerCase())
+    .replace(/\{species\}/g, lowerName(sp?.commonName ?? 'fish')) // Audit 2026-11-17 (J15)
     .replace(/\{temp\}/g, temp)
     .replace(/\{salinity\}/g, sal);
 }
@@ -676,9 +684,9 @@ function completeTutorialStep(state: GameState, step: TutorialStepDef, rewarded:
   const chain = tutorialStepDefs(state);
   // A reward the player already earned another way (research) — say so instead of "New upgrade unlocked!".
   const alreadyOwned = !!step.reward?.unlocks?.length && step.reward.unlocks.every((k) => isUnlocked(state, k));
-  if (rewarded) grantReward(state, step.reward, `Tutorial: ${interpolate(state, step.title)}`);
+  if (rewarded) grantReward(state, step.reward, `Guide: ${interpolate(state, step.title)}`);
   if (step.done && !state.isShowcase) {
-    const text = alreadyOwned ? `${interpolate(state, step.title)}: you already have ${step.reward!.unlocks!.map(unlockLabel).join(' and ')} — you’re ahead of the tutorial!` : interpolate(state, step.done);
+    const text = alreadyOwned ? `${interpolate(state, step.title)}: you already have ${step.reward!.unlocks!.map(unlockLabel).join(' and ')} — you’re ahead of the guide!` : interpolate(state, step.done);
     emitEvent(state, { kind: 'tip', text, toast: true });
   }
   t.step += 1;
@@ -735,6 +743,24 @@ export function pendingTutorialUnlocks(state: GameState): Set<string> {
   const chain = tutorialStepDefs(state);
   for (let i = Math.max(0, t.step); i < chain.length; i++) for (const k of chain[i].reward?.unlocks ?? []) out.add(k);
   return out;
+}
+
+/**
+ * Audit 2026-11-17 (G1) — the title of the guide step that will hand out `key` while the guide holds it back from its
+ * play rule (null: not held). The guide keeps running with Guide hints off, so locked cards say this themselves.
+ */
+export function tutorialStepGranting(state: GameState, key: string): string | null {
+  const t = state.progress.tutorial;
+  if (t.done || t.skipped || state.progress.unlocked.includes(key)) return null;
+  const chain = tutorialStepDefs(state);
+  for (let i = Math.max(0, t.step); i < chain.length; i++) if ((chain[i].reward?.unlocks ?? []).some((k) => k === key)) return interpolate(state, chain[i].title);
+  return null;
+}
+
+/** Audit 2026-11-17 (G1) — the line a locked card adds while the guide holds `key` (null: not held). */
+export function guideHoldLine(state: GameState, key: string): string | null {
+  const step = tutorialStepGranting(state, key);
+  return step ? `Your guide gives you this at its “${step}” step. Research › Quests shows where your guide is now.` : null; // (review: Quests shows only the current step)
 }
 
 function checkTutorial(state: GameState, cache: CondCache): void {
@@ -1139,7 +1165,7 @@ export function settleStartingProgress(state: GameState): void {
 
 function sampleDay(state: GameState): void {
   const c = state.progress.counters;
-  let bad = false;
+  let bad: Tank | null = null;
   let signs = 0;
   for (const id of state.tankOrder) {
     const t = state.tanks[id];
@@ -1147,7 +1173,12 @@ function sampleDay(state: GameState): void {
     if (t.signage) signs++;
     // "Keep every tank's WATER good": the water part only (animal welfare shows in the tank status separately).
     const water = t.cache?.waterStatus ?? t.cache?.status;
-    if (water && water !== 'good') bad = true;
+    if (water && water !== 'good') bad ??= t;
+  }
+  if (bad && !c._badToday && (c.water_good_streak ?? 0) >= 1 && !state.isShowcase) {
+    // Audit 2026-11-17 (H21): the streak goals reset without a word; say which tank broke it, once
+    const n = c.water_good_streak ?? 0;
+    emitEvent(state, { kind: 'info', text: `Your good-water streak (${n} ${n === 1 ? 'day' : 'days'}) ends today: ${bad.name}’s water needs a look.`, tankId: bad.id });
   }
   if (bad) c._badToday = 1;
   c.signs_active = signs;
@@ -1281,7 +1312,7 @@ export function activeQuests(state: GameState): QuestView[] {
       // leaves "First steps 0/11" on the board for good.
       if (q.status === 'active' && state.progress.tutorial.skipped) continue;
       const chain = tutorialStepDefs(state);
-      out.push({ id: 'tutorial', title: 'First steps', body: 'Finish the tutorial to open the quest board.', icon: 'GraduationCap', status: q.status, progress: q.status === 'complete' ? 1 : state.progress.tutorial.step / chain.length, current: Math.min(chain.length, state.progress.tutorial.step), target: chain.length, reward: TUTORIAL_QUEST_REWARD, isTutorial: true });
+      out.push({ id: 'tutorial', title: 'First steps', body: 'Finish the guide to open the quest board.', icon: 'GraduationCap', status: q.status, progress: q.status === 'complete' ? 1 : state.progress.tutorial.step / chain.length, current: Math.min(chain.length, state.progress.tutorial.step), target: chain.length, reward: TUTORIAL_QUEST_REWARD, isTutorial: true });
       continue;
     }
     const def = QUEST_BY_ID[q.id];
@@ -1311,6 +1342,18 @@ export interface UnlockProgressView {
   requirements: { label: string; met: boolean; current: number; target: number }[];
   /** Research projects that grant this key. */
   viaResearch: { id: string; name: string }[];
+  /** Audit 2026-11-17 (G1): the guide holds this back until one of its steps; the line saying so (`guideHoldLine`). */
+  guide?: string;
+  /** Audit 2026-11-17 (F8) — the guide holds this key back for one of its steps (its title): the rule alone won't open it. */
+  heldBy?: string;
+}
+
+/** Audit 2026-11-17 (F8) — the title of the guide step that will hand out `key` (pendingTutorialUnlocks holds it). */
+export function heldByGuideStep(state: GameState, key: string): string | null {
+  if (!pendingTutorialUnlocks(state).has(key)) return null;
+  const step = tutorialStepDefs(state).find((d) => d.reward?.unlocks?.includes(key as never));
+  const name = Object.values(state.creatures).find((c) => c.isStarter)?.name ?? 'your starter';
+  return step ? step.title.replace(/\{name\}/g, name) : null;
 }
 
 /** Locked keys with how close the player is, nearest first. */
@@ -1323,14 +1366,20 @@ export function unlockProgress(state: GameState): UnlockProgressView[] {
     const rule = UNLOCK_RULE_BY_KEY[key];
     const reqs = (rule?.when ?? []).map((c) => evalCond(state, c, cache));
     const viaResearch = RESEARCH.filter((r) => r.grants.includes(key as never)).map((r) => ({ id: r.id, name: r.name }));
-    const progress = reqs.length ? reqs.reduce((a, s) => a + ratio(s), 0) / reqs.length : 0;
+    const raw = reqs.length ? reqs.reduce((a, s) => a + ratio(s), 0) / reqs.length : 0;
+    // Audit 2026-11-17 (G1, F8): a rule the guide holds back isn't "100%": the guide hands it out, and the card says when
+    const guide = guideHoldLine(state, key);
+    const held = heldByGuideStep(state, key);
+    const progress = guide ? Math.min(raw, 0.99) : raw;
     out.push({
       key,
       label: unlockLabel(key),
-      hint: rule?.hint ?? (viaResearch.length ? `Research ${viaResearch[0].name}.` : 'Keep playing.'),
-      progress,
-      requirements: reqs.map((s) => ({ label: s.label, met: s.met, current: s.current, target: s.target })),
+      hint: held ? `Comes with the guide’s “${held}” step, or when you finish or skip the guide.` : rule?.hint ?? (viaResearch.length ? `Research ${viaResearch[0].name}.` : 'Keep playing.'),
+      progress: held ? Math.min(progress, 0.9) : progress,
+      requirements: held ? [{ label: `The guide’s “${held}” step`, met: false, current: 0, target: 1 }] : reqs.map((s) => ({ label: s.label, met: s.met, current: s.current, target: s.target })),
       viaResearch,
+      ...(guide ? { guide } : {}),
+      ...(held ? { heldBy: held } : {}),
     });
   }
   out.sort((a, b) => b.progress - a.progress);

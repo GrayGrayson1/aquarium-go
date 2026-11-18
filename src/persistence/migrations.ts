@@ -119,6 +119,30 @@ const records = (a: unknown): Json[] => (Array.isArray(a) ? a.filter(isObj) : []
 /** An array of strings (ids, unlock keys): anything else is dropped. */
 const strings = (a: unknown): string[] => (Array.isArray(a) ? a.filter((x): x is string => typeof x === 'string') : []);
 
+/**
+ * B-210 — a room fixture the layout can place (FacilityState.fixtures): its own id, a kind, finite numbers. The kind is
+ * a key into FIXTURE_DEFS, so, like a `defId`, it must not be an inherited name: `FIXTURE_DEFS['__proto__']` is
+ * Object.prototype, and the layout's `def.name` then threw on every step (the fresh review's blocker 1).
+ */
+const fixtureOk = (f: unknown): boolean => isObj(f) && isSafeKey(f.id) && isSafeKey(f.kind) && finiteNum(f.x) && finiteNum(f.z) && finiteNum(f.rotY);
+
+/** The numbers `ensureLive` (src/sim/facility/visitors.ts) always gives a VisitorLiveState. */
+const LIVE_NUMBERS = ['occupancy', 'arrivalRate', 'crowding', 'carry', 'pendingAdmission', 'pendingTips', 'pendingDonations', 'lastFlushHour'] as const;
+const LIVE_OPTIONAL_NUMBERS = ['nextFriendHour', 'concernLossToday', 'reactionBudget'] as const;
+
+/** B-210 — can the visitor sim step with this `visitors.live`? Every field it has must be what VisitorLiveState says. */
+function liveVisitorsOk(l: unknown): boolean {
+  if (!isObj(l)) return false;
+  if (!LIVE_NUMBERS.every((k) => finiteNum(l[k]))) return false;
+  if (!LIVE_OPTIONAL_NUMBERS.every((k) => l[k] === undefined || finiteNum(l[k]))) return false;
+  if (!isObj(l.mix) || !Object.values(l.mix).every(finiteNum)) return false;
+  if (!Array.isArray(l.unreachable) || !l.unreachable.every((id: unknown) => typeof id === 'string')) return false;
+  if (l.warnedHour !== undefined && !(isObj(l.warnedHour) && Object.values(l.warnedHour).every(finiteNum))) return false;
+  const f = l.friend;
+  if (f !== undefined && !(isObj(f) && typeof f.name === 'string' && typeof f.kind === 'string' && typeof f.tankId === 'string' && finiteNum(f.untilHour) && finiteNum(f.party))) return false;
+  return true;
+}
+
 export const MIGRATIONS: Migration[] = [
   {
     from: 0,
@@ -235,8 +259,14 @@ export function detectVersion(raw: Json): number {
  * (`too_new`, save format `v`). The slot layer uses it too, for a stored record it leaves alone.
  */
 export function tooNewMessage(v: number): string {
-  return `This save comes from a newer version of Aquarium Go (save format v${v}; this game reads up to v${SCHEMA_VERSION}). Refresh the page to get the latest version.`;
+  // audit 2026-11-17, I21: the save formats are for a bug report (the console, once each), not the player's words
+  if (!toldNewer.has(v) && typeof console !== 'undefined') {
+    toldNewer.add(v);
+    console.warn(`[aquarium-go] a save in format v${v}; this game reads up to v${SCHEMA_VERSION}`);
+  }
+  return 'This save comes from a newer version of Aquarium Go. Refresh the page to get the latest version.';
 }
+const toldNewer = new Set<number>();
 
 /**
  * Structural validation before migrating. Returns a friendly error string, or null when it looks like a save.
@@ -716,6 +746,20 @@ export function repairState(s: Json): string[] {
 
   if (!isObj(s.facility)) s.facility = { level: 'hobby_room', width: 5, depth: 4.5, openToPublic: false, admission: 0, openHour: 9, closeHour: 19, fixtures: [] };
   s.facility = fillNumbers(s.facility, { level: 'hobby_room', width: 5, depth: 4.5, openToPublic: false, admission: 0, openHour: 9, closeHour: 19, fixtures: [] }, 'facility', repairs);
+  // B-210 — the room's furniture is a list of fixtures the room code can place: an id, a kind and finite numbers. A
+  // list that isn't one starts empty and anything else in it is dropped: the layout reads each `x`, `z` and `rotY` on
+  // every step (`toFixed`), so one unreadable fixture stopped the whole world. A kind this build doesn't know stays (it
+  // steps as a fixture with no effect), as an unknown `defId` does; a kind that is an inherited name goes, as one does.
+  if (!Array.isArray(s.facility.fixtures)) {
+    repairs.push('facility.fixtures: rebuilt');
+    s.facility.fixtures = [];
+  } else {
+    const fixtures = (s.facility.fixtures as Json[]).filter(fixtureOk);
+    if (fixtures.length !== s.facility.fixtures.length) {
+      repairs.push(`facility.fixtures: ${s.facility.fixtures.length - fixtures.length} unreadable removed`);
+      s.facility.fixtures = fixtures;
+    }
+  }
 
   if (!isObj(s.market)) s.market = {};
   for (const k of ['stock', 'listings', 'buyers', 'history'] as const) s.market[k] = records(s.market[k]);
@@ -723,6 +767,13 @@ export function repairState(s: Json): string[] {
   s.market.lastRefreshHour = num(s.market.lastRefreshHour, -999);
   s.market.stock = s.market.stock.filter((o: Json) => isObj(o) && findSpecies(o.speciesId) && Array.isArray(o.creatures));
   for (const o of s.market.stock as Json[]) for (const c of o.creatures as Json[]) if (isObj(c)) repairRareVariant(c, String(c.id), `offer ${o.id} creature ${c.id}`, repairs); // lane:genetics
+  // audit 2026-11-17 (F6) — an open offer's hold is optional: one that isn't a finite hour is dropped (absent: untouched)
+  for (const o of s.market.stock as Json[])
+    for (const k of ['holdUntilHour', 'holdStartHour'] as const)
+      if (o[k] !== undefined && !(typeof o[k] === 'number' && Number.isFinite(o[k]))) {
+        repairs.push(`offer ${shortId(o.id)}.${k}: unreadable, removed`);
+        delete o[k];
+      }
   for (const l of s.market.listings as Json[]) {
     l.bids = records(l.bids);
     l.creatureIds = strings(l.creatureIds).filter(isSafeKey);
@@ -802,6 +853,13 @@ export function repairState(s: Json): string[] {
   for (const k of ['history', 'reactions'] as const) v[k] = records(v[k]);
   if (!isObj(v.exhibit)) v.exhibit = {};
   v.totalVisitors = num(v.totalVisitors, 0);
+  // B-210 — the visitor sim's own scratch is optional (`ensureLive` makes it when absent), so one it can't step with
+  // is dropped and made again: before, a `live` that wasn't an object, or whose `mix` or `warnedHour` wasn't a
+  // record, threw on every step. What goes with it is the crowd estimate and at most an hour's unbanked takings
+  if (v.live !== undefined && !liveVisitorsOk(v.live)) {
+    delete v.live;
+    repairs.push('visitors.live: unreadable, reset');
+  }
 
   s.log = records(s.log);
   // chunk 6 (PERSIST-004 A1) — the sim keeps the newest LOG_CAP events; a longer log is trimmed the same way
@@ -1022,6 +1080,20 @@ function repairProduction(s: Json, repairs: string[]): void {
           if (b.listingIds !== undefined && !Array.isArray(b.listingIds)) {
             delete b.listingIds;
             repairs.push(`${at}.batch ${shortId(b.id)}.listingIds: unreadable, removed`);
+          }
+          // Audit 2026-11-17 (H1): how often what didn't sell was listed again
+          if (b.relists !== undefined && !(typeof b.relists === 'number' && Number.isInteger(b.relists) && b.relists >= 1)) {
+            delete b.relists;
+            repairs.push(`${at}.batch ${shortId(b.id)}.relists: unreadable, removed`);
+          }
+          // Audit 2026-11-17 (H1): what the last unsold listing asked a head, by part; only with relists
+          if (b.lastAsk !== undefined) {
+            const price = (v: unknown) => v === undefined || (typeof v === 'number' && Number.isFinite(v) && v > 0);
+            const ask = b.lastAsk as Json;
+            if (b.relists === undefined || !isObj(ask) || Object.keys(ask).some((k) => k !== 'juveniles' && k !== 'adults') || !price(ask.juveniles) || !price(ask.adults)) {
+              delete b.lastAsk;
+              repairs.push(`${at}.batch ${shortId(b.id)}.lastAsk: unreadable, removed`);
+            }
           }
         }
         if (good.length) l.batches = good;

@@ -2,8 +2,9 @@
  * Player husbandry actions (mutators). OWNER: lane "waterlab".
  * All return a result object the UI can toast. Every action teaches something: messages explain the "why".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { GameState, LightPreset, Tank, EquipmentInstance, SpeciesDefinition } from '@/types';
-import { eatsFood, getFoodDef } from '@/data/catalog/foods';
+import { eatsFood, getFoodDef, foodTagNames, joinFoodNames } from '@/data/catalog/foods';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { findSpecies } from '@/data/species';
@@ -12,19 +13,20 @@ import { bumpCounter } from '../facility';
 import { emitEvent } from '../context';
 import { nextId } from '../ids';
 import { addFood, recommendedServings, ensureLab, scaleFood, foodDemandUnits, availableFood } from '../water/food';
-import { CLASS_DEFAULTS, SALT_KG_PER_LITRE, LITRES_PER_GALLON, ROOM_TEMP_C, DETOX_FREE_FRACTION, DETOX_HOURS, isSaltClass, isMarineClass } from '../water/constants';
+import { CLASS_DEFAULTS, SALT_KG_PER_LITRE, LITRES_PER_GALLON, DETOX_FREE_FRACTION, DETOX_HOURS, ROOM_TEMP_C, isSaltClass, isMarineClass } from '../water/constants';
 import { equipmentSummary, expectedTempC, safeGallons, inhabitantsOf, safeHabitat } from '../water/env';
 import { tuneTankForSpecies } from '../water/kits';
 import { sanitizeWater } from '../water/step';
+import { khPreferredMax } from '../water/report'; // Audit 2026-11-17 C4
 import { applyWaterChange, changeSaltNeed, clampChangeFraction, scrapeGlass } from '../water/change'; // lane:automation (AUTO-008)
 import { noteBreedingFood } from '../life/breeding';
 import { plural as pluralName, cap } from '../compat/text';
 import { refreshFoodStatus, tankFoodOutlook } from '../tankStatus';
 import { aOrAn } from '../economy/util'; // lane:w2-ui ("an 800-gallon tank")
-import { photoperiodTooLong } from '../time';
-import { MAX_PER_KIND, KIND_PLURAL, idealBand, defaultSettingFor } from './tuning'; // lane:fit — shared with the fit verdicts
-import { installedFit, type FitVerdict } from './fit'; // lane:fit
-import { FOOD_TAG_WORDS, groupEaters, whoPhrase } from './autofeed'; // lane:fit (lane:qa-r3: groupEaters, whoPhrase)
+import { photoperiodTooLong, formatClock } from '../time'; // Audit 2026-11-17 (J19): formatClock
+import { MAX_PER_KIND, KIND_PLURAL, idealBand, defaultSettingFor, fightAdvice } from './tuning'; // lane:fit — shared with the fit verdicts
+import { installedFit, oneOnlyText, type FitVerdict } from './fit'; // lane:fit (Audit 2026-11-17 C17: oneOnlyText)
+import { groupEaters, whoPhrase } from './autofeed'; // lane:fit (lane:qa-r3: groupEaters, whoPhrase); Audit 2026-11-17 (J3): FOOD_TAG_WORDS → foodTagNames
 import { noteFoodSpend } from '../production/costs'; // lane:production
 import { noteLiveFoodUsed } from '../automation/reserve'; // lane:automation (chunk 5)
 import * as dmath from '../dmath';
@@ -44,6 +46,12 @@ const fail = (message: string): ActionResult => ({ ok: false, message });
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 const money = (v: number) => `$${v.toFixed(2).replace(/\.00$/, '')}`;
 const plural = (n: number, s: string) => `${n} ${s}${n === 1 ? '' : 's'}`;
+/** Audit 2026-11-17 C1 — kilograms of salt for a message: a need rounded up and a stock rounded down never read alike. */
+const kgText = (kg: number, dir: 'up' | 'down') => {
+  const m = kg < 0.1 ? 100 : 10;
+  const r = dir === 'up' ? Math.ceil(kg * m - 1e-6) : Math.floor(kg * m + 1e-6);
+  return (r / m).toFixed(m === 100 ? 2 : 1);
+};
 
 function getTank(state: GameState, tankId: string): Tank | null {
   const t = state.tanks[tankId];
@@ -71,7 +79,7 @@ export function feedTank(
   const food = getFoodDef(foodId);
   if (!food) return fail('Unknown food.');
   const have = Math.floor(state.inventory.foods[foodId] ?? 0);
-  if (have < 1) return fail(`You're out of ${food.name.toLowerCase()} — buy more in the shop.`);
+  if (have < 1) return fail(`You’re out of ${food.name.toLowerCase()} — buy more in Market › Supplies.`); // Audit 2026-11-17 (J20): food is in Supplies; the Shop sells animals
 
   let targetName: string | null = null;
   let targetSp: SpeciesDefinition | undefined;
@@ -82,7 +90,8 @@ export function feedTank(
     targetSp = findSpecies(c.speciesId);
     targetName = c.name || targetSp?.commonName || 'it';
     if (targetSp && !food.tags.some((t) => targetSp!.foods.includes(t))) {
-      return fail(`${targetName} won't eat ${food.name.toLowerCase()}. ${cap(pluralName(targetSp))} eat ${targetSp.foods.slice(0, 4).join(', ').replace(/_/g, ' ')}.`);
+      // Audit 2026-11-17 C18 (B-224) — what it eats in shop words ("live copepods"), not raw tags ("copepod live")
+      return fail(`${targetName} won’t eat ${food.name.toLowerCase()}. ${cap(pluralName(targetSp))} eat ${joinFoodNames(foodTagNames(targetSp.foods, { max: 4, shelfOnly: true }))}.`);
     }
   }
 
@@ -128,7 +137,7 @@ export function feedTank(
   const parts: string[] = [];
   // lane:qa-r3 — the note is worth seeing even where feeding is normally quiet (a click in the water): see `caution`
   let caution = false;
-  if (targetName) parts.push(`Offered ${targetName} ${food.name.toLowerCase()} with the feeding tongs — it's theirs for the next hour.`);
+  if (targetName) parts.push(`Offered ${targetName} ${food.name.toLowerCase()} with the feeding tongs — it’s theirs for the next hour.`);
   else parts.push(`Fed ${plural(servings, 'serving')} of ${food.name.toLowerCase()}.`);
   if (residents.length === 0) {
     // lane:qa-r3 — feeding an empty tank used to read like an ordinary feed
@@ -140,8 +149,8 @@ export function feedTank(
     const inh = residents;
     const sp = inh[0].species;
     const many = inh.filter((i) => i.species.id === sp.id).length > 1;
-    const words = [...new Set(sp.foods.map((t) => FOOD_TAG_WORDS[t]).filter((w): w is string => !!w))].slice(0, 3);
-    parts.push(`Nothing in this tank eats it — uneaten ${food.name.toLowerCase()} will rot into ammonia.${words.length ? ` ${cap(many ? pluralName(sp) : `your ${sp.commonName.toLowerCase()}`)} ${many ? 'eat' : 'eats'} ${words.slice(0, -1).join(', ')}${words.length > 1 ? ' and ' : ''}${words[words.length - 1]}.` : ''}`);
+    const words = foodTagNames(sp.foods, { max: 3, shelfOnly: true }); // Audit 2026-11-17 (J3): the shelf's words, one table
+    parts.push(`Nothing in this tank eats it — uneaten ${food.name.toLowerCase()} will rot into ammonia.${words.length ? ` ${cap(many ? pluralName(sp) : `your ${lowerName(sp.commonName)}`)} ${many ? 'eat' : 'eats'} ${words.slice(0, -1).join(', ')}${words.length > 1 ? ' and ' : ''}${words[words.length - 1]}.` : ''}`);
   } else if (
     demand > 0 &&
     (targetId ? units + ownWaiting > demand * 2.5 + food.nutrition || units + before > tankDemand * 2.5 + food.nutrition : units + before > demand * 2.5 + food.nutrition)
@@ -157,6 +166,15 @@ export function feedTank(
         // lane:qa-play — toasted (still at most once per tank per game day): clicks in the tank give no other feedback,
         // so a player dropping ten portions only learnt about it from the log after the water turned.
         emitEvent(state, { kind: 'tip', text: `Overfeeding ${tank.name}: uneaten food decays into ammonia. Feed only what disappears in a couple of minutes.`, tankId: tank.id, toast: true });
+    }
+  }
+  // Audit 2026-11-17 C8 — a hungry animal this food can't feed (a pleco beside tetras fed flakes) is named
+  if (!targetName && eaters.length > 0) {
+    const missed = residents.filter((i) => i.creature.stats.hunger >= 70 && !eatsFood(i.species, food)).map((i) => i.creature.name || i.species.commonName);
+    if (missed.length) {
+      caution = true;
+      const names = missed.length > 2 ? `${missed.slice(0, 2).join(', ')} and ${missed.length - 2} more` : missed.join(' and ');
+      parts.push(`${names} ${missed.length === 1 ? 'is' : 'are'} hungry but ${missed.length === 1 ? 'doesn’t' : 'don’t'} eat ${food.name.toLowerCase()}.`);
     }
   }
   const left = state.inventory.foods[foodId] ?? 0;
@@ -197,10 +215,19 @@ export function waterChange(state: GameState, tankId: string, fraction: number, 
   const f = clampChangeFraction(fraction);
   const salty = isSaltClass(tank.waterClass);
   if (salty) {
+    // Audit 2026-11-17 C1 — the check a keeper and the Auto Water Changer make (waterChangeCost's enoughSalt): a
+    // short-salted change mixes weak water and drops the salinity below what the animals need, so refuse it and say
+    // what it takes. (It used to go ahead with whatever salt was left.)
     const need = changeSaltNeed(state, tank, f);
-    if (Math.max(0, state.inventory.salt) < 0.02 && need > 0.02) return fail(`You need about ${need.toFixed(1)} kg of marine salt mix to change ${Math.round(f * 100)}% of this tank — buy salt first.`);
+    const have = Math.max(0, state.inventory.salt);
+    if (have < need - 1e-6) {
+      const smaller = f > 0.1 + 1e-9 && have >= changeSaltNeed(state, tank, 0.1) - 1e-6;
+      return fail(
+        `Changing ${Math.round(f * 100)}% of this tank needs about ${kgText(need, 'up')} kg of salt mix, and you have ${have < 0.01 ? 'none' : `${kgText(have, 'down')} kg`}. Buy marine salt mix in Market › Supplies first${smaller ? ', or change less water' : ''}.`,
+      );
+    }
   }
-  const { before, saltUsed, saltShort, shock } = applyWaterChange(state, tank, f, { hour: state.clock.hour, ...opts });
+  const { before, saltUsed, shock } = applyWaterChange(state, tank, f, { hour: state.clock.hour, ...opts });
   bumpCounter(state, 'waterChanges');
   const shockNote = shock ? ` Careful — ${shock}; sudden changes stress animals. Match the new water next time.` : '';
   // lane:fix-water — show a decimal when the rounded values would read as "5 → 5 ppm".
@@ -208,12 +235,11 @@ export function waterChange(state: GameState, tankId: string, fraction: number, 
   const parts = [`Changed ${Math.round(f * 100)}% of the water. Nitrate ${before.nitrate.toFixed(nDigits)} → ${w.nitrate.toFixed(nDigits)} ppm.`];
   if (before.ammonia >= 0.05) parts.push(`Ammonia ${before.ammonia.toFixed(2)} → ${w.ammonia.toFixed(2)} ppm.`);
   if (salty) parts.push(`Used ${saltUsed.toFixed(1)} kg of salt mix (${state.inventory.salt.toFixed(1)} kg left); salinity ${w.salinitySG.toFixed(3)}.`);
-  if (saltShort) parts.push('You ran short of salt, so the new water was weaker — salinity dropped. Buy more salt mix.');
   if (f > 0.5) parts.push('Very large changes can shock sensitive animals; 20–30% at a time is gentler.');
   return { ok: true, message: parts.join(' ') + shockNote };
 }
 
-/** Top off evaporated water with fresh (RO) water — marine salinity rises if skipped. */
+/** Top off evaporated water with fresh water — marine salinity rises if skipped. */
 export function topOff(state: GameState, tankId: string): ActionResult {
   const tank = getTank(state, tankId);
   if (!tank) return fail('That tank no longer exists.');
@@ -241,7 +267,7 @@ export function topOff(state: GameState, tankId: string): ActionResult {
   }
   w.level = 1;
   bumpCounter(state, 'topOffs');
-  const msg = `Topped off ${Math.round(added * 100)}% with fresh ${salty ? 'RO' : ''} water.`.replace('  ', ' ');
+  const msg = `Topped off ${Math.round(added * 100)}% with fresh water.`; // Audit 2026-11-17 C13: no unexplained "RO"
   return { ok: true, message: salty ? `${msg} Salinity ${sgBefore.toFixed(3)} → ${w.salinitySG.toFixed(3)} — salt never evaporates, only water does.` : msg };
 }
 
@@ -268,7 +294,7 @@ export function cleanTank(state: GameState, tankId: string, what: 'gravel' | 'gl
         : `Vacuumed the ${sub}: waste ${before.toFixed(0)} → ${w.detritus.toFixed(0)}.${soil ? ' (Gently — hard siphoning crushes aqua soil.)' : ''}`;
   } else if (what === 'glass') {
     const before = scrapeGlass(tank); // lane:automation — the core the Auto Water Changer shares (src/sim/water/change.ts)
-    message = before < 3 ? 'The glass was already spotless.' : `Scraped algae off the glass (${before.toFixed(0)}% → ${w.algae.toFixed(0)}%). Algae on rocks and plants needs grazers or a shorter photoperiod.`;
+    message = before < 3 ? 'The glass was already spotless.' : `Scraped algae off the glass (${before.toFixed(0)}% → ${w.algae.toFixed(0)}%). Algae on rocks and plants needs grazers or shorter days of light.`; // Audit 2026-11-17 (J5)
   } else {
     const filters = tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind === 'filter');
     if (!filters.length) return fail('There is no filter to clean.');
@@ -332,14 +358,13 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
   let message: string;
   switch (additive) {
     case 'bacteria': {
+      // Audit 2026-11-17 C4 — an established filter gains next to nothing: say so before charging (up to $120 a dose)
+      if (w.bioMaturity >= 0.9) return fail('The filter is already fully established — no need for bottled bacteria.');
       if (!pay('Bottled bacteria')) return fail(`Bottled bacteria costs ${money(cost)} for this tank — not enough money.`);
       const m0 = w.bioMaturity;
       w.bioMaturity = clamp(m0 + (1 - m0) * 0.35, 0, 1);
       lab.colony = clamp((lab.colony ?? 0.3) + 0.2, 0.25, 1);
-      message =
-        m0 > 0.9
-          ? 'The filter is already fully established — the bottled bacteria had little to add.'
-          : `Seeded the filter with bottled nitrifying bacteria: ${pct(m0)} → ${pct(w.bioMaturity)} established. Keep feeding lightly while it finishes cycling.`;
+      message = `Seeded the filter with bottled nitrifying bacteria: ${pct(m0)} → ${pct(w.bioMaturity)} established. Keep feeding lightly while it finishes cycling.`;
       break;
     }
     case 'conditioner': {
@@ -366,9 +391,11 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
       const bound: string[] = [];
       if (nh >= 0.005) bound.push(`ammonia (${(w.ammonia + nh).toFixed(2)} → ${w.ammonia.toFixed(2)} ppm)`);
       if (no2 >= 0.005) bound.push(`nitrite (${(w.nitrite + no2).toFixed(2)} → ${w.nitrite.toFixed(2)} ppm)`);
+      // Audit 2026-11-17 C4 — with nothing to bind there is no "cause" to fix: say what the dose does (the water step
+      // binds any ammonia or nitrite that appears while it works, so a dose ahead of new animals still helps)
       message = bound.length
         ? `Conditioner bound most of the ${bound.join(' and ')} into a less toxic form for about a day. It buys time, but the cause still needs fixing — change water and feed less; when it wears off, what it holds comes back.`
-        : 'Conditioner is binding ammonia and nitrite into a less toxic form for about a day. It buys time, but the cause still needs fixing — change water and feed less.';
+        : 'There’s no ammonia or nitrite in the water right now. The conditioner will bind any that appears over the next day.';
       break;
     }
     case 'salt': {
@@ -391,10 +418,16 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
       state.inventory.salt = Math.round((state.inventory.salt - kg) * 1000) / 1000;
       const before = w.salinitySG;
       w.salinitySG += step;
-      message = `Dissolved ${kg.toFixed(2)} kg of salt mix: salinity ${before.toFixed(3)} → ${w.salinitySG.toFixed(3)}. Raise it no more than about 0.001 a day.`;
+      // Audit 2026-11-17 C1 — below what the animals need, every hour costs them health: say "dose again", not "slowly"
+      const low = idealBand(state, tank, 'salinitySG').min;
+      message = `Dissolved ${kg.toFixed(2)} kg of salt mix: salinity ${before.toFixed(3)} → ${w.salinitySG.toFixed(3)}. ${w.salinitySG < low - 0.00005 ? `Dose again until it reads at least ${low.toFixed(3)}.` : 'Raise it no more than about 0.001 a day.'}`;
       break;
     }
     case 'buffer': {
+      // Audit 2026-11-17 C4 — at the top of what these animals like, more buffer only pushes KH and pH past it
+      const residents = inhabitantsOf(state, tank.id);
+      if (w.kh >= khPreferredMax(tank, residents.map((i) => i.species)) - 1e-6)
+        return fail(`KH is already ${w.kh.toFixed(1)} dKH — more buffer would push it and the pH higher than ${residents.length ? 'your animals like' : 'this water needs'}.`);
       if (!pay('pH buffer')) return fail(`Buffer costs ${money(cost)} — not enough money.`);
       const k0 = w.kh;
       const p0 = w.pH;
@@ -455,12 +488,12 @@ export function installEquipment(
     if (def.kind === 'skimmer') return fail('Protein skimmers only work in salt water — fresh water will not foam.');
     if (def.kind === 'co2') return fail('CO₂ injection is for freshwater planted tanks.');
     if (def.kind === 'refugium') return fail('A macroalgae refugium is a marine system.');
-    return fail(`The ${def.name} isn't made for ${tank.environment} tanks.`);
+    return fail(`The ${def.name} isn’t made for ${tank.environment} tanks.`);
   }
   const sameKind = tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind === def.kind).length;
   const max = MAX_PER_KIND[def.kind] ?? 6;
   // lane:fit — one-per-tank kinds read "already has an auto top-off", not "already has 1 auto top-offs"
-  if (sameKind >= max) return fail(max === 1 ? `This tank already has ${aOrAn(def.name)} ${def.name.toLowerCase()} — one is all it needs.` : `This tank already has ${sameKind} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that's the most that fit.`);
+  if (sameKind >= max) return fail(max === 1 ? oneOnlyText(tank, def) /* Audit 2026-11-17 C17 */ : `This tank already has ${sameKind} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that’s the most that fit.`);
 
   let inst: EquipmentInstance | undefined;
   let fromStorage = false;
@@ -469,7 +502,7 @@ export function installEquipment(
     if (idx >= 0) {
       inst = state.inventory.equipment.splice(idx, 1)[0];
       fromStorage = true;
-    } else if (opts.instanceId || opts.fromInventory) return fail(`You don't have a spare ${def.name} in storage.`);
+    } else if (opts.instanceId || opts.fromInventory) return fail(`You don’t have a spare ${def.name} in storage.`);
   }
   const hour = state.clock.hour;
   if (!inst) {
@@ -491,7 +524,7 @@ export function installEquipment(
     const m0 = tank.water.bioMaturity;
     if (seed > m0) {
       tank.water.bioMaturity = clamp(m0 + (seed - m0) * Math.min(1, share * 1.2), 0, 1);
-      notes.push(`Its mature media seeded the tank's bacteria (cycle ${Math.round(m0 * 100)}% → ${Math.round(tank.water.bioMaturity * 100)}%).`);
+      notes.push(`Its mature media seeded the tank’s bacteria (cycle ${Math.round(m0 * 100)}% → ${Math.round(tank.water.bioMaturity * 100)}%).`);
     } else if (age > 48) {
       notes.push('The bacteria in its media died off while it sat dry.');
     }
@@ -505,12 +538,12 @@ export function installEquipment(
   // airstone-vs-CO₂ notes below, so those only appear when it has nothing to say.
   const fit = poorFit(state, tank, inst.id);
   if (fit) notes.push(`${fit.level === 'harmful' ? 'Warning' : 'Heads-up'}: ${fit.text}`);
-  if (!fit && gallons > def.gallonsRange.max * 1.05) notes.push(`It's undersized for ${aOrAn(gallons)} ${gallons}-gallon tank.`);
+  if (!fit && gallons > def.gallonsRange.max * 1.05) notes.push(`It’s undersized for ${aOrAn(gallons)} ${gallons}-gallon tank.`);
   if (!fit && def.kind === 'heater' && tank.waterClass === 'freshwater_cool') notes.push('Heads-up: this is a cool-water tank — the heater is set low as a cold-room safety net.');
   if (def.kind === 'heater' || def.kind === 'chiller') notes.push(`Set to ${inst.setting?.toFixed(1)} °C.`);
   const conflict = equipmentSummary(tank).conflict;
   if (conflict) notes.push('Warning: the heater is set at or above the chiller — they will fight each other.');
-  if (!fit && def.kind === 'airstone' && tank.waterClass === 'freshwater_planted' && equipmentSummary(tank).co2 > 0) notes.push('Bubbles drive off injected CO₂ — consider running it only at night.');
+  if (!fit && def.kind === 'airstone' && tank.waterClass === 'freshwater_planted' && equipmentSummary(tank).co2 > 0) notes.push('Bubbles drive off injected CO₂ — consider switching it off while the lights are on.'); // Audit 2026-11-17 C13: no night schedule exists
   // lane:qa-r3 — `caution`: the install worked, but the player should read why it won't help (toasted as a warning)
   return { ok: true, message: [`Installed the ${def.name}${fromStorage ? ' from storage' : ''}.`, ...notes].join(' '), ...(fit || conflict ? { caution: true } : {}) };
 }
@@ -527,6 +560,37 @@ function poorFit(state: GameState, tank: Tank, equipmentId: string): FitVerdict 
   }
 }
 
+/** The share of the tank's bacteria a filter takes with it, as removeEquipment works it out: cycle before → after. */
+function filterRemovalCycle(tank: Tank, def: { stats: { bioCapacity?: number } }): { from: number; to: number } {
+  const s = equipmentSummary(tank);
+  const share = (def.stats.bioCapacity ?? 0) / Math.max(1, s.bioCapUnits);
+  const from = tank.water.bioMaturity;
+  return { from, to: clamp(from * (1 - 0.85 * clamp(share, 0, 1)), 0, 1) };
+}
+
+/**
+ * Audit 2026-11-17 C12 — what taking this unit out would cost the animals here, asked before the Remove button acts:
+ * a filter takes its bacteria (and the cycle drops), the only working heater leaves the water to cool toward the room.
+ * Null when the tank is empty or nothing much changes.
+ */
+export function removeEquipmentWarning(state: GameState, tankId: string, equipmentId: string): string | null {
+  const tank = state.tanks[tankId];
+  const inst = tank?.equipment.find((e) => e.id === equipmentId);
+  const def = inst ? getEquipmentDef(inst.defId) : undefined;
+  if (!tank || !inst || !def || inhabitantsOf(state, tank.id).length === 0) return null;
+  if (def.kind === 'filter') {
+    const c = filterRemovalCycle(tank, def);
+    if (c.from - c.to <= 0.05) return null;
+    return `Removing the ${def.name} takes its bacteria with it (cycle ${Math.round(c.from * 100)}% → ${Math.round(c.to * 100)}%), so ammonia will rise. Remove it anyway?`;
+  }
+  if (def.kind === 'heater' && inst.on && !inst.failed) {
+    const others = tank.equipment.some((e) => e !== inst && e.on && !e.failed && getEquipmentDef(e.defId)?.kind === 'heater');
+    if (others || idealBand(state, tank, 'tempC').min <= ROOM_TEMP_C + 0.5) return null;
+    return `Without the ${def.name}, the water cools toward the room’s ${ROOM_TEMP_C} °C — too cool for the animals here. Remove it anyway?`;
+  }
+  return null;
+}
+
 export function removeEquipment(state: GameState, tankId: string, equipmentId: string): ActionResult {
   const tank = getTank(state, tankId);
   if (!tank) return fail('That tank no longer exists.');
@@ -536,17 +600,16 @@ export function removeEquipment(state: GameState, tankId: string, equipmentId: s
   const def = getEquipmentDef(inst.defId);
   const notes: string[] = [];
   if (def?.kind === 'filter') {
-    const s = equipmentSummary(tank);
-    const share = (def.stats.bioCapacity ?? 0) / Math.max(1, s.bioCapUnits);
     const m0 = tank.water.bioMaturity;
     inst.bio = { maturity: m0, sinceHour: state.clock.hour };
-    tank.water.bioMaturity = clamp(m0 * (1 - 0.85 * clamp(share, 0, 1)), 0, 1);
+    tank.water.bioMaturity = filterRemovalCycle(tank, def).to; // the same sum the warning quotes (Audit 2026-11-17 C12)
     if (m0 - tank.water.bioMaturity > 0.05)
       notes.push(`Its bacteria left with it (cycle ${Math.round(m0 * 100)}% → ${Math.round(tank.water.bioMaturity * 100)}%). Install it in another tank within a day or two to seed that tank.`);
   }
   tank.equipment.splice(idx, 1);
   state.inventory.equipment.push(inst);
-  return { ok: true, message: [`Removed the ${def?.name ?? 'equipment'} and put it in storage.`, ...notes].join(' ') };
+  // Audit 2026-11-17: stored gear can be sold back (Build › Equipment › In storage)
+  return { ok: true, message: [`Removed the ${def?.name ?? 'equipment'} and put it in storage: use it in another tank, or sell it in Build › Equipment.`, ...notes].join(' ') };
 }
 
 function settingRange(kind: string): [number, number] {
@@ -594,7 +657,7 @@ export function setEquipment(state: GameState, tankId: string, equipmentId: stri
   let caution = false;
   if (s.conflict) {
     caution = true;
-    notes.push(`Warning: heater ${s.heaterSet?.toFixed(1)} °C vs chiller ${s.chillerSet?.toFixed(1)} °C — they'll fight each other. Keep the heater at least 1 °C below the chiller.`);
+    notes.push(`Warning: heater ${s.heaterSet?.toFixed(1)} °C vs chiller ${s.chillerSet?.toFixed(1)} °C — they’ll fight each other. ${fightAdvice(state, tank, s.heaterSet ?? 0, s.chillerSet ?? 0)}`); // Audit 2026-11-17 C7
   }
   // lane:qa-r3 — a thermostat set outside what these animals need says so, with the setting to aim for
   if ((def.kind === 'heater' || def.kind === 'chiller') && patch.setting !== undefined && inst.on && !inst.failed) {
@@ -642,6 +705,9 @@ function setpointNote(state: GameState, tank: Tank, kind: 'heater' | 'chiller', 
 
 const fmtC = (x: number) => (Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1));
 
+/** Audit 2026-11-17 C15 — a unit can be repaired once its condition is at or below this (Build › Equipment shows Repair from here). */
+export const REPAIR_FROM = 0.85;
+
 /** Repair failed or worn equipment for ~35 % of its price. */
 export function repairEquipment(state: GameState, tankId: string, equipmentId: string): ActionResult {
   const tank = getTank(state, tankId);
@@ -650,14 +716,16 @@ export function repairEquipment(state: GameState, tankId: string, equipmentId: s
   if (!inst) return fail('That equipment is not in this tank.');
   const def = getEquipmentDef(inst.defId);
   if (!def) return fail('Unknown equipment.');
-  if (!inst.failed && inst.condition > 0.85) return fail(`The ${def.name} is working fine.`);
+  if (!inst.failed && inst.condition > REPAIR_FROM) return fail(`The ${def.name} is working fine.`);
   const cost = Math.max(5, Math.round(def.price * 0.35));
   if (!spend(state, cost, 'equipment', `Repair ${def.name} (${tank.name})`)) return fail(`Repairing the ${def.name} costs ${money(cost)} — not enough money.`);
+  const wasOff = !inst.on;
   inst.failed = false;
   delete inst.failMode;
   inst.condition = Math.max(inst.condition, 0.9);
   inst.on = true;
-  return { ok: true, message: `Repaired the ${def.name} for ${money(cost)}.` };
+  // Audit 2026-11-17 C16 — a repair switches the unit on: say so when it was off (a stuck heater the player switched off)
+  return { ok: true, message: `Repaired the ${def.name} for ${money(cost)}${wasOff ? ' and switched it on' : ''}.` };
 }
 
 export function setLighting(
@@ -674,10 +742,10 @@ export function setLighting(
   if (patch.offHour !== undefined && Number.isFinite(patch.offHour)) L.offHour = ((patch.offHour % 24) + 24) % 24;
   if (patch.moonlight !== undefined) L.moonlight = patch.moonlight;
   const period = ((L.offHour - L.onHour + 24) % 24) || 24;
-  const hh = (h: number) => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
-  const notes = [`Lights ${hh(L.onHour)}–${hh(L.offHour)} (${Math.round(period)} h) at ${Math.round(L.intensity * 100)}%.`];
+  // Audit 2026-11-17 (J19): the clock as the top bar and the steppers write it ("7:00 AM–11:00 PM", not "7:00–23:00")
+  const notes = [`Lights ${formatClock(L.onHour)}–${formatClock(L.offHour)} (${Math.round(period)} h) at ${Math.round(L.intensity * 100)}%.`];
   if (photoperiodTooLong(L, state.facility?.closeHour)) {
-    notes.push(period > 15 ? 'Long photoperiods feed algae — keep the day to the open hours, or 8–10 hours if algae is a problem.' : 'The lights stay on after the doors close — that feeds algae without anyone seeing it.');
+    notes.push(period > 15 ? 'Long days of light feed algae — keep the day to the open hours, or 8–10 hours if algae is a problem.' /* Audit 2026-11-17 (J5) */ : 'The lights stay on after the doors close — that feeds algae without anyone seeing it.');
   }
   if (period < 6) notes.push('Plants and corals need at least 6–8 hours of light.');
   // lane:qa-r3 — a schedule change that leaves one of those problems is worth a toast (intensity drags are not: they

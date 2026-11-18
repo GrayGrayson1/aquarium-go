@@ -48,11 +48,12 @@ import { clearPlaceAgain, placeAnother, PLACE_AGAIN_MS, usePlaceAgain } from '@/
 import { ghostControls } from '@/render/decor/ghostControls'; // chunk 19 (ADR-0055 decision 4, QOL-005)
 import { useShell } from '../common/shellStore';
 import { enterCinematic } from './cardDock';
-import { foodName, LIGHT_PRESET_LABEL, lightPresetsFor } from '../common/format';
+import { foodName, LIGHT_PRESET_LABEL, lightPresetsFor, FOOD_DELIVERY_WORD } from '../common/format'; // Audit 2026-11-17 (J14): FOOD_DELIVERY_WORD
 import { safe, useMedia } from '../common/safe';
 import { tutorialFlag, act } from '../common/actions';
 import { Button, Chip, Slider, Toggle, formatMoney } from '../kit';
 import { buyFoodPack, openFoodInSupplies, tankFoodAlert, youngFoodNeed } from '../common/foodStock';
+import { CASH_LINK } from '../common/moneyShort'; // review fix (audit 2026-11-17)
 
 // ───────────── helpers ─────────────
 
@@ -75,7 +76,10 @@ const GENERIC_FOOD_WORDS = new Set(['frozen', 'live', 'shrimp', 'pellets', 'flak
 
 /** The food the guide's feed step talks about, by name ("Earthworms" ↔ "drop an earthworm", "Frozen Mysis Shrimp" ↔ "offer frozen mysis"). */
 export function guideMentions(body: string, foodName: string): boolean {
-  const text = body.toLowerCase();
+  // audit 2026-11-17 (A12): the instruction is the first sentence; the rest is about the animal ("Axolotls hunt by
+  // smell…" tagged Axolotl Pellets beside the earthworm the step asks for, and the pointer landed on the pellets)
+  // (no lookbehind: Safari below 16.4 can't parse one, and the whole game would fail to load there)
+  const text = (/^[\s\S]*?[.!?](?=\s)/.exec(body)?.[0] ?? body).toLowerCase();
   const name = foodName.toLowerCase();
   if (text.includes(name)) return true;
   return name.split(/[^a-z]+/).some((w) => w.length >= 4 && !GENERIC_FOOD_WORDS.has(w) && (text.includes(w) || text.includes(w.replace(/s$/, ''))));
@@ -113,7 +117,7 @@ export function foodOptions(g: GameState, tankId: string | null): FoodOption[] {
     .sort((a, b) => Number(b.count > 0) - Number(a.count > 0) || Number(!!b.suggested) - Number(!!a.suggested) || b.eaters.length - a.eaters.length || a.name.localeCompare(b.name));
 }
 
-const DELIVERY_WORD: Record<string, string> = { floating: 'Floats', slow_sink: 'Sinks slowly', fast_sink: 'Sinks fast', live: 'Live food', target: 'Target fed' };
+const DELIVERY_WORD = FOOD_DELIVERY_WORD; // Audit 2026-11-17 (J14): one table, shared with Market › Supplies
 
 export function selectTool(tool: ToolId, foodId?: string | null) {
   const ui = useUI.getState();
@@ -140,6 +144,9 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
   const youngOut = !alert && youngNeed?.text ? youngNeed : null;
   const money = game?.finance.money ?? 0;
   const shopFor = alert?.restockId ?? youngOut?.restockId ?? opts.find((f) => f.count <= 0)?.id ?? null;
+  // audit 2026-11-17 (F1, A7) — food is short and so is the money: say so, and where the ways to raise cash are
+  const restockPrice = alert?.restockId ? (getFoodDef(alert.restockId)?.price ?? 0) : 0;
+  const broke = !!alert?.restockId && money < restockPrice;
   return (
     <motion.div className="ag-popover ag-toolpop" role="dialog" aria-label={mode === 'feed' ? 'Choose a food' : 'Choose a food for target feeding'} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.16 }}>
       <div className="ag-popover__title">{mode === 'feed' ? 'Feed the tank' : 'Target feed'}</div>
@@ -149,7 +156,23 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
       {alert && (
         <div className={clsx('ag-foodalert', `is-${alert.level}`)} role="status" data-testid="food-alert">
           <TriangleAlert size={14} aria-hidden />
-          <span className="ag-grow">{alert.text}.</span>
+          <span className="ag-grow">
+            {alert.text}.{broke ? (money < 0 ? ' Purchases are paused while you’re in debt.' : ` Not enough money for a pack (${formatMoney(restockPrice)}).`) : ''}
+          </span>
+          {broke && (
+            <button
+              type="button"
+              className="ag-linkbtn"
+              data-testid="food-raise-cash"
+              onClick={() => {
+                sfx('open');
+                useShell.getState().set({ popover: null });
+                useUI.getState().set({ ...CASH_LINK }); // review fix: Finances opens on its ways to raise cash
+              }}
+            >
+              Ways to raise cash
+            </button>
+          )}
         </div>
       )}
       {youngOut && (
@@ -242,7 +265,7 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
       </div>
       {mode === 'feed' && feedFoodId && (game?.inventory.foods[feedFoodId] ?? 0) > 0 && (
         <div className="ag-popover__row ag-foodnow">
-          <span className="ag-small ag-muted">No pointer? Drop it at the surface.</span>
+          <span className="ag-small ag-muted">Or drop it at the surface:</span>
           <Button size="sm" data-testid="feed-now" onClick={() => feedNow(feedFoodId)}>
             <Utensils size={14} /> Feed now
           </Button>
@@ -480,7 +503,8 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
       <CameraCycleTool />
       <ToolButton
         icon={Eye}
-        label="Watch"
+        label="Just watch"
+        shortLabel="Watch"
         testId="tool-watch"
         onClick={() => {
           sfx('close');

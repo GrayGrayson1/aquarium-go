@@ -42,7 +42,7 @@ describe('QOL-006: how to unlock', () => {
     const [big] = lockViews(g, ['tank_500']);
     const acrylic = RESEARCH.find((r) => r.grants.includes('tank_500' as never))!;
     expect(big.research.map((r) => r.id)).toContain(acrylic.id);
-    expect(big.venue).toBe(true); // "…or grow into a destination aquarium"
+    expect(big.venue).toBe(true); // "…or reach 560 reputation at a destination aquarium"
     const [mid] = lockViews(g, ['tank_75']);
     expect(mid.venue).toBe(true); // a specialty shop
     const [small] = lockViews(g, ['tank_55']);

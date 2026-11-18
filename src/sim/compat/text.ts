@@ -4,9 +4,11 @@
 import type { SpeciesDefinition } from '@/types';
 import { youngKindOf } from '@/data/species';
 import { pluralName } from '../economy/util';
+import { WATER_CLASS_WORDS } from '@/data/tankLabels'; // Audit 2026-11-17 (J4)
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 
 export const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-export const lower = (s: string) => s.toLowerCase();
+export const lower = (s: string) => lowerName(s);
 
 /** "Neon Tetra" → "neon tetras", "Cherry Shrimp" → "cherry shrimp", "Watchman Goby" → "watchman gobies". */
 export function plural(sp: SpeciesDefinition | string): string {
@@ -48,12 +50,5 @@ export const SUBSTRATE_NAMES: Record<string, string> = {
   large_pebbles: 'large pebbles',
 };
 
-export const CLASS_NAMES: Record<string, string> = {
-  freshwater_cool: 'cool freshwater',
-  freshwater_tropical: 'tropical freshwater',
-  freshwater_planted: 'planted tropical',
-  marine_fowlr: 'fish-only marine',
-  marine_live_rock: 'marine live-rock',
-  reef: 'reef',
-  brackish: 'brackish',
-};
+/** Audit 2026-11-17 (J4): the water types' one set of names ("planted tropical" and "fish-only marine" were a fourth). */
+export const CLASS_NAMES: Record<string, string> = WATER_CLASS_WORDS;

@@ -1,6 +1,7 @@
 /**
  * New game creation + starter definitions. OWNER: core.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { GameState, WaterClass, Creature, Sex } from '@/types';
 import { SCHEMA_VERSION } from '@/persistence/schema';
 import { simRng, mulberry32 } from './rng';
@@ -53,7 +54,7 @@ export const STARTER_SETUPS: Record<StarterId, StarterSetup> = {
     ageDays: 18,
     nameIdeas: ['Ember', 'Cobalt', 'Koi', 'Rogue', 'Velvet'], // a male starter: no feminine-reading names (names.ts)
     teaches: 'Warm planted tanks, territorial behaviour and show-fish lines',
-    pathNote: 'Tropical planted · display & bubble nests',
+    pathNote: 'Planted freshwater · display & bubble nests', // Audit 2026-11-17 (J4): the tank's one name
   },
   pea_puffer: {
     tierId: 'g10',
@@ -207,7 +208,7 @@ export function newGame(opts: NewGameOptions): GameState {
   // The starter arrives fed and settled (the shop fed it this morning): "Well fed", not already "Hungry". Together with
   // the life lane's early-game grace (STARTER_GRACE_MAX_HUNGER) the tutorial can never produce a starving pet.
   creature.stats = { ...creature.stats, hunger: STARTER_START_HUNGER };
-  creature.history = [{ hour: state.clock.hour, kind: 'acquired', text: `Arrived as your very first ${species.commonName.toLowerCase()}.` }];
+  creature.history = [{ hour: state.clock.hour, kind: 'acquired', text: `Arrived as your very first ${lowerName(species.commonName)}.` }];
   addCreature(state, creature, tank.id);
 
   state.progress.discoveredSpecies.push(opts.starterId);
@@ -220,6 +221,6 @@ export function newGame(opts: NewGameOptions): GameState {
   // What the starting setup already satisfies (e.g. "Into the Blue" for marine starters) is recorded silently.
   settleStartingProgress(state);
 
-  emitEvent(state, { kind: 'celebrate', text: `Welcome home, ${name}! Your ${species.commonName.toLowerCase()} tank is established and ready.`, tankId: tank.id, creatureId: creature.id, toast: true });
+  emitEvent(state, { kind: 'celebrate', text: `Welcome home, ${name}! Your ${lowerName(species.commonName)} tank is established and ready.`, tankId: tank.id, creatureId: creature.id, toast: true });
   return state;
 }

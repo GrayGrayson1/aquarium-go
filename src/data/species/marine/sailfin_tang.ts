@@ -147,7 +147,7 @@ export const sailfinTang: SpeciesDefinition = {
     compatibilityNotes: 'Reef-safe with most corals if well fed (it may nip LPS), and peaceable with most fish, but fights its own kind and other Zebrasoma. Keep one.',
     breedingOverview: 'Spawns in open water with floating eggs; not bred in aquaria.',
     conservationNote: 'Least Concern (IUCN 2010). All aquarium sailfins are wild-caught.',
-    funFact: 'Threatened, it raises the dorsal and anal fins until it is as tall as it is long, then swings the scalpel spine on its tail.',
+    funFact: 'When threatened, it raises the dorsal and anal fins until it is as tall as it is long, then swings the scalpel spine on its tail.',
     inGameBehavior: 'Patrols long laps of the tank grazing the rock, and fans out its huge sail when another tang comes near.',
     feedingNote: 'A grazer: seaweed clipped to the rock at least three times a week, spirulina flake or pellets daily, and the odd thawed mysis. An autofeeder can add pellets; the seaweed goes on by hand.',
     keeperTip: 'Feed seaweed at least three times a week — well-fed tangs stay healthier and calmer.',

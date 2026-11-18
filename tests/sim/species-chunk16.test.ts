@@ -238,7 +238,9 @@ describe('ADR-0052 / SPC-002: a settled, well-fed bubble-tip splits in two (fiss
   it("its card reads 'Splits by itself' (the owner, ADR-0052 decision 11), not 'Not bred here'", () => {
     const g = game('ocellaris_clownfish', 10);
     const { t, anemones } = reef(g, 'g180', 1);
-    expect(breedingStatus(g, anemones[0].id)).toEqual({ label: 'Splits by itself', detail: fissionModule.explain!(findSpecies('bubbletip_anemone')!) });
+    // audit E22: the detail says whether it can split now (this settled one can) or why not, on purpose (was the explain line)
+    expect(breedingStatus(g, anemones[0].id)).toEqual({ label: 'Splits by itself', detail: 'Settled and well fed — it may split any day' });
+    expect(fissionModule.explain!(findSpecies('bubbletip_anemone')!)).toMatch(/splits in two by itself/);
     const emperor = addCreature(g, createCreature(g, simRng(g), 'emperor_angelfish', { ageDays: 60 }), t.id);
     expect(breedingStatus(g, emperor.id)?.label).toBe('Not bred here');
   });

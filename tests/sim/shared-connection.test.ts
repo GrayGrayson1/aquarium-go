@@ -15,6 +15,7 @@ import { tutorialSkip } from '@/sim/facility';
 import { FRAME_PHOTO, FRAME_SNAPSHOT_GZIP, FRAME_SNAPSHOT_PLAIN, SHARED_BUILD, type ClientMessage, type ServerMessage } from '@/types/shared';
 import {
   BEHIND_MS,
+  GIVE_UP_MS,
   HIDDEN_DISCONNECT_MS,
   INPUT_EVERY_MS,
   RECONNECT_MAX_MS,
@@ -535,7 +536,8 @@ describe('chunk 13: the review’s cases', () => {
     r.sock().drop();
     await flush();
     expect(r.log.filter((l) => l.startsWith('phase'))).not.toContain('phase "reconnecting"');
-    expect(r.log.at(-1)).toBe('phase "joining"');
+    // audit I1: while it waits to try again the card says it is waking the shop ("joining" went on to "catching up")
+    expect(r.log.at(-1)).toBe('phase "waking"');
   });
 
   it('out of step or behind: the copy says it asked for the shop again (the dispatcher settles what it sent before)', async () => {
@@ -597,3 +599,148 @@ describe('chunk 13: the review’s cases', () => {
   });
 });
 
+
+describe('audit 2026-11-17, I1 (B-230): the tries give up', () => {
+  const rigWithGiveUp = () => {
+    const ended: string[] = [];
+    return { ended, opts: { events: { unreachable: (why: 'server' | 'online') => ended.push(why) } } };
+  };
+
+  it('a /health that never answers stops after GIVE_UP_MS with the server reason, and asks no more', async () => {
+    const { ended, opts } = rigWithGiveUp();
+    const r = make(opts);
+    r.health.answer = null;
+    await r.conn.start();
+    await flush();
+    for (let t = 0; t < GIVE_UP_MS + 60_000 && !ended.length; t += 500) {
+      r.clock.advance(500);
+      await flush();
+    }
+    expect(ended).toEqual(['server']);
+    expect(r.clock.t).toBeGreaterThanOrEqual(GIVE_UP_MS);
+    expect(r.clock.t).toBeLessThan(GIVE_UP_MS + RECONNECT_MAX_MS + 1000);
+    expect(r.sockets).toHaveLength(0);
+    r.clock.advance(10 * 60_000);
+    await flush();
+    expect(ended).toEqual(['server']);
+  });
+
+  it('a sign-in that can’t be checked (bye sign-in, then no token on the network) stops with the online reason', async () => {
+    const { ended, opts } = rigWithGiveUp();
+    const r = make(opts);
+    await r.conn.start();
+    await flush();
+    r.sock().open();
+    r.tokenAnswer.value = new Error('network');
+    r.sock().deliver({ t: 'bye', why: 'sign-in' });
+    await flush();
+    for (let t = 0; t < GIVE_UP_MS + 60_000 && !ended.length; t += 500) {
+      r.clock.advance(500);
+      await flush();
+    }
+    expect(ended).toEqual(['online']);
+    expect(r.log).not.toContain('signedOut');
+  });
+
+  it('inside the shop, "Reconnecting…" gives up the same way; a welcome in between starts the count again', async () => {
+    const { ended, opts } = rigWithGiveUp();
+    const r = await joined(opts);
+    r.health.answer = null;
+    r.sock().drop();
+    await flush();
+    r.clock.advance(GIVE_UP_MS - 20_000);
+    await flush();
+    expect(ended).toEqual([]);
+    // the server answers again and the shop is back
+    r.health.answer = { closed: null, until: null };
+    r.clock.advance(RECONNECT_MAX_MS);
+    await flush();
+    r.sock().open();
+    r.sock().deliver(welcomeMsg(9));
+    r.sock().deliver(plainSnapshot(shopState()));
+    await flush();
+    expect(r.log.at(-1)).toBe('phase "open"');
+    // a second drop: a fresh GIVE_UP_MS
+    r.health.answer = null;
+    r.sock().drop();
+    await flush();
+    r.clock.advance(GIVE_UP_MS - 20_000);
+    await flush();
+    expect(ended).toEqual([]);
+    r.clock.advance(RECONNECT_MAX_MS * 2);
+    await flush();
+    expect(ended).toEqual(['server']);
+  });
+
+  it('time with the tab hidden (no tries) doesn’t count towards giving up', async () => {
+    const { ended, opts } = rigWithGiveUp();
+    const r = make(opts);
+    r.health.answer = null;
+    await r.conn.start();
+    await flush();
+    r.hidden.v = true;
+    r.clock.advance(10 * 60_000);
+    await flush();
+    r.hidden.v = false;
+    r.conn.visibility(false);
+    r.clock.advance(0);
+    await flush();
+    expect(ended).toEqual([]);
+  });
+});
+
+describe('the review of B-230: a slow wake, then one dropped socket', () => {
+  /** /health is held until the server is up, with the session's 75-second abort; the first socket then closes once. */
+  async function wakeAt(upAt: number) {
+    const ended: string[] = [];
+    const r = make({ events: { unreachable: (why: 'server' | 'online') => ended.push(why) } });
+    const deps = (r.conn as unknown as { deps: ConnectionDeps }).deps;
+    deps.health = () =>
+      new Promise((resolve) => {
+        const wait = Math.max(0, Math.min(upAt - r.clock.t, 75_000));
+        if (wait === 0) return resolve({ closed: null, until: null });
+        r.clock.after(wait, () => resolve(r.clock.t >= upAt ? { closed: null, until: null } : null));
+      });
+    void r.conn.start();
+    await flush();
+    for (let t = 0; t < 300_000 && !r.sockets.length && !ended.length; t += 500) {
+      r.clock.advance(500);
+      await flush();
+    }
+    expect(r.sockets, `the server up at ${upAt / 1000} s`).toHaveLength(1);
+    r.sock().open();
+    r.sock().drop(); // one hiccup
+    await flush();
+    for (let t = 0; t < 120_000 && r.sockets.length < 2 && !ended.length; t += 500) {
+      r.clock.advance(500);
+      await flush();
+    }
+    return { r, ended };
+  }
+
+  for (const upAt of [60_000, 85_000, 95_000, 140_000])
+    it(`the server up at ${upAt / 1000} s: the dropped socket is tried again, and the shop opens`, async () => {
+      const { r, ended } = await wakeAt(upAt);
+      expect(ended).toEqual([]); // before: up at 95 or 140 s ended the visit as unreachable at once
+      expect(r.sockets).toHaveLength(2);
+      r.sock().open();
+      r.sock().deliver(welcomeMsg());
+      r.sock().deliver(plainSnapshot(shopState()));
+      await flush();
+      expect(r.log.at(-1)).toBe('phase "open"');
+    });
+
+  it('a network that stops the socket (an answering /health) still gives up', async () => {
+    const ended: string[] = [];
+    const r = make({ events: { unreachable: (why: 'server' | 'online') => ended.push(why) } });
+    await r.conn.start();
+    await flush();
+    for (let t = 0; t < 10 * 60_000 && !ended.length; t += 500) {
+      if (r.sockets.length && r.sock().readyState !== 3) r.sock().drop();
+      r.clock.advance(500);
+      await flush();
+    }
+    expect(ended).toEqual(['server']);
+    expect(r.clock.t).toBeLessThan(GIVE_UP_MS + RECONNECT_MAX_MS + 2000);
+  });
+});

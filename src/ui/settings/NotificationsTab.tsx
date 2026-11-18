@@ -14,6 +14,7 @@ import { requestNotifications, sendTestNotification, useNotifyPermission, refres
 import { useNotifyPrefs } from '../notify/prefs';
 import type { NotifyCategory } from '../notify/rules';
 import type { NotifyPermission } from '@/platform';
+import { useMedia, TOUCH_FIRST_QUERY } from '../common/safe'; // audit B14
 
 /** §12.3's callout per permission state (web). */
 export const NOTIFY_STATUS: Record<NotifyPermission, { title: string; text: string; tone: 'info' | 'good' | 'watch' | 'muted' }> = {
@@ -36,8 +37,12 @@ export const NOTIFY_CATEGORY_ROWS: { id: NotifyCategory; title: string; sub: str
 
 const STATUS_ICON: Record<NotifyPermission, typeof Bell> = { default: Bell, granted: BellRing, denied: BellOff, unsupported: Ban };
 
+/** Audit B14 — under the status on a touch-first device (a phone or a tablet; review: it said “phone” on tablets too). */
+export const PHONE_NOTE = 'On a phone or tablet, the game pauses when you switch apps, so alerts show in the game.';
+
 export function NotificationsTab() {
   const permission = useNotifyPermission((s) => s.permission);
+  const touch = useMedia(TOUCH_FIRST_QUERY);
   const prefs = useNotifyPrefs();
   const [sent, setSent] = useState(false);
   const timer = useRef(0);
@@ -57,6 +62,11 @@ export function NotificationsTab() {
           {/* the locked category switches point here for their reason (aria-describedby) */}
           <div className="ag-notify-status__title" id="notify-status-title">{status.title}</div>
           <div className="ag-notify-status__text">{status.text}</div>
+          {touch && permission !== 'unsupported' && (
+            <div className="ag-notify-status__text" data-testid="notify-phone-note">
+              {PHONE_NOTE}
+            </div>
+          )}
         </div>
         {permission === 'default' && (
           <Button variant="primary" size="sm" data-testid="notify-turn-on" onClick={() => void requestNotifications()}>

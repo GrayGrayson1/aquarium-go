@@ -3,6 +3,7 @@
  * breeding, care facts and history — plus follow / photo / favourite / move / list actions.
  * Side sheet on desktop, bottom sheet on phones. OWNER: lane "ui-shell".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useGame } from '@/state/game'; // chunk 11: switches read the live game
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
@@ -64,7 +65,8 @@ import {
 } from '@/sim/life';
 import { PrismaticBadge, MorphTierBadge, StrainBadge } from '../common/Prismatic'; // lane:genetics
 import { illnessDef } from '@/sim/life/illness'; // lane:guide
-import { creatureValue } from '@/sim/economy';
+import { moduleFor } from '@/sim/life/breeding/registry'; // audit E21, E24
+import { creatureValue, marketAccess } from '@/sim/economy';
 import { speciesWaterComfort } from '@/sim/water';
 import { isUnlocked } from '@/sim/facility';
 import { getTankTier } from '@/data/catalog/tanks';
@@ -80,7 +82,6 @@ import {
   personalityLine,
   sexRoleText,
   formatAge,
-  formatTemp,
   titleCase,
   sentenceCase,
   agoText,
@@ -89,7 +90,13 @@ import {
   convertTempText, // lane:guide
 } from '../common/format';
 import { dietGuide, feedingLine, temperatureGuide, FLOW_GUIDE } from '@/data/species/guide'; // lane:guide
+import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
+import { lifespanFacts } from '../common/lifespan'; // Audit 2026-11-17 (D20)
+import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isMemoryCard } from './conditionWords'; // Audit 2026-11-17 (D10, D12, D17)
+import { ConditionNotes } from './ConditionNotes'; // Audit 2026-11-17 (D8, D16)
+import { MoveGroupButton } from './MoveGroupButton'; // Audit 2026-11-17 (D2)
 import { AutofeederVerdict, RealLifeTips, openSpeciesGuide } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
+import { socialWord, socialDetail } from '../panels/common/Profile'; // Audit 2026-11-17 (J9 review): the chip's words
 import { Badge, Button, Chip, Meter, Section, StatusBadge, formatMoney, KV, Empty } from '../kit';
 import { setCameraMode } from '../hud/ToolRail';
 import { MoveCreatureModal } from './MoveCreatureModal';
@@ -126,9 +133,6 @@ function hungerWord(h: number) {
 }
 function hungerTone(h: number): 'good' | 'watch' | 'danger' {
   return h >= 90 ? 'danger' : h >= 55 ? 'watch' : 'good';
-}
-function stressWord(s: number) {
-  return s < 20 ? 'Calm' : s < 40 ? 'Settled' : s < 70 ? 'Stressed' : 'Panicking';
 }
 function levelWord(v: number) {
   // Same thresholds as Meter tone="auto" (≥60 good, ≥30 watch) so word and colour always agree.
@@ -233,8 +237,9 @@ function tempRange(lo: number, hi: number, unit: 'C' | 'F'): string {
   return `${f(lo)}–${f(hi)} °C`;
 }
 
-function CareFacts({ sp, tankGallons, unit }: { sp: SpeciesDefinition; tankGallons: number; unit: 'C' | 'F' }) {
+function CareFacts({ sp, tankGallons, unit, c, nowHour }: { sp: SpeciesDefinition; tankGallons: number; unit: 'C' | 'F'; c: Creature; nowHour: number }) {
   const t = sp.tempC;
+  const life = lifespanFacts(c, sp, nowHour); // Audit 2026-11-17 (D20)
   const diff = DIFFICULTY_LABEL[sp.difficulty];
   // lane:guide — diet by food TYPE, the autofeeder verdict, flow, and "In real life" tips (src/data/species/guide.ts)
   const diet = dietGuide(sp);
@@ -259,13 +264,25 @@ function CareFacts({ sp, tankGallons, unit }: { sp: SpeciesDefinition; tankGallo
         {flow?.label ?? sentenceCase(sp.flowPreference)}
       </KV>
       <KV label={<><Users size={13} aria-hidden /> Social</>} hint={sp.social.note}>
-        {sentenceCase(sp.social.kind)}
-        {sp.social.minGroup > 1 ? ` · groups of ${sp.social.idealGroup}+` : ''}
+        {/* Audit 2026-11-17 (J9 and its review): the care chip's words, then the ideal ("School of 6+, ideally 12+") */}
+        {socialWord(sp)}
+        {socialDetail(sp)}
       </KV>
       <KV label={<><Box size={13} aria-hidden /> Tank</>} hint={tankGallons && tankGallons < sp.recommendedMinTankGallons ? `This tank is ${tankGallons} gal — smaller than recommended.` : undefined}>
         {sp.recommendedMinTankGallons}+ gal
       </KV>
       <KV label={<><Gauge size={13} aria-hidden /> Care level</>}>{diff?.label ?? titleCase(sp.difficulty)}</KV>
+      {life.value ? (
+        <KV label={<><Hourglass size={13} aria-hidden /> Lifespan</>} hint={life.note ?? undefined}>
+          {life.value}
+        </KV>
+      ) : life.note ? (
+        // review of D20: the first companion's row is its sentence, with no empty value beside the label
+        <div className="ag-kv">
+          <span className="ag-kv__label"><Hourglass size={13} aria-hidden /> Lifespan</span>
+          <span className="ag-kv__hint">{life.note}</span>
+        </div>
+      ) : null}
       <div className="ag-sg-card">
         <AutofeederVerdict sp={sp} compact />
         <RealLifeTips sp={sp} max={3} />
@@ -333,7 +350,13 @@ function Lineage({ c, game }: { c: Creature; game: GameState }) {
   );
 }
 
+/** Audit 2026-11-17 (J1 review): the pairing check's next step in the player's unit ("Raise the heater … to about 81 °F."). */
+export function nextStepLine(step: string, unit: 'C' | 'F'): string {
+  return `Next step: ${convertTempText(step, unit) ?? step}`;
+}
+
 function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDefinition }) {
+  const unit = useSettings((s) => s.tempUnit); // Audit 2026-11-17 (J1): breeding notes and checks carry °C
   const status = safe('breedingStatus', () => breedingStatus(game, c.id), null);
   // lane:guide — likeliest partners first (same tank, opposite sex, adults), so the eight chips shown are the useful ones
   const candidates = useMemo(() => {
@@ -347,7 +370,8 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
     if (partner && !candidates.find((x) => x.id === partner)) setPartner(null);
   }, [candidates, partner]);
   const check = partner ? safe('breedingCheck', () => breedingCheck(game, c.id, partner), { ok: false, reasons: ['Unable to check right now.'] }) : null;
-  const systemNote = sp.breeding.system === 'not_in_game' ? 'Breeding for this species is not part of this version.' : sp.breeding.notes;
+  // Audit 2026-11-17 (J33): a species the game doesn't breed already says so in its status ("Not bred here" and why)
+  const systemNote = sp.breeding.system === 'not_in_game' ? null : sp.breeding.notes;
   // Exact morph odds for the chosen pairing (mother = the female; otherwise this animal).
   const odds = useMemo(() => {
     const p = partner ? game.creatures[partner] : null;
@@ -363,6 +387,13 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
     return safe('predictOffspringStrains', () => predictOffspringStrains(sp, mom.genome, dad.genome), []).slice(0, 3);
   }, [partner, c.id, game.creatures, sp]); // eslint-disable-line react-hooks/exhaustive-deps
   const partnerC = partner ? game.creatures[partner] : null;
+  // audit E24: odds only for a pair that could breed (not two of one sex, not an anemone that splits alone)
+  const pairBred = safe('moduleFor', () => moduleFor(sp).breedable, false);
+  // (review E: by the sexes the cards show, so hiding the odds never gives away a sex the card still hides)
+  const sameSex = !!partnerC && sp.sexSystem === 'gonochoristic' && c.sex !== 'unknown' && c.sex === partnerC.sex;
+  const showOdds = pairBred && !sameSex;
+  // audit E21: readiness means nothing for an animal that can't breed here, or not yet
+  const showReadiness = pairBred && status?.label !== 'Too young to breed';
   const shimmerParents = (isPrismatic(c) ? 1 : 0) + (isPrismatic(partnerC) ? 1 : 0);
   const shimmerChance = partnerC ? safe('prismaticChanceForPair', () => prismaticChanceForPair(c, partnerC), 0) : 0;
   return (
@@ -371,19 +402,19 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
         <div className="ag-breeding__status">
           <div className="ag-row">
             <Egg size={16} aria-hidden className="ag-evicon--violet" />
-            <strong className="ag-grow">{status.label}</strong>
+            <strong className="ag-grow">{convertTempText(status.label, unit) /* Audit 2026-11-17 (J1 review) */}</strong>
             {status.progress != null && <span className="ag-small ag-tabular">{Math.round(status.progress * 100)}%</span>}
           </div>
-          {status.detail && <div className="ag-small ag-muted">{status.detail}</div>}
+          {status.detail && <div className="ag-small ag-muted">{convertTempText(status.detail, unit)}</div>}
           {status.progress != null && <Meter value={status.progress * 100} />}
         </div>
       ) : (
         <div className="ag-small ag-muted">{c.lifeStage === 'adult' || c.lifeStage === 'elder' ? 'Not currently breeding.' : 'Too young to breed yet.'}</div>
       )}
-      <Meter label="Breeding readiness" value={c.stats.breedingReadiness} tone="auto" display={levelWord(c.stats.breedingReadiness)} />
+      {showReadiness && <Meter label="Breeding readiness" value={c.stats.breedingReadiness} tone="auto" display={levelWord(c.stats.breedingReadiness)} />}
       {/* lane:guide — say why there is nothing to pick instead of showing nothing */}
       {candidates.length === 0 && sp.breeding.system !== 'not_in_game' && sp.breeding.conditions.needsPartner && (c.lifeStage === 'adult' || c.lifeStage === 'elder') && (
-        <div className="ag-small ag-muted">Breeding needs a partner, and you have no other {sp.commonName.toLowerCase()}. New animals turn up in the Market.</div>
+        <div className="ag-small ag-muted">Breeding needs a partner, and you have no other {lowerName(sp.commonName)}. New animals turn up in the Market.</div>
       )}
       {candidates.length > 0 && sp.breeding.system !== 'not_in_game' && (
         <div className="ag-breeding__pair">
@@ -396,28 +427,28 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
               </Chip>
             ))}
           </div>
-          {candidates.length > 8 && <div className="ag-small ag-muted">The 8 likeliest partners are shown ({candidates.length - 8} more). Open another {sp.commonName.toLowerCase()}’s card to pair from there.</div>}
+          {candidates.length > 8 && <div className="ag-small ag-muted">The 8 likeliest partners are shown ({candidates.length - 8} more). Open another {lowerName(sp.commonName)}’s card to pair from there.</div>}
           {check && (
             <div className={clsx('ag-breedcheck', check.ok ? 'is-ok' : 'is-no')}>
               <div className="ag-small">{check.ok ? 'Ready to try.' : 'Not yet:'}</div>
               {!check.ok && (
                 <ul>
                   {check.reasons.slice(0, 4).map((r, i) => (
-                    <li key={i}>{r}</li>
+                    <li key={i}>{convertTempText(r, unit)}</li>
                   ))}
                 </ul>
               )}
-              {check.nextStep && <div className="ag-reason__fix">Next step: {check.nextStep}</div>}
-              {odds.length > 0 && (
+              {check.nextStep && <div className="ag-reason__fix">{nextStepLine(check.nextStep, unit)}</div>}
+              {showOdds && odds.length > 0 && (
                 <div className="ag-odds" aria-label="Likely offspring">
                   <div className="ag-odds__title">Likely offspring</div>
                   {odds.map((o) => (
                     <div key={o.morphName} className="ag-odds__row">
                       <span className="ag-grow">{safe('morphDisplayName', () => morphDisplayName(sp, o.morphName), o.morphName)}</span>
                       <span className="ag-odds__bar" aria-hidden>
-                        <i style={{ width: `${Math.round(o.chance * 100)}%` }} />
+                        <i style={{ width: `${Math.max(2, Math.round(o.chance * 100))}%` }} />
                       </span>
-                      <span className="ag-tabular ag-odds__pct">{Math.round(o.chance * 100)}%</span>
+                      <span className="ag-tabular ag-odds__pct">{oddsPct(o.chance)}</span>
                     </div>
                   ))}
                   {strainOdds.length > 0 && (
@@ -454,7 +485,7 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
           )}
         </div>
       )}
-      {systemNote && <ClampText text={systemNote} />}
+      {systemNote && <ClampText text={convertTempText(systemNote, unit) ?? systemNote} />}
     </div>
   );
 }
@@ -558,9 +589,12 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
   // lane:guide — where Sell leads (see the action row)
   const canList = safe('isUnlocked', () => isUnlocked(game, 'market_listings'), true);
   const listingId = c.status === 'listed' ? game.market.listings.find((l) => l.status === 'active' && l.creatureIds.includes(c.id))?.id : undefined;
+  // Audit 2026-11-17 (D17): a lost or rehomed animal's card is a memory: no live actions, meters, value or breeding
+  const gone = isMemoryCard(c.status);
 
   return (
     <div className="ag-cbody">
+      {!gone && (
       <div className="ag-cactions">
         <ActionBtn icon={<ScanEye size={17} />} label={following ? 'Following' : 'Follow'} active={following} onClick={() => {
           if (following) setCameraMode('front');
@@ -581,7 +615,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
             icon={<Tag size={17} />}
             label="Sell"
             disabled={readOnly || c.status !== 'alive'}
-            title={c.status !== 'alive' ? `${c.name} is no longer in your care.` : canList ? undefined : 'The marketplace opens the first time you visit the Market. Until then the local fish store buys animals for quick cash.'}
+            title={c.status !== 'alive' ? `${c.name} is no longer in your care.` : canList ? undefined : safe('marketAccess', () => marketAccess(game).hint, undefined) /* audit 2026-11-17 (F8): the guide's step, when it holds listings */}
             onClick={() => {
               sfx('open');
               if (canList) useUI.getState().set({ panel: 'market', panelTarget: `list:creature:${c.id}` });
@@ -590,13 +624,15 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           />
         )}
       </div>
+      )}
+      {!gone && !readOnly && <MoveGroupButton c={c} game={game} /> /* Audit 2026-11-17 (D2) */}
 
       {/* lane:w2-ui — feed this animal from its card (on phones the card covers the Target feed prompt) */}
       {!readOnly && <FeedRow c={c} game={game} />}
 
-      <BehaviourLine id={c.id} />
+      {!gone && <BehaviourLine id={c.id} />}
 
-      {c.illness && (
+      {c.illness && !gone && (
         // lane:guide — the illness's own name, symptom and cure for this species (it used to say "check the water and
         // keep stress low" for everything, even impaction, where the fix is the substrate)
         <div className="ag-callout ag-callout--danger">
@@ -604,7 +640,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           <div>
             {(() => {
               const def = illnessDef(c.illness.kind);
-              const sev = Math.round(c.illness.severity * (c.illness.severity <= 1 ? 100 : 1));
+              const sev = illnessSeverityPct(c.illness.severity); // Audit 2026-11-17 (D12)
               if (!def || !sp) return <><strong>{titleCase(c.illness.kind)}</strong> — severity {sev}%. Check the water and keep stress low.</>;
               return (
                 <>
@@ -616,40 +652,38 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
         </div>
       )}
 
+      {c.status !== 'sold' && (
       <Section title={<><Activity size={12} aria-hidden /> Condition</>}>
         {wellbeing && (
           <div className={clsx('ag-wellbeing', `is-${wellbeing.status}`)}>
             <StatusBadge status={wellbeing.status} label={wellbeing.status === 'good' ? 'Good' : wellbeing.status === 'watch' ? 'Watch' : 'Danger'} />
             <div className="ag-grow">
-              <div className="ag-wellbeing__headline">{wellbeing.headline}</div>
-              {wellbeing.notes.length > 0 && (
-                <ul className="ag-wellbeing__notes">
-                  {wellbeing.notes.slice(0, 3).map((n, i) => (
-                    <li key={i}>{n}</li>
-                  ))}
-                </ul>
-              )}
+              <div className="ag-wellbeing__headline">{convertTempText(wellbeing.headline, unit) /* Audit 2026-11-17 (D8) */}</div>
+              <ConditionNotes c={c} notes={wellbeing.notes} unit={unit} /* Audit 2026-11-17 (D8, D16) */ />
             </div>
           </div>
         )}
+        {!gone && (
         <div className="ag-meters">
-          <Meter label="Health" value={c.stats.health} tone="auto" display={levelWord(c.stats.health)} />
+          <Meter label="Health" value={c.stats.health} tone={healthTone(c.stats.health)} display={healthWord(c.stats.health)} /* Audit 2026-11-17 (D10): the Condition box's bands */ />
           <Meter label="Hunger" value={c.stats.hunger} tone={hungerTone(c.stats.hunger)} display={hungerWord(c.stats.hunger)} />
           <Meter label="Comfort" value={c.stats.comfort} tone="auto" display={levelWord(c.stats.comfort)} />
-          <Meter label="Stress" value={c.stats.stress} tone="auto" invert display={stressWord(c.stats.stress)} />
+          <Meter label="Stress" value={c.stats.stress} tone={stressTone(c.stats.stress)} display={stressWord(c.stats.stress)} /* Audit 2026-11-17 (D10) */ />
           <Meter label="Social" value={c.stats.social} tone="auto" display={levelWord(c.stats.social)} />
           {/* "Thriving" starts at enrichment > 55 (sim/life/index.ts): the same cut here, so a day-1 starter at ~58 is not
               "Good · Thriving" with an orange "Enrichment: Low" underneath */}
           <Meter label="Enrichment" value={c.stats.enrichment} tone={c.stats.enrichment > 55 ? 'good' : 'auto'} display={c.stats.enrichment < 30 ? 'Bored' : levelWord(c.stats.enrichment > 55 ? Math.max(60, c.stats.enrichment) : c.stats.enrichment)} />
         </div>
-        {comfort && comfort.stressors.length > 0 && (
+        )}
+        {!gone && comfort && comfort.stressors.length > 0 && (
           <ul className="ag-stressors">
             {comfort.stressors.slice(0, 3).map((s, i) => (
-              <li key={i}>{s}</li>
+              <li key={i}>{convertTempText(s, unit)}</li>
             ))}
           </ul>
         )}
       </Section>
+      )}
 
       <Section title={<><Sparkles size={12} aria-hidden /> Personality</>}>
         {c.personality.length === 0 ? (
@@ -710,7 +744,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
             </div>
           )
         ) : (
-          <div className="ag-small ag-muted">Precise genetics unlock with the genetics lab.</div>
+          <div className="ag-small ag-muted">Precise genetics unlock with the Genetics Lab (Research › Breeding, needs 60 breeding mastery).</div>
         )}
       </Section>
 
@@ -718,6 +752,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
         <Lineage c={c} game={game} />
       </Section>
 
+      {!gone && (
       <Section title={<><Coins size={12} aria-hidden /> Value</>}>
         {value ? (
           <div className="ag-value">
@@ -738,8 +773,9 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           <div className="ag-muted ag-small">Valuation unavailable.</div>
         )}
       </Section>
+      )}
 
-      {sp && (
+      {sp && !gone && (
         <Section title={<><Egg size={12} aria-hidden /> Breeding</>}>
           <Breeding c={c} game={game} sp={sp} />
           {!readOnly && tank && (
@@ -750,7 +786,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
 
       {sp && (
         <Section title={<><BookOpen size={12} aria-hidden /> Care facts</>}>
-          <CareFacts sp={sp} tankGallons={tankGallons} unit={unit} />
+          <CareFacts sp={sp} tankGallons={tankGallons} unit={unit} c={c} nowHour={game.clock.hour} />
         </Section>
       )}
 
@@ -763,7 +799,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
               <li key={i} className={`ag-timeline__item ag-timeline__item--${h.kind}`}>
                 <span className="ag-timeline__icon" aria-hidden>{HISTORY_ICON[h.kind] ?? <BookOpen size={13} />}</span>
                 <div>
-                  <div className="ag-timeline__text">{h.text}</div>
+                  <div className="ag-timeline__text">{convertTempText(h.text, unit)}</div>
                   <div className="ag-timeline__when">{agoText(h.hour, game.clock.hour)} · Day {Math.floor(h.hour / 24) + 1}</div>
                 </div>
               </li>

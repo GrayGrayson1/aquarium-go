@@ -2,7 +2,7 @@
  * Procedural stones: seiryu, dragon stone, river stones, lava, slate, live rock, caves and the live-rock arch.
  * OWNER: lane "aquascape". All generators build in decor-local metres (base at y=0) and stay inside def.size.
  */
-import { GeoBuilder, blob, tube, smoothPath, fitInto, type V3, type Extra, NO_SWAY } from './builder';
+import { GeoBuilder, blob, fitInto, type V3, type Extra, NO_SWAY } from './builder';
 import { prng, noise3, fbm3, ridged3, hex, mix, mul, clamp, smooth, type RGB, type PRng, type Noise3 } from './noise';
 
 export type RockStyle = 'seiryu' | 'dragon' | 'river' | 'lava' | 'slate' | 'live' | 'cave' | 'rubble';

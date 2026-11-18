@@ -131,8 +131,14 @@ export function CareChips({ sp, full, hideDifficulty }: { sp: SpeciesDefinition;
   );
 }
 
+/**
+ * The care chip's social words, also the head of the creature card's Social row. Audit 2026-11-17 (J9 and its
+ * review): a number is always the species' minimum, as the notes say ("Keep at least three"); a group species that is
+ * fine alone (minimum 1: Amano shrimp, honey gourami…) reads "Alone or in groups", never "Groups of 1+".
+ */
 export function socialWord(sp: SpeciesDefinition): string {
   const k = sp.social.kind;
+  const min = sp.social.minGroup;
   switch (k) {
     case 'solitary':
       return 'Keep alone';
@@ -145,14 +151,28 @@ export function socialWord(sp: SpeciesDefinition): string {
     case 'harem':
       return 'Harem';
     case 'group':
-      return `Groups of ${sp.social.idealGroup}+`;
+      return min > 1 ? `Groups of ${min}+` : 'Alone or in groups';
     case 'shoal':
-      return `Shoal of ${sp.social.minGroup}+`;
+      return min > 1 ? `Shoal of ${min}+` : 'Alone or in a shoal';
     case 'school':
-      return `School of ${sp.social.minGroup}+`;
+      return min > 1 ? `School of ${min}+` : 'Alone or in a school';
     case 'colony':
-      return 'Colony';
+      return min > 1 ? `Colony of ${min}+` : 'Colony';
     default:
       return 'Social';
   }
+}
+
+/**
+ * Audit 2026-11-17 (J9 review): what the creature card adds after `socialWord`: the ideal group ("School of 6+,
+ * ideally 12+", "Alone or in groups, ideally 5+") and, for a harem, the minimum the chip doesn't give ("Harem · at least
+ * 3, ideally 4+"). Empty when the chip says it all.
+ */
+export function socialDetail(sp: SpeciesDefinition): string {
+  const { kind, minGroup: min, idealGroup: ideal } = sp.social;
+  const counted = kind === 'group' || kind === 'shoal' || kind === 'school' || kind === 'colony';
+  if (counted && min > 1) return ideal > min ? `, ideally ${ideal}+` : '';
+  if (min > 1) return ideal > min ? ` · at least ${min}, ideally ${ideal}+` : ` · at least ${min}`;
+  if (kind === 'group' && ideal > 1) return `, ideally ${ideal}+`;
+  return '';
 }

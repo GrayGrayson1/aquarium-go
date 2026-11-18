@@ -12,6 +12,7 @@
  *   illness.ts     plausible illnesses with causes + cures
  *   step.ts        per-tank metabolism/feeding/health/incidents step
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { GameState, Tank, Creature, Genome, CreatureVisualParams, SpeciesDefinition, Sex, PersonalityTag, Clutch } from '@/types';
 import { isFoodAvailable } from '../economy/shop'; // chunk 17: foods sold with their animals
 import type { SimContext } from '../context';
@@ -22,8 +23,8 @@ import { normalizeGenome, resolvePhenotype as resolvePhenotypeImpl, rollGenome a
 import { computePersonalityModifiers, rollPersonalityTags, PERSONALITY_INFO } from './personality';
 import { generateName, takenNames, nameRngFor } from './names';
 import { ageDaysOf, initialReproRole, lifeStageFor, observableSex, sizeAtAge } from './growth';
-import { stepTankCreaturesImpl, lifeMeta } from './step';
-import { buildTankEnv, habitatFit, livingIn, stressFactors, waterProblemText, type StressFactor } from './welfare';
+import { stepTankCreaturesImpl, lifeMeta, lastHurtBy } from './step';
+import { buildTankEnv, habitatFit, livingIn, stressFactors, stressTarget, waterProblemText, type StressFactor } from './welfare';
 import { illnessDef } from './illness';
 import { foodsFor, menuFor } from '@/data/species/guide'; // lane:guide
 import { residentsOf, touchResidents } from '../residents'; // lane:perf2
@@ -79,7 +80,7 @@ export function createCreature(state: GameState, rng: Rng, speciesId: string, op
     history.push({ hour, kind: 'born', text: `Born in your care${parents}.` });
   } else {
     const origin = opts.captiveBred === false ? 'Wild-collected' : 'Captive-bred';
-    const spName = sp.commonName.toLowerCase();
+    const spName = lowerName(sp.commonName);
     history.push({ hour, kind: 'acquired', text: opts.breederName ? `${origin} ${spName} from ${opts.breederName}.` : `${origin} ${spName}, raised by a hobby breeder.` });
   }
   for (const m of genome.mutations ?? []) {
@@ -232,6 +233,7 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
   let watch = false;
   const tank = c.tankId ? state.tanks[c.tankId] : undefined;
   let factors: StressFactor[] = [];
+  let smallFactors: StressFactor[] = []; // review of D10: every standing cause, small ones included
   let outpaced = false; // lane:guide — a slow feeder sharing the tank with clearly faster ones
   if (tank) {
     const env = buildTankEnv(state, tank, livingIn(state, tank.id), state.clock.hour);
@@ -242,7 +244,8 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
       notes.push(problem);
       danger = true;
     }
-    factors = stressFactors(state, env, c, sp, state.clock.hour).filter((f) => f.amount >= 5);
+    smallFactors = stressFactors(state, env, c, sp, state.clock.hour);
+    factors = smallFactors.filter((f) => f.amount >= 5);
     const fit = habitatFit(env, sp, env.groups.get(sp.id)?.n ?? 1);
     for (const n of fit.notes.slice(0, 2)) notes.push(`Habitat: ${n}.`);
   }
@@ -265,11 +268,16 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
     else watch = true;
   }
   if ((c.life?.injury ?? 0) > 20) {
-    notes.push('Healing from injuries — check for aggressive or nipping tank mates.');
+    // Audit 2026-11-17 (D11): name the tank mate when its History says who it was
+    const by = lastHurtBy(c, state.clock.hour);
+    const obj = c.sex === 'female' ? 'her' : c.sex === 'male' ? 'him' : 'them'; // the death line's word too
+    notes.push(by ? `Healing from injuries — ${by.label} has been ${by.verb} ${obj}.` : 'Healing from injuries — check for aggressive or nipping tank mates.');
     watch = true;
   }
-  if (s.stress > 55 && factors.length) {
-    notes.push(`Stressed — mainly ${factors[0].label}.`);
+  // Audit 2026-11-17 (D10): the tank card says "stressed" above 55 whatever the cause, so the card always says why or
+  // that it is passing (a move, a chase or a scare leaves stress with no standing cause of 5 points or more)
+  if (s.stress > 55) {
+    notes.push(stressNote(smallFactors, c));
     watch = true;
     if (s.stress > 80) danger = true;
   }
@@ -277,26 +285,47 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
   else if (s.health < 75) watch = true;
   // lane:guide — low health with nothing else to explain it used to read only "Keep an eye on this one": name what
   // wore it down (the damage the sim recorded, which fades over about a day) and how it recovers
-  if (s.health < 75 && notes.length === 0) notes.push(recoveryNote(c));
+  // Audit 2026-11-17 (D10): ahead of habitat notes too, which say what the tank lacks, not what wore the health down
+  if (s.health < 75 && notes.every((n) => n.startsWith('Habitat:'))) notes.unshift(recoveryNote(c));
   const status: CreatureWellbeing['status'] = danger ? 'danger' : watch ? 'watch' : 'good';
   let headline: string;
   if (status === 'good') headline = s.stress < 25 && s.enrichment > 55 && s.comfort > 75 ? 'Thriving' : 'Doing well';
   // First clause of the first note; split on sentence ends only, so decimals ("1.35 ppm") survive.
-  else headline = (notes[0] ?? (status === 'danger' ? 'Needs help' : 'Keep an eye on this one')).split(/\.(?=\s|$)|[:—]/)[0].trim();
+  // Audit 2026-11-17 (D10): never "Habitat" — the first note that isn't about the habitat, else what the habitat needs
+  else {
+    const lead = notes.find((n) => !n.startsWith('Habitat:'));
+    headline = lead ? lead.split(/\.(?=\s|$)|[:—]/)[0].trim() : notes.length ? 'Needs a better home' : status === 'danger' ? 'Needs help' : 'Keep an eye on this one';
+  }
   return { status, headline, notes, stress: factors };
 }
 
-/** lane:guide — what to do about hunger for this species (empty when plain "feed it" is the answer). */
-function hungerAdvice(state: GameState, sp: SpeciesDefinition, outpaced: boolean): string {
+/**
+ * The Condition box's stress line (stress above 55): its main standing cause of 5 points or more; else, review of D10,
+ * small causes that together hold it there (the sim's own stress target) are named as such; else it is passing.
+ */
+export function stressNote(all: StressFactor[], c: Creature): string {
+  const big = all.filter((f) => f.amount >= 5);
+  if (big.length) return `Stressed — mainly ${big[0].label}.`;
+  const small = [...all].sort((a, b) => b.amount - a.amount).slice(0, 2);
+  if (small.length >= 2 && stressTarget(all, c) > 55) return `Stressed — several small things add up: ${small[0].label} and ${small[1].label}.`;
+  return 'Stressed — still settling after something upset it (a move, a chase or a scare).';
+}
+
+/**
+ * lane:guide — what to do about hunger for this species (empty when plain "feed it" is the answer). Audit 2026-11-17 C8:
+ * exported for the tank's status line (src/sim/tankStatus.ts), which names a whole group with `plural`.
+ */
+export function hungerAdvice(state: GameState, sp: SpeciesDefinition, outpaced: boolean, plural = false): string {
   const stock = state.inventory?.foods ?? {};
   const inStock = foodsFor(sp).some((f) => (stock[f.id] ?? 0) > 0);
   if (!inStock) {
     // chunk 17: only a food the shop sells now (a new food waits for an animal that eats it to be buyable)
     const buy = menuFor(sp).filter((f) => isFoodAvailable(state, f)).sort((a, b) => a.price - b.price)[0];
-    return buy ? `none of its food is in stock. Buy ${buy.name.toLowerCase()} in Market › Supplies.` : 'none of its food is in stock.';
+    const none = `none of ${plural ? 'their' : 'its'} food is in stock.`;
+    return buy ? `${none} Buy ${buy.name.toLowerCase()} in Market › Supplies.` : none;
   }
   if (outpaced) return 'faster tank mates may be taking the food. Try target feeding.';
-  if (sp.feedingStyle === 'target_fed') return 'it eats slowly and only takes food that drifts close, so target-feed it.';
+  if (sp.feedingStyle === 'target_fed') return plural ? 'they eat slowly and only take food that drifts close, so target-feed them.' : 'it eats slowly and only takes food that drifts close, so target-feed it.';
   return '';
 }
 

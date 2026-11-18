@@ -276,7 +276,7 @@ describe('S03-04 — animals that are not part of a tank sale go somewhere compa
     expect(note).toBeDefined();
     expect(note!.kind).toBe('warning');
     expect(note!.text).toBe(holdingText(newcomer.name));
-    expect(note!.text).toContain("they don't eat or age there");
+    expect(note!.text).toContain('they don’t eat or age there'); // Audit 2026-11-17 (J18): the sim writes ’, as the rest of the game
   });
 
   it('never moves an animal into a tank without room for it (B-174)', () => {

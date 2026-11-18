@@ -73,7 +73,7 @@ describe('fix-water S01-06: only true self-feeders skip the food cupboard', () =
     const id = stock(s, 'endlers_livebearer', 6);
     const outlook = tankFoodOutlook(s, id);
     expect(outlook.level).toBe('out');
-    expect(outlook.text).toMatch(/No food left that your endler/);
+    expect(outlook.text).toMatch(/No food left that your Endler’s/ /* Audit 2026-11-17 (J15): the proper noun keeps its capital */);
     expect(outlook.restockId).toBe('flake_tropical');
   });
 });

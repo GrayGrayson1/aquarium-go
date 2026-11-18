@@ -273,7 +273,9 @@ export function setStockBudget(state: GameState, amount: number): ActionResult {
 export function tidyAssignments(state: GameState): void {
   const st = state.staff;
   if (!st) return;
-  for (const m of st.roster) if (m.tankIds.some((id) => !state.tanks[id])) m.tankIds = m.tankIds.filter((id) => state.tanks[id]);
+  // a docent presents display tanks only: one turned into a nursery or quarantine tank leaves their list (Audit 2026-11-17, H8)
+  const keeps = (m: StaffMember, id: string) => !!state.tanks[id] && (m.role !== 'docent' || (state.tanks[id].purpose ?? 'display') === 'display');
+  for (const m of st.roster) if (m.tankIds.some((id) => !keeps(m, id))) m.tankIds = m.tankIds.filter((id) => keeps(m, id));
   for (const id of Object.keys(st.care)) if (!state.tanks[id]) delete st.care[id];
   // New tanks (never seen by the team) go to an aquarist with room; tanks the player unassigned stay theirs.
   const fresh = state.tankOrder.filter((id) => state.tanks[id] && !st.care[id]);

@@ -21,10 +21,13 @@ export const SOCIAL_COPY = {
   haveInvite: 'Have an invite?',
   // chunk 8 (the owner, 2026-10-19, ADR-0042 J1): the real codes' shape, a club's word and four letters
   invitePlaceholder: 'Invite code, e.g. FRIENDS-KDWX',
-  joinGroup: 'Join group',
+  joinGroup: 'Join club',
   errorCredentials: 'Enter your email and a password of at least 8 characters.',
   errorInvite: 'That invite code didn’t match a club. Check it and try again.',
-  errorNetwork: 'Can’t reach Aquarium Go online right now. Your game is fine — try again in a moment.',
+  // audit 2026-11-17, I6: an outage can last (a paused project), so not "in a moment"; with a Try again button, the other line
+  errorNetwork: 'Can’t reach Aquarium Go online right now. Your game is fine — try again later.',
+  errorNetworkRetry: 'Can’t reach Aquarium Go online right now. Your game is fine and keeps saving on this device.',
+  tryAgain: 'Try again',
   toastSignedIn: 'Signed in',
   toastCreated: 'Account created',
   toastSavesHere: 'Your aquarium still saves on this device.',
@@ -45,8 +48,10 @@ export const SOCIAL_COPY = {
   memberTitle: (club: string) => `You’re in ${club}`,
   memberText: 'This invite has already been used on your account.',
   openClub: 'Open club',
-  expiredTitle: 'This invite has expired',
-  expiredText: 'Ask the club for a new code, or browse clubs you can join right away.',
+  // audit 2026-11-17, I9: codes don't expire (the club is gone, or the code mistyped); signed out, Find clubs can't help
+  expiredTitle: 'This invite link doesn’t work',
+  expiredText: 'The club may have been removed, or the code mistyped. Ask the club for a new link, or browse clubs you can join right away.',
+  expiredTextOut: 'The club may have been removed, or the code mistyped. Ask whoever invited you for a new link.',
   findClubs: 'Find clubs',
 
   // §13.4 overview
@@ -87,7 +92,7 @@ export const SOCIAL_COPY = {
   offerTrade: 'Offer a trade',
   friendCodePlaceholder: 'Friend code, e.g. MYAQUA-7Q2',
   addFriend: 'Add friend',
-  snapshotsNote: 'Visits are read-only snapshots: friends see your tanks as they were when you last went online.',
+  snapshotsNote: 'Friends see your tanks as they were when you last went online.',
 
   // ADR-0034 decision 2
   soonTitle: 'Trades open later',
@@ -96,10 +101,16 @@ export const SOCIAL_COPY = {
   close: 'Close',
   requestSent: 'Request sent',
   requestSentDetail: 'Their aquarium shows here once they accept.',
+  // audit 2026-11-17, I13: they had added you already, so you're friends at once; your own code, to give out
+  nowFriends: 'You’re now friends',
+  nowFriendsDetail: 'They had added you too. Their aquarium shows below.',
+  myFriendCode: (code: string) => `Your friend code: ${code}`,
+  copyCode: 'Copy',
+  codeCopied: 'Friend code copied',
   errorFriend: 'That friend code didn’t match anyone. Check it and try again.',
   noMatch: (search: string) => `No clubs match “${search}”. Check the spelling, or paste an invite code.`,
   dotNew: 'New',
-  dotNews: 'New trades and club news',
+  dotNews: 'New friend requests, trades or club news',
 
   // ADR-0034 decision 4 (dev-only reminder)
   reminderBody: (when: string, closes: string) => `Club show on ${when}. Entries close ${closes}.`,
@@ -113,6 +124,9 @@ export const SOCIAL_COPY = {
   backToSignIn: 'Back to sign in',
   forgotPassword: 'Forgot your password? Ask whoever invited you.',
   errorSignUpInvite: 'That invite code didn’t work. Ask whoever invited you for their link.',
+  // audit 2026-11-17, I14: an empty code isn't one that "didn't work"; and the title while an invite waits for a game
+  errorNoCode: 'Enter the invite code from your invite link.',
+  titleInvited: 'You’re invited to a club: start a game to join.',
   errorAge: 'Tick the box to confirm your age.',
   errorName: 'Enter a name of 1 to 30 characters.',
   errorTaken: 'An account with that email already exists. Sign in instead.',
@@ -141,6 +155,8 @@ export const SOCIAL_COPY = {
   notSavedOnline: 'Not saved online yet',
   onlineUnreachable: 'Can’t reach Aquarium Go online. Your game still saves on this device.',
   onlineTooNew: 'Your online save comes from a newer version of Aquarium Go. Refresh the page to update.',
+  // audit 2026-11-17, I20: over the online limit, which retrying never fixes (not "Can't reach…")
+  onlineTooBig: 'Your save is too big to put online (listing photos take the most room). It still saves on this device.',
   deleteTitle: 'Delete your account?',
   deleteBody: 'This removes your account, online save, friends and clubs from Aquarium Go’s server. The game on this device stays.',
   cancel: 'Cancel',
@@ -156,6 +172,9 @@ export const SOCIAL_COPY = {
   cardDevice: (shop: string, day: number, money: string, ago: string) => `On this device · ${shop} · Day ${day} · ${money} · saved ${ago}`,
   cardOnline: (shop: string, day: number, money: string, ago: string) => `Online · ${shop} · Day ${day} · ${money} · saved ${ago}`,
   cloudNote: 'If you load the online save, this device’s copy stays in Settings › Saves as Previous autosave.',
+  // audit 2026-11-17, I4: which copy of the same aquarium is further along, and what Keep costs when it's the online one
+  cloudDeviceFurther: (day: number) => `This device’s copy is further along (Day ${day}).`,
+  cloudOnlineFurther: (day: number) => `The online copy is further along (Day ${day}). Keeping this device’s replaces it, and that can’t be undone.`,
 
   // chunk 8 — friend requests (ADR-0040 decision 4)
   friendRequests: 'Friend requests',

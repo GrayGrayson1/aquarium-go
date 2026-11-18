@@ -78,7 +78,7 @@ export function EnterFlow({ g, show, initialClass, onBack, onDone }: { g: GameSt
   };
 
   return (
-    <SubView onBack={onBack} backLabel="Calendar" title={<TierBadge tier={show.tier} />}>
+    <SubView onBack={onBack} backLabel="Upcoming" title={<TierBadge tier={show.tier} />}>
       <div className="sh-flow">
         <div className="sh-flowhead">
           <h4 className="sh-show__name">{show.name}</h4>
@@ -130,7 +130,7 @@ export function EnterFlow({ g, show, initialClass, onBack, onDone }: { g: GameSt
                   </span>
                   <span className="sh-standard">
                     <span>
-                      Purse <b>{money(cl.purse)}</b>
+                      Prizes <b>{money(cl.purse)}</b>
                     </span>
                     <span>About {cl.field} other exhibitors</span>
                   </span>
@@ -186,7 +186,7 @@ export function EnterFlow({ g, show, initialClass, onBack, onDone }: { g: GameSt
           <span>
             {def?.kind === 'aquascape'
               ? 'The judges visit on show day (or judge from your photos) — the tank stays home.'
-              : 'Only healthy, settled adults travel. Show day is a game abstraction: benched at the hall for the judging and home by evening — the animal stays in your tank, comes back a little unsettled, and rests two days before its next show.'}
+              : 'Only healthy, settled adults can enter. Your animal never leaves its tank: it’s judged on show day, may be a little unsettled afterwards, and rests two days before its next show.'}
           </span>
         </div>
 
@@ -235,7 +235,7 @@ function CandidateRow({ g, c, on, lab, onPick }: { g: GameState; c: EntryCandida
           <span className="sh-cand__side">
             {lab ? (
               <>
-                <span className="sh-cand__score" title="Expected score before the judge's eye">
+                <span className="sh-cand__score" title="Expected score before the judge’s eye">
                   {c.expected.toFixed(1)}
                 </span>
                 <span className="sh-cand__odds">{Math.round(c.chances.ribbon * 100)}% ribbon</span>

@@ -74,7 +74,7 @@ export const kuhliLoach: SpeciesDefinition = {
     predationWithoutNursery: 0.95,
     nurseryRequired: true,
     maxRaisedPerClutch: 5,
-    notes: 'Rarely bred in home aquaria — most successes are accidental, with fry found under filter plates or among floating-plant roots. A few hundred greenish eggs are scattered among roots; hatch time is poorly documented (estimated here at about two days). Mature males have a thickened, branched first pectoral ray; females are larger and heavier.',
+    notes: 'Rarely bred in home aquaria — most successes are accidental, with fry found under filter plates or among floating-plant roots. A few hundred greenish eggs are scattered among roots; hatch time is poorly documented (probably about two days). Mature males have a thickened, branched first pectoral ray; females are larger and heavier.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'none',

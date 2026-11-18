@@ -25,6 +25,7 @@ export function onlineLine(status: ReturnType<typeof useCloud.getState>['status'
   if (status === 'blocked') return { text: C.onlineTooNew, warn: true };
   if (status === 'saving') return { text: C.savingOnline, warn: false };
   if (status === 'unreachable') return { text: C.onlineUnreachable, warn: true };
+  if (status === 'tooBig') return { text: C.onlineTooBig, warn: true }; // audit I20
   if (syncedAt !== null) return { text: C.savedOnline(timeAgo(syncedAt)), warn: false };
   return { text: C.notSavedOnline, warn: false };
 }
@@ -87,11 +88,14 @@ export function AccountTab() {
     return (
       <Section>
         <div className="ac-account" data-testid="settings-account">
-          {offline && <NetworkError />}
-          <p className="ac-line" data-testid="account-signed-out">
-            {C.accountSignedOut}
-          </p>
-          {inGame && (
+          {/* audit I6: who is signed in couldn't be checked: not "Sign in from Social", which reads as signed out */}
+          {offline && <NetworkError onRetry={() => void loadSocialUser(true)} />}
+          {!offline && (
+            <p className="ac-line" data-testid="account-signed-out">
+              {C.accountSignedOut}
+            </p>
+          )}
+          {inGame && !offline && (
             <div className="ac-actions">
               <Button onClick={openSocial} data-testid="account-open-social">
                 <Globe size={15} aria-hidden /> {C.openSocial}

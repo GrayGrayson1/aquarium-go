@@ -296,6 +296,6 @@ describe('market: purchases', () => {
     const o = offerFor(g, 'axolotl');
     const r = buyOffer(g, o.id, t.id);
     expect(r.ok).toBe(true);
-    expect(g.log.at(-1)?.text).toMatch(/not cycled/i);
+    expect(g.log.at(-1)?.text).toMatch(/filter bacteria are still growing/i); // Audit 2026-11-17 (J5 review): was "not cycled"
   });
 });

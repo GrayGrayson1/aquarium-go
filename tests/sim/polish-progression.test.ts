@@ -158,7 +158,7 @@ describe('grammar', () => {
       ['Clown Goby', 'clown gobies'],
       ['Coral Beauty', 'coral beauties'],
       ['Cherry Shrimp', 'cherry shrimp'],
-      ['Banggai Cardinalfish', 'banggai cardinalfish'],
+      ['Banggai Cardinalfish', 'Banggai cardinalfish'], // Audit 2026-11-17 (J15): a place name keeps its capital
       ['Neon Tetra', 'neon tetras'],
       ['Axolotl', 'axolotls'],
       ['Motoro Stingray', 'motoro stingrays'],
@@ -322,7 +322,7 @@ describe('tutorial: steps need an action taken during the step', () => {
     g.progress.reputation = Math.max(g.progress.reputation, TUTORIAL_UPGRADE_REP) + TUTORIAL_UPGRADE_GAIN;
     tick(g);
     expect(tutorialStepId(g)).toBe('preview');
-    expect(g.log.some((e) => e.toast && /already have nursery/i.test(e.text))).toBe(true);
+    expect(g.log.some((e) => e.toast && /already have breeding know-how/i.test(e.text))).toBe(true);
     expect(g.log.some((e) => e.toast && e.text === 'New upgrade unlocked!')).toBe(false);
   });
 
@@ -331,7 +331,8 @@ describe('tutorial: steps need an action taken during the step', () => {
     walkTo(g, 'feed');
     const view = currentTutorialStep(g)!;
     expect(view.hintTarget).toBe('tool-target-feed');
-    expect(view.body).toMatch(/Target feed/);
+    // audit 2026-11-17 (A14): named as the tool rail labels the button ("Target"), not "Target feed"
+    expect(view.body).toMatch(/^Tap Target and /);
     expect(tutorialChain('betta').find((x) => x.id === 'feed')!.hintTarget).toBe('tool-feed');
   });
 });

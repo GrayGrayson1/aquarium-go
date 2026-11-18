@@ -29,6 +29,8 @@ type Kinds =
   | { k: 'installEquipment'; tank: string; def: string; instance: string }
   | { k: 'repairEquipment'; tank: string; equip: string }
   | { k: 'removeEquipment'; tank: string; equip: string }
+  // Audit 2026-11-17 (G22, the owner's answer): the local store buys a stored unit back
+  | { k: 'sellEquipment'; instance: string }
   | { k: 'setLighting'; tank: string; preset?: LightPreset; intensity?: number; onHour?: number; offHour?: number; moonlight?: boolean }
   | { k: 'setSignage'; tank: string; on: boolean }
   | { k: 'renameTank'; tank: string; name: string }
@@ -38,6 +40,8 @@ type Kinds =
   | { k: 'setBackdrop'; tank: string; backdrop: BackdropKind }
   | { k: 'buyTank'; tier: string; wc: WaterClass; seeded: boolean; x?: number; z?: number; rotY?: number }
   | { k: 'placeTank'; tank: string; x: number; z: number; rotY: number }
+  // Audit 2026-11-17 (G19, the owner's answer): an empty tank comes down, its gear and decor to storage
+  | { k: 'takeDownTank'; tank: string }
   // `fromStorage`: the sender saw a piece in storage (it's placed from there, else bought; first one wins on the last)
   | { k: 'placeDecor'; tank: string; def: string; x: number; z: number; rotY?: number; scale?: number; fromStorage?: boolean }
   | { k: 'moveDecor'; tank: string; decor: string; x: number; z: number; rotY?: number; scale?: number }
@@ -51,6 +55,8 @@ type Kinds =
   // ── animals ──
   | { k: 'moveCreature'; creature: string; to: string; from?: string }
   | { k: 'separateCreature'; creature: string; to: string; from?: string }
+  // Audit 2026-11-17 (D2): several animals at once; `from`, when given, is each one's tank as the sender saw it ('' for holding)
+  | { k: 'moveCreatures'; creatures: string[]; to: string; from?: string[] }
   | { k: 'moveClutch'; clutch: string; to: string; from?: string }
   // chunk 17: lift a dud (an empty shark egg case) out before it rots
   | { k: 'liftOutClutch'; clutch: string; from?: string }
@@ -61,6 +67,7 @@ type Kinds =
   // ── the shop and supplies ──
   // `saw`: the ids of the animals bought, as the sender saw the offer (a partial sale reorders what's left)
   | { k: 'buyOffer'; offer: string; tank: string; picks?: number[]; saw?: string[] }
+  | { k: 'holdOffer'; offer: string; release?: boolean } // audit 2026-11-17 (F6): an open offer stays while you look
   | { k: 'buyFood'; food: string; packs: number }
   | { k: 'buySalt'; kg: number }
   | { k: 'buyEggs'; tins: number }

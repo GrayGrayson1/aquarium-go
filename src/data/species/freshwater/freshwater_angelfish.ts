@@ -187,7 +187,7 @@ export const freshwaterAngelfish: SpeciesDefinition = {
       { id: 'superveil', name: 'Superveil', layer: 'overlay', rarity: 0.25, when: [{ locus: 'veil', allele: 'V', count: 'hom' }], visual: { finType: 'superveil', finLength: 1.75 } },
     ],
     strains: [
-      { id: 'koi', name: 'Koi', requires: ['gold_marble', 'blushing'], note: 'Gold marble blushing: white with black marbling and an orange crown (TAS).' },
+      { id: 'koi', name: 'Koi Angel', requires: ['gold_marble', 'blushing'], note: 'Gold marble blushing: white with black marbling and an orange crown (TAS).' },
       { id: 'zebra_lace', name: 'Zebra Lace', requires: ['black_lace', 'zebra_lace'], note: 'Black lace with the zebra gene (TAS).' },
     ],
     baseVisual: {
@@ -224,16 +224,16 @@ export const freshwaterAngelfish: SpeciesDefinition = {
     nativeHabitat: 'Swamps and flooded ground thick with plants across the Amazon basin and the Guianas, in clear or silty water.',
     socialStructure: 'Lives in loose groups until pairs form; a pair claims a spawning site and defends it hard.',
     tankNeeds: 'A tall tank (20 inches or more) of 30 gallons or more, warm soft water around 25–28 °C, gentle flow, tall plants and upright wood.',
-    compatibilityNotes: 'Peaceful most of the time, but adults eat neon tetras, nano fish and dwarf shrimp, and breeding pairs chase tankmates. Fin-nippers such as tiger barbs pick at its long fins. Good with larger tetras, corydoras and plecos.',
+    compatibilityNotes: 'Peaceful most of the time, but adults eat neon tetras, nano fish and dwarf shrimp, and breeding pairs chase tank mates. Fin-nippers such as tiger barbs pick at its long fins. Good with larger tetras, corydoras and plecos.',
     breedingOverview: 'A pair lays hundreds of eggs on a leaf, slate or the glass and both parents fan and guard them; young pairs often eat their first spawns.',
     conservationNote: 'Least Concern (IUCN 2020). Trade fish are farm-bred.',
     funFact: 'Leopard angelfish fry in Joanne Norton’s experiments only grew their spots when raised on short days of eight hours’ light or less.',
     inGameBehavior: 'Glides slowly in mid-water among the plants, hangs still in small groups, and darts out to snap up food — or a small fish.',
     feedingNote: 'An easy eater: flake and small pellets once or twice a day, with frozen bloodworm, brine shrimp, daphnia or mysis a few times a week. An autofeeder with flake or small pellets suits it.',
-    keeperTip: 'Raise a group of six young together and let them pair off — and choose tankmates too big to fit in its mouth.',
+    keeperTip: 'Raise a group of six young together and let them pair off — and choose tank mates too big to fit in its mouth.',
   },
   sourceReferences: [
-    { id: 'fishbase-pterophyllum-scalare', title: 'FishBase — Pterophyllum scalare (Freshwater angelfish)', url: 'https://www.fishbase.se/summary/Pterophyllum-scalare.html', tier: 1, facts: ['15 cm TL (size field 10.5)', '24–30 °C, pH 6.0–8.0, dH 5–13', 'swamps with dense vegetation', '7 bars in young, 4 in adults', 'IUCN Least Concern (2020)', 'both parents guard'] },
+    { id: 'fishbase-pterophyllum-scalare', title: 'FishBase — Pterophyllum scalare (Freshwater angelfish)', url: 'https://www.fishbase.se/summary/Pterophyllum-scalare.html', tier: 1, facts: ['15 cm TL', '24–30 °C, pH 6.0–8.0, dH 5–13', 'swamps with dense vegetation', '7 bars in young, 4 in adults', 'IUCN Least Concern (2020)', 'both parents guard'] },
     { id: 'seriouslyfish-pterophyllum-scalare', title: 'Seriously Fish — Pterophyllum scalare', url: 'https://www.seriouslyfish.com/species/pterophyllum-scalare/', tier: 2, facts: ['150 mm SL, 20 cm tall', '100×40×50 cm tank', 'eats small fish', 'eggs on vertical surfaces', 'easy', 'farm-bred'] },
     { id: 'aquariumcoop-angelfish', title: 'Aquarium Co-Op — Angelfish care guide', url: 'https://www.aquariumcoop.com/blogs/aquarium/angelfish-care-guide', tier: 2, facts: ['29 gal for 4 adults', 'avoid nano fish and dwarf shrimp', 'up to 1,000 eggs', '8–12 years', '$5–20'] },
     { id: 'pfk-keeping-breeding-angelfish', title: 'Practical Fishkeeping — Keeping and breeding angelfish', url: 'https://www.practicalfishkeeping.co.uk/features/keeping-and-breeding-angelfish-in-the-aquarium/', tier: 2, facts: ['tank 50 cm tall', 'hatch within 48 h at 27–28 °C', 'free-swimming about day 7', 'baby brine for ~3 weeks'] },

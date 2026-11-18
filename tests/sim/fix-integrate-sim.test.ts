@@ -51,7 +51,7 @@ describe('G2-03: the club loan pays the team before anyone walks out', () => {
     g.finance.loan = { amount: 500, outstanding: 0, takenHour: 0, repaidHour: 0 };
     for (let d = 0; d < 5; d++) advanceWorld(g, 24);
     expect(g.staff!.roster.length).toBe(0);
-    expect(g.log.some((e) => /in the red after today's bills/.test(e.text))).toBe(true);
+    expect(g.log.some((e) => /in the red after today’s bills/.test(e.text))).toBe(true); // Audit 2026-11-17 (J18): the sim writes ’, as the rest of the game
     expect(g.log.some((e) => /animals are safe/.test(e.text))).toBe(false);
   });
 });

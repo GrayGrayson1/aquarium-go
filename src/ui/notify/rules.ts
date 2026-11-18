@@ -18,7 +18,9 @@
  */
 import type { GameEvent } from '@/types';
 import { fmtMoney as formatMoney } from '@/sim/economy/util'; // the log's own money format ("$120", "$4.50")
-import { untilTime } from '../panels/common/format';
+import { realIn, speedNote } from '../panels/common/format'; // Audit 2026-11-17 (J2): was untilTime (game hours)
+import { convertTempText } from '../common/format'; // Audit 2026-11-17 (J1)
+import { youngSingular } from '@/sim/life/breeding/common'; // review E: "1 larva hatched"
 
 export type NotifyCategory = 'rare' | 'care' | 'market' | 'breeding' | 'shows' | 'auto';
 /** lane:automation (chunk 5, DESIGN-S3D §8.9; NOTIFY-012) — the sixth, Automation (`auto`): shortages and paused lines. */
@@ -38,11 +40,18 @@ export interface PlannedNotification {
 
 /** What the rules may look up in the game they're reading (names that are not on the event itself). */
 export interface RuleLookups {
-  /** The game hour now ("It leaves in 14 h"). */
+  /** The game hour now. */
   hour: number;
+  /**
+   * Audit 2026-11-17 (J2): the clock's speed, so a notification read outside the game gives real time ("It leaves in
+   * about 2 min", "… at 3×", "… (paused)"); absent reads as 1×.
+   */
+  speed?: number;
   tankName(id: string): string | null;
   /** lane:automation (chunk 5) — the Operations Desk is researched: Automation notifications open Problems, else the problem's tab. */
   desk?: boolean;
+  /** Audit 2026-11-17 (J1): the player's temperature unit (the sim writes °C into its lines); absent reads as °C. */
+  tempUnit?: 'C' | 'F';
 }
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
@@ -78,7 +87,10 @@ export function planNotification(e: GameEvent, look: RuleLookups): PlannedNotifi
   const make = (category: NotifyCategory, title: string, body: string, route: string, priority: 'normal' | 'danger' = 'normal'): PlannedNotification => ({ category, title, body, route, priority, tag: category });
   const shopRoute = typeof e.offerId === 'string' && e.offerId ? `#/shop/fish/${seg(e.offerId)}` : '#/shop';
   const listingRoute = typeof e.listingId === 'string' && e.listingId ? `#/market/listings/${seg(e.listingId)}` : '#/market/listings';
-  const leaves = (until: number | null) => (until === null ? null : untilTime(until, look.hour));
+  // Audit 2026-11-17 (J2): real time, as the bids and shows count it (14 game hours is about 2 real minutes at 1×)
+  const speed = look.speed ?? 1;
+  const leaves = (until: number | null) => (until === null ? null : until <= look.hour ? 'now' : `in ${realIn(until - look.hour, speed)}${speedNote(speed)}`);
+  const inUnit = (text: string) => convertTempText(text, look.tempUnit ?? 'C') ?? text; // Audit 2026-11-17 (J1)
 
   switch (topic) {
     case 'prismatic': {
@@ -101,7 +113,7 @@ export function planNotification(e: GameEvent, look: RuleLookups): PlannedNotifi
       const open = str(v.open);
       const route =
         open === 'animal' && e.creatureId ? `#/livestock/animal/${seg(e.creatureId)}` : open === 'equipment' ? `#/tanks/${seg(e.tankId!)}/equipment` : `#/tanks/${seg(e.tankId!)}`;
-      return make('care', tank, withoutTankPrefix(e.text, tank), route, e.kind === 'danger' ? 'danger' : 'normal');
+      return make('care', tank, inUnit(withoutTankPrefix(e.text, tank)), route, e.kind === 'danger' ? 'danger' : 'normal');
     }
     case 'bid': {
       const title = str(v.title);
@@ -130,7 +142,9 @@ export function planNotification(e: GameEvent, look: RuleLookups): PlannedNotifi
       if (count === null || !tank) return null;
       const name = str(v.name);
       if (topic === 'eggs') return make('breeding', name ? `${name} laid eggs` : 'Eggs laid', `${plural(count, 'egg')} in ${tank}.`, '#/livestock/eggs');
-      if (topic === 'hatch') return make('breeding', name ? `${name}’s eggs hatched` : 'Eggs hatched', `${count.toLocaleString('en-US')} fry ${count === 1 ? 'is' : 'are'} free-swimming in ${tank}.`, '#/livestock/eggs');
+      // audit E25: say what hatched (larvae, wriggling fry, young) when the line names it; older notices keep "fry"
+      const young = str(v.young);
+      if (topic === 'hatch') return make('breeding', name ? `${name}’s eggs hatched` : 'Eggs hatched', young ? `${count.toLocaleString('en-US')} ${count === 1 ? youngSingular(young) : young} hatched in ${tank}.` : `${count.toLocaleString('en-US')} fry ${count === 1 ? 'is' : 'are'} free-swimming in ${tank}.`, '#/livestock/eggs');
       return make('breeding', name ? `${name} gave birth` : 'Young born', `${count.toLocaleString('en-US')} young in ${tank}.`, '#/livestock/eggs');
     }
     case 'show_result': {
@@ -164,7 +178,7 @@ export function planNotification(e: GameEvent, look: RuleLookups): PlannedNotifi
   // comes through quiet hours.
   if (e.kind === 'danger' && typeof e.tankId === 'string' && str(e.text)) {
     const tank = look.tankName(e.tankId);
-    if (tank) return make('care', tank, withoutTankPrefix(e.text, tank), `#/tanks/${seg(e.tankId)}`, 'danger');
+    if (tank) return make('care', tank, inUnit(withoutTankPrefix(e.text, tank)), `#/tanks/${seg(e.tankId)}`, 'danger');
   }
   return null;
 }

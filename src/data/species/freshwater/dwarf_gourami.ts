@@ -104,8 +104,8 @@ export const dwarfGourami: SpeciesDefinition = {
         mode: 'mendelian',
         alleles: [
           { id: 'W', name: 'Wild (red and blue)', dominance: 4, frequency: 0.35 },
-          { id: 'N', name: 'Neon blue', dominance: 3, frequency: 0.1 },
-          { id: 'P', name: 'Powder blue', dominance: 2, frequency: 0.3 },
+          { id: 'N', name: 'Neon Blue', dominance: 3, frequency: 0.1 },
+          { id: 'P', name: 'Powder Blue', dominance: 2, frequency: 0.3 },
           { id: 'F', name: 'Flame', dominance: 1, frequency: 0.25 },
         ],
         note: 'Powder blue, neon (cobalt) and flame (red) are line-bred farm strains of the one species; their inheritance is unpublished, so they are simplified to a ladder that keeps stock a mix of the four.',
@@ -159,7 +159,7 @@ export const dwarfGourami: SpeciesDefinition = {
     conservationNote: 'Least Concern (IUCN 2010). All trade fish are farm-bred.',
     funFact: 'In old Calcutta they were sold alive in bottles of water — an air-breather can live where other fish can’t.',
     inGameBehavior: 'Drifts slowly near the surface, touching plants and fish with its feelers and gulping air; a male guards the patch around his nest.',
-    feedingNote: 'A slow surface feeder: small flake or floating pellets once or twice a day, with frozen bloodworm, daphnia or brine shrimp a few times a week. An autofeeder with flake suits it.',
+    feedingNote: 'A slow surface feeder: small flakes or micro pellets once or twice a day, with frozen bloodworm, daphnia or brine shrimp a few times a week. An autofeeder with flake suits it.',
     keeperTip: 'Quarantine new dwarf gouramis for a few weeks or buy locally bred ones — carriers of the iridovirus can look perfectly healthy.',
   },
   sourceReferences: [
@@ -172,7 +172,7 @@ export const dwarfGourami: SpeciesDefinition = {
   confidenceNotes: [
     'Its scientific name is disputed: Catalog of Fishes and FishBase have treated it as Trichogaster fasciata since 2022, others keep T. lalius; the game uses T. lalius.',
     'Colour-form inheritance is unpublished; the ladder is a playable simplification.',
-    'Sources disagree on shrimp: Seriously Fish lists cherry shrimp as tankmates, Aquarium Co-Op says it eats them; the game says caution.',
+    'Sources disagree on shrimp: Seriously Fish lists cherry shrimp as tank mates, Aquarium Co-Op says it eats them; the game says caution.',
     'Lifespan: 2–4 years (Aquarium Co-Op) against 4–6 (Wikipedia).',
   ],
   exceptionRules: [

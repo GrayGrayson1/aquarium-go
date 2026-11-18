@@ -14,7 +14,7 @@ import { stateHash } from '@/persistence/hash';
 import { applyCommand, COMMAND_KINDS, validateCommand, WATER_CHANGER_ID, type Command, type CommandKind } from '@/sim/commands';
 import { cleanTank, dose, feedTank, installEquipment, removeEquipment, repairEquipment, setEquipment, setLighting, topOff, waterChange } from '@/sim/care';
 import { autoFeedPatch } from '@/sim/care/autofeed';
-import { buyEggs, buyEquipment, buyFood, buyOffer, buySalt, buyTank } from '@/sim/economy/purchases';
+import { buyEggs, buyEquipment, buyFood, buyOffer, buySalt, buyTank, holdOffer } from '@/sim/economy/purchases';
 import { acceptBid, counterBid, createListing, declineBid, holdBidForCounter, quickSell, quickSellFrags, withdrawListing } from '@/sim/economy/listings';
 import { findFreeSpot, placeTank, setAdmission, setOpenToPublic, toggleSignage, upgradeFacility } from '@/sim/facility';
 import { cancelResearch, claimQuest, startResearch, tutorialAdvance, tutorialSkip } from '@/sim/facility/progression';
@@ -23,11 +23,13 @@ import { checkPlacement, moveDecor, placeDecor, removeDecor } from '@/sim/aquasc
 import { plantFrag, takeFrag } from '@/sim/aquascape/frags';
 import { moveCreature, notePhoto, noteInteraction, registerGlassTap, renameCreature, toggleFavorite } from '@/sim/life/actions';
 import { liftOutClutch, moveClutch, separateCreature, startBreeding } from '@/sim/life/breeding/actions';
+import { moveCreatures } from '@/sim/life/groupMove';
 import { addCulture, addReservoir, setStockOrders, upgradePrep, waitForLine } from '@/sim/automation';
 import { holdAll, resumeAll, setHold } from '@/sim/automation/hold';
 import { assignTank, autoAssignAll, fireStaff, hireStaff, setStockBudget } from '@/sim/staff/roster';
 import { addQuarantineTank, createLine, endLine, setKeepRules, setLinePair, setLineRule, setLineRunning, setLineTank } from '@/sim/production';
 import { enterShow, withdrawEntry } from '@/sim/shows';
+import { sellStoredEquipment, takeDownTank } from '@/sim/economy/sellBack';
 import { lineFarm } from './support/production';
 import { newGame } from '@/sim/newGame';
 import { classCandidates } from '@/sim/shows';
@@ -243,6 +245,14 @@ const C: Record<CommandKind, Case | Case[]> = {
     direct: (d, c: Command & { k: 'removeEquipment' }) => removeEquipment(d, c.tank, c.equip),
     ok: true,
   },
+  // Audit 2026-11-17 (G22): a unit taken out to storage, sold back to the store
+  sellEquipment: {
+    w: 'big',
+    prep: (g) => void removeEquipment(g, g.tankOrder[0], g.tanks[g.tankOrder[0]].equipment.at(-1)!.id),
+    cmd: (g) => ({ k: 'sellEquipment', instance: g.inventory.equipment.at(-1)!.id }),
+    direct: (d, c: Command & { k: 'sellEquipment' }) => sellStoredEquipment(d, c.instance),
+    ok: true,
+  },
   setLighting: [
     { w: 'big', cmd: (g) => ({ k: 'setLighting', tank: g.tankOrder[0], preset: 'warm', intensity: 0.8 }), direct: (d, c: Command & { k: 'setLighting' }) => setLighting(d, c.tank, { preset: 'warm', intensity: 0.8 }), ok: true },
     {
@@ -289,6 +299,14 @@ const C: Record<CommandKind, Case | Case[]> = {
       return { k: 'placeTank', tank: g.tankOrder[0], x: spot.x, z: spot.z, rotY: spot.rotY };
     },
     direct: (d, c: Command & { k: 'placeTank' }) => placeTank(d, c.tank, c.x, c.z, c.rotY),
+    ok: true,
+  },
+  // Audit 2026-11-17 (G19): a new, empty tank taken down again
+  takeDownTank: {
+    w: 'line',
+    prep: (g) => void buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true }),
+    cmd: (g) => ({ k: 'takeDownTank', tank: g.tankOrder.at(-1)! }),
+    direct: (d, c: Command & { k: 'takeDownTank' }) => takeDownTank(d, c.tank),
     ok: true,
   },
   placeDecor: {
@@ -375,6 +393,17 @@ const C: Record<CommandKind, Case | Case[]> = {
     direct: (d, c: Command & { k: 'separateCreature' }) => separateCreature(d, c.creature, c.to),
     ok: true,
   },
+  // Audit 2026-11-17 (D2): a group (all of one species in one tank, the Livestock footer's case) in one command
+  moveCreatures: {
+    w: 'big',
+    cmd: (g) => {
+      const c = fishIn(g);
+      const mates = Object.values(g.creatures).filter((x) => x.status === 'alive' && x.tankId === c.tankId && x.speciesId === c.speciesId && !x.isStarter);
+      return { k: 'moveCreatures', creatures: mates.map((x) => x.id), to: otherTank(g, c.tankId!), from: mates.map((x) => x.tankId!) };
+    },
+    direct: (d, c: Command & { k: 'moveCreatures' }) => moveCreatures(d, c.creatures, c.to),
+    ok: true,
+  },
   moveClutch: {
     w: 'panels',
     cmd: (g) => {
@@ -432,6 +461,11 @@ const C: Record<CommandKind, Case | Case[]> = {
       direct: (d, c: Command & { k: 'buyOffer' }) => buyOffer(d, c.offer, c.tank, [1]),
       ok: true,
     },
+  ],
+  // audit 2026-11-17 (F6) — an open offer is held while the player looks, and released on close
+  holdOffer: [
+    { w: 'big', cmd: (g) => ({ k: 'holdOffer', offer: g.market.stock[0].id }), direct: (d, c: Command & { k: 'holdOffer' }) => holdOffer(d, c.offer, false), ok: true },
+    { what: 'released', w: 'big', prep: (g) => void holdOffer(g, g.market.stock[0].id), cmd: (g) => ({ k: 'holdOffer', offer: g.market.stock[0].id, release: true }), direct: (d, c: Command & { k: 'holdOffer' }) => holdOffer(d, c.offer, true), ok: true },
   ],
   buyFood: { w: 'big', cmd: (g) => ({ k: 'buyFood', food: firstFood(g), packs: 1 }), direct: (d, c: Command & { k: 'buyFood' }) => buyFood(d, c.food, 1), ok: true },
   buySalt: { w: 'big', cmd: () => ({ k: 'buySalt', kg: 5 }), direct: (d) => buySalt(d, 5), ok: true },

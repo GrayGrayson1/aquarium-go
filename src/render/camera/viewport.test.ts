@@ -28,6 +28,16 @@ describe('free viewport', () => {
     expect(phone.x1).toBe(390);
   });
 
+  it('frames the tank beside a side panel in a 761–793 px window (Audit 2026-11-17 G27, B-231 a)', () => {
+    // a 460 px panel and its 16 px margin leave 285–317 px: under 40 % of the width, but room for the tank
+    for (const w of [761, 777, 793]) {
+      const r = computeFreeRect(w, 600, { ...none(), right: 476 }, true, rect());
+      expect(r.x1, `${w}`).toBe(w - 476);
+    }
+    // a strip narrower than MIN_FREE_W is still treated as a full-screen overlay
+    expect(computeFreeRect(700, 600, { ...none(), right: 476 }, true, rect()).x1).toBe(700);
+  });
+
   it('ignores a sheet that would leave too little of the canvas', () => {
     const r = computeFreeRect(1440, 900, { ...none(), right: 1200 }, true, rect());
     expect(r.x1).toBe(1440);

@@ -35,7 +35,9 @@ import {
   type LucideProps,
 } from 'lucide-react';
 import type { CompatReport, CompatReason, CompatCategory, CompatVerdict } from '@/types';
-import { VERDICT_LABEL, VERDICT_STATUS, probabilityWord, speciesName } from './format';
+import { VERDICT_LABEL, VERDICT_STATUS, probabilityWord, speciesName, convertTempText } from './format';
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (D8)
+import { ScienceLink } from './ScienceLink'; // Audit 2026-11-17 (J5)
 
 type Icon = ComponentType<LucideProps>;
 
@@ -94,6 +96,7 @@ function ReasonRow({ r, existing }: { r: CompatReason; /** lane:qa-play — true
   const SevIcon = sev.icon;
   const word = probabilityWord(r.probability);
   const who = r.speciesIds?.length ? r.speciesIds.map(speciesName).join(' · ') : null;
+  const unit = useSettings((s) => s.tempUnit); // Audit 2026-11-17 (D8): the sim writes °C; show the player's unit
   return (
     <li className={clsx('ag-reason', `ag-reason--${sev.tone}`)} data-testid="compat-reason" data-severity={r.severity}>
       <span className="ag-reason__icon" aria-hidden>
@@ -102,14 +105,14 @@ function ReasonRow({ r, existing }: { r: CompatReason; /** lane:qa-play — true
       <div className="ag-reason__body">
         <div className="ag-reason__text">
           <span className="ag-sr">{sev.word}: </span>
-          {r.text}
+          {convertTempText(r.text, unit)}
         </div>
         {(word || who) && (
           <div className="ag-reason__meta">
             {word && (
               <span className="ag-reason__prob">
                 Happens <strong>{word}</strong>
-                {r.probability != null && <span className="ag-muted"> (~{Math.round(r.probability * 100)}% / week)</span>}
+                {r.probability != null && <span className="ag-muted"> (about {Math.round(r.probability * 100)}% a week){/* Audit 2026-11-17 (J17) */}</span>}
               </span>
             )}
             {who && <span className="ag-muted">{who}</span>}
@@ -118,7 +121,7 @@ function ReasonRow({ r, existing }: { r: CompatReason; /** lane:qa-play — true
         )}
         {r.mitigation && (
           <div className="ag-reason__fix">
-            <Lightbulb size={13} aria-hidden /> {r.mitigation}
+            <Lightbulb size={13} aria-hidden /> {convertTempText(r.mitigation, unit)}
           </div>
         )}
       </div>
@@ -184,7 +187,9 @@ export function CompatView({ report, title, compact, limit = 6, emptyText, class
       {title && <div className="ag-compat__title">{title}</div>}
       <div className="ag-compat__head">
         <VerdictBadge verdict={report.verdict} score={report.score} size="lg" labels={labels} />
-        <span className="ag-compat__summary">{summaryFull}</span>
+        <span className="ag-compat__summary">
+          {summaryFull} <ScienceLink article="compatibility" label="How to read compatibility" /* Audit 2026-11-17 (J5) */ />
+        </span>
       </div>
       {total === 0 ? (
         <div className="ag-muted ag-small">{emptyText ?? 'Nothing to flag — these animals and this water suit each other.'}</div>

@@ -21,7 +21,7 @@ import type { GameState } from '@/types';
 
 // another tab played an aquarium further (persistence's stale-tab rule): the ids the test marks
 // and a local save that fails (the review's note: nothing loads over a device copy that couldn't be kept)
-const mocks = vi.hoisted(() => ({ stale: new Set<string>(), failSave: false, imports: 0, leaveSaveDue: true }));
+const mocks = vi.hoisted(() => ({ stale: new Set<string>(), failSave: false, imports: 0, leaveSaveDue: true, big: false }));
 // and whether autosave would write a save on leaving (it skips one when a save landed moments before)
 vi.mock('@/game/useAutosave', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/game/useAutosave')>()), leaveSaveDue: () => mocks.leaveSaveDue }));
 vi.mock('@/persistence', async (importOriginal) => {
@@ -40,7 +40,7 @@ vi.mock('@/persistence', async (importOriginal) => {
 // the codec's streams don't mix with fake timers; online-compress.test.ts tests it on its own
 vi.mock('@/social/codec', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/social/codec')>()),
-  encodeSaveBody: async (text: string) => ({ encoding: 'json', body: text }),
+  encodeSaveBody: async (text: string) => ({ encoding: 'json', body: mocks.big ? 'x'.repeat(4_000_001) : text }), // audit I20: `big`, over the limit
   decodeSaveBody: async (b: { body: string }) => b.body,
 }));
 
@@ -639,12 +639,22 @@ describe('chunk 9 (B1, REL-038): Load online save never pushes out an aquarium k
     expect(useGame.getState().game!.clock.hour).toBeGreaterThanOrEqual(mine.clock.hour + 40);
   });
 
-  it('with every slot full, nothing loads and it says so', async () => {
+  // audit 2026-11-17, I3 (the owner's decision) and I5: changed on purpose. With every slot full the box asks before
+  // Reef Corner is deleted (before: a toast and a refusal); Cancel loads nothing, and the online-save box closes for now
+  // so Settings › Saves (behind it) can free a slot; the link is as it was, so the next check asks again
+  it('with every slot full, the box asks; Cancel loads nothing and closes the online-save box for now', async () => {
     const { w, mine } = await setUp();
+    const { useSaveLoss, lossLine } = await import('@/ui/common/saves');
     for (const [slot, seed] of [['slot1', 91], ['slot3', 92]] as const) expect((await saveGame(newGame({ starterId: 'betta', starterName: 'Fill', seed }), slot)).ok).toBe(true);
     const hour = useGame.getState().game!.clock.hour;
-    expect(await loadOnlineCopy()).toBe(false);
-    expect(toasts()).toContain('Reef Corner is only in the autosave and every slot is full. Free a slot in Settings › Saves first.');
+    const link = readLink(useSocial.getState().user!.id);
+    const loading = loadOnlineCopy();
+    await vi.waitFor(() => expect(useSaveLoss.getState().ask).not.toBeNull());
+    expect(useSaveLoss.getState().ask!.lost.map(lossLine)).toEqual(['“Autosave” (Reef Corner, Day 1) will be deleted.']);
+    useSaveLoss.getState().ask!.answer(false);
+    expect(await loading).toBe(false);
+    expect(useCloud.getState().prompt).toBeNull();
+    expect(readLink(useSocial.getState().user!.id)).toEqual(link);
     expect(useGame.getState().game!.clock.hour).toBe(hour); // still this device's game
     expect((await listSaves()).find((m) => m.slot === 'auto')?.saveId).toBe(w.saveId);
     expect(useGame.getState().game!.saveId).toBe(mine.saveId);
@@ -808,3 +818,18 @@ describe('chunk 13: a shared shop is never anyone’s online save (SHARE-011)', 
   });
 });
 
+
+describe('audit 2026-11-17, I20: a save too big to put online', () => {
+  it('says so with a status of its own, not "Can’t reach Aquarium Go online"', async () => {
+    await signIn();
+    mocks.big = true;
+    try {
+      const sent = server.uploads.length;
+      await cloudSyncNow();
+      expect(server.uploads).toHaveLength(sent);
+      expect(useCloud.getState().status).toBe('tooBig');
+    } finally {
+      mocks.big = false;
+    }
+  });
+});

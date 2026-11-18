@@ -3,8 +3,8 @@
  */
 import type { GameState, SpeciesDefinition, Tank, WaterClass } from '@/types';
 import { getTankTier } from '@/data/catalog/tanks';
-import { clamp, finite } from './chem';
-import { LITRES_PER_GALLON, ROOM_TEMP_C, SALT_KG_PER_LITRE, SALT_PRICE_PER_KG, isSaltClass, saltStrength } from './constants';
+import { clamp } from './chem';
+import { LITRES_PER_GALLON, ROOM_TEMP_C } from './constants';
 import { equipmentSummary, safeGallons, thermalTau, type EquipmentSummary } from './env';
 
 const rep = (id: string, n: number): string[] => Array.from({ length: Math.max(0, n) }, () => id);
@@ -84,7 +84,7 @@ function holdWatts(gallons: number, lid: boolean, deltaC: number): number {
   return (Math.max(0, deltaC) * litres) / (0.86 * thermalTau(gallons, lid));
 }
 
-/** Daily running cost of a tank (equipment upkeep by duty cycle + tier base upkeep + marine salt). */
+/** Daily running cost of a tank (equipment upkeep by duty cycle + tier base upkeep; salt is bought, not billed). */
 export function tankDailyCostImpl(state: GameState, tank: Tank, summary?: EquipmentSummary): number {
   const s = summary ?? equipmentSummary(tank);
   const gallons = safeGallons(tank);
@@ -127,13 +127,8 @@ export function tankDailyCostImpl(state: GameState, tank: Tank, summary?: Equipm
         cost += def.upkeep;
     }
   }
-  if (isSaltClass(tank.waterClass)) {
-    // ~20% water change a week with fresh salt mix (lane:brackish: brackish water needs only ~a third of the salt);
-    // lane:automation — a running Auto Water Changer swaps its share every day instead
-    const weekly = Math.max(0.2, s.waterChanger ? 7 * clamp(finite(s.waterChanger.inst.setting, s.waterChanger.def.stats.defaultSetting ?? 0.1), 0.05, 0.9) : 0);
-    const kgPerDay = (gallons * LITRES_PER_GALLON * weekly * SALT_KG_PER_LITRE * saltStrength(tank.waterClass)) / 7;
-    cost += kgPerDay * SALT_PRICE_PER_KG;
-  }
+  // Audit 2026-11-17 C2 (the owner's choice) — no salt here: salt is a supply, paid for when bought in Market ›
+  // Supplies, and every water change (the player's, a keeper's, the Auto Water Changer's) uses that stock.
   return Math.round(cost * 100) / 100;
 }
 

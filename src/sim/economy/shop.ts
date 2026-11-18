@@ -2,6 +2,7 @@
  * Livestock shop: species availability, daily demand random walk + trend events, pre-rolled stock and
  * mid-day specials. OWNER: lane "market".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { GameState, ShopOffer, Creature, SpeciesDefinition, Sex, MarketTrend, EventNotice, FoodDef } from '@/types';
 import type { Rng } from '../rng';
 import { nextId } from '../ids';
@@ -92,7 +93,7 @@ export function isFoodAvailable(state: GameState, def: FoodDef): boolean {
  * and the purchase refusal name them instead of an unlock label.
  */
 export function soldWithWords(def: FoodDef): string {
-  const names = (def.soldWith ?? []).map((id) => findSpecies(id)).filter((sp): sp is SpeciesDefinition => !!sp).map((sp) => pluralName(sp.commonName).toLowerCase());
+  const names = (def.soldWith ?? []).map((id) => findSpecies(id)).filter((sp): sp is SpeciesDefinition => !!sp).map((sp) => pluralName(sp.commonName));
   if (names.length <= 2) return names.join(' or ');
   return `${names.slice(0, 2).join(', ')} and more`;
 }
@@ -204,6 +205,11 @@ export function composition(sp: SpeciesDefinition, rng: Rng): Composition {
       label: (pl) => `${colony ? 'Colony' : 'Group'} of ${n} ${pl}`,
       note: colony ? 'Colonies settle and breed more readily together.' : 'Schooling fish feel safest in numbers.',
     };
+  }
+  // Audit 2026-11-17 (D3, the owner's decision): a group animal that needs just one companion (goldfish, koi, African
+  // dwarf frogs: minGroup 2) comes as a pair, so the first purchase isn't a lone animal. No draw here, as before.
+  if (kind === 'group' && minG === 2) {
+    return { count: 2, sexes: [undefined, undefined], label: (pl) => `Pair of ${pl}`, note: 'Sold as a pair, so neither one is kept alone.' };
   }
   const gonochoristic = sp.sexSystem === 'gonochoristic';
   if ((kind === 'pair' || kind === 'pair_hierarchy') && rng.chance(PAIR_OFFER_CHANCE)) {
@@ -326,7 +332,7 @@ export function generateOffer(state: GameState, rng: Rng, speciesId: string, opt
     note = `${seller.name} — F${generation} ${morph}${seller.lineFlavour}${note ? `. ${note}` : ''}`;
   } else if (tier === 'rare' || tier === 'special') {
     const r = morphRarity(sp, lead);
-    note = `${tier === 'special' ? 'Today only' : 'Rare find'}: ${r > 0.05 ? lead.morphName : `top-quality ${sp.commonName.toLowerCase()}`}${note ? `. ${note}` : ''}`;
+    note = `${tier === 'special' ? 'Today only' : 'Rare find'}: ${r > 0.05 ? lead.morphName : `top-quality ${lowerName(sp.commonName)}`}${note ? `. ${note}` : ''}`;
     if (comp.count === 1 && !opts.label) label = singular;
   }
   // lane:genetics — a Prismatic is the headline; a group carrying one is sold as one lot (see isLotOffer).
@@ -368,9 +374,18 @@ function starterMateOffer(state: GameState, rng: Rng, expiresHour: number): Shop
   return offer;
 }
 
+/**
+ * Audit 2026-11-17 (F6, the owner's choice): an offer the player has open stays in the shop past its leave time until
+ * its hold runs out (holdOffer in ./purchases renews it while the offer is open and releases it on close).
+ */
+export const offerHeld = (o: Pick<ShopOffer, 'holdUntilHour'>, hour: number): boolean => finite(o.holdUntilHour, -Infinity) > hour;
+
 /** Remove expired offers and top the stock back up. `initial` = new game. */
 export function refreshStock(state: GameState, rng: Rng, hour: number, initial = false): number {
   const m = state.market;
+  // F6: a held offer past its time stays, but the restock runs exactly as if it had left (the same draws in the same
+  // order, held or not); it is put back once the new stock is in
+  const held = (m.stock ?? []).filter((o) => o.expiresHour <= hour && o.creatures.length > 0 && offerHeld(o, hour));
   m.stock = (m.stock ?? []).filter((o) => o.expiresHour > hour && o.creatures.length > 0);
   const target = FACILITY_OFFERS[state.facility.level] ?? 7;
   const avail = availableSpecies(state);
@@ -398,6 +413,7 @@ export function refreshStock(state: GameState, rng: Rng, hour: number, initial =
       if (!initial) announcePrismatic(state, o);
     }
   }
+  if (held.length) m.stock.push(...held);
   if (!initial) m.lastRefreshHour = hour;
   return added;
 }
@@ -412,7 +428,7 @@ function announcePrismatic(state: GameState, o: ShopOffer): void {
 
 /** lane:notify — the Rare stock notification's values for a Prismatic offer (0.5 §12.2). */
 function prismaticNotice(o: ShopOffer, c: Creature, sp: SpeciesDefinition): EventNotice {
-  return { topic: 'prismatic', vars: { species: sp.commonName.toLowerCase(), morph: morphLabel(c, sp), seller: o.seller, until: o.expiresHour } };
+  return { topic: 'prismatic', vars: { species: lowerName(sp.commonName), morph: morphLabel(c, sp), seller: o.seller, until: o.expiresHour } };
 }
 
 /** When new unlocks land, stock the newly available species right away. */
@@ -474,5 +490,10 @@ export function maybeSpecial(state: GameState, rng: Rng, start: number, dt: numb
   // lane:notify — a special notifies when it is news (when it toasts); a Prismatic one as a Prismatic (0.5 §12.2)
   const pc = shimmer ? o.creatures.find((x) => isPrismatic(x)) : undefined;
   const notice: EventNotice | undefined = pc ? prismaticNotice(o, pc, sp) : fits && news ? { topic: 'special', vars: { morph: o.label ?? sp.commonName, seller: o.seller, price: o.price, until: o.expiresHour } } : undefined;
-  emitEvent(state, { kind: 'market', text: `Market special: ${o.label} from ${o.seller} — ${fmtMoney(o.price)}, today only.`, toast: shimmer || (fits && news), offerId: o.id, ...(notice ? { notice } : {}) });
+  // audit 2026-11-17 (F6) — "today only" says until when (a special lasts 6–10 game hours, so the hour matters)
+  const h = Math.round(hourOfDay(o.expiresHour)) % 24;
+  const until = `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}`;
+  // (one leaving after midnight leaves "tonight", as the offer screen says: review note)
+  const when = h < 5 ? `until about ${until} tonight` : `today only, until about ${until}`;
+  emitEvent(state, { kind: 'market', text: `Market special: ${o.label} from ${o.seller} — ${fmtMoney(o.price)}, ${when}.`, toast: shimmer || (fits && news), offerId: o.id, ...(notice ? { notice } : {}) });
 }

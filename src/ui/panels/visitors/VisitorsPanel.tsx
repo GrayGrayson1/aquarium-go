@@ -25,6 +25,7 @@ import { FacilityUpgradeCard } from '../common/FacilityUpgrade';
 import { Requirements, reqsFor } from '../common/Requirements';
 import { orderedTanks, unlocked } from '../common/derive';
 import { relTime, MOOD_LABEL, plural } from '../common/format';
+import { projectAdmission } from './admissionProjection'; // B-121: the sim's own price curve
 
 const MOOD_ICON: Record<VisitorReaction['mood'], typeof Smile> = { wow: Sparkles, happy: Smile, neutral: Meh, bored: Frown, concerned: TriangleAlert };
 type VisitorsTab = 'visitors' | 'staff'; // lane:staff
@@ -61,7 +62,7 @@ export function VisitorsPanel() {
             </Button>
           }
         >
-          Upgrade to a specialty shop to welcome paying visitors. Links to this page keep working — they show this until it unlocks.
+          Upgrade to a specialty shop to welcome paying visitors.
         </LockedDestination>
       </PanelLayout>
     );
@@ -213,8 +214,8 @@ function AdmissionCard({ g, fair }: { g: GameState; fair?: number }) {
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => edit({ k: 'setAdmission', price: v }), 350);
   };
-  const proj = useMemo(() => project(g, price, fair), [g, price, fair]);
-  const cur = useMemo(() => project(g, g.facility.admission, fair), [g, fair]);
+  const proj = useMemo(() => projectAdmission(g, price, fair), [g, price, fair]);
+  const cur = useMemo(() => projectAdmission(g, g.facility.admission, fair), [g, fair]);
   const delta = proj.revenue - cur.revenue;
   return (
     <section className="pn-card">
@@ -251,20 +252,6 @@ function AdmissionCard({ g, fair }: { g: GameState; fair?: number }) {
   );
 }
 
-/** Simple, transparent UI projection around the sim's fair price (the sim decides the real numbers). */
-function project(g: GameState, price: number, fairIn?: number) {
-  const hist = g.visitors.history.slice(-7);
-  const lvl = getFacilityLevel(g.facility.level);
-  const base = hist.length ? hist.reduce((a, h) => a + h.count, 0) / hist.length : lvl.visitorCapacity * 4;
-  const fair = Math.max(1, fairIn ?? 4 + g.progress.reputation / 60);
-  const draw = (p: number) => 1 / (1 + Math.pow(p / (fair * 1.25), 2.4));
-  const visitors = Math.max(0, (base * draw(price)) / Math.max(0.05, draw(g.facility.admission)));
-  const ratio = price / fair;
-  const mood = price === 0 ? 'Thrilled' : ratio <= 0.7 ? 'Great value' : ratio <= 1.05 ? 'Fair' : ratio <= 1.35 ? 'Pricey' : 'Too expensive';
-  const moodTone = ratio <= 1.05 ? 'pn-tone-good' : ratio <= 1.35 ? 'pn-tone-watch' : 'pn-tone-danger';
-  return { visitors, revenue: visitors * price, mood, moodTone };
-}
-
 function WeekBars({ g }: { g: GameState }) {
   const hist = [...g.visitors.history.slice(-6), { day: g.visitors.today.day, count: g.visitors.today.count, revenue: g.visitors.today.revenue, avgSatisfaction: g.visitors.today.count ? g.visitors.today.satisfactionSum / g.visitors.today.count : 0 }];
   if (hist.length < 2) return null;
@@ -272,7 +259,7 @@ function WeekBars({ g }: { g: GameState }) {
   return (
     <section>
       <SectionHead title="Last 7 days" icon={<Users size={14} />} />
-      <div className="pn-weekbars" role="img" aria-label={`Visitors per day: ${hist.map((h) => `day ${h.day} ${h.count}`).join(', ')}`}>
+      <div className="pn-weekbars" role="img" aria-label={`Visitors per day: ${hist.map((h) => `Day ${h.day}: ${h.count}`).join(', ')}`}>
         {hist.map((h, i) => (
           <div key={h.day} className={clsx('pn-weekbar', i === hist.length - 1 && 'is-today')}>
             <span className="pn-weekbar__v">{h.count}</span>

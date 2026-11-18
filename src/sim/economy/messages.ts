@@ -44,7 +44,7 @@ type AspectBank = Record<Aspect, string[]>;
 const LIKE_ANIMAL: AspectBank = {
   rarity: [
     'That {morph} colouring is something I rarely see',
-    "You don't find {morph} {species} like this every day",
+    "You don’t find {morph} {species} like this every day",
     'The rarity here is exactly what I have been hunting for',
     '[one] A {morph} like {name} is the piece my collection is missing',
     '[many] {morph} {species} like these are exactly what my collection is missing',
@@ -87,7 +87,7 @@ const LIKE_ANIMAL: AspectBank = {
     'Crowds love {species}; this would draw people in',
     '[one] Charismatic animals like {name} win visitors over',
     '[many] Charismatic animals like {lot} win visitors over',
-    "I'm interested because {species} have proven visitor appeal",
+    "I’m interested because {species} have proven visitor appeal",
   ],
 };
 
@@ -124,34 +124,34 @@ const LIKE_TANK: AspectBank = {
     'Big water volume means stability, and I like that',
   ],
   visitorAppeal: [
-    "I'm interested because this exhibit has proven visitor appeal",
+    "I’m interested because this exhibit has proven visitor appeal",
     'The visitor numbers on this display speak for themselves',
     'This would stop people in their tracks',
   ],
 };
 
 const CONCERN_ANIMAL: AspectBank = {
-  rarity: ["it's a common variety, so I can't go too high", 'there is nothing unusual in the genetics', 'I was hoping for a rarer colour'],
+  rarity: ["it’s a common variety, so I can’t go too high", 'there is nothing unusual in the genetics', 'I was hoping for a rarer colour'],
   lineage: ['there is not much breeding history to go on', 'without a documented line I have to price in some risk', 'I would have liked proven breeding records'],
   beauty: ['the colours are a bit washed out for my taste', 'the markings are a little uneven', 'the finnage is not quite show quality'],
-  health: ["I'm a little worried about the health readings", '[one] {name} looks stressed in the photos', '[many] they look stressed in the photos', 'I would need to quarantine and treat first'],
+  health: ["I’m a little worried about the health readings", '[one] {name} looks stressed in the photos', '[many] they look stressed in the photos', 'I would need to quarantine and treat first'],
   easyCare: ['{species} are more demanding than I would like', 'the care requirements make me hesitate', 'I need something more beginner-friendly'],
   size: ['[one] {name} is still quite small', '[one] it has some growing to do', '[one] I was after a larger animal', '[many] they are still quite small', '[many] they have some growing to do', '[many] I was after larger animals'],
-  visitorAppeal: ["I'm not sure {species} would pull a crowd", '[one] it is a bit shy for a display', '[many] they are a bit shy for a display', 'visitors might walk right past'],
+  visitorAppeal: ["I’m not sure {species} would pull a crowd", '[one] it is a bit shy for a display', '[many] they are a bit shy for a display', 'visitors might walk right past'],
 };
 
 const CONCERN_TANK: AspectBank = {
   rarity: ['the livestock is fairly common', 'nothing in the stocking list is rare', 'I was hoping for something more unusual'],
   lineage: ['there is not much lineage behind the livestock', 'the animals come without breeding records', 'I would want more history on the stock'],
   beauty: ['the aquascape needs work, honestly', 'the layout feels cluttered', 'the scape does not quite come together'],
-  health: ["I'm a little worried about the health readings", 'some of the animals look stressed', 'the water numbers make me nervous'],
+  health: ["I’m a little worried about the health readings", 'some of the animals look stressed', 'the water numbers make me nervous'],
   easyCare: ['it is more demanding than I would like to take on', 'this would be a lot of work for me', 'I need a beginner-friendly setup, and this is advanced'],
-  size: ["the tank is smaller than I'd like", '{gallons} gallons is on the small side for my plans', 'I was hoping for a bigger system'],
-  visitorAppeal: ["I'm not sure it would pull crowds", 'it may not hold visitor attention', 'it lacks a real showpiece animal'],
+  size: ["the tank is smaller than I’d like", '{gallons} gallons is on the small side for my plans', 'I was hoping for a bigger system'],
+  visitorAppeal: ["I’m not sure it would pull crowds", 'it may not hold visitor attention', 'it lacks a real showpiece animal'],
 };
 
 const INDIFFERENT: AspectBank = {
-  rarity: ["I don't care much about rare morphs.", 'Rare genes are not really my thing.', 'Morph names do not move me much.'],
+  rarity: ["I don’t care much about rare morphs.", 'Rare genes are not really my thing.', 'Morph names do not move me much.'],
   lineage: ['Pedigree does not matter much to me.', 'I am not fussed about breeding records.', 'Paperwork is nice, but it is not why I am here.'],
   beauty: ['Looks are secondary for me.', 'I am less interested in the scape than the animals.', 'Pretty is nice; healthy is what counts.'],
   health: ['I will quarantine anything anyway.', 'I have a hospital tank ready either way.', 'Condition is fine by my standards.'],
@@ -160,7 +160,7 @@ const INDIFFERENT: AspectBank = {
   visitorAppeal: ['I am not worried about crowd appeal.', 'This is for me, not an audience.', 'I do not need a showpiece.'],
 };
 
-const STALE = ["It has been listed a while, so I'm offering a bit under.", 'Listings like this have been sitting lately, so here is my number.', '[one] Since nobody has snapped it up yet, I am starting a little lower.', '[many] Since nobody has snapped them up yet, I am starting a little lower.'];
+const STALE = ["It has been listed a while, so I’m offering a bit under.", 'Listings like this have been sitting lately, so here is my number.', '[one] Since nobody has snapped it up yet, I am starting a little lower.', '[many] Since nobody has snapped them up yet, I am starting a little lower.'];
 const CHANGED = ['I noticed the listing changed since it went up.', 'The update on the listing gave me pause.', 'Given the recent changes, I have adjusted my offer.'];
 const OVER_BUDGET = ['This is the top of my budget.', 'I am stretching my budget for this.', 'That is honestly everything I can spend right now.'];
 const FAVOURITE = ['I have always had a soft spot for {species}.', '{Species} are my favourite — I could not scroll past.', 'I have been looking for {species} for a while.'];
@@ -180,12 +180,12 @@ const LIKE_FRAG: AspectBank = {
 };
 
 const CONCERN_FRAG: AspectBank = {
-  rarity: ["[one] it's a common piece, so I can't go too high", "[many] they're common pieces, so I can't go too high", 'there are plenty of these around'],
+  rarity: ["[one] it’s a common piece, so I can’t go too high", "[many] they’re common pieces, so I can’t go too high", 'there are plenty of these around'],
   lineage: ['a fresh cut is always a bit of a gamble', '[one] I would have liked it healed on the plug first', '[many] I would have liked them healed on the plug first'],
   beauty: ['the colour is a little muted', '[one] it is not the most striking piece', '[many] they are not the most striking pieces'],
   health: ['[one] it looks a little stressed', '[one] I would want to watch it heal first', '[many] they look a little stressed', '[many] I would want to watch them heal first'],
   easyCare: ['[coral][one] it needs very clean water, which makes me cautious', '[coral][many] they need very clean water, which makes me cautious', '[one] it is more demanding than I would like', '[many] they are more demanding than I would like'],
-  size: ["[one] it's still a small frag", '[one] it has a lot of growing to do', "[one] it's only a small piece for now", '[one] I will need a few weeks to grow it on', '[one] it will take a while to fill in', "[many] they're still small frags", '[many] they have a lot of growing to do', '[many] I will need a few weeks to grow them on', '[many] they will take a while to fill in'],
+  size: ["[one] it’s still a small frag", '[one] it has a lot of growing to do', "[one] it’s only a small piece for now", '[one] I will need a few weeks to grow it on', '[one] it will take a while to fill in', "[many] they’re still small frags", '[many] they have a lot of growing to do', '[many] I will need a few weeks to grow them on', '[many] they will take a while to fill in'],
   visitorAppeal: ['[one] it is more of a background piece', '[one] it will not stand out much at first', '[many] they are more background pieces', '[many] they will not stand out much at first'],
 };
 
@@ -301,13 +301,13 @@ interface ArchetypeBank {
 
 const BANK: Record<BuyerArchetype, ArchetypeBank> = {
   beginner: {
-    openers: ['Hi! This would be my first real aquarium.', "Hello — I'm pretty new to this.", 'Hey there, still learning the ropes.', 'Hi, my local shop pointed me to your listing.', "Hello! I've been reading everything I can find.", "Hi — I've wanted a tank for years."],
-    closers: ['Hope this offer works!', 'Thanks for considering it!', 'Fingers crossed.', 'Any care tips would be very welcome!', "[one] I'd take good care of it, promise.", "[many] I'd take good care of them, promise."],
+    openers: ['Hi! This would be my first real aquarium.', "Hello — I’m pretty new to this.", 'Hey there, still learning the ropes.', 'Hi, my local shop pointed me to your listing.', "Hello! I’ve been reading everything I can find.", "Hi — I’ve wanted a tank for years."],
+    closers: ['Hope this offer works!', 'Thanks for considering it!', 'Fingers crossed.', 'Any care tips would be very welcome!', "[one] I’d take good care of it, promise.", "[many] I’d take good care of them, promise."],
     needs: ['I need a beginner-friendly setup.', 'I want something that forgives a few mistakes.', 'Easy care matters most to me.'],
     needAspect: 'easyCare',
     likes: { easyCare: ['{species} were on my shortlist of easy first animals', 'Everyone says {species} are a great place to start'], health: ['[one] It looks healthy, which reassures a newbie like me', '[many] They look healthy, which reassures a newbie like me'] },
     counter: {
-      accept: ['Okay, deal! {counter} it is.', "That's a stretch, but you've been helpful — {counter} works.", 'Alright, {counter}. I am excited!'],
+      accept: ['Okay, deal! {counter} it is.', "That’s a stretch, but you’ve been helpful — {counter} works.", 'Alright, {counter}. I am excited!'],
       split: ['Could we meet in the middle at {amount}?', 'I can do {amount} — would that work?', 'Maybe {amount}? That is really my limit.'],
       hold: ['Sorry, {amount} is all I can manage right now.', 'I have to stick with {amount}, I am on a budget.', 'I wish I could, but {amount} is my number.'],
       walk: ['That is more than I can spend, sorry. Good luck!', 'I think I will keep looking. Thanks anyway!', 'That is too rich for a beginner like me.'],
@@ -367,7 +367,7 @@ const BANK: Record<BuyerArchetype, ArchetypeBank> = {
   aquascaper: {
     openers: ['I am an aquascaper.', 'I judge tanks by their layout first.', 'Scaper here — I noticed the composition.', 'I have entered a few aquascaping contests.', 'I spend more on hardscape than livestock.', 'I photograph planted tanks for fun.'],
     closers: ['[tank] I would keep the scape intact.', '[one] It would be a centrepiece in my studio.', '[many] They would be a centrepiece in my studio.', '[one] I would love to photograph it properly.', '[many] I would love to photograph them properly.', '[tank] Composition like this is rare.', '[tank] Happy to credit you as the original scaper.', '[animal][one] It would finish off my current layout nicely.', '[animal][many] They would finish off my current layout nicely.'],
-    needs: ["[tank] I'm buying the aquascape as much as the animals.", '[tank] Layout, plants and balance are what I pay for.', '[animal] I only add animals that suit a planted layout.'],
+    needs: ["[tank] I’m buying the aquascape as much as the animals.", '[tank] Layout, plants and balance are what I pay for.', '[animal] I only add animals that suit a planted layout.'],
     needAspect: 'beauty',
     likes: { beauty: ['[tank] The hardscape flows beautifully', '[tank] The negative space and planting are handled with real taste', '[animal] That colour would glow against a planted layout'], health: ['[tank] Healthy plants and clear water — a sign of a balanced system', '[animal][one] A healthy animal like this would suit a clean scape', '[animal][many] Healthy animals like these would suit a clean scape'] },
     counter: {
@@ -399,7 +399,7 @@ const BANK: Record<BuyerArchetype, ArchetypeBank> = {
   public_aquarium: {
     openers: ['I curate exhibits for {org}.', 'On behalf of the curatorial team at {org}:', 'We are planning a new gallery at {org}.', 'Our visitors at {org} would love this.', 'I am sourcing animals for a public display.', 'Our education team flagged this listing.'],
     closers: ['We can arrange professional transport.', '[one] It would be seen by thousands.', '[many] They would be seen by thousands.', 'We would credit your shop on the exhibit sign.', 'Our board approved this budget.', 'Happy to share visitor feedback afterwards.'],
-    needs: ['Health, scale and visitor appeal are what we look for.', "I'm interested because this exhibit has proven visitor appeal."],
+    needs: ['Health, scale and visitor appeal are what we look for.', "I’m interested because this exhibit has proven visitor appeal."],
     needAspect: 'visitorAppeal',
     likes: { visitorAppeal: ['[tank] This display has exactly the pull our galleries need', 'Our visitors respond strongly to {species}'], size: ['[tank] At {gallons} gallons it is a true exhibit piece', '[animal][one] A well-grown animal like {name} shows well behind glass', '[animal][many] Well-grown animals like these show well behind glass'], health: ['Our vets would sign off on stock this healthy'] },
     counter: {
@@ -429,7 +429,7 @@ const BANK: Record<BuyerArchetype, ArchetypeBank> = {
     feedbackGood: ['Already part of our outreach program. Thank you!', 'Healthy and exactly as documented. Thank you for breeding responsibly.'],
   },
   bargain_hunter: {
-    openers: ['Quick offer.', 'Cash offer, fast pickup.', "I'll be honest, I'm looking for a deal.", 'Straight to it:', 'I have seen similar go for less.', 'No fuss offer.'],
+    openers: ['Quick offer.', 'Cash offer, fast pickup.', "I’ll be honest, I’m looking for a deal.", 'Straight to it:', 'I have seen similar go for less.', 'No fuss offer.'],
     closers: ['Take it or leave it.', 'Cash today.', '[one] Could pick it up in an hour.', '[many] Could pick them up in an hour.', 'It is a fair price in this market.', 'Let me know quick — I am looking at others.'],
     needs: ['Price is my main concern.', 'I only buy when the price is right.'],
     needAspect: 'health',

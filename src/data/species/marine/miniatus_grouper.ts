@@ -149,13 +149,13 @@ export const miniatusGrouper: SpeciesDefinition = {
     conservationNote: 'Least Concern (IUCN 2018), though fished commercially and sensitive to fishing and climate stress. All aquarium fish are wild-caught.',
     funFact: 'In the wild about 80% of its diet is small fish — mostly sea goldies (anthias) ambushed with a sudden rush up from the reef.',
     inGameBehavior: 'Lurks in a favourite cave, watches the tank with swivelling eyes, rushes out to ambush food, and learns to wait at the front glass at feeding time.',
-    feedingNote: 'An ambush predator. Offer thawed krill, silversides and chopped seafood, or large sinking carnivore pellets, from a feeding stick. Juveniles eat daily; adults need a meal every day or two. An autofeeder can drop pellets, but frozen seafood should be the staple.',
-    keeperTip: 'Skip live goldfish and other freshwater feeder fish: they can carry disease and lack the nutrition a marine predator needs. Training it onto frozen seafood is safer.',
+    feedingNote: 'An ambush predator. Offer thawed mysis shrimp, or large sinking carnivore pellets, from a feeding stick. Juveniles eat daily; adults need a meal every day or two. An autofeeder can drop pellets, but frozen mysis should be the staple.',
+    keeperTip: 'Skip live goldfish and other freshwater feeder fish: they can carry disease and lack the nutrition a marine predator needs. Training it onto frozen foods is safer.',
   },
   sourceReferences: [
     { id: 'fishbase-cephalopholis-miniata', title: 'FishBase — Cephalopholis miniata (Coral hind)', url: 'https://www.fishbase.se/summary/Cephalopholis-miniata.html', tier: 1, facts: ['max 50 cm TL', 'depth 2–150 m', '~80% of diet small fish (mainly Pseudanthias), rest crustaceans', 'harems of a male and 2–12 females', 'territories up to 475 m²', 'IUCN Least Concern (2017/2018 assessment)', 'high fishing and climate vulnerability'] },
-    { id: 'liveaquaria-miniatus', title: 'LiveAquaria — Miniatus Grouper', url: 'https://www.liveaquaria.com/products/miniatus-grouper', tier: 2, facts: ['min tank 180 gal', 'max 14 in in aquaria (18 in wild)', 'aggressive', 'reef compatible with caution', 'not to be trusted with invertebrates or small fish', 'price ~$150'] },
-    { id: 'wikipedia-cephalopholis-miniata', title: 'Wikipedia — Cephalopholis miniata (citing IUCN, FishBase, FAO)', url: 'https://en.wikipedia.org/wiki/Cephalopholis_miniata', tier: 3, facts: ['protogynous hermaphrodite', 'juveniles orange-yellow with fewer spots', 'ambushes sea goldies from below', 'popular in public aquaria'] },
+    { id: 'liveaquaria-miniatus', title: 'LiveAquaria — Miniatus Grouper', url: 'https://www.liveaquaria.com/products/miniatus-grouper', tier: 2, facts: ['min tank 180 gal', 'max 14 inches in aquaria (18 in the wild)', 'aggressive', 'reef compatible with caution', 'not to be trusted with invertebrates or small fish', 'price ~$150'] },
+    { id: 'wikipedia-cephalopholis-miniata', title: 'Wikipedia — Cephalopholis miniata', url: 'https://en.wikipedia.org/wiki/Cephalopholis_miniata', tier: 3, facts: ['protogynous hermaphrodite', 'juveniles orange-yellow with fewer spots', 'ambushes sea goldies from below', 'popular in public aquaria'] },
   ],
   confidenceNotes: [
     'Size: FishBase max 50 cm TL; LiveAquaria says ~14 in (36 cm) in aquaria. The game uses 42 cm, matching the brief’s conservative 40–45 cm.',

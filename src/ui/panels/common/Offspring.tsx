@@ -7,6 +7,9 @@ import { predictOffspringMorphs, morphDisplayName, predictOffspringStrains, pris
 import { findSpecies } from '@/data/species';
 import { safe } from './hooks';
 
+/** audit E24: a rare morph reads "<1%", never "0%". */
+const pctOf = (ch: number) => (ch >= 0.995 ? '100%' : ch >= 0.01 ? `${Math.round(ch * 100)}%` : ch > 0 ? '<1%' : '0%');
+
 export function OffspringOdds({ a, b, max = 4 }: { a: Creature; b: Creature; max?: number }) {
   const sp = findSpecies(a.speciesId);
   if (!sp || a.speciesId !== b.speciesId) return null;
@@ -23,7 +26,7 @@ export function OffspringOdds({ a, b, max = 4 }: { a: Creature; b: Creature; max
       <div className="pn-odds__head">
         <Dna size={13} aria-hidden /> Expected young
       </div>
-      <div className="pn-odds__bar" role="img" aria-label={top.map((o) => `${Math.round(o.chance * 100)}% ${o.morphName}`).join(', ')}>
+      <div className="pn-odds__bar" role="img" aria-label={top.map((o) => `${pctOf(o.chance)} ${o.morphName}`).join(', ')}>
         {top.map((o, i) => (
           <span key={o.morphName} className={`pn-odds__seg pn-odds__seg--${i}`} style={{ flexGrow: Math.max(0.02, o.chance) }} />
         ))}
@@ -32,7 +35,7 @@ export function OffspringOdds({ a, b, max = 4 }: { a: Creature; b: Creature; max
         {top.map((o, i) => (
           <li key={o.morphName}>
             <i className={`pn-odds__key pn-odds__seg--${i}`} aria-hidden />
-            <b className="pn-num-t">{Math.round(o.chance * 100)}%</b> {safe(() => morphDisplayName(sp, o.morphName), o.morphName)}
+            <b className="pn-num-t">{pctOf(o.chance)}</b> {safe(() => morphDisplayName(sp, o.morphName), o.morphName)}
           </li>
         ))}
       </ul>

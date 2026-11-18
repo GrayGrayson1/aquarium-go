@@ -8,6 +8,7 @@
  *    as `cache.foodLevel` for the HUD but does not change the status by itself.
  * Everything here is cheap (one pass over the tank's animals + the food inventory) and runs in refreshTankCache.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { Creature, FoodDef, GameState, SpeciesDefinition, Tank } from '@/types';
 import type { StatusLevel, WaterResidents } from '@/types/reports';
 import { findSpecies } from '@/data/species';
@@ -17,7 +18,8 @@ import { effectiveBioload } from './water/env';
 import { illnessDef } from './life/illness';
 import { emitEvent } from './context';
 import { getWaterReport } from './water';
-import { creaturesInTank } from './life';
+import { creaturesInTank, hungerAdvice } from './life';
+import { foodsFor, menuFor } from '@/data/species/guide'; // Audit 2026-11-17 C8
 import { speciesWaterView } from './life/welfare'; // lane:fix-water — the creature card's water-harm number
 import { pluralName } from './economy/util';
 import { isFoodAvailable } from './economy/shop';
@@ -78,7 +80,7 @@ function who(creatures: Pick<Creature, 'name' | 'speciesId'>[]): { subject: stri
   const species = new Set(creatures.map((c) => c.speciesId));
   if (species.size === 1) {
     const sp = findSpecies(creatures[0].speciesId);
-    return { subject: `${creatures.length} ${sp ? pluralName(sp.commonName).toLowerCase() : 'animals'}`, plural: true };
+    return { subject: `${creatures.length} ${sp ? pluralName(sp.commonName) : 'animals'}`, plural: true };
   }
   return { subject: `${creatures.length} animals`, plural: true };
 }
@@ -98,7 +100,8 @@ function issueText(issue: AnimalIssue, list: Creature[]): string {
       const sp = findSpecies(first.speciesId);
       const def = first.illness ? illnessDef(first.illness.kind) : undefined;
       const name = def && sp ? def.name(sp) : 'an illness';
-      return plural ? `${subject} are seriously ill — treat them now.` : `${subject} is seriously ill with ${name} — treat it now.`;
+      // Audit 2026-11-17 C22 — there is no Treat button: the cures are care steps, listed on the animal's card
+      return plural ? `${subject} are seriously ill — see their cards for what helps.` : `${subject} is seriously ill with ${name} — see its card for what helps.`;
     }
     case 'failing':
       return plural ? `${subject} are in poor health.` : `${subject}’s health is failing (${Math.round(first.stats.health)}%).`;
@@ -120,8 +123,34 @@ function issueText(issue: AnimalIssue, list: Creature[]): string {
   }
 }
 
-/** Worst animal-welfare problem in a tank (living animals only). */
-export function animalStatus(creatures: Creature[]): AnimalStatus {
+/**
+ * Audit 2026-11-17 C8 — a hungry or starving line for one species says what to do, as the creature card does
+ * (`hungerAdvice`: none of its food in stock → what to buy; outpaced or target-fed → target feeding), else names the
+ * food in stock it eats: a pleco beside tetras fed flakes read only "very hungry — time to feed". Null: keep the plain line.
+ */
+function hungerLine(state: GameState, issue: 'starving' | 'very_hungry', list: Creature[]): string | null {
+  if (new Set(list.map((c) => c.speciesId)).size !== 1) return null;
+  const sp = findSpecies(list[0].speciesId);
+  if (!sp) return null;
+  const { subject, plural } = who(list);
+  const mates = list[0].tankId ? creaturesInTank(state, list[0].tankId) : [];
+  const outpaced = sp.feedingSpeed < 0.3 && mates.some((c) => c.speciesId !== sp.id && (findSpecies(c.speciesId)?.feedingSpeed ?? 0) > sp.feedingSpeed + 0.2);
+  const head = `${subject} ${plural ? 'are' : 'is'} ${issue === 'starving' ? 'starving' : 'very hungry'}`;
+  const advice = hungerAdvice(state, sp, outpaced, plural);
+  if (advice) return `${head} — ${advice}`;
+  const stock = state.inventory?.foods ?? {};
+  // (review) the guide's list first (menuFor: no goldfish pellets for a betta while micro pellets are in), then any
+  // food in stock it eats
+  const have = (f: { id: string }) => (stock[f.id] ?? 0) >= 1;
+  const menu = menuFor(sp).filter(have);
+  const names = [...new Set((menu.length ? menu : foodsFor(sp).filter(have)).map((f) => f.name.toLowerCase()))].slice(0, 2);
+  if (!names.length) return null;
+  const them = plural ? 'them' : 'it';
+  return issue === 'starving' ? `${head} — feed ${them} ${names.join(' or ')} right away.` : `${head} — time to feed ${them} ${names.join(' or ')}.`;
+}
+
+/** Worst animal-welfare problem in a tank (living animals only). `state`: hunger lines name the food (Audit C8). */
+export function animalStatus(creatures: Creature[], state?: GameState): AnimalStatus {
   const buckets = new Map<AnimalIssue, Creature[]>();
   for (const c of creatures) {
     if (c.status !== 'alive' && c.status !== 'listed') continue;
@@ -135,7 +164,8 @@ export function animalStatus(creatures: Creature[]): AnimalStatus {
     const list = buckets.get(issue);
     if (!list?.length) continue;
     list.sort((a, b) => b.stats.hunger - a.stats.hunger || a.stats.health - b.stats.health || (a.id < b.id ? -1 : 1));
-    return { status: DANGER_ISSUES.has(issue) ? 'danger' : 'watch', issue, reason: issueText(issue, list), creatureIds: list.map((c) => c.id) };
+    const hungry = state && (issue === 'starving' || issue === 'very_hungry') ? hungerLine(state, issue, list) : null;
+    return { status: DANGER_ISSUES.has(issue) ? 'danger' : 'watch', issue, reason: hungry ?? issueText(issue, list), creatureIds: list.map((c) => c.id) };
   }
   return { status: 'good', issue: null, reason: null, creatureIds: [] };
 }
@@ -333,7 +363,7 @@ export function tankFoodOutlook(state: GameState, tankId: string, pre?: { index:
   if (level === 'ok') return { ...OK_OUTLOOK, meals: worstMeals };
   const affected = level === 'out' ? out : low;
   const names = affected.map((c) => c.name);
-  const subject = affected.length > 3 && new Set(affected.map((c) => c.speciesId)).size === 1 ? `your ${pluralName(needy[0].commonName).toLowerCase()}` : listNames(names);
+  const subject = affected.length > 3 && new Set(affected.map((c) => c.speciesId)).size === 1 ? `your ${pluralName(needy[0].commonName)}` : listNames(names);
   const verb = affected.length === 1 ? 'eats' : 'eat';
   const mealsLeft = Math.max(1, Math.floor(worstMeals));
   const text = level === 'out' ? `No food left that ${subject} ${verb}` : `Food for ${subject} is running low (about ${mealsLeft} meal${mealsLeft === 1 ? '' : 's'} left)`;
@@ -369,7 +399,7 @@ const WATER_CONSEQUENCES = new Set<AnimalIssue | null>(['dying', 'failing', 'bad
  * whole band while every card in the tank was red. The water report lists who it is harming; this folds that into the
  * animals' status ahead of everything but starvation, with the water headline as the explanation.
  */
-function withWaterHarm(tank: Tank, animals: AnimalStatus, water: { status?: StatusLevel; headline: string; residents?: WaterResidents[] }): AnimalStatus {
+export function withWaterHarm(tank: Tank, animals: AnimalStatus, water: { status?: StatusLevel; headline: string; residents?: WaterResidents[] }): AnimalStatus {
   if (!water.residents?.length || animals.issue === 'starving') return animals;
   let causeText: string | null = null;
   const hurt = water.residents.filter((r) => {
@@ -499,7 +529,7 @@ export function refreshFoodStatus(state: GameState, opts: { notify?: boolean } =
     try {
       const food = tankFoodOutlook(state, id, { index, perRound });
       if (tank.cache.waterStatus && tank.cache.foodLevel !== food.level) {
-        composeTankStatus(tank, getWaterReport(state, id), animalStatus(creaturesInTank(state, id)), food);
+        composeTankStatus(tank, getWaterReport(state, id), animalStatus(creaturesInTank(state, id), state), food);
       }
       if (opts.notify) noteFoodLevel(state, tank, food);
     } catch {

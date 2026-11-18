@@ -13,7 +13,7 @@ import { advanceWorld } from '@/sim/world';
 import { createCreature, addCreature } from '@/sim/life';
 import { starterAquascape } from '@/sim/aquascape';
 import { installEquipment, setEquipment, feedTank } from '@/sim/care';
-import { equipmentFit, installedFit, tankGearIssues, foodFit, canAutofeed, cannotAutofeedText, groupEaters, autofeederFoods, planAutofeed, pickAutofeedFood, FIT_TONE } from '@/sim/care/fit';
+import { equipmentFit, installedFit, tankGearIssues, foodFit, canAutofeed, cannotAutofeedText, groupEaters, autofeederFoods, pickAutofeedFood, FIT_TONE } from '@/sim/care/fit';
 import { FOODS, isAutofeederFood, foodForm, eatsFood } from '@/data/catalog/foods';
 import { EQUIPMENT } from '@/data/catalog/equipment';
 import { ALL_SPECIES, getSpecies } from '@/data/species';
@@ -84,7 +84,7 @@ describe('fit: one source of truth for autofeeder food', () => {
     // lane:qa-r3 — the species page's sentence lives in the keeper's guide (dietGuide); the sim / fit sentence is this one
     const seahorse = getSpecies('lined_seahorse');
     const sea = cannotAutofeedText(groupEaters([{ species: seahorse }, { species: seahorse }, { species: seahorse }]));
-    expect(sea).toMatch(/Your 3 lined seahorses only eat frozen or live food \(mysis, brine shrimp, live copepods\)/);
+    expect(sea).toMatch(/Your 3 lined seahorses only eat frozen or live food \(mysis shrimp, brine shrimp, live copepods\)/); // Audit 2026-11-17 (J3): the shelf's words, one table
     expect(sea).toMatch(/can’t feed them — feed them by hand or target-feed/);
     // every species an autofeeder can't feed gets a sentence, none mention internal tags
     for (const sp of ALL_SPECIES) if (!canAutofeed(sp)) expect(cannotAutofeedText(groupEaters([{ species: sp }]))).not.toMatch(/_/);
@@ -180,7 +180,7 @@ describe('fit: autofeeder notices in the sim (accurate, never "empty" when it is
     expect(text).not.toMatch(/autofeeder on .* is empty/);
     const notes = s.log.filter((e) => /autofeeder on Test Tank can’t feed anything here/.test(e.text));
     expect(notes.length).toBe(1); // 72 h throttle
-    expect(notes[0].text).toMatch(/3 lined seahorses only eat frozen or live food \(mysis, brine shrimp, live copepods\)/);
+    expect(notes[0].text).toMatch(/3 lined seahorses only eat frozen or live food \(mysis shrimp, brine shrimp, live copepods\)/); // Audit 2026-11-17 (J3): the shelf's words, one table
     expect(notes[0].text).toMatch(/Feed them by hand or target-feed/);
     expect(notes[0].toast).toBe(true); // the first notice is toasted
   });
@@ -320,7 +320,7 @@ describe('fit: feeding the wrong food says what they do eat', () => {
     const { s, tank } = world('marine_fowlr', 'g40B', [['lined_seahorse', 3]]);
     const r = feedTank(s, tank.id, 'flake_tropical');
     expect(r.ok).toBe(true);
-    expect(r.message).toMatch(/Nothing in this tank eats it — uneaten tropical flakes will rot into ammonia\. Lined seahorses eat mysis, brine shrimp and live copepods\./);
+    expect(r.message).toMatch(/Nothing in this tank eats it — uneaten tropical flakes will rot into ammonia\. Lined seahorses eat mysis shrimp, brine shrimp and live copepods\./); // Audit 2026-11-17 (J3): the shelf's words, one table
   });
 });
 

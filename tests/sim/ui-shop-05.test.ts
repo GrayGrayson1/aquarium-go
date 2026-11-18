@@ -234,7 +234,8 @@ describe('§7.4 offer detail', () => {
   it('a gone offer keeps its state and adds "See what’s in stock"', () => {
     const g = game();
     const out = text(shop(g, 'offer_zz00'));
-    expect(out).toContain('This offer has gone Another shop snapped it up, or it expired. New stock arrives regularly.');
+    // audit 2026-11-17 (F6): no other shop buys anything in a solo game; say what is true there and when stock comes
+    expect(out).toContain('This offer has gone It has left the shop: bought, or its time ran out. New stock arrives every morning at 8.');
     expect(out).toContain('See what’s in stock');
   });
 });

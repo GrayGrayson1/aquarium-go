@@ -6,8 +6,8 @@
  */
 import { useEffect, useRef } from 'react';
 import clsx from 'clsx';
-import { AnimatePresence, motion } from 'motion/react';
-import { ChevronRight, Gauge, Lock, Search, Settings, X } from 'lucide-react';
+import { AnimatePresence, motion, useDragControls } from 'motion/react';
+import { ChevronRight, Gauge, Lock, Search, Settings, Star, X } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { useGameSelector } from '@/state/game';
 import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
@@ -23,6 +23,9 @@ import { AttnDot, useNavDots } from './AttnDot'; // lane:notify
 import type { NavDot } from '../common/notify';
 import { moreSubline } from '../common/ops'; // lane:automation (chunk 5)
 import { openFind } from '../search/FindAnything'; // chunk 19 (QOL-004)
+import { formatRep } from '../common/format'; // Audit 2026-11-17 (G6)
+import { startsDrag, swipedDown } from '../common/dragClose'; // audit B18
+import { useSettings } from '@/state/settings';
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -47,6 +50,7 @@ export function MoreSheetBody({ isLocked, dots, social = false }: { isLocked: (i
         <h2 className="ag-more__title" id="ag-more-title" tabIndex={-1}>
           More
         </h2>
+        <MoreReputation />
         {/* chunk 19 (ADR-0055 decision 3, QOL-004) — Find anything, from the phone's More (a header button: a row more
             pushed Settings under the tab bar on a phone held sideways) */}
         <button
@@ -126,6 +130,32 @@ export function MoreSheetBody({ isLocked, dots, social = false }: { isLocked: (i
 }
 
 /**
+ * Audit 2026-11-17 (G6) — phones' top bar has no room for reputation, which gates most unlocks: More's header shows it
+ * (a header button, as Find anything is, so no row moves) and opens Research, which explains it.
+ */
+function MoreReputation() {
+  const rep = useGameSelector((g) => g.progress.reputation, 0);
+  return (
+    <button
+      type="button"
+      className="ag-more__rep"
+      data-testid="more-reputation"
+      aria-label={`Reputation ${formatRep(rep)} of 1000. What it opens and how it grows`}
+      onClick={() => {
+        useShell.getState().set({ popover: null });
+        openPanel('research', 'tab:research');
+      }}
+    >
+      <Star size={14} aria-hidden />
+      {/* (review: on a 320–360 px phone or with larger text the word gives way first: "1,000 rep…", never the number) */}
+      <span className="ag-more__rep-text">
+        <span className="ag-tabular">{formatRep(rep)}</span> reputation
+      </span>
+    </button>
+  );
+}
+
+/**
  * lane:automation (chunk 5, DESIGN-S3D §5.1; NAV-021) — Operations is More's first row: 60 px, aqua-tinted, the Gauge
  * chip, "Operations" with a New chip and the copy deck's sub-line; its dot is red or amber (§5.4, no news dot).
  */
@@ -192,6 +222,9 @@ export function MoreSheet() {
   }, [shown]);
 
   const isUnlocked = (key?: string | null) => !key || dev || unlocked.split('|').includes(key);
+  // audit B18: its grab bar and header swipe it closed, as a panel's do (not with reduced motion, as panels)
+  const dragControls = useDragControls();
+  const reduced = useSettings((s) => s.reducedMotion);
 
   return (
     <AnimatePresence>
@@ -209,6 +242,19 @@ export function MoreSheet() {
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 34, stiffness: 340 }}
+          drag={reduced ? false : 'y'}
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.6 }}
+          onDragEnd={(_, info) => {
+            if (!swipedDown(info)) return;
+            sfx('close');
+            closeMore();
+          }}
+          onPointerDown={(e) => {
+            if (!reduced && startsDrag(e.target, '.ag-more__grab, .ag-more__head')) dragControls.start(e);
+          }}
         >
           <MoreSheetBody isLocked={(it) => !isUnlocked(it.lock)} dots={dots} social={social} />
         </motion.div>

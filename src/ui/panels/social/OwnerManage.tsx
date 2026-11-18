@@ -104,7 +104,7 @@ export function OwnerManage({ onChanged }: { onChanged: () => void }) {
         <ShieldAlert size={14} aria-hidden /> {C.manageTitle}
       </h3>
       {q.state === 'loading' && <Skeleton rows={4} />}
-      {q.state === 'error' && (q.network ? <NetworkError /> : <ErrorNote>{C.manageError}</ErrorNote>)}
+      {q.state === 'error' && (q.network ? <NetworkError onRetry={reload} /> : <ErrorNote>{C.manageError}</ErrorNote>)}
       {q.state === 'ok' && (
         <>
           <p className="so-manage__stored" data-testid="owner-stored">

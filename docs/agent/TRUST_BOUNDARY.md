@@ -28,8 +28,11 @@ and the game time (offline catch-up is computed on the device today: a server wo
 | Action (src/sim) | What it changes | A server would check |
 |---|---|---|
 | `buyOffer` (economy/purchases) | money −, a creature into a tank | the offer exists and is unsold, its price, room in the tank |
+| `holdOffer` (economy/purchases; the audit of 2026-11-17, ADR-0056 answer 9) | an open shop offer's hold (it stays past its leave time while the player looks) | the offer exists; the hold's cap (`MAX_NEGOTIATION_HOLD_HOURS` from its start) |
 | `buyTank`, `placeTank` | money −, a tank | price, the facility's tank limit, placement |
 | `buyEquipment`, `installEquipment`, `repairEquipment`, `removeEquipment`, `setEquipment` | money −, a tank's gear | price (or the piece is in the player's stock), the tank is the player's |
+| `sellStoredEquipment` (the audit of 2026-11-17, ADR-0056 answer 7) | money +, a unit leaves the stock | the unit is in the player's stock; the price is half the catalogue price, whatever its condition (as the owner approved) |
+| `takeDownTank` (the audit of 2026-11-17, ADR-0056 answer 7) | money +, a tank goes, its gear and decor go to the stock | the tank is the player's and empty (no animals, eggs or young, no listing, no production line); the price is half the tier's bare price |
 | `convertWaterClass` | money −, a tank's water class (it empties and restarts its cycle) | the conversion's price, the tank is empty of animals that can't stay |
 | `buyFood`, `buySalt`, `buyEggs` | money −, stock + | price, pack size |
 | `placeDecor`, `moveDecor`, `removeDecor`, `addFixture`, `removeFixture`, `changeSubstrate` | money −, a tank's layout | price, unlocks |
@@ -84,7 +87,7 @@ and the game time (offline catch-up is computed on the device today: a server wo
 | Action | What it changes | A server would check |
 |---|---|---|
 | `setOpenToPublic`, `setOpenHours`, `setAdmission`, `toggleSignage` | visitors and takings | ranges |
-| `moveCreature`, `separateCreature`, `moveClutch`, `liftOutClutch` (chunk 17: a dud egg case), `startBreeding`, `renameCreature`, `toggleFavorite` | animals and broods | ownership |
+| `moveCreature`, `moveCreatures` (the audit of 2026-11-17: a picked group, all or none), `separateCreature`, `moveClutch`, `liftOutClutch` (chunk 17: a dud egg case), `startBreeding`, `renameCreature`, `toggleFavorite` | animals and broods | ownership |
 | `takeFrag`, `plantFrag`, `dose`, `waterChange`, `topOff`, `cleanTank`, `feedTank` | tanks and animals | ownership; stock for what they use |
 | `noteInteraction`, `notePhoto`, `registerGlassTap` (watching, photos, target feeding, a tap on the glass) | an animal's bond, enrichment and stress; quest progress | rates (the bond counts toward a show's deportment score; the device's diminishing returns would be the server's) |
 | `renameTank`, `setTankPurpose`, `setBackdrop`, `setLighting` | a tank's name, purpose, backdrop and light hours | ownership |

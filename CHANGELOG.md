@@ -4,6 +4,60 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.10.0 — 2026-11-17
+
+A full audit of the game for logic errors and for anything that left a player stuck, lost or guessing: ten auditors
+read every area, and about 250 findings were fixed. The owner's ten decisions are in ADR-0056; every new or changed
+line of text is listed in `docs/agent/design/CHUNK-20/WORDS.md`.
+
+- **Your first companion stays.** The animal you started with never dies of old age (it still needs feeding and
+  clean water). Every other animal's card shows its lifespan, and says when it is in its last stretch.
+- **Nobody starves because the till is empty.** When an animal is hungry, there is no food it eats and not enough
+  money for a pack, the aquarium club drops off a little food, at most once a game day. Greyed-out Buy buttons say
+  why, and "Ways to raise cash" opens the ideas in Finances, which now include taking down an empty tank and selling
+  spare equipment.
+- **Move a group at once.** Tick animals in Livestock and press Move: a school, a colony or a brood goes together,
+  with the same compatibility preview and warnings as a single move.
+- **Sell spare equipment, and take down a tank.** The store buys stored equipment back at half price. An empty tank
+  has Take down in Tanks: its gear and decor go to storage and half the tank's price comes back.
+- **Production lines sell by themselves.** A line puts a buy-now price on its young, 10% under fair value, and lists
+  what doesn't sell again a little cheaper each time. A line takes a lot off sale while one of its animals is unwell,
+  says what it is waiting for, and never loses track of young. Keepers now feed fry their first foods from your
+  stock on their rounds, and the stock manager orders them.
+- **Shop offers wait while you're looking.** An offer you have open stays past its leaving time while you decide (for
+  up to about six minutes, so a forgotten tab can't keep it for ever). Goldfish,
+  comets, koi and African dwarf frogs are sold in pairs, so the first one isn't "High risk". A tank only a little
+  under an animal's minimum gets a note, not "High risk". The shop says what an animal eats and whether you have it,
+  and warns before you buy into a tank that is still cycling.
+- **Salt is paid for once.** Salt is a supply you buy; it is no longer also charged in a salt tank's nightly bill. A
+  water change the salt can't cover is refused, with how much it needs and where to buy it, instead of weakening the
+  water.
+- **Saves are safer.** An aquarium about to fall out of "Previous autosave" is saved to a free slot first; with every
+  slot full, the game asks before anything is deleted. With Autosave off, the game asks before a reload would lose
+  your play. The online-save box says which copy is further along.
+- **Shared shops and online.** A shared shop that can't be reached says so after a minute and a half, with Try again
+  and a way back, instead of waiting for ever. When Aquarium Go online can't be reached, Social shows one notice with
+  Try again and the game carries on. A scheduled job now keeps the online project from falling asleep.
+- **The guide never leaves you waiting in silence.** Its waiting steps say what they are waiting for and what to do
+  when no animal is on show. On a phone the guide folds above an animal's card instead of hiding under it. After the
+  guide, Research › Quests is named, linked and lit when a reward waits. A new game always starts with the guide on.
+- **Getting around.** The bell's drawer scrolls, with danger first. Toasts open what they are about. Find anything
+  searches the Aquarium science pages and Settings. Back closes the listing wizard and the show entry instead of
+  leaving the panel, and asks before typed prices are lost. Bottom sheets on a phone swipe down to close.
+- **Advice you can follow.** Problems name the unit that is off or broken instead of saying to add one; advice no
+  longer asks for a setting a dial can't reach; hunger lines name the food; dosing shows its price and refuses a dose
+  the tank doesn't need; converting a tank's water resets the gear that stays and says so.
+- **Breeding explains itself.** Every reason a pair isn't spawning is listed at once, with what to add (a broad leaf
+  counts for angelfish and rams, sand for green chromis). The Eggs & fry card says who eats the young here, how many
+  can be kept and whether there is room; a parent moved into the nursery is named and told to leave. A new "How
+  breeding works" page, and plain words for the genetics terms.
+- **Building and unlocks.** Every unlock hint states its whole rule; an unlock the guide is holding says which step
+  gives it; research cards say when their animals also need a bigger tank; reputation is explained and shown on
+  phones; plants and corals that are fading raise an alert that links to the light.
+- **Words.** Food advice names foods the shop sells; players on °F read °F in the log, the bell and notifications;
+  notifications give real minutes; one name for each water type and each tank status; species names keep their
+  capitals in sentences.
+
 ## 0.9.2 — 2026-11-02
 
 - **Panels stay open while you work.** On a computer, Build stays open beside the tank while you place decor, a frag

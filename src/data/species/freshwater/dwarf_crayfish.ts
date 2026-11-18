@@ -94,7 +94,7 @@ export const dwarfCrayfish: SpeciesDefinition = {
 
   genetics: {
     loci: [
-      { id: 'color', name: 'Colour', mode: 'mendelian', alleles: [{ id: 'O', name: 'Orange', dominance: 2, frequency: 0.97 }, { id: 'w', name: 'Wild brown', dominance: 1, frequency: 0.03 }], note: 'The orange line was fixed by hobbyists in the 1990s. Its inheritance is not formally documented; modelled so ordinary stock breeds true and rare wild-brown throwbacks can appear.' },
+      { id: 'color', name: 'Colour', mode: 'mendelian', alleles: [{ id: 'O', name: 'Orange', dominance: 2, frequency: 0.97 }, { id: 'w', name: 'Wild Brown', dominance: 1, frequency: 0.03 }], note: 'The orange line was fixed by hobbyists in the 1990s. Its inheritance is not formally documented; modelled so ordinary stock breeds true and rare wild-brown throwbacks can appear.' },
       { id: 'marble', name: 'Marbling (natural variation)', mode: 'additive', alleles: [{ id: 'clean', name: 'Clean orange', dominance: 1, frequency: 0.6 }, { id: 'heavy', name: 'Heavy marbling', dominance: 1, frequency: 0.4 }] },
     ],
     phenotypes: [

@@ -22,9 +22,11 @@ import {
   guardianOf,
   habitatOf,
   hasCave,
+  hasHardSite,
   hasNestSite,
   inSpawnWindow,
   isMature,
+  isNurseryFor,
   isReady,
   pairUp,
   pickSite,
@@ -44,7 +46,6 @@ import {
   type SiteKind,
   type SpawnWindow,
   breedNotice,
-  clutchParentName,
 } from '../common';
 import { bumpCounter } from '@/sim/facility';
 import { getSpecies } from '@/data/species';
@@ -65,8 +66,13 @@ export interface PairSpawnerConfig {
   guardStage: string;
   visual: Clutch['visual'];
   site: SiteKind;
-  /** chunk 16 — where one species lays when it differs from the module's site and visual (ramshorn snails lay under water). */
-  layOf?(sp: SpeciesDefinition): { site: SiteKind; visual: Clutch['visual'] } | null;
+  /**
+   * chunk 16 — where one species lays when it differs from the module's site and visual (ramshorn snails lay under
+   * water). audit E11: `tank` — where a cichlid lays depends on what the tank offers (a leaf, a stone, sand).
+   */
+  layOf?(sp: SpeciesDefinition, tank?: Tank): { site: SiteKind; visual: Clutch['visual'] } | null;
+  /** audit E11 (B-223): this module's own nest-site rule for `needsNestSite` (a failing gate, or null). Absent: a hard surface. */
+  nestSite?(tank: Tank, sp: SpeciesDefinition, hab: ReturnType<typeof habitatOf>): Gate | null;
   /** Extra anchors for scattered eggs. */
   extraSites: number;
   /** Clutch carried by the guardian (mouthbrooder): stage 'in_pouch', released by this module. */
@@ -84,37 +90,54 @@ export interface PairSpawnerConfig {
   /** chunk 17 — game hours before a clutch of duds rots away. Absent: three incubations, at least 48. */
   dudHours?(sp: SpeciesDefinition): number;
   text: {
-    court(m: Creature, f: Creature, sp: SpeciesDefinition): string;
+    court(m: Creature, f: Creature, sp: SpeciesDefinition, tank?: Tank): string;
     /** `duds`: how many of the `n` laid are duds (chunk 17); every one of them when the clutch is all duds. */
     spawn(m: Creature, f: Creature, sp: SpeciesDefinition, n: number, tank: Tank, guardian: Creature | null, duds?: number): string;
     /** chunk 17 — the card's line for a clutch of nothing but duds. Absent: the spawn line. */
     dudNotes?(f: Creature, sp: SpeciesDefinition, n: number): string;
-    release?(g: Creature, n: number, sp: SpeciesDefinition): string;
+    /** audit E1: `inNursery` — released in a nursery, where the father (moved in to release them) eats the young. */
+    release?(g: Creature, n: number, sp: SpeciesDefinition, inNursery: boolean): string;
   };
   status?(state: GameState, c: Creature, sp: SpeciesDefinition, hour: number): StatusOut | null;
 }
 
-/** Data-driven gates shared by every pair spawner. */
-export function dataGates(state: GameState, tank: Tank, sp: SpeciesDefinition, cfg: PairSpawnerConfig, hour: number): Gate {
+/**
+ * Every data-driven gate that blocks a pair spawner now, in order (empty: they can spawn). audit E6: the pair check
+ * lists them all, so fixing one doesn't just uncover the next.
+ */
+export function allDataGates(state: GameState, tank: Tank, sp: SpeciesDefinition, cfg: PairSpawnerConfig, hour: number): Gate[] {
   const cond = sp.breeding.conditions;
   const hab = habitatOf(state, tank);
+  const out: Gate[] = [];
   if (cond.needsCover && hab.cover < COVER_FOR_SPAWNING) {
-    return { ok: false, reason: `${spPlural(sp)[0].toUpperCase()}${spPlural(sp).slice(1)} only spawn in dense cover (plants or moss) — cover here is ${Math.round(hab.cover * 100)}%.`, step: 'Add dense plants or a clump of moss to give them somewhere to spawn.' };
+    out.push({ ok: false, reason: `${spPlural(sp)[0].toUpperCase()}${spPlural(sp).slice(1)} only spawn in dense cover (plants or moss) — cover here is ${Math.round(hab.cover * 100)}% (they need about ${Math.round(COVER_FOR_SPAWNING * 100)}%).`, step: 'Add dense plants or a clump of moss to give them somewhere to spawn.' });
   }
-  if (cond.needsNestSite) {
-    const ok = cfg.site === 'cave' ? hasCave(tank, hab) || hasNestSite(tank, hab) : hasNestSite(tank, hab);
-    if (!ok) return { ok: false, reason: cfg.site === 'cave' ? 'There is no cave for the male to claim.' : 'There is no flat rock or tile to lay eggs on.', step: cfg.site === 'cave' ? 'Add a cave or spawning tube.' : 'Add a flat stone or rock near their favourite spot.' };
+  if (cond.needsNestSite && cfg.nestSite) {
+    const g = cfg.nestSite(tank, sp, hab);
+    if (g) out.push(g);
+  } else if (cond.needsNestSite) {
+    // audit E11: a cave, or a crevice in rock — never a clump of moss
+    const ok = cfg.site === 'cave' ? hasCave(tank, hab) || hasHardSite(tank, hab) : hasNestSite(tank, hab);
+    if (!ok) out.push({ ok: false, reason: cfg.site === 'cave' ? 'There is no cave for the male to claim.' : 'There is no flat rock or tile to lay eggs on.', step: cfg.site === 'cave' ? 'Add a cave or spawning tube.' : 'Add a flat stone or rock near their favourite spot.' });
   }
   if (cond.coolingTrigger && !coolCueActive(tank, hour)) {
-    return { ok: false, reason: 'They are waiting for a seasonal cue.', step: 'A cool water change (~2 °C cooler) often triggers spawning.' };
+    // audit E14: name the button and say it takes two (one Cool 25% drops ~1.25 °C; the cue needs ~1.8 °C below the day's warmest)
+    out.push({ ok: false, reason: 'They are waiting for a seasonal cue.', step: 'Press Cool 25% twice in a row (tank card › Water › Care) — the water needs to drop about 2 °C to feel like the first cool rains.' });
   }
   if (cond.minTempC !== undefined && tank.water.tempC < cond.minTempC - 0.5) {
-    return { ok: false, reason: `The water is too cool to spawn (needs ${cond.minTempC} °C+).`, step: `Warm the tank to about ${cond.minTempC + 1} °C.` };
+    out.push({ ok: false, reason: `The water is too cool to spawn (needs ${cond.minTempC} °C+).`, step: `Warm the tank to about ${cond.minTempC + 1} °C.` });
   }
   if (cond.maxTempC !== undefined && tank.water.tempC > cond.maxTempC + 0.5) {
-    return { ok: false, reason: `The water is too warm to spawn (needs ≤ ${cond.maxTempC} °C).`, step: `Cool the tank below ${cond.maxTempC} °C.` };
+    out.push({ ok: false, reason: `The water is too warm to spawn (needs ≤ ${cond.maxTempC} °C).`, step: `Cool the tank below ${cond.maxTempC} °C.` });
   }
-  return cfg.gate ? cfg.gate(state, tank, sp) : { ok: true };
+  const extra = cfg.gate ? cfg.gate(state, tank, sp) : { ok: true };
+  if (!extra.ok) out.push(extra);
+  return out;
+}
+
+/** The first gate that blocks a pair spawner now, or ok (the spawning step and its tip use the first one). */
+export function dataGates(state: GameState, tank: Tank, sp: SpeciesDefinition, cfg: PairSpawnerConfig, hour: number): Gate {
+  return allDataGates(state, tank, sp, cfg, hour)[0] ?? { ok: true };
 }
 
 export function makePairSpawner(cfg: PairSpawnerConfig): BreedingModule {
@@ -191,7 +214,9 @@ function stepPairs(env: StepEnv, cfg: PairSpawnerConfig, mod: BreedingModule): v
         releaseCarried(cl, tank, sp, mod, hour);
         startResting(g, hour, b.cooldownDays * 24 * cfg.maleRestFrac);
         addHistory(g, 'bred', `Released ${plural(cl.count, 'youngster')} from his mouth.`, hour);
-        say(state, ctx, { kind: 'breeding', text: cfg.text.release?.(g, cl.count, sp) ?? `${g.name} released ${plural(cl.count, 'tiny youngster')}!`, tankId: tank.id, creatureId: g.id, toast: true, notice: breedNotice('hatch', clutchParentName(state, cl), cl.count, tank) });
+        const inNursery = isNurseryFor(state, tank, hour);
+        const moveOut = inNursery && b.predationWithoutNursery > 0 ? ` Move ${g.name} back out now — adults eat the young.` : '';
+        say(state, ctx, { kind: 'breeding', text: cfg.text.release?.(g, cl.count, sp, inNursery) ?? `${g.name} released ${plural(cl.count, 'tiny youngster')}!${moveOut}`, tankId: tank.id, creatureId: g.id, toast: true, notice: breedNotice('hatch', g.name, cl.count, tank, 'young') }); // audit E25: the father who released them, not the mother
       }
       continue;
     }
@@ -234,7 +259,7 @@ function stepPairs(env: StepEnv, cfg: PairSpawnerConfig, mod: BreedingModule): v
     const key = `court_${sp.id}`;
     const seen = state.progress.counters[key] ?? 0;
     bumpCounter(state, key);
-    say(state, ctx, { kind: 'breeding', text: cfg.text.court(m, f, sp), tankId: tank.id, creatureId: m.id, toast: seen < 3 });
+    say(state, ctx, { kind: 'breeding', text: cfg.text.court(m, f, sp, tank), tankId: tank.id, creatureId: m.id, toast: seen < 3 });
   }
 }
 
@@ -248,7 +273,7 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
   const allDuds = !infertile && fertile <= 0;
   const sterile = !!infertile || allDuds;
   const carried = !!cfg.carried && !!guardian;
-  const lay = cfg.layOf?.(sp) ?? null;
+  const lay = cfg.layOf?.(sp, tank) ?? null;
   const site = carried ? null : pickSite(tank, infertile ? 'rock' : (lay?.site ?? cfg.site), `${f.id}:${hour.toFixed(1)}`, infertile ? 5 : cfg.extraSites);
   const spawnText = cfg.text.spawn(m, f, sp, n, tank, sterile ? null : guardian, n - fertile);
   const cl = createClutch(state, {
@@ -301,8 +326,8 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
 function checkPair(cc: CheckCtx, cfg: PairSpawnerConfig): void {
   const { state, tank, sp, hour } = cc;
   if (!tank) return;
-  const g = dataGates(state, tank, sp, cfg, hour);
-  if (!g.ok) {
+  // audit E6: every gate at once, not one at a time
+  for (const g of allDataGates(state, tank, sp, cfg, hour)) {
     if (g.reason) cc.reasons.push(g.reason);
     if (g.step) cc.steps.push(g.step);
   }
@@ -324,9 +349,21 @@ function checkPair(cc: CheckCtx, cfg: PairSpawnerConfig): void {
 function statusFor(state: GameState, c: Creature, sp: SpeciesDefinition, hour: number, cfg: PairSpawnerConfig): StatusOut | null {
   const own = cfg.status?.(state, c, sp, hour);
   if (own) return own;
+  // audit E6: a ripe female held back by the tank says why, instead of "Ready to spawn with a partner"
+  const tank = c.tankId ? state.tanks[c.tankId] : undefined;
+  if (c.repro.stage === 'gravid' && tank) {
+    const g = dataGates(state, tank, sp, cfg, hour);
+    if (!g.ok && g.reason) {
+      // mid-sentence: lower-case the first word, unless it is the species' own name ("White Cloud…" stays)
+      const name = spPlural(sp);
+      const capName = `${name[0].toUpperCase()}${name.slice(1)}`;
+      const why = g.reason.startsWith(capName) ? `${name}${g.reason.slice(capName.length)}` : `${g.reason[0].toLowerCase()}${g.reason.slice(1)}`;
+      return { label: 'Full of eggs', detail: `Can’t spawn yet: ${why.replace(/\.$/, '')}` };
+    }
+  }
   const cl = c.repro.clutchId ? state.clutches[c.repro.clutchId] : undefined;
   if (c.repro.stage === cfg.guardStage && cfg.carried && cl) {
-    return { label: `Mouthbrooding ${plural(cl.count, 'egg')}`, detail: `He won’t eat until they’re released (${approxDuration(cl.nextStageHour - hour)})`, progress: c.repro.progress };
+    return { label: `Holding ${plural(cl.count, 'egg')} in his mouth`, detail: `He won’t eat until they’re released (${approxDuration(cl.nextStageHour - hour)})`, progress: c.repro.progress };
   }
   if (c.repro.stage === cfg.spawnStage && cfg.spawnStage !== 'spawning') {
     const p = c.repro.partnerId ? state.creatures[c.repro.partnerId] : undefined;
@@ -339,5 +376,5 @@ function statusFor(state: GameState, c: Creature, sp: SpeciesDefinition, hour: n
 export const TEXT = {
   genericCourt: (m: Creature, f: Creature, sp: SpeciesDefinition) => `${m.name} is courting ${f.name} — the ${spName(sp)} pair are displaying to each other.`,
   genericSpawn: (m: Creature, f: Creature, sp: SpeciesDefinition, n: number, tank: Tank, guardian: Creature | null) =>
-    `${f.name} and ${m.name} spawned — ${plural(n, 'egg')}!${guardian ? ` ${guardian.name} is guarding them.` : ` Adults eat eggs, so move them to a nursery tank.`}`,
+    `${f.name} and ${m.name} spawned — ${plural(n, 'egg')}!${guardian ? ` ${guardian.name} is guarding them.` : ` Adults eat eggs, so move them to a nursery tank (Livestock › Eggs & fry).`}`,
 };

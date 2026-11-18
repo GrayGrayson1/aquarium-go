@@ -16,6 +16,8 @@
  *    salt through the normal shop purchases, never spending past the daily budget.
  *  - Docents give short talks at 11 AM, 2 PM and 4 PM while the doors are open; `docentEffect` feeds the visitor sim.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
+import { pluralName } from '../economy/util'; // Audit 2026-11-17 (J15): a talk's topic
 import type { FoodDef, GameState, SpeciesDefinition, StaffMember, Tank } from '@/types';
 import { emitEvent } from '../context';
 import { hourOfDay, formatClock, crossings } from '../time';
@@ -30,13 +32,20 @@ import { buyEggs, buyFood, buySalt, isFoodAvailable, SALT_PRICE_PER_KG } from '.
 import { isOpenAt } from '../facility';
 import { pushReaction } from '../facility/reactions';
 import { findSpecies } from '@/data/species';
-import { FOODS, getFoodDef, eatsFood, madeForOtherSpecies, madeForOtherWater } from '@/data/catalog/foods';
+import { illnessName } from '../life/illness'; // Audit 2026-11-17 (J14): the card's name for an illness
+import { FOODS, getFoodDef, eatsFood, madeForOtherSpecies, madeForOtherWater, foodTagNames, joinFoodNames } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3): foodTagNames, joinFoodNames
 import { STAFF_TRAITS } from '@/data/staff';
 import { isSaltClass } from '../water/constants';
 import { EGGS_SUPPLY, FOOD_ROOM, VEGETABLES } from '@/data/catalog/machines'; // lane:automation (chunk 5)
 import { SALT_KG_PER_GAL, batchSaltKg, changerOf, saltDaysLeft, saltWaterPerDay } from '../automation/water'; // lane:automation (chunk 5)
 import { batchGal } from '../automation/reserve'; // lane:automation (chunk 5)
-import { asStaff, clamp, dayRecord, displayTankIds, ensureStaff, firstName, fmt$, noteIssue, totals, FEED_RING, TALK_RING } from './common';
+import { doserOf } from '../automation/food'; // Audit 2026-11-17 (H2): a working doser feeds its tank's young
+import { isHeld } from '../automation/hold';
+import { currentPhase, isCarried, youngLabel } from '../life/breeding/clutch';
+import { moduleFor } from '../life/breeding/registry';
+import { foodRecency } from '../life/breeding/common';
+import { DOSER } from '@/data/catalog/machines';
+import { asStaff, clamp, dayRecord, displayTankIds, dropIssues, ensureStaff, firstName, fmt$, isExhibit, keeperOf, noteIssue, totals, FEED_RING, TALK_RING } from './common';
 import { dayOf } from '../time';
 import * as dmath from '../dmath';
 
@@ -377,6 +386,147 @@ export function keeperFeed(state: GameState, m: StaffMember, tank: Tank, mode: '
   return { fed, missing };
 }
 
+/**
+ * What to do when the cupboard has nothing an animal eats, for the reason no reorder comes (Audit 2026-11-17, H13: it
+ * said "raise the stock manager’s budget" with her orders switched off or no cash at all).
+ */
+export function restockHint(state: GameState, missing: SpeciesDefinition[]): string {
+  const sm = stockManager(state);
+  const cheapest = Math.min(...FOODS.filter((f) => missing.some((sp) => eats(sp, f))).map((f) => f.price));
+  if (Number.isFinite(cheapest) && state.finance.money < cheapest) return 'Buy food in Market › Supplies once there’s cash.';
+  if (!sm) return 'Buy food in Market › Supplies, or hire a stock manager.';
+  if (state.staff?.ordersOff) return `Buy food in Market › Supplies, or switch ${firstName(sm)}’s orders back on in Visitors › Staff.`;
+  return `Buy food in Market › Supplies, or raise ${firstName(sm)}’s stock budget.`;
+}
+
+// ── Audit 2026-11-17 (H2, the owner's choice: "keepers feed fry") ──
+
+/** Young offered one of their phase's foods this recently (by hand, a doser or the keeper's own meal) aren't fed again. */
+export const YOUNG_FED_RECENTLY_H = 4;
+
+/**
+ * The most a keeper gives one brood on one round. Young are fed by having their food offered (the brood's food
+ * recency), so more servings feed nobody: they rot. A serving per 20 young, as a doser gives, put 28 servings into a
+ * display tank where two snail broods of about 270 had hatched, and its ammonia reached DANGER for an hour
+ * (`staff2-feeding`, the staffed grand hall, once snail parents stopped eating their young). A keeper feeds a pinch.
+ */
+export const KEEPER_YOUNG_MAX_SERVINGS = 2;
+
+/** "live baby brine shrimp or infusoria": the first two of a phase's foods that the shop sells. */
+export function youngFoodWords(tags: readonly string[]): string {
+  const sold = tags.filter((t) => FOODS.some((f) => f.tags.includes(t as never)));
+  return joinFoodNames(foodTagNames(sold, { max: 2 })) || 'first foods'; // Audit 2026-11-17 (J3): the shelf's words, one table
+}
+
+/** The foods a phase eats, in the phase's order, made for this water and species: what a keeper picks from (first in stock). */
+function youngFoodFits(foods: readonly string[], tank: Tank, speciesId: string): FoodDef[] {
+  const rank = (f: FoodDef) => Math.min(...f.tags.map((t) => foods.indexOf(t)).filter((i) => i >= 0));
+  return FOODS.filter((f) => f.tags.some((t) => foods.includes(t)) && !madeForOtherWater(f, tank.environment) && !madeForOtherSpecies(f, speciesId)).sort((a, b) => rank(a) - rank(b) || (a.id < b.id ? -1 : 1));
+}
+
+/**
+ * The servings a keeper gives one brood on one round: about one per 20 young (a doser's rate), never more than
+ * `KEEPER_YOUNG_MAX_SERVINGS`, and only one while ammonia or nitrite is at WATCH (`lightly`).
+ */
+export function keeperYoungServings(count: number, lightly: boolean): number {
+  return Math.min(lightly ? 1 : KEEPER_YOUNG_MAX_SERVINGS, Math.max(1, Math.ceil(count / DOSER.youngPerServing)));
+}
+
+/**
+ * The rounds a day on which this keeper can feed the young in this tank: the rounds the keeper walks to it
+ * (`tankRounds`, which `roundVisits` reads too), in day order, each counted only when it comes more than
+ * `YOUNG_FED_RECENTLY_H` after the last one counted (young offered food that recently aren't fed again). A tank of
+ * young only gets 2 (8 AM and 6 PM); a 4-meal tank or a meticulous keeper's tank gets 3 (8 AM, 1 PM and 6 PM, but not
+ * 9 PM, 3 hours after 6 PM). A tank keeps the same slot on every round, so the gaps are the rounds' start times'.
+ */
+export function youngFeedingRounds(state: GameState, m: StaffMember, tankId: string, meals = mealsPerDay(state, tankId)): number {
+  let n = 0;
+  let last = -Infinity;
+  for (const r of tankRounds(state, m, tankId, meals)) {
+    const at = roundStart(m, r);
+    if (at - last <= YOUNG_FED_RECENTLY_H) continue;
+    n++;
+    last = at;
+  }
+  return n;
+}
+
+/**
+ * Audit 2026-11-17 (follow-up to H2) — servings a day of the first foods the young in keepers' tanks will be given:
+ * each brood past its eggs in a tank an aquarist looks after (and no working doser feeds), in a phase that eats fed
+ * food, on the food its keeper would pick (the first of its phase's foods in stock, else the first the shop sells),
+ * what the keeper gives it on a round (`keeperYoungServings`, so 1 or 2) times the rounds that can feed it
+ * (`youngFeedingRounds`, 2 or 3). Pure: the stock manager's plan reads it.
+ */
+export function plannedYoungUsage(state: GameState): Map<string, number> {
+  const usage = new Map<string, number>();
+  const watch = new Map<string, boolean>();
+  for (const cl of Object.values(state.clutches)) {
+    if (!(cl.count > 0) || cl.stage === 'eggs' || cl.stage === 'in_pouch' || isCarried(cl)) continue;
+    const tank = state.tanks[cl.tankId];
+    const keeper = tank ? keeperOf(state, tank.id) : null;
+    if (!tank || !keeper || (doserOf(tank) && !isHeld(state, 'food'))) continue;
+    const sp = findSpecies(cl.speciesId);
+    if (!sp) continue;
+    const ph = currentPhase(cl, moduleFor(sp));
+    if (!ph || !ph.foods.length) continue;
+    const fits = youngFoodFits(ph.foods, tank, sp.id);
+    const pick = fits.find((f) => inStock(state, f.id) >= 1) ?? fits.find((f) => isFoodAvailable(state, f));
+    if (!pick) continue;
+    let lightly = watch.get(tank.id);
+    if (lightly === undefined) watch.set(tank.id, (lightly = nitrogenWatch(state, tank)));
+    const perDay = keeperYoungServings(cl.count, lightly) * youngFeedingRounds(state, keeper, tank.id);
+    usage.set(pick.id, (usage.get(pick.id) ?? 0) + perDay);
+  }
+  return usage;
+}
+
+/**
+ * A keeper's round feeds the young in the tank their first foods from stock, as a live-food doser does (the same
+ * `feedTank`, so the brood's food recency is what feeds them; one way young get fed): each brood past its yolk, in a
+ * phase that eats fed food, gets the first of its phase's foods in stock (in the phase's order, made for this water and
+ * species), about a serving per 20 young and never more than `KEEPER_YOUNG_MAX_SERVINGS`. Nothing when a working doser feeds the tank, or the young were offered their
+ * food in the last few hours. Returns the foods given and the broods with none of theirs in stock. Draws nothing.
+ */
+export function keeperFeedYoung(state: GameState, m: StaffMember, tank: Tank, hour: number): { fed: number; short: { label: string; tags: readonly string[] }[] } {
+  const short: { label: string; tags: readonly string[] }[] = [];
+  if (doserOf(tank) && !isHeld(state, 'food')) return { fed: 0, short };
+  const plan = new Map<string, number>();
+  const lightly = nitrogenWatch(state, tank);
+  for (const cl of Object.values(state.clutches)) {
+    if (cl.tankId !== tank.id || !(cl.count > 0) || cl.stage === 'eggs' || cl.stage === 'in_pouch' || isCarried(cl)) continue;
+    const sp = findSpecies(cl.speciesId);
+    if (!sp) continue;
+    const mod = moduleFor(sp);
+    const ph = currentPhase(cl, mod);
+    if (!ph || !ph.foods.length) continue;
+    // still on its yolk: nothing to feed yet (the doser's rule, src/sim/automation/food.ts)
+    const yolkEnd = (cl.stageSinceHour ?? cl.laidHour) + mod.plan.yolkFrac * sp.breeding.fryRearingHours;
+    if (ph === mod.plan.phases[0] && hour < yolkEnd) continue;
+    if (foodRecency(tank, ph.foods, hour, YOUNG_FED_RECENTLY_H, 0) >= 1) continue;
+    const fits = youngFoodFits(ph.foods, tank, sp.id);
+    const pick = fits.find((f) => inStock(state, f.id) - (plan.get(f.id) ?? 0) >= 1);
+    if (!pick) {
+      short.push({ label: youngLabel(cl, mod), tags: ph.foods });
+      continue;
+    }
+    const left = inStock(state, pick.id) - (plan.get(pick.id) ?? 0);
+    // a pinch per brood, and only one while ammonia or nitrite is at WATCH (the adults' "feed lightly until it clears")
+    const want = keeperYoungServings(cl.count, lightly);
+    plan.set(pick.id, (plan.get(pick.id) ?? 0) + Math.min(left, want));
+  }
+  let fed = 0;
+  for (const [foodId, servings] of plan) {
+    const before = inStock(state, foodId);
+    const res = asStaff(state, () => feedTank(state, tank.id, foodId, { servings, byStaff: true }));
+    if (res.ok) {
+      recordFeed(state, m, tank, foodId, before - inStock(state, foodId), hour);
+      fed++;
+    }
+  }
+  return { fed, short };
+}
+
 const WATER_CHANGE_FIXES = new Set(['nitrate', 'ammonia', 'nitrite', 'ph', 'kh', 'oxygen', 'clarity']);
 
 /**
@@ -537,7 +687,7 @@ export function keeperWaterCare(state: GameState, m: StaffMember, tank: Tank, ro
 const plural = (n: number, s: string, p = `${s}s`) => `${n} ${n === 1 ? s : p}`;
 
 function speciesPhrase(list: SpeciesDefinition[]): string {
-  const names = [...new Set(list.map((s) => s.commonName.toLowerCase()))];
+  const names = [...new Set(list.map((s) => lowerName(s.commonName)))];
   if (names.length <= 2) return names.join(' and ');
   return `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
 }
@@ -549,6 +699,8 @@ function speciesPhrase(list: SpeciesDefinition[]): string {
  * at 10×, and a dead filter quietly turns a healthy tank into an overstocked one.
  */
 export function keeperEquipmentCheck(state: GameState, m: StaffMember, tank: Tank): void {
+  // a repaired failure leaves today's flags (Audit 2026-11-17, H26)
+  if (!(tank.equipment ?? []).some((e) => e.failed)) dropIssues(dayRecord(state, m), (t) => t.endsWith(` failed in ${tank.name}`));
   for (const inst of tank.equipment ?? []) {
     if (!inst.failed) continue;
     const def = getEquipmentDef(inst.defId);
@@ -578,22 +730,40 @@ export function keeperVisit(state: GameState, m: StaffMember, tankId: string, ro
   // lane:staff2 — a fast-metabolism tank's midday visit is a real meal; elsewhere midday is the meticulous top-up.
   const meals = mealsPerDay(state, tank.id);
   const mode = round === 'midday' && meals < 4 ? 'topup' : 'meal';
-  const { fed, missing } = keeperFeed(state, m, tank, mode, hour, hoursToNextVisit(state, m, tank.id, round, tankRounds(state, m, tank.id, meals)));
+  const meal = keeperFeed(state, m, tank, mode, hour, hoursToNextVisit(state, m, tank.id, round, tankRounds(state, m, tank.id, meals)));
+  const young = keeperFeedYoung(state, m, tank, hour); // Audit 2026-11-17 (H2): after the meal, which may already feed them
+  const fed = meal.fed + young.fed;
+  const missing = meal.missing;
   if (fed > 0) {
     day.feeds += fed;
     totals(m).feeds += fed;
     if (!day.tanksFed.includes(tank.id)) day.tanksFed.push(tank.id);
     day.last = { hour, kind: 'feed', tankId: tank.id, text: `Fed ${tank.name}` };
   }
+  // what was flagged here and is fed now leaves today's flags (Audit 2026-11-17, H26)
+  if (meal.fed > 0 && !missing.length) dropIssues(day, (t) => t.startsWith('No food for the ') && t.endsWith(` in ${tank.name}`));
+  if (young.fed > 0 && !young.short.length) dropIssues(day, (t) => t.startsWith('No first foods for the ') && t.endsWith(` in ${tank.name}`));
   if (missing.length) {
     const who = speciesPhrase(missing);
     noteIssue(day, `No food for the ${who} in ${tank.name}`);
     // Honest, not silent: the log says what couldn't be fed and what to do (toasted at most once a game day).
     if (throttled(state, `nofood:${tank.id}`, 12)) {
-      const hasStock = (state.staff?.roster ?? []).some((x) => x.role === 'stock_manager');
       emitEvent(state, {
         kind: 'warning',
-        text: `${firstName(m)} couldn’t feed the ${who} in ${tank.name} — there’s nothing in stock they eat. Buy food in Market › Supplies${hasStock ? ' or raise the stock manager’s budget' : ', or hire a stock manager'}.`,
+        text: `${firstName(m)} couldn’t feed the ${who} in ${tank.name} — there’s nothing in stock they eat. ${restockHint(state, missing)}`,
+        tankId: tank.id,
+        toast: throttled(state, 'nofood:toast', 24),
+      });
+    }
+  }
+  if (young.short.length) {
+    // Audit 2026-11-17 (H2): the young's first foods, flagged as the animals' food is
+    const { label, tags } = young.short[0];
+    noteIssue(day, `No first foods for the ${label} in ${tank.name}`);
+    if (throttled(state, `nofryfood:${tank.id}`, 12)) {
+      emitEvent(state, {
+        kind: 'warning',
+        text: `${firstName(m)} couldn’t feed the ${label} in ${tank.name}: no ${youngFoodWords(tags)} in stock. Buy food in Market › Supplies.`,
         tankId: tank.id,
         toast: throttled(state, 'nofood:toast', 24),
       });
@@ -626,7 +796,7 @@ export function keeperVisit(state: GameState, m: StaffMember, tankId: string, ro
       if (c.tankId !== tank.id || c.status !== 'alive' || !c.illness || c.illness.severity < 25) continue;
       if (!throttled(state, `ill:${c.id}:${c.illness.kind}`, 72)) continue;
       noteIssue(day, `${c.name} looks unwell`);
-      emitEvent(state, { kind: 'warning', text: `${firstName(m)} noticed ${c.name} in ${tank.name} looks unwell (${c.illness.kind.replace(/_/g, ' ')}). Treatment is your call — see ${c.name}’s card.`, tankId: tank.id, creatureId: c.id });
+      emitEvent(state, { kind: 'warning', text: `${firstName(m)} noticed ${c.name} in ${tank.name} looks unwell: ${illnessName(c.illness.kind, findSpecies(c.speciesId))}. Treatment is your call — see ${c.name}’s card.`, tankId: tank.id, creatureId: c.id });
     }
   }
   const done = keeperWaterCare(state, m, tank, round, hour);
@@ -672,7 +842,16 @@ interface Order {
   urgency: number;
   label: string;
   unit: number;
+  /** A food only young eat (`plannedYoungUsage`): bought after anything that runs out within `ADULTS_FIRST_DAYS`. */
+  young?: boolean;
 }
+
+/**
+ * Audit 2026-11-17 (review of the H2 follow-up) — a food only the young in keepers' tanks eat is ordered after every
+ * order that runs out within this many days (the animals' food, the salt and the hatchery's eggs, out or nearly out),
+ * so a brood's live food never takes the day's budget from food the grown animals have run out of.
+ */
+export const ADULTS_FIRST_DAYS = 1;
 
 /**
  * lane:automation (chunk 5, DESIGN-S3D §9.6, decision 15) — once a Water room mixes the salt, a salt order covers about
@@ -728,6 +907,14 @@ export function plannedUsage(state: GameState): Map<string, number> {
 export function plannedOrders(state: GameState, m: StaffMember): Order[] {
   const orders: Order[] = [];
   const perDay = plannedUsage(state); // lane:staff2 — servings a day (was per round × 2)
+  // Audit 2026-11-17 (follow-up to H2): plus the first foods keepers give young in their tanks, so a staffed nursery
+  // isn't flagged every round until the player buys by hand (none: the plan is as it was). A food the grown animals
+  // don't eat is the young's own, ordered after what runs out sooner (ADULTS_FIRST_DAYS).
+  const youngOnly = new Set<string>();
+  for (const [foodId, n] of plannedYoungUsage(state)) {
+    if (!((perDay.get(foodId) ?? 0) > 0)) youngOnly.add(foodId);
+    perDay.set(foodId, (perDay.get(foodId) ?? 0) + n);
+  }
   const target = stockTargetDays(m);
   const maxPacks = m.trait === 'thrifty' ? 1 : 6;
   // 1) Foods in use that would run out within the target (a day of keeper meals at a time).
@@ -739,7 +926,7 @@ export function plannedOrders(state: GameState, m: StaffMember): Order[] {
     if (days >= target) continue;
     const need = Math.max(0, (target + 1) * per - have);
     const packs = clamp(Math.ceil(need / Math.max(1, f.servingsPerPack)), 1, maxPacks);
-    orders.push({ kind: 'food', foodId, packs, urgency: days, label: f.name, unit: f.price });
+    orders.push({ kind: 'food', foodId, packs, urgency: days, label: f.name, unit: f.price, ...(youngOnly.has(foodId) ? { young: true } : {}) });
   }
   // 2) Animals with nothing at all in stock that they eat: the best food for them.
   const outlook = foodOutlookAll(state);
@@ -816,7 +1003,9 @@ export function plannedOrders(state: GameState, m: StaffMember): Order[] {
       orders.push({ kind: 'eggs', tins, urgency: days, label: 'brine shrimp eggs', unit: EGGS_SUPPLY.price });
     }
   }
-  orders.sort((a, b) => a.urgency - b.urgency);
+  // the young's own food waits behind anything out or nearly out (Audit 2026-11-17, review of the H2 follow-up)
+  const rank = (o: Order) => (o.young ? Math.max(o.urgency, ADULTS_FIRST_DAYS) : o.urgency);
+  orders.sort((a, b) => rank(a) - rank(b) || Number(!!a.young) - Number(!!b.young));
   return orders;
 }
 
@@ -1015,13 +1204,13 @@ function talkTopic(state: GameState, tankId: string): string {
       best = sp.commonName;
     }
   }
-  return best ? best.toLowerCase().replace(/s$/, '') + 's' : 'aquarium life';
+  return best ? pluralName(best) : 'aquarium life'; // Audit 2026-11-17 (J15, J16): "Banggai cardinalfish", "cherry shrimp", not "cherry shrimps"
 }
 
 /** A docent gives a talk at one of their exhibits (rotating). */
 export function giveTalk(state: GameState, m: StaffMember, hour: number): void {
   const st = ensureStaff(state);
-  const exhibits = m.tankIds.filter((id) => state.tanks[id]);
+  const exhibits = m.tankIds.filter((id) => isExhibit(state, id)); // display tanks only (Audit 2026-11-17, H8)
   if (!exhibits.length) return;
   const day = dayRecord(state, m);
   const tankId = exhibits[(totals(m).talks + m.skill) % exhibits.length];
@@ -1041,16 +1230,24 @@ export function giveTalk(state: GameState, m: StaffMember, hour: number): void {
   pushReaction(state.visitors.reactions, { hour, tankId, text: line, mood: 'happy' });
 }
 
+/**
+ * The hours of day a docent talks: 11 AM, 2 PM and 4 PM (early birds fit in a 10 AM talk before the first crowd), the
+ * second, third and fourth docent 15, 30 and 45 minutes later. One rule for the talks and the card's "Next talk at"
+ * (Audit 2026-11-17, H12: the card said 11:00 AM for a docent who talks at 11:15).
+ */
+export function talkHours(state: GameState, m: StaffMember): number[] {
+  const docents = (state.staff?.roster ?? []).filter((x) => x.role === 'docent');
+  const offset = (Math.max(0, docents.indexOf(m)) % 4) * 0.25;
+  return (m.trait === 'early_bird' ? [10, ...TALK_HOURS] : TALK_HOURS).map((hod) => hod + offset);
+}
+
 export function stepDocents(state: GameState, start: number, end: number): void {
   const st = state.staff;
   if (!st) return;
-  let j = 0;
   for (const m of st.roster) {
     if (m.role !== 'docent') continue;
-    const offset = (j++ % 4) * 0.25;
-    // Early birds fit in a 10 AM talk before the first crowd.
-    for (const hod of m.trait === 'early_bird' ? [10, ...TALK_HOURS] : TALK_HOURS) {
-      for (const h of crossings(start, end, hod + offset)) if (isOpenAt(state, h)) giveTalk(state, m, h);
+    for (const hod of talkHours(state, m)) {
+      for (const h of crossings(start, end, hod)) if (isOpenAt(state, h)) giveTalk(state, m, h);
     }
   }
 }
@@ -1089,7 +1286,7 @@ export function docentEffect(state: GameState, hour: number): DocentEffect | nul
   let story = false;
   for (const m of docents) {
     // only the exhibits they actually present (lane:staff, S05-05: a docent with nothing assigned covers nothing)
-    reach += m.tankIds.filter((id) => state.tanks[id]).length;
+    reach += m.tankIds.filter((id) => isExhibit(state, id)).length;
     quality += 0.55 + 0.1 * clamp(m.skill, 1, 5);
     if (m.trait === 'great_with_kids') kids = true;
     if (m.trait === 'storyteller') story = true;
@@ -1125,13 +1322,14 @@ export function nextDuty(state: GameState, m: StaffMember): string {
     return `${next === roundStart(m, 'morning') && next <= h ? 'Tomorrow’s' : 'Next'} round at ${formatClock(next)}`;
   }
   if (m.role === 'stock_manager') {
-    const checks = m.skill >= 3 ? STOCK_CHECKS : STOCK_CHECKS.slice(0, 1);
+    const checks = stockCheckHours(m); // an early bird's 8 AM (Audit 2026-11-17, H12)
     const next = checks.find((t) => t > h) ?? checks[0];
     return `Next shelf check at ${formatClock(next)}`;
   }
   if (!state.facility.openToPublic) return 'No talks while the doors are closed';
-  const next = TALK_HOURS.find((t) => t > h);
-  return next !== undefined ? `Next talk at ${formatClock(next)}` : `First talk tomorrow at ${formatClock(TALK_HOURS[0])}`;
+  const hours = talkHours(state, m);
+  const next = hours.find((t) => t > h);
+  return next !== undefined ? `Next talk at ${formatClock(next)}` : `First talk tomorrow at ${formatClock(hours[0])}`;
 }
 
 /** Plain summary of today's work ("Fed 4 tanks · 1 water change"), or null before they've done anything. */

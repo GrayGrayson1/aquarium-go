@@ -40,7 +40,8 @@ export function TrophyCaseTab({ g }: { g: GameState }) {
     <div className="pn-stack" data-testid="trophy-case">
       {stats && (
         <div className="sh-tiles">
-          <Tile label="Ribbons" value={stats.placings} />
+          {/* Placings: 1st to Honourable Mention; "Ribbon day" counts 1st to 3rd (Audit 2026-11-17, H24) */}
+          <Tile label="Placings" value={stats.placings} />
           <Tile label="Class wins" value={stats.wins} />
           {/* lane:qa-final — "Top honours" wrapped to two lines in the 1280 side sheet, dropping its value below the others */}
           <Tile label="Honours" value={stats.bestInShow} hint="Best in Show" />
@@ -150,8 +151,8 @@ function ChampRow({ c }: { c: Creature }) {
         <span className="sh-champ__name">{c.name}</span>
         <span className="sh-champ__meta">
           {sp?.commonName ?? c.speciesId} · {totalWins(a)} win{totalWins(a) === 1 ? '' : 's'}
-          {high > 0 ? ` (${high} at Regional+)` : ''} · {a.placings} ribbon{a.placings === 1 ? '' : 's'}
-          {gone ? ` · ${c.status === 'sold' ? 'sold' : 'in memoriam'}` : ''}
+          {high > 0 ? ` (${high} at Regional+)` : ''} · {a.placings} placing{a.placings === 1 ? '' : 's'}
+          {gone ? ` · ${c.status === 'sold' ? 'sold' : 'in memory'}` : ''}
         </span>
         <CreatureRibbons c={c} max={8} />
       </span>

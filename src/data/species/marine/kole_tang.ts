@@ -147,7 +147,7 @@ export const koleTang: SpeciesDefinition = {
     compatibilityNotes: 'Reef-safe and harmless to invertebrates. Aggressive toward other tangs, so keep one per tank unless the tank is very large. Competes for food with slow feeders.',
     breedingOverview: 'Spawns in pairs in open water; the long drifting larval stage has not been reared commercially.',
     conservationNote: 'Least Concern (IUCN 2010). A Hawaiian endemic whose collection has been mostly halted since 2017.',
-    funFact: '"Bristletooth" is literal: its flexible, comb-like teeth brush sediment and diatoms off surfaces rather than biting algae.',
+    funFact: '“Bristletooth” is literal: its flexible, comb-like teeth brush sediment and diatoms off surfaces rather than biting algae.',
     inGameBehavior: 'Works over rock, sand and even the front glass in steady passes, flicking its gold-ringed eyes at you as it cleans.',
     feedingNote: 'Combs film algae and detritus off rock, sand and glass all day. Clip in seaweed sheets most days, plus algae wafers, small marine pellets and some thawed mysis. An autofeeder can add pellets; the seaweed goes on by hand.',
     keeperTip: 'Move it in a container, not a net: the scalpel spine at the base of its tail snags in mesh and can cut your hand.',

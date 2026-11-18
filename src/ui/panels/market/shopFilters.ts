@@ -5,7 +5,12 @@
  * share. OWNER: lane "ui-panels".
  */
 import { create } from 'zustand';
-import type { GameState, ShopOffer, SpeciesDefinition } from '@/types';
+import type { GameState, ShopOffer, SpeciesDefinition, Tank } from '@/types';
+import { TANK_TIER_BY_ID } from '@/data/catalog/tanks'; // audit 2026-11-17 (F17)
+import { expectedTempC } from '@/sim/water/env'; // review note (F17)
+
+/** The compatibility engine's temperature tolerance (src/sim/compat/engine.ts: past the range by more than 0.2 °C). */
+const TEMP_FIT_TOLERANCE_C = 0.2;
 import { useGame } from '@/state/game';
 import { findSpecies } from '@/data/species';
 import { fitsEnvironment } from '@/sim/compat/salinity';
@@ -14,7 +19,7 @@ import { geneticsRevealLevel } from '@/sim/life/reveal';
 import { DEFAULT_SHOP_FILTERS, type EnvFilter, type ShopFilters } from '@/ui/nav/routes';
 import { rareGenesMatch } from './offerGenetics';
 import { matches } from '../common/match'; // chunk 19 (QOL-003)
-import { PERSONALITY_LABEL, SEX_LABEL } from '../common/format'; // chunk 19 (QOL-003)
+import { PERSONALITY_LABEL, SEX_UNKNOWN_SEARCH, sexLabel } from '../common/format'; // chunk 19 (QOL-003)
 
 interface ShopFilterState {
   filters: ShopFilters;
@@ -46,19 +51,23 @@ useGame.subscribe((s, prev) => {
   }
 });
 
-/** The words an offer is found by: species (common and scientific), morph and strain, seller, sex and personality. */
-export function offerWords(o: ShopOffer, sp: SpeciesDefinition | undefined): string {
+/**
+ * The words an offer is found by: species (common and scientific), morph and strain, seller, sex and personality. The
+ * sex is the card's words (`sexLabel` at `hour`), and "unsexed" for any animal whose sex isn't known (Audit 2026-11-17,
+ * the review of J22: what a player types, now the card no longer says it).
+ */
+export function offerWords(o: ShopOffer, sp: SpeciesDefinition | undefined, hour: number): string {
   const parts: string[] = [sp?.commonName ?? '', sp?.scientificName ?? '', o.seller ?? '', o.kind === 'group' ? 'group' : ''];
   for (const c of o.creatures) {
-    parts.push(c.morphName ?? '', c.name ?? '', SEX_LABEL[c.sex] ?? '', ...(c.personality ?? []).map((t) => PERSONALITY_LABEL[t] ?? t));
+    parts.push(c.morphName ?? '', c.name ?? '', sexLabel(c, sp, hour), c.sex === 'unknown' ? SEX_UNKNOWN_SEARCH : '', ...(c.personality ?? []).map((t) => PERSONALITY_LABEL[t] ?? t));
     if (isPrismatic(c)) parts.push('prismatic');
   }
   return parts.join(' ');
 }
 
-/** Does an offer match the search? */
-export function offerSearchMatches(o: ShopOffer, q: string): boolean {
-  return matches(q, offerWords(o, findSpecies(o.speciesId)));
+/** Does an offer match the search (at game hour `hour`)? */
+export function offerSearchMatches(o: ShopOffer, q: string, hour: number): boolean {
+  return matches(q, offerWords(o, findSpecies(o.speciesId), hour));
 }
 
 /** Order the shelf: as stocked (Prismatic first), cheapest, dearest or leaving soonest; ties keep the shop's order. */
@@ -73,9 +82,28 @@ export function sortOffers(list: ShopOffer[], sort: ShopSort): ShopOffer[] {
 
 // ───────────────────────────── matching (0.5 spec §7.2) ─────────────────────────────
 
+/**
+ * Audit 2026-11-17 (F17) — a tank this animal could live in, by cheap checks (no compatibility preview): its water type,
+ * the tank's temperature inside the species' range, and at least half the species' recommended size. "Fits my tanks"
+ * used to test the water type only, so an axolotl "fit" a 26 °C betta tank.
+ */
+export function tankFits(sp: SpeciesDefinition, t: Tank): boolean {
+  if (!fitsEnvironment(sp, t.environment)) return false;
+  // review note: the temperature the tank is heading for (its heater and room), with the compatibility engine's
+  // tolerance, so a new tank still warming up isn't hidden (the current reading lags for hours)
+  let temp: number | null = null;
+  try {
+    temp = expectedTempC(t);
+  } catch {
+    temp = t.water?.tempC ?? null;
+  }
+  if (typeof temp === 'number' && Number.isFinite(temp) && (temp < sp.tempC.min - TEMP_FIT_TOLERANCE_C || temp > sp.tempC.max + TEMP_FIT_TOLERANCE_C)) return false;
+  return (TANK_TIER_BY_ID[t.tierId]?.gallons ?? 0) >= sp.recommendedMinTankGallons * 0.5;
+}
+
 /** The environment chips: every offer, the ones some tank can hold, or one water type (lane:brackish: mollies fit fresh tanks too). */
 export function envMatches(g: GameState, sp: SpeciesDefinition, env: EnvFilter): boolean {
-  if (env === 'fits') return g.tankOrder.some((id) => !!g.tanks[id] && fitsEnvironment(sp, g.tanks[id].environment));
+  if (env === 'fits') return g.tankOrder.some((id) => !!g.tanks[id] && tankFits(sp, g.tanks[id]));
   if (env !== 'all') return sp.environment === env;
   return true;
 }

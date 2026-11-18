@@ -40,6 +40,10 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-clock-pill__icon { color: var(--c-gold); }
 .ag-clock-pill__icon.is-night { color: var(--c-blue); }
 .ag-clock-pill__sep { color: var(--c-ink-4); }
+/* audit B9: phones (TopBar `compact`) put the day where the shop's name goes, over the time */
+.ag-clock-pill__day { display: block; font-size: calc(10.5px * var(--text-scale)); font-weight: 650; line-height: 1.15; color: var(--c-ink-2); white-space: nowrap; }
+.ag-clock-pill__day.is-paused { color: var(--c-watch); } /* audit B15: "Paused" in its place while the game is paused */
+.ag-clock-pill.is-manual .ag-clock-pill__day { color: inherit; }
 
 .ag-speed { padding: 0 12px 0 4px; gap: 10px; min-height: 48px; }
 .ag-speed .ag-seg { background: transparent; border: 0; padding: 0; }
@@ -101,6 +105,12 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 /* Alerts popover */
 .ag-alerts-pop { right: 0; top: calc(100% + 10px); width: 390px; max-height: min(72vh, 640px); overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 16px; }
 .ag-alerts-pop__log { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+/* audit B1: under the title the drawer scrolls as one (it clipped: eight low-food rows hid the danger rows, Recent
+   events, "Full event log" and "Turn on"). No section shrinks; a long event list keeps its own short scroll so "Full
+   event log" stays near. The side and end padding keeps the rows' focus rings inside the scroll box. */
+.ag-alerts-pop__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 14px; margin: -4px -6px; padding: 4px 6px; overflow-y: auto; overscroll-behavior: contain; }
+.ag-alerts-pop__body > * { flex-shrink: 0; }
+.ag-alerts-pop__body .ag-eventlist { max-height: min(340px, 40dvh); }
 /* chunk 6 (DES-011): the drawer's title row (0.5 phone-alerts.png, S3-D alerts-*.png) */
 .ag-alerts-pop__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px -4px -6px 0; }
 .ag-alerts-pop__title { margin: 0; font-family: var(--font-display); font-size: calc(20px * var(--text-scale)); font-weight: 560; color: var(--c-ink); }
@@ -130,6 +140,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-switcher__arrow:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 1px; }
 .ag-switcher__label { display: grid; gap: 1px; padding: 0 6px; min-width: 150px; max-width: 240px; }
 .ag-switcher__name { font-family: var(--font-display); font-size: calc(15.5px * var(--text-scale)); font-weight: 540; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variation-settings: 'opsz' 30, 'SOFT' 60; }
+/* Audit 2026-11-17 (G28): "No tank · Buy one" opens Build › Tanks */
+.ag-switcher__buy { padding: 0; border: 0; background: none; font: inherit; color: var(--c-aqua); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ag-switcher__buy:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; border-radius: 4px; }
 .ag-switcher__status { display: inline-flex; align-items: center; gap: 5px; font-size: calc(11.5px * var(--text-scale)); font-weight: 620; white-space: nowrap; }
 .ag-switcher__status.is-good { color: var(--c-good); }
 .ag-switcher__status.is-watch { color: var(--c-watch); }
@@ -265,6 +278,8 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-coach__body { margin: 0 0 12px; font-size: calc(13.5px * var(--text-scale)); line-height: 1.5; color: var(--c-ink-2); }
 .ag-coach__done { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 5px 9px; border-radius: 9px; background: rgba(74, 222, 128, 0.09); border: 1px solid rgba(74, 222, 128, 0.22); color: var(--c-good); font-size: calc(12px * var(--text-scale)); font-weight: 600; overflow: hidden; }
 .ag-coach__progress { display: grid; gap: 5px; margin: -4px 0 12px; }
+/* audit 2026-11-17 (A1, A17) — what a waiting step is waiting for ("Friends visit between 9 am and 9 pm.") */
+.ag-coach__wait { margin: -4px 0 12px; padding: 6px 9px; border-radius: 9px; background: color-mix(in srgb, var(--c-watch) 9%, transparent); border: 1px solid color-mix(in srgb, var(--c-watch) 28%, transparent); color: var(--c-ink); font-size: calc(12px * var(--text-scale)); line-height: 1.4; }
 .ag-coach__progress-row { display: flex; justify-content: space-between; font-size: calc(11.5px * var(--text-scale)); color: var(--c-ink-3); font-weight: 600; }
 .ag-coach__progress-row span:last-child { color: var(--c-ink); }
 .ag-coach__bar { height: 4px; border-radius: 99px; background: var(--c-fill-2); overflow: hidden; }
@@ -306,6 +321,10 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-welcome__text { margin: 0; color: var(--c-ink-2); font-size: calc(13.5px * var(--text-scale)); line-height: 1.5; }
 .ag-welcome__stats { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: calc(12.5px * var(--text-scale)); color: var(--c-ink-2); }
 .ag-welcome__stats span { display: inline-flex; align-items: center; gap: 6px; }
+/* audit 2026-11-17, I18: a count that opens where its animals or sales are */
+.ag-welcome__stat { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0; border: 0; background: none; color: var(--c-aqua); font: inherit; cursor: pointer; }
+.ag-welcome__stat:hover { text-decoration: underline; text-underline-offset: 3px; }
+.ag-welcome__stat:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; border-radius: 6px; }
 .ag-welcome__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: calc(12.5px * var(--text-scale)); color: var(--c-ink-2); }
 .ag-welcome__list li { display: flex; gap: 8px; align-items: flex-start; }
 /* lane:w2-ui — honest away time + grace period + actionable rows (show results, bids, staff) */
@@ -385,7 +404,6 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-clock-pill { padding: 4px 10px; min-height: 40px; }
   .ag-clock-pill__time { font-size: calc(11px * var(--text-scale)); gap: 4px; }
   .ag-clock-pill__sep { display: none; }
-  .ag-clock-pill__time span:first-of-type { display: none; }
   .ag-speed { padding: 0 2px; min-height: 40px; }
   .ag-speed__label { display: none; }
   /* the four segments fill the pill's height with a seam between them (28×34 edge-to-edge buttons mis-tapped Pause vs 1×) */
@@ -395,7 +413,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-money-pill__coin { width: 24px; height: 24px; font-size: 12px; }
   .ag-money-pill__val { font-size: calc(14.5px * var(--text-scale)); }
   .ag-alerts-btn { width: 40px; min-height: 40px; }
-  .ag-alerts-pop { position: fixed; top: calc(var(--edge-t) + var(--topbar-h) + 8px); left: var(--edge-l); right: var(--edge-r); width: auto; }
+  .ag-alerts-pop { position: fixed; top: calc(var(--edge-t) + var(--topbar-h) + 8px); left: var(--edge-l); right: var(--edge-r); width: auto; max-height: min(72vh, 640px, calc(100dvh - var(--edge-t) - var(--topbar-h) - var(--dock-h) - var(--edge) - var(--safe-b) - 16px)); }
   .ag-hudpill { border-radius: 14px; }
 
   .ag-tankbar { top: calc(var(--edge) + var(--topbar-h) + 6px); right: var(--edge); gap: 6px; }
@@ -537,7 +555,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 @media (max-width: 400px) {
   .ag-clock-pill { padding: 4px 8px; }
-  .ag-clock-pill__icon { display: none; }
+  .ag-clock-pill:not(.is-manual) .ag-clock-pill__icon { display: none; } /* the manual pill keeps its Hand (audit B3) */
   .ag-money-pill { padding: 0 8px 0 4px; gap: 5px; }
 }
 /* the narrowest phones (360 px Android) give the speed segments back a few pixels rather than overflow the bar */
@@ -620,6 +638,10 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 @media (max-width: 720px), (max-width: 1000px) and (orientation: portrait), (max-height: 500px) and (orientation: landscape) {
   :root:has(.ag-tcard.ag-sheet--bottom) .ag-hud__coach { bottom: calc(min(54dvh, 640px) + 10px); }
   :root:has(.ag-tcard.ag-sheet--bottom.is-expanded) .ag-hud__coach { opacity: 0; visibility: hidden; }
+  /* audit 2026-11-17 (P1) — and above the animal's card, whose sheet covered the guide's next step after "Meet them".
+     Its sheet is as tall as its content (up to 54dvh): the guide measures it (--coach-ccard-h, TutorialCoach). */
+  :root:has(.ag-ccard.ag-sheet--bottom) .ag-hud__coach { bottom: calc(var(--coach-ccard-h, min(54dvh, 640px)) - var(--safe-b) + 10px); }
+  :root:has(.ag-ccard.ag-sheet--bottom.is-expanded) .ag-hud__coach { opacity: 0; visibility: hidden; }
 }
 
 /* fix:HUD — a phone held sideways (844×390) used to get the desktop chrome: a 418 px vertical rail with Feed above and
@@ -637,6 +659,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-hud__coach, .ag-hud.is-facility .ag-hud__coach { left: var(--edge); right: auto; width: min(320px, 42vw); bottom: calc(var(--dock-h) + var(--edge) * 2); max-height: calc(100dvh - var(--edge) - var(--topbar-h) - var(--dock-h) - var(--edge) * 2 - 12px); }
   .ag-coach { max-height: inherit; display: flex; flex-direction: column; }
   .ag-coach__body { overflow-y: auto; min-height: 0; }
+  /* audit 2026-11-17 (A1 review): the waiting line shrinks and scrolls too, so a long reason and the done line can't
+     push the buttons (Skip, Open the Market, Play) out of the capped card */
+  .ag-coach__wait { min-height: 0; overflow-y: auto; flex: 0 1 auto; }
   .ag-hud:has(.ag-toolpop, .ag-toolhint) .ag-hud__coach { opacity: 1; visibility: visible; }
   .ag-hud:has(.ag-toolpop) .ag-hud__coach { opacity: 0; visibility: hidden; }
   .ag-toolhint { left: var(--edge); right: calc(var(--edge) + var(--rail-w)); margin-inline: auto; bottom: calc(var(--dock-h) + var(--edge) * 2); }
@@ -645,9 +670,12 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   /* the rail's backdrop-filter makes it the containing block of its fixed popovers: they hang off its left edge */
   .ag-toolpop { left: auto; right: calc(100% + 8px); top: 50px; bottom: auto; width: min(340px, calc(100vw - var(--rail-w) - var(--edge) * 2 - 8px)); max-height: calc(100dvh - var(--edge) - var(--topbar-h) - var(--dock-h) - var(--edge) * 2 - 56px); overflow-y: auto; }
   .ag-foodlist { max-height: none; overflow: visible; }
-  .ag-alerts-pop { max-height: calc(100dvh - var(--edge) * 2 - var(--topbar-h) - 8px); }
+  /* audit B1 review: it ends 8 px above the tab bar (64 px at the foot, z-index 60, over the drawer's 50): its last
+     rows and "Full event log" were under it */
+  .ag-alerts-pop { max-height: calc(100dvh - var(--edge-t) - var(--topbar-h) - var(--dock-h) - var(--edge) - var(--safe-b) - 16px); }
   .ag-hud::before { height: calc(var(--edge) + var(--topbar-h) + 60px); }
   :root:has(.ag-tcard.ag-sheet--bottom) .ag-hud__coach { opacity: 0; visibility: hidden; }
+  :root:has(.ag-ccard.ag-sheet--bottom) .ag-hud__coach { opacity: 0; visibility: hidden; } /* (P1: nearly full height here too) */
   /* every bottom sheet reaches the top bar here: Toasts.tsx shows one compact toast in the sheet's header row, left
      of its close button (in the bottom band it still hid a 155 px list's rows). Until it has measured: the bottom
      band, above a panel's switcher row, in its right-hand corner. */
@@ -668,6 +696,11 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 @media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   .ag-hud__cam.ag-hud__cam--room { display: block; right: var(--edge); bottom: calc(var(--dock-h) + var(--edge) + 8px); }
   .ag-roomcam__hint { white-space: normal; max-width: calc(100vw - 2 * var(--edge)); }
-  /* the guide card owns the band above the dock while it is open */
-  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-hud__cam--room { display: none; }
+  /* the guide card owns the band above the dock while it is open: the chips sit just above it (TutorialCoach publishes
+     --coach-clear). Audit B12: they were hidden, so a player lost in the room had no Reset view until the guide ended */
+  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-hud__cam--room { bottom: calc(var(--coach-clear, calc(var(--dock-h) + var(--edge) * 2 + 170px)) - var(--safe-b)); }
+}
+/* (held sideways the guide sits bottom-left and the room view has no tool rail: the chips keep their corner) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-hud__cam--room { bottom: calc(var(--dock-h) + var(--edge) + 8px); }
 }

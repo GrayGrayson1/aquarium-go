@@ -148,7 +148,7 @@ describe('AUTO-004: the Auto-feed row', () => {
     const b = world({ feeder: false, unlocked: false });
     const locked = section(b.g, b.tank);
     expect(text(locked)).toContain(AUTOMATION_LOCK_HINT);
-    expect(AUTOMATION_LOCK_HINT).toBe('Research Better Life Support, or build husbandry mastery with regular care.');
+    expect(AUTOMATION_LOCK_HINT).toBe('Research Better Life Support, or raise husbandry mastery by caring for your tanks.');
     expect(locked).not.toContain('tank-auto-feed-buy');
   });
 

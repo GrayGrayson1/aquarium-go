@@ -2,9 +2,10 @@
  * chunk 19 (ADR-0055 decision 3, QOL-004) — Find anything: one search over the whole game, and where each result goes.
  * Pure over the game (node-safe; tests/sim/qol-search.test.ts): screens (every panel and tab, Settings', the tour),
  * your tanks and animals, the shop's stock, food, equipment, decor, tank sizes, research, unlocks still to come and
- * the species you have discovered. A list item opens its list searched for it (`find:` panel targets) with the item
+ * the species you have discovered, and the Encyclopedia's Aquarium science articles (audit B5). A list item opens its list searched for it (`find:` panel targets) with the item
  * glowing. The group names and details are drafted words (ADR-0055 decision 8). OWNER: lane "ui-shell".
  */
+import { isValidElement, type ReactNode } from 'react';
 import type { Environment, GameState, Tank, WaterClass } from '@/types';
 import type { PanelId } from '@/state/ui';
 import { DECOR } from '@/data/catalog/decor';
@@ -13,17 +14,22 @@ import { FOODS } from '@/data/catalog/foods';
 import { TANK_TIERS } from '@/data/catalog/tanks';
 import { RESEARCH } from '@/data/research';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
+import { WATER_CLASS_WORDS } from '@/data/tankLabels'; // Audit 2026-11-17 (J4)
+import { TANK_STATUS_WORD } from '../common/tankStatus'; // Audit 2026-11-17 (J10)
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { ALL_SPECIES, findSpecies } from '@/data/species';
 import { isFoodAvailable, isSpeciesAvailable } from '@/sim/economy';
 import { morphDisplayName } from '@/sim/life/genetics';
 import { screenList, type Route } from '../nav/routes';
 import { fold, queryWords, score } from '../panels/common/match';
+import { ARTICLES, type Article } from '../panels/encyclopedia/science'; // audit B5
 
-export type FindGroup = 'Screens' | 'Your tanks' | 'Your animals' | 'In the shop' | 'Food & supplies' | 'Equipment' | 'Decor' | 'Tank sizes' | 'Research' | 'Unlocks' | 'Encyclopedia';
+export type FindGroup = 'Screens' | 'Aquarium science' | 'Your tanks' | 'Your animals' | 'In the shop' | 'Food & supplies' | 'Equipment' | 'Decor' | 'Tank sizes' | 'Research' | 'Unlocks' | 'Encyclopedia';
 
 /** The order groups are listed in. */
-export const FIND_GROUPS: readonly FindGroup[] = ['Screens', 'Your tanks', 'Your animals', 'In the shop', 'Food & supplies', 'Equipment', 'Decor', 'Tank sizes', 'Research', 'Unlocks', 'Encyclopedia'];
+// (audit B5 review: the articles come after the player's own things, so "betta", "food", "tank" or "filter" don't open
+// on three to five articles)
+export const FIND_GROUPS: readonly FindGroup[] = ['Screens', 'Your tanks', 'Your animals', 'In the shop', 'Food & supplies', 'Equipment', 'Decor', 'Tank sizes', 'Research', 'Unlocks', 'Aquarium science', 'Encyclopedia'];
 
 export type FindGo =
   | { kind: 'route'; route: Route }
@@ -56,7 +62,7 @@ export function anyTankSuits(g: GameState, envs: readonly Environment[] | undefi
   return g.tankOrder.some((id) => !!g.tanks[id] && itemSuitsTank(g.tanks[id], envs, wcs));
 }
 const ENV_WORD: Record<Environment, string> = { freshwater: 'freshwater', marine: 'marine', brackish: 'brackish' };
-const WC_WORD: Record<WaterClass, string> = { freshwater_cool: 'cool freshwater', freshwater_tropical: 'tropical freshwater', freshwater_planted: 'planted', marine_fowlr: 'fish-only marine', marine_live_rock: 'live rock', reef: 'reef', brackish: 'brackish' };
+const WC_WORD: Record<WaterClass, string> = WATER_CLASS_WORDS; // Audit 2026-11-17 (J4): the water types' one set of names
 const orList = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`);
 /** "Needs a reef tank" when no tank of yours can take the item (reviewer B5: it led to an empty list), else null. */
 export function needsTankText(g: GameState, envs: readonly Environment[] | undefined, wcs?: readonly WaterClass[]): string | null {
@@ -87,15 +93,20 @@ export function findAnything(g: GameState, q: string, opts: { social?: boolean; 
   for (const sc of screenList()) {
     if (!opts.social && (sc.panel === 'social' || (sc.route.kind === 'settings' && sc.route.tab === 'account'))) continue;
     const lock = sc.panel !== 'settings' ? SCREEN_LOCK[sc.panel] : undefined;
-    push({ key: `screen:${sc.name}`, group: 'Screens', title: sc.name, locked: !!lock && !has(g, lock), go: { kind: 'route', route: sc.route } }, sc.name);
+    push({ key: `screen:${sc.name}`, group: 'Screens', title: sc.name, locked: !!lock && !has(g, lock), go: { kind: 'route', route: sc.route } }, sc.name, sc.keywords);
   }
   if (!words.length) return out;
+
+  // audit B5: the game's own explanations, by title and text ("ammonia", "cycling", "water change"), as the tour's
+  // "Anything you can’t find, Find anything will." promises
+  for (const a of ARTICLES)
+    push({ key: `science:${a.id}`, group: 'Aquarium science', title: a.title, detail: 'Encyclopedia › Aquarium science', go: { kind: 'route', route: { kind: 'panel', panel: 'encyclopedia', tab: 'science', target: `science:${a.id}` } } }, a.title, a.teaser, articleText(a));
 
   // your tanks and animals
   for (const id of g.tankOrder) {
     const t = g.tanks[id];
     if (!t) continue;
-    push({ key: `tank:${id}`, group: 'Your tanks', title: t.name, detail: `${tierGallons(t.tierId)} gal · ${t.cache.status === 'good' ? 'Healthy' : t.cache.status === 'danger' ? 'Danger' : 'Watch'}`, go: { kind: 'tank', tankId: id } }, t.name, 'tank');
+    push({ key: `tank:${id}`, group: 'Your tanks', title: t.name, detail: `${tierGallons(t.tierId)} gal · ${TANK_STATUS_WORD[t.cache.status] ?? TANK_STATUS_WORD.watch}`, go: { kind: 'tank', tankId: id } }, t.name, 'tank');
   }
   for (const c of Object.values(g.creatures)) {
     if (c.status !== 'alive' && c.status !== 'listed') continue;
@@ -162,6 +173,21 @@ export function orderResults(list: FindResult[]): FindResult[] {
   }
   return out;
 }
+
+/** The words of a piece of JSX (an article's body): its strings, without the markup. */
+export function nodeText(n: ReactNode): string {
+  if (n == null || typeof n === 'boolean') return '';
+  if (typeof n === 'string' || typeof n === 'number') return String(n);
+  if (Array.isArray(n)) return n.map(nodeText).join(' ');
+  if (isValidElement<{ children?: ReactNode }>(n)) return nodeText(n.props.children);
+  return '';
+}
+const ARTICLE_TEXT = new Map<string, string>();
+const articleText = (a: Article): string => {
+  let t = ARTICLE_TEXT.get(a.id);
+  if (t === undefined) ARTICLE_TEXT.set(a.id, (t = nodeText(a.body)));
+  return t;
+};
 
 function tierGallons(tierId: string): number {
   return TANK_TIERS.find((t) => t.id === tierId)?.gallons ?? 0;

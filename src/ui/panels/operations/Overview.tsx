@@ -22,13 +22,11 @@ import {
   changerOf,
   doserOf,
   freshCap,
-  heldSystems,
   isHeld,
   lastChangeHour,
   manualSince,
   saltCap,
   saltWaterNeeded,
-  savedThisWeek,
   tankChangeNeed,
   todayJobs,
   weekMoney,
@@ -99,7 +97,7 @@ function ProblemsCard({ g, issues, counts, nav, small }: { g: GameState; issues:
       <div className="ops-card ops-card--good" data-testid="ops-all-clear">
         <div className="ops-row">
           <CircleCheck size={18} aria-hidden style={{ color: 'var(--c-good)' }} />
-          <span className="ops-row__title">Everything is running smoothly.</span>
+          <span className="ops-row__title">Automation is running smoothly.</span>{/* Audit 2026-11-17 C20: what this list checks (supplies and lines), as the bell says; tanks have their own alerts */}
         </div>
       </div>
     );
@@ -108,7 +106,7 @@ function ProblemsCard({ g, issues, counts, nav, small }: { g: GameState; issues:
       <section className={`ops-card ops-card--${counts.danger ? 'danger' : 'watch'}`} data-testid="ops-problems">
         <Kicker
           end={
-            <button type="button" className="ops-link" data-testid="ops-problems-all" onClick={() => nav.view('issues')}>
+            <button type="button" className="ops-link" data-testid="ops-problems-all" aria-label="All problems" onClick={() => nav.view('issues')}>
               All <ChevronRight size={14} aria-hidden />
             </button>
           }
@@ -146,7 +144,7 @@ function ProblemsCard({ g, issues, counts, nav, small }: { g: GameState; issues:
           </div>
         </section>
       ))}
-      <button type="button" className="ops-link" data-testid="ops-problems-all" onClick={() => nav.view('issues')}>
+      <button type="button" className="ops-link" data-testid="ops-problems-all" aria-label="All problems" onClick={() => nav.view('issues')}>
         All <ChevronRight size={14} aria-hidden />
       </button>
     </div>
@@ -179,7 +177,7 @@ function systemTiles(g: GameState, snap: OpsSnapshot, tier: OpsTier, nav: OpsNav
         icon={<Waves size={17} aria-hidden />}
         name="Water changes"
         status={wHeld ? <Status tone="watch" icon="held">Held</Status> : done !== null ? <Status tone="good">Done {formatClock(done)}</Status> : <Status tone="neutral" icon="time">{changers.length ? 'Due' : 'Off'}</Status>}
-        lines={[`${changers.length} ${changers.length === 1 ? 'tank' : 'tanks'} · ${gal(galDay)} gal`, ...(small ? [] : [`${share}% each morning · glass weekly`])]}
+        lines={[`${changers.length} ${changers.length === 1 ? 'tank' : 'tanks'} · ${gal(galDay)} gal`, ...(small ? [] : [`${share}% each morning · glass cleaned weekly`])]}
         tone={wHeld ? 'watch' : null}
         onOpen={tier.water ? () => nav.tab('water') : undefined}
       />
@@ -242,7 +240,7 @@ function systemTiles(g: GameState, snap: OpsSnapshot, tier: OpsTier, nav: OpsNav
           isNew
           status={held ? <Status tone="watch" icon="held">Held</Status> : <Status tone="good" icon="running">Running</Status>}
           tone={held ? 'watch' : null}
-          lines={small ? [`Makes ${brine + inf} servings a day`] : [`Baby brine ${brine} a day · uses ${last?.used[BRINE] ?? 0}`, `Infusoria ${inf} a day · uses ${last?.used[INFUSORIA] ?? 0}`]}
+          lines={small ? [`Makes ${brine + inf} servings a day`] : [`Baby brine ${brine} servings a day · uses ${last?.used[BRINE] ?? 0}`, `Infusoria ${inf} servings a day · uses ${last?.used[INFUSORIA] ?? 0}`]}
           onOpen={() => nav.tab('feed')}
         />
       ),
@@ -253,6 +251,7 @@ function systemTiles(g: GameState, snap: OpsSnapshot, tier: OpsTier, nav: OpsNav
   const dosers = tanks.filter((t) => doserOf(t)).length;
   const keeperFed = new Set((g.staff?.roster ?? []).filter((m) => m.role === 'aquarist').flatMap((m) => m.tankIds)).size;
   const fHeld = isHeld(g, 'feeders');
+  const feedersOn = tanks.filter((t) => t.equipment.some((e) => e.on && !e.failed && getEquipmentDef(e.defId)?.kind === 'autofeeder')).length; // Audit 2026-11-17 (H17)
   out.push({
     key: 'feeding',
     node: (
@@ -261,7 +260,7 @@ function systemTiles(g: GameState, snap: OpsSnapshot, tier: OpsTier, nav: OpsNav
         testId="ops-sys-feeding"
         icon={<Utensils size={17} aria-hidden />}
         name="Feeding"
-        status={fHeld ? <Status tone="watch" icon="held">Held</Status> : feeders + dosers ? <Status tone="good" icon="running">Running</Status> : <Status tone="neutral">By hand</Status>}
+        status={fHeld ? <Status tone="watch" icon="held">Held</Status> : feedersOn + dosers ? <Status tone="good" icon="running">Running</Status> : feeders ? <Status tone="watch">Paused</Status> : <Status tone="neutral">By hand</Status>}
         tone={fHeld ? 'watch' : null}
         lines={small ? [`${feeders} ${feeders === 1 ? 'feeder' : 'feeders'} · ${dosers} ${dosers === 1 ? 'doser' : 'dosers'}`] : [`${feeders} ${feeders === 1 ? 'Autofeeder' : 'Autofeeders'} · ${dosers} live-food ${dosers === 1 ? 'doser' : 'dosers'}`, `${keeperFed} ${keeperFed === 1 ? 'tank' : 'tanks'} fed by keepers on rounds`]}
         onOpen={tier.food ? () => nav.tab('feed') : undefined}
@@ -428,7 +427,7 @@ export function jobText(g: GameState, j: ScheduledJob): { title: string; detail:
     case 'jar':
       return { title: 'Infusoria', detail: `Jar ${j.index} harvest · ${j.servings} servings` };
     case 'cone':
-      return { title: 'Hatchery', detail: `Cone ${j.index} harvest · ${j.servings} servings` };
+      return { title: 'Brine Shrimp Hatchery', detail: `Cone ${j.index} harvest · ${j.servings} servings` };
     case 'shelves': {
       const title = j.check === 'first' ? `${first(j.who)} checks the shelves` : `${first(j.who)}’s second check`;
       const detail = j.saltBlocked ? 'Food first · salt mix won’t fit the budget' : j.buys ? (j.buys.length ? `Buys ${j.buys.slice(0, 2).join(' and ')}${j.buys.length > 2 ? ` and ${j.buys.length - 2} more` : ''}` : 'Nothing to reorder') : j.check === 'second' ? 'Salt mix if the budget allows' : 'Reorders what runs low';
@@ -476,9 +475,9 @@ function Today({ g, manual }: { g: GameState; manual: boolean }) {
 
 const LOCKED: Record<'water' | 'food' | 'lines' | 'tools', { icon: ReactNode; name: string; desc: string }> = {
   water: { icon: <Droplets size={17} aria-hidden />, name: 'Water room', desc: 'Fresh and salt water for every tank' },
-  food: { icon: <Egg size={17} aria-hidden />, name: 'Live food', desc: 'Baby brine shrimp and infusoria for fry' },
-  lines: { icon: <Factory size={17} aria-hidden />, name: 'More lines', desc: 'A second line at a Specialty Shop' },
-  tools: { icon: <Gauge size={17} aria-hidden />, name: 'Operations tools', desc: 'Problems, weekly money and Hold all' },
+  food: { icon: <Egg size={17} aria-hidden />, name: 'Live food room', desc: 'Baby brine shrimp and infusoria for fry' },
+  lines: { icon: <Factory size={17} aria-hidden />, name: 'Breeding facility', desc: 'A second line at a Specialty Shop' },
+  tools: { icon: <Gauge size={17} aria-hidden />, name: 'Operations Desk', desc: 'Problems, weekly money and Hold all' },
 };
 
 function lockedTiles(tier: OpsTier, nav: OpsNav, before: boolean): ReactNode[] {
@@ -566,7 +565,7 @@ function EarlyOverview({ g, tier, nav, small }: { g: GameState; tier: OpsTier; n
           <div className="ops-row">
             <span className="ops-row__main ops-row__sub">Auto-clean needs an Auto Water Changer</span>
             <Button size="sm" onClick={() => go({ kind: 'tankCard', tankId: fed[0].id, tab: 'gear' })}>
-              Buy · $120
+              Set up {/* Audit 2026-11-17 C21: it opens the tank's Equipment tab, where the Buy is (it said "Buy · $120") */}
             </Button>
           </div>
         ) : null}
@@ -575,7 +574,7 @@ function EarlyOverview({ g, tier, nav, small }: { g: GameState; tier: OpsTier; n
   ) : (
     <div className="ops-card ops-card--dashed" data-testid="ops-assisted">
       <Kicker>Assisted care</Kicker>
-      <span className="ops-muted">Research Better Life Support, or build husbandry mastery with regular care.</span>
+      <span className="ops-muted">Research Better Life Support, or raise husbandry mastery by caring for your tanks.</span>
     </div>
   );
   const lineRow = line && v && (

@@ -6,6 +6,7 @@ import type { GameState, WaterClass, Creature, Tank, ShopOffer } from '@/types';
 import type { ActionResult } from '../care';
 import { refreshFoodStatus } from '../tankStatus';
 import { installEquipment } from '../care';
+import { MAX_PER_KIND } from '../care/tuning'; // Audit 2026-11-17 (G25)
 import { environmentGate } from '../compat';
 import { addCreature, isLotOffer, recordFinds } from '../life';
 import { generateName } from '../life/names';
@@ -16,7 +17,7 @@ import { isUnlocked, findFreeSpot, bumpCounter, waterClassLock } from '../facili
 import { emitEvent } from '../context';
 import { settleTanks } from '../settle'; // ADR-0026 decision 5 (chunk 5)
 import { findSpecies } from '@/data/species';
-import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
+import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
 import { getEquipmentDef, equipmentOfKind } from '@/data/catalog/equipment';
 import { nextId } from '../ids';
 import { getFoodDef } from '@/data/catalog/foods';
@@ -24,7 +25,9 @@ import { EGGS_SUPPLY } from '@/data/catalog/machines'; // lane:automation (chunk
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { spend, canAfford } from './finance';
-import { isFoodAvailable, soldWithWords } from './shop';
+import { isFoodAvailable, soldWithWords, offerHeld } from './shop';
+import { marketTimeScale, NEGOTIATION_HOLD_HOURS, MAX_NEGOTIATION_HOLD_HOURS } from './listings'; // F6: the bid hold's windows
+import { GAME_HOURS_PER_REAL_SECOND } from '../time';
 import { clonePlain, fmtMoney, finite, nicePrice, pushCapped, speciesPlural, roundCents, aOrAn } from './util'; // lane:w2-ui: aOrAn ("an 800 Gallon Exhibit")
 
 /** Marine salt mix price per kg. */
@@ -36,7 +39,7 @@ const fail = (message: string): ActionResult => ({ ok: false, message });
 
 function needMoney(state: GameState, price: number, what: string): ActionResult {
   const money = state.finance.money;
-  if (money < 0) return fail(`You're ${fmtMoney(-money)} in debt, so purchases are paused. Sell something or wait for income first.`);
+  if (money < 0) return fail(`You’re ${fmtMoney(-money)} in debt, so purchases are paused. Sell something or wait for income first.`);
   return fail(`Not enough money for ${what}: it costs ${fmtMoney(price)} and you have ${fmtMoney(money)}.`);
 }
 
@@ -65,7 +68,7 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
   const offer = m.stock.find((o) => o.id === offerId);
   if (!offer) return fail('That offer is no longer available.');
   const now = state.clock.hour;
-  if (offer.expiresHour <= now) {
+  if (offer.expiresHour <= now && !offerHeld(offer, now)) {
     m.stock = m.stock.filter((o) => o.id !== offerId);
     return fail('That offer has expired.');
   }
@@ -79,9 +82,9 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
   try {
     gate = environmentGate(sp, tank);
   } catch {
-    gate = sp.environment === tank.environment ? { ok: true } : { ok: false, reason: `${sp.commonName} can't live in a ${tank.environment} tank.` };
+    gate = sp.environment === tank.environment ? { ok: true } : { ok: false, reason: `${sp.commonName} can’t live in a ${tank.environment} tank.` };
   }
-  if (!gate.ok) return fail(gate.reason ?? `${sp.commonName} can't live in this tank's water.`);
+  if (!gate.ok) return fail(gate.reason ?? `${sp.commonName} can’t live in this tank’s water.`);
 
   const total = offer.creatures.length;
   if (total === 0) {
@@ -135,6 +138,8 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
     offer.creatures = keep;
     offer.kind = keep.length > 1 ? 'group' : 'creature';
     if (keep.length > 1 && /^(Group|Colony) of \d+/.test(offer.label ?? '')) offer.label = offer.label!.replace(/of \d+/, `of ${keep.length}`);
+    // F6: buying releases the hold (in a shared shop, someone else may still be looking: see releaseHold)
+    releaseHold(state, offer);
   }
   bumpCounter(state, 'purchases');
   bumpCounter(state, 'animalsBought', bought.length);
@@ -144,11 +149,51 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
   const uncycled = finite(tank.water?.bioMaturity, 1) < 0.4;
   emitEvent(state, {
     kind: uncycled ? 'warning' : 'info',
-    text: `${who} arrived in ${tank.name}.${uncycled ? ' This tank is not cycled yet — feed lightly and watch ammonia closely.' : ' Give them a little time to settle in.'}`,
+    text: `${who} arrived in ${tank.name}.${uncycled ? ' This tank’s filter bacteria are still growing — feed lightly and watch ammonia closely.' : ' Give them a little time to settle in.'}`, // Audit 2026-11-17 (J5 review): the words the Production card uses, not "cycled"
     tankId,
     creatureId: bought[0]?.id,
+    ...(uncycled ? { toast: true } : {}), // audit 2026-11-17 (F4): said where the player sees it, not only in the log
   });
   return { ok: true, message: `${who} added to ${tank.name} for ${fmtMoney(price)}.` };
+}
+
+/**
+ * Audit 2026-11-17 (F6, the owner's choice: "Hold it while I'm looking") — an offer the player has open stays until
+ * they buy it or close it, the way a bid waits while they write a counter-offer (holdBidForCounter): each call holds it
+ * for NEGOTIATION_HOLD_HOURS (≈ 2 real minutes at any speed) past now, so the screen renews it while it is open;
+ * `release` (close) ends it soon (releaseHold). A screen left open can't keep an offer forever: the whole hold is capped at
+ * MAX_NEGOTIATION_HOLD_HOURS from its start (≈ 6 real minutes), after which the offer leaves at the next check if its
+ * time is up. The shop restocks around a held offer as usual (refreshStock).
+ */
+export function holdOffer(state: GameState, offerId: string, release = false): ActionResult {
+  const offer = state.market.stock.find((o) => o.id === offerId);
+  if (!offer) return fail('That offer is no longer available.');
+  if (release) {
+    releaseHold(state, offer);
+    return { ok: true, message: '' };
+  }
+  const now = state.clock.hour;
+  if (offer.expiresHour <= now && !offerHeld(offer, now)) return fail('That offer has left the shop.');
+  const k = marketTimeScale(state);
+  // a new look starts only after the offer ran unheld for a full window (a hold kept open can't chain past its cap)
+  if (offer.holdStartHour === undefined || now - (offer.holdUntilHour ?? -Infinity) >= NEGOTIATION_HOLD_HOURS * k) offer.holdStartHour = now;
+  const until = Math.min(offer.holdStartHour + MAX_NEGOTIATION_HOLD_HOURS * k, now + NEGOTIATION_HOLD_HOURS * k);
+  offer.holdUntilHour = Math.max(offer.holdUntilHour ?? 0, until);
+  return { ok: true, message: '' };
+}
+
+/** How long a released hold lingers (≈ 20 real seconds at any speed): longer than another screen's 15 s renewal. */
+export const HOLD_RELEASE_HOURS = 20 * GAME_HOURS_PER_REAL_SECOND;
+
+/**
+ * Review fix (audit 2026-11-17, F6) — closing an offer (or buying part of it) ends the hold soon rather than at once:
+ * its end is cut to about 20 real seconds from now and its start kept. In a shared shop another member may still be
+ * looking; their 15 s renewal then keeps it (still inside the cap from the same start). In a solo game a closed
+ * offer whose time is up leaves within those 20 seconds.
+ */
+function releaseHold(state: GameState, offer: ShopOffer): void {
+  if (offer.holdUntilHour === undefined) return;
+  offer.holdUntilHour = Math.min(offer.holdUntilHour, state.clock.hour + HOLD_RELEASE_HOURS * marketTimeScale(state));
 }
 
 // ───────────────────────────── tanks ─────────────────────────────
@@ -187,6 +232,9 @@ export function kitEquipmentFor(state: GameState, tierId: string, waterClass: Wa
   for (const id of defaults) {
     const def = getEquipmentDef(id);
     if (!def || isUnlocked(state, def.unlock)) {
+      // Audit 2026-11-17 (G25 review): every unit within the per-tank limit, not only swapped ones (a reef kit from the
+      // 180 gallon up listed two auto top-offs, limit one, and charged for both)
+      if (def && ids.filter((x) => getEquipmentDef(x)?.kind === def.kind).length >= (MAX_PER_KIND[def.kind] ?? 6)) continue;
       ids.push(id);
       continue;
     }
@@ -197,6 +245,9 @@ export function kitEquipmentFor(state: GameState, tierId: string, waterClass: Wa
     let count = 0;
     if (sub) {
       count = def.kind === 'filter' || def.kind === 'heater' || def.kind === 'chiller' ? Math.min(3, Math.max(1, Math.ceil(gallons / Math.max(1, sub.gallonsRange.max)))) : 1;
+      // Audit 2026-11-17 (G25): never more of a kind than one tank may hold (a 300 gallon kit shipped 6 heaters, max 4)
+      const have = ids.filter((x) => getEquipmentDef(x)?.kind === def.kind).length;
+      count = Math.min(count, Math.max(0, (MAX_PER_KIND[def.kind] ?? 6) - have));
       for (let i = 0; i < count; i++) ids.push(sub.id);
     }
     const prev = swaps.get(id);
@@ -242,6 +293,37 @@ export function tankKitPrice(tierId: string, waterClass: WaterClass, seeded = fa
   return { total: tier.price + equipment + substrate + seed, tank: tier.price, equipment, substrate, seeded: seed };
 }
 
+/** Every water type a kit can be set up for (each open once its research is done: waterClassLock). */
+const KIT_WATER: WaterClass[] = ['freshwater_cool', 'freshwater_tropical', 'freshwater_planted', 'brackish', 'marine_fowlr', 'marine_live_rock', 'reef'];
+
+/**
+ * Audit 2026-11-17 (F7) — the cheapest whole kit this player can buy now (the glass, the gear it ships with and the
+ * substrate, as Build prices it), over the tank sizes and water types open to them; null when none is. The empty-room
+ * message and the restart loan quote this, not the glass alone.
+ */
+export function cheapestKit(state: GameState, opts: { seeded?: boolean } = {}): { tierId: string; name: string; waterClass: WaterClass; total: number; daily: number } | null {
+  let best: { tierId: string; name: string; waterClass: WaterClass; total: number; daily: number } | null = null;
+  for (const tier of TANK_TIERS) {
+    if (!isUnlocked(state, tier.unlock)) continue;
+    for (const wc of KIT_WATER) {
+      if (waterClassLock(state, wc)) continue;
+      const total = tankKitPrice(tier.id, wc, !!opts.seeded, state).total;
+      if (total > 0 && (!best || total < best.total)) best = { tierId: tier.id, name: tier.name, waterClass: wc, total, daily: kitDailyCost(state, tier.id, wc) };
+    }
+  }
+  return best;
+}
+
+/**
+ * Review fix (F7) — what a kit costs a day to run before it exists: the glass's base upkeep plus each piece of its gear
+ * at full duty (an upper bound: a heater rarely runs flat out), so the restart loan never falls short of two days.
+ */
+export function kitDailyCost(state: GameState, tierId: string, waterClass: WaterClass): number {
+  const base = TANK_TIER_BY_ID[tierId]?.baseUpkeep ?? 0.5;
+  const gear = kitEquipmentFor(state, tierId, waterClass).ids.reduce((a, id) => a + (getEquipmentDef(id)?.upkeep ?? 0), 0);
+  return roundCents(base + gear);
+}
+
 export interface BuyTankOptions {
   /** Add mature filter media (bioMaturity ≈ 0.6) for an extra fee. */
   seeded?: boolean;
@@ -252,7 +334,7 @@ export interface BuyTankOptions {
 export function buyTank(state: GameState, tierId: string, waterClass: WaterClass, placement?: { x: number; z: number; rotY: number }, opts: BuyTankOptions = {}): ActionResult & { tankId?: string } {
   const tier = TANK_TIER_BY_ID[tierId];
   if (!tier) return fail('Unknown tank size.');
-  if (!isUnlocked(state, tier.unlock)) return fail(`The ${tier.name} isn't available yet (${unlockHint(tier.unlock)}).`);
+  if (!isUnlocked(state, tier.unlock)) return fail(`The ${tier.name} isn’t available yet (${unlockHint(tier.unlock)}).`);
   const waterLock = waterClassLock(state, waterClass); // chunk 7 (B-160): the rule, not only Build's screen
   if (waterLock) return fail(waterLock);
   let spot: { x: number; z: number; rotY: number } | null = placement ?? null;
@@ -263,7 +345,8 @@ export function buyTank(state: GameState, tierId: string, waterClass: WaterClass
       spot = null;
     }
   }
-  if (!spot) return fail(`There's no floor space for ${aOrAn(tier.name)} ${tier.name}. Sell or move a tank, choose a smaller size, or expand your facility.`);
+  // Audit 2026-11-17 (G19): the real ways out (taking an empty tank down, an auction once it opens, a bigger venue)
+  if (!spot) return fail(`There’s no floor space for ${aOrAn(tier.name)} ${tier.name}. Choose a smaller size, move a tank, or take down an empty tank you no longer need in Tanks${isUnlocked(state, 'tank_auctions') ? ' (or auction one in Market › My listings)' : ''}. A bigger venue (Build › Facility) adds room.`);
   const gear = kitEquipmentFor(state, tierId, waterClass);
   const kit = tankKitPrice(tierId, waterClass, !!opts.seeded, state);
   if (!canAfford(state, kit.total)) return needMoney(state, kit.total, `the ${tier.name} kit`);
@@ -279,8 +362,10 @@ export function buyTank(state: GameState, tierId: string, waterClass: WaterClass
   emitEvent(state, {
     kind: 'tip',
     text: opts.seeded
-      ? `Your ${tier.name} is set up with seeded media, so it's partly cycled. Add animals gradually and keep testing the water.`
-      : `Your ${tier.name} is filled, but it isn't cycled yet. Beneficial bacteria need time to grow: add a pinch of food or bottled bacteria and wait until ammonia and nitrite read zero before adding animals.`,
+      ? `Your ${tier.name} is set up with seeded media, so its filter bacteria are partly grown. Add animals gradually and keep testing the water.` // Audit 2026-11-17 (J5 review): the words the Production card uses, not "cycled"
+      : // Audit 2026-11-17 C5 — new water reads zero ammonia and nitrite from the start, so "wait until they read zero"
+        // was passed at once; say what to watch instead, and how long (a pinch a day: about a week in the sim)
+        `Your ${tier.name} is filled, but its filter bacteria haven’t grown yet. Drop in a pinch of food each day until the tank card’s Biological filter reads Mature before adding animals — about a week, or a few days with bottled bacteria.`,
     tankId: tank.id,
     toast: true,
   });
@@ -296,8 +381,8 @@ export function buyEquipment(state: GameState, tankId: string, defId: string): A
   if (!def) return fail('Unknown equipment.');
   const tank = state.tanks[tankId];
   if (!tank) return fail('Choose a tank to install it in.');
-  if (!isUnlocked(state, def.unlock)) return fail(`${def.name} isn't available yet (${unlockHint(def.unlock)}).`);
-  if (def.environments?.length && !def.environments.includes(tank.environment)) return fail(`${def.name} isn't made for ${tank.environment} tanks.`);
+  if (!isUnlocked(state, def.unlock)) return fail(`${def.name} isn’t available yet (${unlockHint(def.unlock)}).`);
+  if (def.environments?.length && !def.environments.includes(tank.environment)) return fail(`${def.name} isn’t made for ${tank.environment} tanks.`);
   if (!canAfford(state, def.price)) return needMoney(state, def.price, def.name);
   const res = installEquipment(state, tankId, defId, { purchased: true });
   if (!res.ok) return res;
@@ -315,7 +400,7 @@ export function buyFood(state: GameState, foodId: string, packs: number): Action
   if (!def) return fail('Unknown food.');
   const n = Math.floor(finite(packs, 0));
   if (n < 1 || n > 99) return fail('Choose between 1 and 99 packs.');
-  if (!isUnlocked(state, def.unlock)) return fail(`${def.name} isn't available yet (${unlockHint(def.unlock)}).`);
+  if (!isUnlocked(state, def.unlock)) return fail(`${def.name} isn’t available yet (${unlockHint(def.unlock)}).`);
   // chunk 17 (ADR-0053 decision 5): a food sold with certain animals waits until one of them can be bought
   if (!isFoodAvailable(state, def)) return fail(`The shop sells ${def.name} once you can buy ${soldWithWords(def)}.`);
   const price = roundCents(def.price * n);

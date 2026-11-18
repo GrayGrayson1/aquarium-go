@@ -171,7 +171,7 @@ export const linedSeahorse: SpeciesDefinition = {
     summary: 'An upright, slow-swimming fish that anchors itself with a grasping tail — and whose males become pregnant.',
     nativeHabitat: 'Seagrass beds, sponge gardens, mangrove roots and rubble in the western Atlantic, from the shallows to about 30 m.',
     socialStructure: 'Peaceful and social. Mated pairs meet every morning for a greeting dance that renews their bond.',
-    tankNeeds: 'A tall, calm marine tank (30 gallons for a pair) with many hitching posts, gentle flow, cool-tropical water around 22–25 °C and meticulous water quality. Target-feed frozen mysis two or three times a day.',
+    tankNeeds: 'A tall, calm marine tank (29 gallons for a pair) with many hitching posts, gentle flow, cool-tropical water around 22–25 °C and meticulous water quality. Target-feed frozen mysis two or three times a day.',
     compatibilityNotes: 'Only very peaceful, slow tank mates such as small gobies, cardinalfish, dragonets and clean-up crew. Fast or pushy feeders starve seahorses; anemones, fire coral and strongly stinging corals can burn their skin; giant clams can clamp their tails.',
     breedingOverview: 'Courtship dances end with the female depositing her eggs in the male’s brood pouch. About three weeks later he gives birth to hundreds of tiny seahorses.',
     conservationNote: 'Vulnerable on the IUCN Red List and trade-regulated under CITES Appendix II. Captive-bred seahorses are hardier, already eat frozen food and leave wild populations alone.',
@@ -194,7 +194,7 @@ export const linedSeahorse: SpeciesDefinition = {
     'Colour genetics are simplified: colour in seahorses is partly environmental and mood-driven.',
   ],
   exceptionRules: [
-    { other: 'tag:tang', verdictFloor: 'high_risk', reason: 'Tangs are fast, pushy grazers that sweep up food before a seahorse can reach it, and they need strong flow. This animal is likely to outcompete the seahorse at feeding.', incidentRisk: 0.08, mitigatedBy: ['target_feeding'] },
+    { other: 'tag:tang', verdictFloor: 'high_risk', reason: 'Tangs are fast, pushy grazers that sweep up food before a seahorse can reach it, and they need strong flow.', incidentRisk: 0.08, mitigatedBy: ['target_feeding'] },
     { other: 'coral_beauty', verdictFloor: 'high_risk', reason: 'Dwarf angelfish are quick, bold feeders and may pick at a seahorse’s skin and skin filaments.', incidentRisk: 0.08, mitigatedBy: ['target_feeding', 'tank_size'] },
     { other: 'foxface_rabbitfish', verdictFloor: 'high_risk', reason: 'A large, fast grazer with venomous spines. It dominates feeding and needs far more flow and space than seahorses tolerate.', incidentRisk: 0.06, mitigatedBy: ['target_feeding'] },
     { other: 'green_chromis', verdictFloor: 'conditional', reason: 'Chromis are fast midwater feeders that grab food before seahorses reach it. Workable only with dedicated target feeding.', incidentRisk: 0.04, mitigatedBy: ['target_feeding'] },

@@ -93,6 +93,10 @@
 .pn-body::-webkit-scrollbar { width: 8px; }
 .pn-body::-webkit-scrollbar-thumb { background: rgba(200, 235, 245, 0.16); border-radius: 99px; }
 .pn-foot { flex: none; padding: 12px var(--pn-pad) calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--c-line); background: rgba(4, 12, 17, 0.6); display: flex; gap: 10px; align-items: center; }
+/* Audit 2026-11-17 (review of D2): Livestock's selection footer (a count and four buttons) wraps on a narrow sheet:
+   the count keeps at least 9em and fills its line, the buttons that don't fit go to a second line, right-aligned */
+.pn-footpick { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; }
+.pn-footpick__sum { flex: 1 1 auto; min-width: 9em; }
 
 /* ───────────────────────── Utilities ───────────────────────── */
 .pn-sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

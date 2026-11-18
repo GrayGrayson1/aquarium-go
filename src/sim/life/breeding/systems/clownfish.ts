@@ -353,7 +353,7 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
   const nursery = tank.purpose === 'nursery';
   say(state, ctx, {
     kind: 'breeding',
-    text: `${f.name} laid ${plural(count, 'bright orange egg')} on the rock — ${m.name} is fanning and mouthing them.${nursery ? '' : ` They’ll hatch after lights-out in ${approxDuration(sp.breeding.incubationHours)}; move them to a nursery tank before then or the larvae will be lost.`}`,
+    text: `${f.name} laid ${plural(count, 'bright orange egg')} on the rock — ${m.name} is fanning and mouthing them.${nursery ? '' : ` They’ll hatch after lights-out in ${approxDuration(sp.breeding.incubationHours)}; move them to a nursery tank (Livestock › Eggs & fry) before then or the larvae will be lost.`}`,
     tankId: tank.id,
     creatureId: f.id,
     toast: true,

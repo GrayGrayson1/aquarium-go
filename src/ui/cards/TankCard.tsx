@@ -28,7 +28,6 @@ import {
   ChevronDown,
   Coins,
   Tag,
-  Users,
   Eye,
   Wrench,
   Power,
@@ -46,7 +45,8 @@ import { sfx } from '@/audio/sfx';
 import { getTankTier } from '@/data/catalog/tanks';
 import { findSpecies } from '@/data/species'; // lane:qa-play
 import { getEquipmentDef } from '@/data/catalog/equipment';
-import { getWaterReport, tankDailyCost } from '@/sim/water';
+import { getWaterReport, tankDailyCost, CYCLE_READY, STOCKING_WATCH, STOCKING_DANGER } from '@/sim/water';
+import { waterChangeCost, doseCost } from '@/sim/care'; // Audit 2026-11-17 C1, C4
 import type { Command } from '@/sim/commands';
 import { evaluateTank } from '@/sim/compat';
 import { beautyScore } from '@/sim/aquascape';
@@ -65,12 +65,14 @@ import { safe, useGameThrottled } from '../common/safe';
 import { act, tutorialFlag } from '../common/actions';
 import { startTankMove } from './tankMove'; // lane:ui-shell (chunk 6, B-196)
 import { withFallback } from './waterFallback';
+import { ScienceLink } from '../common/ScienceLink'; // Audit 2026-11-17 (J5)
 import {
   WATER_CLASS_LABEL,
   LIGHT_PRESET_LABEL,
   lightPresetsFor,
   EQUIPMENT_KIND_LABEL,
   convertTempText,
+  formatTempDelta, // Audit 2026-11-17 (J1)
   formatTemp,
   cToF,
   titleCase,
@@ -80,6 +82,8 @@ import { Badge, Button, Chip, Meter, Section, Segmented, Slider, Stepper, Status
 import { WaterChip } from '../screens/StarterReveal';
 import { TankKeeperLine } from '../panels/visitors/TankKeeperLine'; // lane:staff
 import { tankGearIssues, type FitVerdict } from '@/sim/care/fit'; // lane:fit
+import { THERMOSTAT_DIAL } from '@/sim/care/tuning'; // Audit 2026-11-17 C7 (review)
+import { saltCashLine } from '../common/moneyShort'; // Audit 2026-11-17 C1 (review)
 import { FitLine } from '../common/FitNote'; // lane:fit
 import { AutomationSection, AutoCleanNote } from './Automation'; // lane:ui-shell (chunk 3, 0.5 §10)
 import { tankChips } from '../common/tankChips'; // lane:automation (chunk 5)
@@ -87,6 +91,8 @@ import { CHIP_ICON } from '../common/tankChipIcons'; // lane:automation (chunk 5
 import { fixForAttention, fixForWaterIssue } from '../common/fixLinks'; // chunk 19 (ADR-0055 decision 2, QOL-002)
 import { isWorn } from '../common/notify'; // chunk 19 (QOL-002)
 import { FixButton } from './FixButton'; // chunk 19 (QOL-002)
+import { animalStatus, withWaterHarm } from '@/sim/tankStatus'; // Audit 2026-11-17 (D16)
+import { TANK_STATUS_WORD } from '../common/tankStatus'; // Audit 2026-11-17 (J10)
 
 /** A switch flips what the game holds now, not this card's throttled copy (a quick second click turns it back, as before). */
 const liveSignage = (tankId: string): boolean => !!useGame.getState().game?.tanks[tankId]?.signage;
@@ -117,13 +123,32 @@ const EQUIP_ICON: Partial<Record<EquipmentKind, ComponentType<LucideProps>>> = {
   water_changer: Droplets, // lane:automation
 };
 
-const FLOW_KINDS: EquipmentKind[] = ['filter', 'powerhead', 'wavemaker', 'airstone'];
+const FLOW_KINDS: EquipmentKind[] = ['filter', 'powerhead', 'wavemaker']; // Audit 2026-11-17 C10: an airstone has no flow setting in the sim
 
 // ───────────────────── Water tab ─────────────────────
+
+/**
+ * Audit 2026-11-17 (J5): what a reading's short name means, said once in its open row, and the Aquarium science page
+ * that explains it.
+ */
+const PARAM_HELP: Partial<Record<string, { gloss: string; article?: string; label?: string }>> = {
+  ammonia: { gloss: 'Ammonia comes from waste and leftover food. ppm means parts per million.', article: 'nitrogen_cycle', label: 'What ammonia, nitrite and nitrate mean' },
+  nitrite: { gloss: 'Filter bacteria turn ammonia into nitrite, then into nitrate. ppm means parts per million.', article: 'nitrogen_cycle', label: 'What ammonia, nitrite and nitrate mean' },
+  nitrate: { gloss: 'The end of the nitrogen cycle: water changes and plants take it out. ppm means parts per million.', article: 'nitrogen_cycle', label: 'What ammonia, nitrite and nitrate mean' },
+  ph: { gloss: 'pH says how acid (low) or alkaline (high) the water is.' },
+  kh: { gloss: 'KH is the water’s buffer: it holds the pH steady.' },
+  gh: { gloss: 'GH measures the minerals dissolved in the water.' }, // (J5 review)
+  salinity: { gloss: 'SG (specific gravity) says how salty the water is.', article: 'salinity', label: 'How salinity and topping off work' },
+  cycle: { gloss: 'The bacteria in the filter that clean the water.', article: 'cycling', label: 'What “cycling” means' },
+};
+
+/** Audit 2026-11-17 C15 — rows that aren't a range to be "in": with Exact off they show their own words ("30% established", "None"). */
+const NOT_A_RANGE = new Set(['cycle', 'light', 'stocking', 'filtration', 'flow', 'algae', 'clarity']);
 
 function ParamRow({ p, exact, unit, open, onToggle }: { p: ParamStatus; exact: boolean; unit: 'C' | 'F'; open: boolean; onToggle: () => void }) {
   const Icon = STATUS_ICON[p.status] ?? CircleCheck;
   const display = p.key === 'temp' ? formatTemp(p.value, unit) : p.display;
+  const shown = exact || NOT_A_RANGE.has(p.key);
   return (
     <li className={clsx('ag-param', `is-${p.status}`, open && 'is-open')} data-param={p.key}>
       <button type="button" className="ag-param__row" aria-expanded={open} onClick={onToggle}>
@@ -131,15 +156,21 @@ function ParamRow({ p, exact, unit, open, onToggle }: { p: ParamStatus; exact: b
           <Icon size={14} aria-hidden /> {STATUS_WORD[p.status]}
         </span>
         <span className="ag-param__label">{p.label}</span>
-        <span className="ag-param__value">{exact ? display : p.status === 'good' ? 'In range' : p.status === 'watch' ? 'Drifting' : 'Out of range'}</span>
+        <span className="ag-param__value">{shown ? display : p.status === 'good' ? 'In range' : p.status === 'watch' ? 'Drifting' : 'Out of range'}</span>
         <ChevronDown size={14} className="ag-param__chev" aria-hidden />
       </button>
       {open && (
         <div className="ag-param__detail">
-          {!exact && <div className="ag-small">Reading: <strong>{display}</strong></div>}
+          {!shown && <div className="ag-small">Reading: <strong>{display}</strong></div>}
           {p.ideal && <div className="ag-small ag-muted">Ideal: {convertTempText(p.ideal, unit)}</div>}
           {p.reason && <div className="ag-small">{convertTempText(p.reason, unit)}</div>}
           {p.advice && <div className="ag-reason__fix">{convertTempText(p.advice, unit)}</div>}
+          {PARAM_HELP[p.key] && (
+            <div className="ag-small ag-muted" data-testid={`param-help-${p.key}`}>
+              {PARAM_HELP[p.key]!.gloss}{' '}
+              {PARAM_HELP[p.key]!.article && <ScienceLink article={PARAM_HELP[p.key]!.article!} label={PARAM_HELP[p.key]!.label ?? 'Read more'}>Read more</ScienceLink>}
+            </div>
+          )}
         </div>
       )}
     </li>
@@ -173,13 +204,21 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
   // hint asks for a cooler water change, so offer one. 25% with water ~5 °C cooler drops the tank ~1.2 °C — under the
   // 1.4 °C sudden-change stress line — and two of them give the ~2 °C drop the breeding cue looks for.
   const coolCue = safe('coolCue', () => creaturesInTank(game, tank.id).some((c) => !!findSpecies(c.speciesId)?.breeding?.conditions?.coolingTrigger), false);
+  const change25 = salty ? safe('waterChangeCost', () => waterChangeCost(game, tank.id, 0.25), null) : null; // Audit 2026-11-17 C1
+  const saltCash = salty ? safe('saltCashLine', () => saltCashLine(game, tank.id), null) : null; // (review)
+  // Audit 2026-11-17 C4 — a dose's price scales with the tank: show it before the tap, not only in the toast
+  const price = (a: Parameters<typeof doseCost>[2]) => {
+    const c = safe('doseCost', () => doseCost(game, tank.id, a), 0);
+    return c > 0 ? ` · ${formatMoney(c, { cents: Math.round(c * 100) % 100 !== 0 })}` : '';
+  };
 
   return (
     <>
       <div className={clsx('ag-waterhead', `is-${report.status}`)} data-testid="water-status">
         <HeadIcon size={22} aria-hidden className="ag-waterhead__icon" />
         <div className="ag-grow">
-          <div className="ag-waterhead__word">{report.status === 'good' ? 'Healthy water' : report.status === 'watch' ? 'Keep an eye on it' : 'Act soon'}</div>
+          {/* Audit 2026-11-17 (J10): the status words the tank bar uses ("Keep an eye on it" / "Act soon" were a third set) */}
+          <div className="ag-waterhead__word">{report.status === 'good' ? 'Healthy water' : report.status === 'watch' ? 'Watch the water' : 'Water in danger'}</div>
           <div className="ag-waterhead__line">{convertTempText(report.headline, unit)}</div>
         </div>
       </div>
@@ -188,12 +227,14 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
       <div className="ag-miniStats">
         {/* lane:ui-shell (B-178, ADR-0022) — a word beside the number, on the meter's own 60 / 30 bands */}
         <Meter label="Stability" value={report.stability} tone="auto" display={`${stabilityWord(report.stability)} · ${Math.round(report.stability)}`} />
-        <Meter label="Biological filter" value={report.cycleProgress * 100} tone="auto" display={report.cycleProgress >= 0.8 ? 'Mature' : report.cycleProgress >= 0.4 ? 'Establishing' : 'New'} />
+        <Meter label="Biological filter" value={report.cycleProgress * 100} tone="auto" display={report.cycleProgress >= CYCLE_READY ? 'Mature' : report.cycleProgress >= 0.4 ? 'Establishing' : 'New'} /* Audit 2026-11-17 C15: the report's line (it said 80%) */ />
       </div>
+      {/* Audit 2026-11-17 (J5): what the Biological filter is, where the player meets it */}
+      <ScienceLink article="cycling" label="What the Biological filter is: what “cycling” means">What’s the Biological filter?</ScienceLink>
 
       {report.issues.length > 0 && (
         <ul className="ag-issues">
-          {report.issues.slice(0, 4).map((i, k) => (
+          {report.issues.map((i, k) => ( /* Audit 2026-11-17 C19 (B-231 c): every issue — a failed UV or skimmer was cut off at four */
             <li key={k} className={`ag-reason ag-reason--${i.status === 'danger' ? 'danger' : i.status === 'watch' ? 'watch' : 'good'}`}>
               <span className="ag-reason__icon" aria-hidden>
                 {i.status === 'danger' ? <OctagonAlert size={14} /> : <TriangleAlert size={14} />}
@@ -210,7 +251,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
       )}
 
       <Section
-        title="Parameters"
+        title={<>Parameters <ScienceLink article="nitrogen_cycle" label="What ammonia, nitrite and nitrate mean" /></> /* Audit 2026-11-17 (J5) */}
         actions={
           <div className="ag-row" style={{ gap: 8 }}>
             <Segmented size="sm" label="Temperature unit" value={unit} onChange={(u) => useSettings.getState().update({ tempUnit: u })} items={[{ id: 'C', label: '°C' }, { id: 'F', label: '°F' }]} />
@@ -257,13 +298,34 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
                 <Button
                   size="sm"
                   data-testid="action-water-change-cool"
-                  title="Replace 25% with water about 5 °C cooler (about −1 °C, gentle). Two of these give the “first cool rains” chill axolotls, corydoras and goldfish spawn on."
+                  title={`Replace 25% with water about ${formatTempDelta(5, unit)} cooler (about −${formatTempDelta(1, unit)}, gentle). Two of these give the “first cool rains” chill axolotls, corydoras and goldfish spawn on.` /* Audit 2026-11-17 (J1) */}
                   onClick={() => care({ k: 'waterChange', tank: tank.id, fraction: 0.25, coolBy: 5 }, 'water_change')}
                 >
                   <Snowflake size={13} aria-hidden /> Cool 25%
                 </Button>
               )}
             </div>
+            {/* Audit 2026-11-17 C1 — salt water: what a change takes, before a change it can't cover is refused */}
+            {salty && change25 && <div className="ag-small ag-muted" data-testid="water-change-salt-need">25% uses about {change25.saltKg < 0.1 ? change25.saltKg.toFixed(2) : change25.saltKg.toFixed(1)} kg of salt mix.</div>}
+            {/* Audit 2026-11-17 C1 (review) — no salt for any change and no money for a bag: where to raise cash */}
+            {salty && saltCash && (
+              <div className="ag-small ag-watchtext" role="status" data-testid="water-change-salt-cash">
+                {saltCash}{' '}
+                <button
+                  type="button"
+                  className="ag-linkbtn"
+                  data-testid="water-change-raise-cash"
+                  onClick={() => {
+                    sfx('open');
+                    useUI.getState().set({ panel: 'finances', panelTarget: 'cash' }); // the ideas themselves (FinancesPanel's CASH_TARGET)
+                  }}
+                >
+                  Ways to raise cash
+                </button>
+              </div>
+            )}
+            {/* audit E14: the button's tip, visible (a title never shows on touch) */}
+            {coolCue && <div className="ag-small ag-muted">Two Cool 25% changes in a row give the ~{formatTempDelta(2, unit)} chill that sets off spawning.</div>}
           </div>
           <div className="ag-carebtns">
             <CareBtn icon={Droplet} label="Top off" hint={`Level ${Math.round(tank.water.level * 100)}%`} testId="action-top-off" fix="top-off" onClick={() => care({ k: 'topOff', tank: tank.id }, 'topped_off', 'bubble')} />
@@ -276,18 +338,18 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
               <FlaskConical size={15} aria-hidden /> Dose
             </div>
             <div className="ag-row ag-wrap" style={{ gap: 6 }}>
-              <span data-fix="dose-conditioner" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'conditioner' }, 'dosed', 'bubble')}>Conditioner</Chip></span>
-              <span data-fix="dose-bacteria" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'bacteria' }, 'dosed', 'bubble')}>Bottled bacteria</Chip></span>
+              <span data-fix="dose-conditioner" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'conditioner' }, 'dosed', 'bubble')}>Conditioner{price('conditioner')}</Chip></span>
+              <span data-fix="dose-bacteria" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'bacteria' }, 'dosed', 'bubble')}>Bottled bacteria{price('bacteria')}</Chip></span>
               {salty && <span data-fix="dose-salt" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'salt' }, 'dosed', 'bubble')}>Salt mix</Chip></span>}
-              <span data-fix="dose-buffer" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'buffer' }, 'dosed', 'bubble')}>Buffer</Chip></span>
-              {planted && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'fertilizer' }, 'dosed', 'bubble')}>Fertilizer</Chip>}
-              {reef && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'coral_supplement' }, 'dosed', 'bubble')}>Coral supplement</Chip>}
+              <span data-fix="dose-buffer" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'buffer' }, 'dosed', 'bubble')}>Buffer{price('buffer')}</Chip></span>
+              {planted && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'fertilizer' }, 'dosed', 'bubble')}>Fertiliser{price('fertilizer')}</Chip>}
+              {reef && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'coral_supplement' }, 'dosed', 'bubble')}>Coral supplement{price('coral_supplement')}</Chip>}
             </div>
             {salty && (
               <div className="ag-row ag-wrap" style={{ gap: 6, alignItems: 'center' }}>
                 <span className="ag-small ag-muted">Salt in stock: {game.inventory.salt.toFixed(1)} kg</span>
                 {/* lane:qa-play — a water change with no salt only said "buy salt first"; restock right here */}
-                {game.inventory.salt < 5 && (
+                {(game.inventory.salt < 5 || change25?.enoughSalt === false) && (
                   <Chip size="sm" onClick={() => act({ k: 'buySalt', kg: 10 }, { sound: 'coin' })}>
                     Buy 10 kg · {formatMoney(10 * SALT_PRICE_PER_KG)}
                   </Chip>
@@ -344,7 +406,7 @@ function EquipmentRow({ tank, e, readOnly, fit }: { tank: Tank; e: EquipmentInst
         <div className="ag-equip__name">{name}</div>
         <div className="ag-equip__meta">
           {e.failed ? (
-            <span className="ag-down"><OctagonAlert size={11} aria-hidden /> Failed — replace or repair</span>
+            <span className="ag-down"><OctagonAlert size={11} aria-hidden /> Failed — repair it</span> /* Audit 2026-11-17 C17: Repair is right here */
           ) : worn ? (
             <span className="ag-watchtext"><TriangleAlert size={11} aria-hidden /> Wearing out · condition {cond}%</span>
           ) : (
@@ -366,8 +428,8 @@ function EquipmentRow({ tank, e, readOnly, fit }: { tank: Tank; e: EquipmentInst
             <Stepper
               label={`${name} setpoint`}
               value={setting}
-              min={kind === 'heater' ? 18 : 10}
-              max={kind === 'heater' ? 32 : 26}
+              min={THERMOSTAT_DIAL[kind === 'heater' ? 'heater' : 'chiller'].min /* the sim's advice stays inside these (Audit 2026-11-17 C7) */}
+              max={THERMOSTAT_DIAL[kind === 'heater' ? 'heater' : 'chiller'].max}
               step={0.5}
               format={(v) => (unit === 'F' ? `${cToF(v).toFixed(0)} °F` : `${v.toFixed(1)} °C`)}
               onChange={(v) => set({ setting: v })}
@@ -420,6 +482,13 @@ function LightingBlock({ tank, readOnly }: { tank: Tank; readOnly: boolean }) {
         <Slider label="Light intensity" value={L.intensity} min={0} max={1.5} step={0.05} disabled={readOnly} onChange={(v) => set({ intensity: v })} />
         <span className="ag-small ag-tabular" style={{ minWidth: 38, textAlign: 'right' }}>{Math.round(L.intensity * 100)}%</span>
       </div>
+      {/* Audit 2026-11-17 C14 — a light dimmed on its own (Build › Equipment had a second Intensity) multiplies this one */}
+      {!readOnly && tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind === 'light' && (e.setting ?? 1) < 0.99).map((e) => (
+        <div key={e.id} className="ag-row" style={{ gap: 8 }} data-testid={`tank-light-dimmed-${e.id}`}>
+          <span className="ag-grow ag-small ag-muted">{getEquipmentDef(e.defId)?.name} is dimmed to {Math.round((e.setting ?? 1) * 100)}% on its own.</span>
+          <Chip size="sm" onClick={() => act({ k: 'setEquipment', tank: tank.id, equip: e.id, setting: 1 }, { sound: 'click', toast: 'caution' })}>Full power</Chip>
+        </div>
+      ))}
       <div className="ag-sched">
         <div className="ag-sched__item">
           <span className="ag-small ag-muted">Lights on</span>
@@ -432,9 +501,9 @@ function LightingBlock({ tank, readOnly }: { tank: Tank; readOnly: boolean }) {
       </div>
       <div className="ag-row">
         <span className="ag-grow ag-small">
-          <Moon size={13} aria-hidden style={{ verticalAlign: '-2px' }} /> Moonlight after dark
+          <Moon size={13} aria-hidden style={{ verticalAlign: '-2px' }} /> Moonlight at night
         </span>
-        <Toggle label="Moonlight after dark" checked={L.moonlight} disabled={readOnly} onChange={(v) => set({ moonlight: v })} />
+        <Toggle label="Moonlight at night" /* Audit 2026-11-17 (J19): the Lights popover’s words */ checked={L.moonlight} disabled={readOnly} onChange={(v) => set({ moonlight: v })} />
       </div>
     </div>
   );
@@ -470,7 +539,7 @@ export function GearTab({ game, tank }: { game: GameState; tank: Tank }) {
 // ───────────────────── Life tab ─────────────────────
 
 function stockingWord(v: number) {
-  return v < 0.5 ? 'Light' : v < 0.85 ? 'Comfortable' : v <= 1 ? 'Full' : 'Overstocked';
+  return v < 0.5 ? 'Light' : v < STOCKING_WATCH ? 'Comfortable' : v < STOCKING_DANGER ? 'Full' : 'Overstocked'; // Audit 2026-11-17 C15: the report's lines
 }
 
 function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
@@ -480,6 +549,14 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
   const exhibit = safe('exhibitScore', () => exhibitScore(game, tank.id), null);
   const load = tank.cache.stockingLoad ?? 0;
   const selected = useUI((s) => s.selectedCreatureId);
+  // Audit 2026-11-17 (D16): the animals behind the tank's "3 neon tetras are stressed" are ringed in its colour, worked
+  // out as the tank's own line is (src/sim/tankStatus.ts: the water's harm first), so the ring marks who the line names
+  const flagged = safe('animalStatus', () => {
+    const a = animalStatus(residents, game);
+    const water = getWaterReport(game, tank.id);
+    return water ? withWaterHarm(tank, a, water) : a;
+  }, null);
+  const flaggedIds = new Set(flagged?.creatureIds ?? []);
   return (
     <>
       <Section title={<><Fish size={12} aria-hidden /> Residents · {residents.length}</>} fix="residents">
@@ -488,7 +565,7 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
         ) : (
           <div className="ag-residents">
             {residents.map((c) => (
-              <button type="button" key={c.id} className={clsx('ag-resident', selected === c.id && 'is-selected')} onClick={() => { sfx('click'); useUI.getState().set({ selectedCreatureId: c.id }); }}>
+              <button type="button" key={c.id} className={clsx('ag-resident', selected === c.id && 'is-selected', flagged && flaggedIds.has(c.id) && `is-flag-${flagged.status}`)} title={flagged && flaggedIds.has(c.id) ? flagged.reason ?? undefined : undefined} onClick={() => { sfx('click'); useUI.getState().set({ selectedCreatureId: c.id }); }}>
                 <Portrait subject={c} shape="circle" className="ag-resident__art" size={96} />
                 <span className="ag-resident__name">{c.name}</span>
               </button>
@@ -497,9 +574,9 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
         )}
         {/* lane:guide — residents that only take frozen/live food (no autofeeder can feed them) */}
         <HandFeedNote speciesIds={residents.map((c) => c.speciesId)} />
-        <Meter label="Stocking load" value={Math.min(load, 1.3) * 100} max={130} tone={load > 1 ? 'danger' : load > 0.85 ? 'watch' : 'good'} display={`${stockingWord(load)} · ${Math.round(load * 100)}%`} />
+        <Meter label="Stocking load" value={Math.min(load, 1.3) * 100} max={130} tone={load >= STOCKING_DANGER ? 'danger' : load >= STOCKING_WATCH ? 'watch' : 'good'} display={`${stockingWord(load)} · ${Math.round(load * 100)}%`} />
       </Section>
-      <Section title="Compatibility">
+      <Section title="Compatibility" fix="compat" /* Audit 2026-11-17 (D16): a creature card's injury note links here */>
         <CompatView report={compat} compact />
       </Section>
       <Section title={<><Sparkles size={12} aria-hidden /> Beauty</>}>
@@ -531,9 +608,6 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
               {exhibit.factors.slice(0, 4).map((f, i) => (
                 <Meter key={i} label={f.label} value={f.value} display={f.note ?? Math.round(f.value)} />
               ))}
-              <div className="ag-small ag-muted">
-                <Users size={12} aria-hidden style={{ verticalAlign: '-2px' }} /> Draws about {exhibit.visitorAppeal.toFixed(1)} visitors/hour when open.
-              </div>
             </div>
           </div>
         ) : (
@@ -679,7 +753,7 @@ export function TankCard() {
       <h2 className="ag-thead__name">{tank.name}</h2>
       <div className="ag-row ag-wrap" style={{ gap: 6 }}>
         <WaterChip wc={tank.waterClass} size="sm" />
-        <StatusBadge status={tank.cache.status} label={tank.cache.status === 'good' ? 'Healthy' : undefined} />
+        <StatusBadge status={tank.cache.status} label={TANK_STATUS_WORD[tank.cache.status] /* Audit 2026-11-17 (J10) */} />
         {/* back-of-house tanks are skipped by visitors (sim/facility/visitors.ts onDisplay), as the Visitors panel says */}
         {(tank.purpose ?? 'display') !== 'display' && <Badge tone="violet">{titleCase(tank.purpose)}</Badge>}
         {(tank.purpose ?? 'display') !== 'display' && <Badge title="Back of house — not shown to visitors">Off display</Badge>}
@@ -693,6 +767,12 @@ export function TankCard() {
               <FixButton link={links[k]} testId={`tank-fix-${k}`} />
             </li>
           ))}
+          {/* Audit 2026-11-17 C19 (B-231 c) — the header shows four; say the rest are in the tabs */}
+          {(attn?.items.length ?? 0) > rows.length && (
+            <li className="ag-thead__reason ag-small ag-muted" data-testid="tank-more-issues">
+              {(attn?.items.length ?? 0) - rows.length} more in the tabs below.
+            </li>
+          )}
         </ul>
       )}
       {game && <TankKeeperLine game={game} tank={tank} /> /* lane:staff */}

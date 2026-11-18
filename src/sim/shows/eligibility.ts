@@ -10,6 +10,7 @@
  */
 import type { Creature, GameState, ShowTier, SpeciesDefinition, Tank } from '@/types';
 import { findSpecies } from '@/data/species';
+import { illnessName } from '../life/illness'; // Audit 2026-11-17 (J14)
 import { getTankTier } from '@/data/catalog/tanks';
 import { getDecorDef } from '@/data/catalog/decor';
 import { SCAPED_EDITS } from '@/data/unlocks';
@@ -110,7 +111,7 @@ export function creatureShowReasons(state: GameState, c: Creature, opts: { forJu
   if (sp && (sp.category === 'coral' || sp.category === 'anemone')) return ['Corals and anemones stay in their tanks'];
   if (c.lifeStage !== 'adult' && c.lifeStage !== 'elder') out.push(c.lifeStage === 'juvenile' ? 'Too young — shows are for adults' : 'Far too young to travel');
   const s = c.stats;
-  if (c.illness) out.push(`Unwell (${c.illness.kind.replace(/_/g, ' ')}) — rest at home until recovered`);
+  if (c.illness) out.push(`Unwell with ${illnessName(c.illness.kind, sp)} — rest at home until recovered`); // Audit 2026-11-17 (J14): the card's name, not in brackets (the review: the name may carry its own brackets, "white spot (ich)")
   else if ((s?.health ?? 100) < SHOW_RULES.minHealth) out.push(`Not in show condition (health ${Math.round(s.health)})`);
   if ((c.life?.injury ?? 0) > SHOW_RULES.maxInjury) out.push('Still healing from an injury');
   if ((s?.stress ?? 0) > SHOW_RULES.maxStress) out.push(`Too stressed to travel (stress ${Math.round(s.stress)}) — let it settle first`);
@@ -121,7 +122,11 @@ export function creatureShowReasons(state: GameState, c: Creature, opts: { forJu
   else if ((c.repro?.carryingUntilHour ?? -Infinity) > now) out.push('Carrying young');
   else if (Object.values(state.clutches ?? {}).some((cl) => cl.guardedById === c.id)) out.push('Guarding a clutch');
   const arrived = Math.max(Number.isFinite(c.acquiredHour) ? c.acquiredHour : -Infinity, c.life?.settledSinceHour ?? -Infinity);
-  if (now - arrived < SHOW_RULES.settleHours) out.push(`Still settling in (arrived ${Math.max(1, Math.round(now - arrived))} h ago)`);
+  if (now - arrived < SHOW_RULES.settleHours) {
+    // Audit 2026-11-17 (J2): game hours say so (the rest line below counts real minutes)
+    const h = Math.max(1, Math.round(now - arrived));
+    out.push(`Still settling in (arrived ${h} game hour${h === 1 ? '' : 's'} ago)`);
+  }
   const tank = state.tanks[c.tankId];
   if ((tank.cache?.waterStatus ?? tank.cache?.status) === 'danger') out.push('Its tank’s water needs attention first');
   if (!opts.forJudging) {

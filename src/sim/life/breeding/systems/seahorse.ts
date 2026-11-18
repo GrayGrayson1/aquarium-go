@@ -233,7 +233,8 @@ function giveBirth(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creat
   const nursery = isNurseryFor(state, tank, hour);
   say(state, ctx, {
     kind: 'breeding',
-    text: `${m.name} gave birth to ${plural(n, 'fry', 'fry')}!${nursery ? ' Feed them live copepods and baby brine shrimp several times a day.' : ' Move them to a nursery tank with gentle flow and live copepods — they won’t survive long in the display.'}`,
+    // audit E1: a father moved to the nursery to give birth eats the fry there: say to move him back out
+    text: `${m.name} gave birth to ${plural(n, 'fry', 'fry')}!${nursery ? ` Feed them live copepods and baby brine shrimp several times a day.${sp.breeding.predationWithoutNursery > 0 ? ` Move ${m.name} back out now — adults eat the fry.` : ''}` : ' Move them to a nursery tank with gentle flow and live copepods — they won’t survive long in the display.'}`,
     tankId: tank.id,
     creatureId: m.id,
     toast: true,

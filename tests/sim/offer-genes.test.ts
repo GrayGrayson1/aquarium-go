@@ -133,19 +133,19 @@ describe('copies chips', () => {
   it('alleles that both show read in the locus’s order', () => {
     const a = row(geneRows(betta, G({ pattern: ['dragon', 'marble'] }), false), 'pattern');
     const b = row(geneRows(betta, G({ pattern: ['marble', 'dragon'] }), false), 'pattern');
-    expect(a.trait).toBe('Marble / Dragon scale');
+    expect(a.trait).toBe('Marble / Dragon Scale'); // Audit 2026-11-17 (J39): allele names as their morphs spell them
     expect(b.trait).toBe(a.trait);
     expect(a.copies).toMatchObject({ kind: 'known', text: '1 copy' });
   });
 
   it('after the lab: carries {allele}, 2 copies, no copies; rare carriers sparkle', () => {
     const rows = geneRows(betta, G({ color: ['yellow', 'white'], pattern: ['solid', 'solid'], fins: ['crown', 'double'], cambodian: ['C', 'c'], metallic: ['std', 'std'] }), true);
-    expect(row(rows, 'color').copies).toEqual({ kind: 'revealed', text: 'carries Opaque white', rare: true });
+    expect(row(rows, 'color').copies).toEqual({ kind: 'revealed', text: 'carries Opaque White', rare: true });
     expect(row(rows, 'pattern').copies).toEqual({ kind: 'revealed', text: '2 copies' });
-    expect(row(rows, 'fins').copies).toEqual({ kind: 'revealed', text: 'carries Double tail', rare: true });
+    expect(row(rows, 'fins').copies).toEqual({ kind: 'revealed', text: 'carries Double Tail', rare: true });
     expect(row(rows, 'cambodian').copies).toEqual({ kind: 'revealed', text: 'carries Cambodian', rare: true });
     expect(row(geneRows(betta, G({ cambodian: ['C', 'C'] }), true), 'cambodian').copies).toEqual({ kind: 'revealed', text: 'no copies', rare: false });
-    expect(row(geneRows(betta, G({ color: ['red', 'royal'] }), true), 'color').copies).toEqual({ kind: 'revealed', text: 'carries Royal blue', rare: false });
+    expect(row(geneRows(betta, G({ color: ['red', 'royal'] }), true), 'color').copies).toEqual({ kind: 'revealed', text: 'carries Royal Blue', rare: false });
   });
 });
 

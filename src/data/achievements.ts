@@ -23,9 +23,9 @@ const c = (key: string, min: number): Cond => ({ type: 'counter', key, min });
 
 export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'first_meal', title: 'First Meal', description: 'Feed your starter for the first time.', cond: c('feeds', 1), reputation: 1, icon: 'Utensils', tier: 'bronze' },
-  { id: 'devoted_keeper', title: 'Devoted Keeper', description: 'Feed your animals 100 times.', cond: c('feeds', 100), reputation: 5, icon: 'Heart', tier: 'silver' },
+  { id: 'devoted_keeper', title: 'Devoted Keeper', description: 'Feed your animals yourself 100 times.', cond: c('feeds', 100), reputation: 5, icon: 'Heart', tier: 'silver' },
   { id: 'fresh_start', title: 'Fresh Start', description: 'Do your first water change.', cond: c('waterChanges', 1), reputation: 1, icon: 'Droplets', tier: 'bronze' },
-  { id: 'steady_hands', title: 'Steady Hands', description: 'Keep every tank GOOD for 7 days in a row.', cond: c('water_good_streak', 7), reputation: 10, icon: 'ShieldCheck', tier: 'gold' },
+  { id: 'steady_hands', title: 'Steady Hands', description: 'Keep every tank’s water healthy for 7 days in a row.', /* Audit 2026-11-17 (J10): the Water tab's word; it counts the water */ cond: c('water_good_streak', 7), reputation: 10, icon: 'ShieldCheck', tier: 'gold' },
   { id: 'first_friend', title: 'Show and Tell', description: 'A friend visits to admire your tank.', cond: c('friend_visits', 1), reputation: 1, icon: 'Users', tier: 'bronze' },
   { id: 'first_sale', title: 'Open for Business', description: 'Make your first sale.', cond: { type: 'sales_count', min: 1 }, reputation: 3, icon: 'HandCoins', tier: 'bronze' },
   { id: 'trader', title: 'Trusted Trader', description: 'Complete 25 sales.', cond: { type: 'sales_count', min: 25 }, reputation: 10, icon: 'BadgeCheck', tier: 'silver' },

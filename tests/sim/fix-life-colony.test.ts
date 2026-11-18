@@ -65,7 +65,7 @@ describe('P5-10 — shrimp colony ceiling', () => {
   });
 
   it('breedingCheck explains a full colony', () => {
-    const { g, tank, ids } = colony(32, 60);
+    const { g, ids } = colony(32, 60);
     const check = breedingCheck(g, ids[0], ids[1]);
     expect(check.reasons.join(' ')).toMatch(/as large as Shrimp Tank can support/);
   });

@@ -14,6 +14,7 @@ import type { WaterIssue, WaterReport } from '@/types/reports';
 import { useUI, type PanelId } from '@/state/ui';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { tankFoodOutlook } from '@/sim/tankStatus';
+import { MAX_PER_KIND } from '@/sim/care/tuning'; // Audit 2026-11-17 C10
 import { useShell } from './shellStore';
 import { glow } from './glow';
 import { useTankCardTab, type TankCardTabId } from '../cards/tankCardTab';
@@ -45,7 +46,7 @@ const idleOf = (tank: Tank, ...kinds: EquipmentKind[]): EquipmentInstance | unde
 /** The unit of these kinds that's running (on and working), else the first installed. */
 const runningOf = (tank: Tank, ...kinds: EquipmentKind[]): EquipmentInstance | undefined => gearOf(tank, ...kinds).find((e) => e.on && !e.failed) ?? gearOf(tank, ...kinds)[0];
 /** An idle unit's link: a failed one's Repair (or Switch it off when stuck on), an off one's row (its switch). */
-const idleLink = (tank: Tank, e: EquipmentInstance): FixLink => (e.failed ? repairLink(tank, e) : gearRow(tank, e, 'Open Equipment'));
+const idleLink = (tank: Tank, e: EquipmentInstance): FixLink => (e.failed ? repairLink(tank, e) : gearRow(tank, e, 'Switch it on')); // Audit 2026-11-17 C3: say what to do there
 
 const card = (tank: Tank, tab: TankCardTabId, fix: string, label: string): FixLink => ({ label, to: { kind: 'card', tankId: tank.id, tab, fix } });
 /** Build › Equipment for this tank, showing one kind of gear to buy. */
@@ -64,6 +65,9 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
   // a unit the issue names (a failed pump, a stuck heater) comes first
   const failed = (tank.equipment ?? []).find((e) => e.failed && say.includes(nameOf(e)));
   if (failed) return repairLink(tank, failed);
+  // Audit 2026-11-17 C3 — a unit the issue says is switched off ("The 50 W Aquarium Heater is switched off…"): its switch
+  const off = /switched off/.test(say) ? (tank.equipment ?? []).find((e) => !e.on && !e.failed && say.includes(nameOf(e))) : undefined;
+  if (off) return gearRow(tank, off, 'Switch it on');
   const adv = (issue.advice ?? '').toLowerCase();
   const p = issue.param;
   // (the advice words are the sim's, src/sim/water/report.ts: a setting to change goes to the unit's own row, gear to
@@ -83,7 +87,12 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
     if (broken) return repairLink(tank, broken);
     // a setting to change ("Raise the heater setting (or add a second heater…)", "Turn the heater down…", "Lower the
     // chiller setting…", "Set the heater at least 1 °C below the chiller…"): the running unit's row, where its setting is
-    const setting = /lower the chiller/.test(adv) ? runningOf(tank, 'chiller') : /raise the heater setting|turn the heater down|set the heater/.test(adv) ? runningOf(tank, 'heater') : undefined;
+    // (Audit 2026-11-17 review: "Switch the chiller off…" / "Switch the heater off…" — that unit's switch)
+    if (/^switch the (chiller|heater) off/.test(adv)) {
+      const unit = runningOf(tank, adv.startsWith('switch the chiller') ? 'chiller' : 'heater');
+      if (unit) return gearRow(tank, unit, 'Switch it off');
+    }
+    const setting = /lower the chiller|raise the chiller/.test(adv) ? runningOf(tank, 'chiller') : /raise the heater setting|turn the heater down|set the heater/.test(adv) ? runningOf(tank, 'heater') : undefined;
     if (setting) return gearRow(tank, setting, 'Open Equipment');
     // too warm, and nothing here cools: "Add a chiller, or a clip-on fan…" (a heater would make it worse). A chiller or
     // fan that's installed but failed or off is the fix first
@@ -103,13 +112,14 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
   if (p === 'filtration') {
     // "Repair or replace the filter." (none running), "Repair or replace it." (one of several down), and "Add a second
     // filter…" while one is broken or off: that one first
-    if (/repair or replace|second filter|larger one/.test(adv)) {
+    if (/repair or replace|second filter|larger one|switch the filter back on/.test(adv)) {
       const idle = idleOf(tank, 'filter');
       if (idle) return idleLink(tank, idle);
     }
-    // "Switch the filter back on." goes to that filter's row (its switch)
+    // ("Switch the filter back on." goes to that filter's row, its switch, above: Audit 2026-11-17 C3)
     const filter = runningOf(tank, 'filter');
-    if (/install a filter|second filter|larger one|add a filter/.test(adv) || !filter) return buyGear(tank, 'filter', 'Buy a filter');
+    if (/flow up/.test(adv) && filter) return gearRow(tank, filter, 'Open Equipment'); // Audit 2026-11-17 C13: its Flow control
+    if (/install a filter|bigger filter|second filter|larger one|add a filter/.test(adv) || !filter) return buyGear(tank, 'filter', 'Buy a filter');
     return gearRow(tank, filter, 'Open Equipment');
   }
   if (p === 'light') {
@@ -124,11 +134,26 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
     if (!light) return buyGear(tank, 'light', 'Buy a light');
     // "Raise the intensity or install a stronger light": the intensity first, a stronger light once it's at the
     // Lighting slider's top (1.5, TankCard)
-    if (/stronger light/.test(adv) && (tank.lighting?.intensity ?? 1) >= 1.49) return buyGear(tank, 'light', 'Buy a light');
+    // (Audit 2026-11-17 C14: a light dimmed on its own holds it back too — its Full power is in Lighting)
+    const dimmed = gearOf(tank, 'light').some((e) => e.on && !e.failed && (e.setting ?? 1) < 0.99);
+    if (/stronger light/.test(adv) && (tank.lighting?.intensity ?? 1) >= 1.49 && !dimmed) {
+      // (Audit 2026-11-17 C19, B-231 f: a second light that's failed or off is the fix before a new one)
+      const idle = idleOf(tank, 'light');
+      return idle ? idleLink(tank, idle) : buyGear(tank, 'light', 'Buy a light');
+    }
     return card(tank, 'gear', 'lighting', 'Lighting');
   }
-  if (p === 'oxygen') return gearOf(tank, 'airstone').length ? gearRow(tank, gearOf(tank, 'airstone')[0], 'Open Equipment') : buyGear(tank, 'airstone', 'Buy an airstone');
+  if (p === 'oxygen') {
+    // Audit 2026-11-17 C10 — an airstone that's failed or off first; a running one has nothing to set (its row only
+    // had a Flow control that did nothing), so another one while there's room, else the Equipment tab
+    const idle = idleOf(tank, 'airstone');
+    if (idle) return idleLink(tank, idle);
+    return gearOf(tank, 'airstone').length < (MAX_PER_KIND.airstone ?? 4) ? buyGear(tank, 'airstone', 'Buy an airstone') : card(tank, 'gear', 'equipment', 'Open Equipment');
+  }
   if (p === 'flow') {
+    // (Audit 2026-11-17 C19, B-231 f: "Add a small powerhead" with one failed or off: that one first)
+    const idlePump = /add a small powerhead/.test(adv) ? idleOf(tank, 'powerhead', 'wavemaker') : undefined;
+    if (idlePump) return idleLink(tank, idlePump);
     const pump = gearOf(tank, 'powerhead', 'wavemaker', 'filter')[0];
     if (/add a small powerhead/.test(adv) || !pump) return buyGear(tank, 'powerhead', 'Buy a powerhead');
     return gearRow(tank, pump, 'Open Equipment');
@@ -137,6 +162,7 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
   if (/top off/.test(adv)) return card(tank, 'water', 'top-off', 'Top off');
   if (p === 'level') return card(tank, 'water', 'top-off', 'Top off');
   if (p === 'algae' || /scrape the glass/.test(adv)) return card(tank, 'water', 'clean-glass', 'Clean glass');
+  if (p === 'clarity' && /shorten the lights/.test(adv)) return card(tank, 'gear', 'lighting', 'Lighting'); // Audit 2026-11-17 C13: green water
   if (p === 'clarity') return /vacuum/.test(adv) ? card(tank, 'water', 'vacuum', 'Vacuum gravel') : card(tank, 'water', 'water-change', 'Water change');
   if (p === 'salinity') return /salt mix|dose salt/.test(adv) ? card(tank, 'water', 'dose-salt', 'Dose salt') : card(tank, 'water', 'water-change', 'Water change');
   if (/dose buffer/.test(adv)) return card(tank, 'water', 'dose-buffer', 'Dose buffer');
@@ -147,6 +173,20 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
     if (unit) return gearRow(tank, unit, 'Open Equipment');
   }
   return null;
+}
+
+/**
+ * Audit 2026-11-17 (G8 review) — a plant or coral that "needs stronger light than this tank provides": a light that's
+ * failed or off first, then the Lighting controls, and a brighter light once the intensity is at the slider's top and
+ * no unit is dimmed (as the water report's "stronger light" advice is answered above).
+ */
+function strongerLight(tank: Tank): FixLink {
+  const idle = idleOf(tank, 'light');
+  if (idle) return idleLink(tank, idle);
+  if (!gearOf(tank, 'light').length) return buyGear(tank, 'light', 'Buy a light');
+  const dimmed = gearOf(tank, 'light').some((e) => e.on && !e.failed && (e.setting ?? 1) < 0.99);
+  if ((tank.lighting?.intensity ?? 1) >= 1.49 && !dimmed) return buyGear(tank, 'light', 'Buy a brighter light');
+  return card(tank, 'gear', 'lighting', 'Lighting');
 }
 
 /**
@@ -162,6 +202,7 @@ export function fixForAttention(g: GameState, tank: Tank, item: Pick<AttentionIt
     }
     case 'gear':
       if (unit) return unit.failed ? repairLink(tank, unit) : gearRow(tank, unit, 'Repair');
+      if (/needs stronger light than this tank provides/.test(item.text)) return strongerLight(tank); // Audit 2026-11-17 (G8 review)
       if (/auto-feed/i.test(item.text)) return card(tank, 'gear', 'automation', 'Auto-feed');
       return card(tank, 'gear', 'equipment', 'Open Equipment');
     case 'fit':
@@ -177,8 +218,18 @@ export function fixForAttention(g: GameState, tank: Tank, item: Pick<AttentionIt
         const w = top ? fixForWaterIssue(tank, top) : null;
         if (w) return w;
       }
-      if (/starv|hungry|feed right away/i.test(item.text)) return { label: 'Feed', to: { kind: 'feed', tankId: tank.id } };
       const named = namedAnimal(g, tank.id, item.text);
+      if (/starv|hungry|feed right away/i.test(item.text)) {
+        // Audit 2026-11-17 C8 — none of its food in stock: the shop. Target feeding (an outpaced or target-fed
+        // animal, which broadcast food never reaches): one named animal's card, whose Feed row target-feeds a food it
+        // eats, or the Target feed picker for a group. Otherwise the food picker, as before (the line names the food)
+        if (/none of (its|their) food is in stock/.test(item.text)) {
+          const id = tankFoodOutlook(g, tank.id)?.restockId;
+          return id ? { label: 'Buy food', to: { kind: 'panel', panel: 'market', target: `food:${id}` } } : { label: 'Open Supplies', to: { kind: 'panel', panel: 'market', target: 'tab:supplies' } };
+        }
+        if (/target/i.test(item.text)) return named ? { label: `Feed ${named.name}`, to: { kind: 'creature', tankId: tank.id, creatureId: named.id } } : { label: 'Target feed', to: { kind: 'feed', tankId: tank.id, target: true } };
+        return { label: 'Feed', to: { kind: 'feed', tankId: tank.id } };
+      }
       return named ? { label: `See ${named.name}`, to: { kind: 'creature', tankId: tank.id, creatureId: named.id } } : card(tank, 'life', 'residents', 'See the animals');
     }
     default:

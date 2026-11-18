@@ -90,7 +90,14 @@ function Products({ w, d, h, mats, seed }: { w: number; d: number; h: number; ma
     noPick(mesh);
     return { mesh, geo };
   }, [w, d, h, mats.book, seed]);
-  useEffect(() => () => geo.dispose(), [geo]);
+  // B-183: the instanced mesh too, or its instance buffers stay on the GPU after every rebuild
+  useEffect(
+    () => () => {
+      mesh.dispose();
+      geo.dispose();
+    },
+    [mesh, geo],
+  );
   return <primitive object={mesh} />;
 }
 
@@ -343,7 +350,15 @@ function LightPools({ level }: { level: FacilityLevelId }) {
     return { pools, washes, geo };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig, fac, style, poolMat, washMat]);
-  useEffect(() => () => geo.dispose(), [geo]);
+  // B-183: rebuilt whenever a tank moves or the room changes; each rebuild's instance buffers go with it
+  useEffect(
+    () => () => {
+      pools.dispose();
+      washes.dispose();
+      geo.dispose();
+    },
+    [pools, washes, geo],
+  );
   if (style.pools <= 0) return null;
   return (
     <>
@@ -401,11 +416,12 @@ function ColumnWashes({ level, width, depth }: { level: FacilityLevelId; width: 
   }, [level, width, depth]);
   useEffect(
     () => () => {
+      mesh.dispose(); // B-183
       geo.dispose();
       mat.dispose();
       releaseTexture(key);
     },
-    [geo, mat, key],
+    [mesh, geo, mat, key],
   );
   if (!cols.length) return null;
   return <primitive object={mesh} />;

@@ -65,11 +65,12 @@ describe('§16 Links and boot', () => {
     expect(BROKEN_LINK).toEqual({ title: 'That link doesn’t go anywhere', detail: 'Opened your aquarium instead.' });
   });
 
-  it('the loading card: “Loading your save · catching up {duration}…”, or just “Loading your save…”', () => {
-    expect(bootLine(3 * 3_600_000 + 12 * 60_000)).toBe('Loading your save · catching up 3 h 12 min…');
-    expect(bootLine(40 * 60_000)).toBe('Loading your save · catching up 40 min…');
-    expect(bootLine(5 * 3_600_000)).toBe('Loading your save · catching up 5 h…');
-    expect(bootLine(3 * 86_400_000)).toBe('Loading your save · catching up 3 days…');
+  // audit 2026-11-17, I18: changed on purpose: "catching up 30 days" against a 12-game-hour cap; it's the time away
+  it('the loading card: “Loading your save · away {duration}…”, or just “Loading your save…”', () => {
+    expect(bootLine(3 * 3_600_000 + 12 * 60_000)).toBe('Loading your save · away 3 h 12 min…');
+    expect(bootLine(40 * 60_000)).toBe('Loading your save · away 40 min…');
+    expect(bootLine(5 * 3_600_000)).toBe('Loading your save · away 5 h…');
+    expect(bootLine(3 * 86_400_000)).toBe('Loading your save · away 3 days…');
     expect(bootLine(30_000)).toBe('Loading your save…');
     expect(bootLine(null)).toBe('Loading your save…');
     expect(awayText(59_999)).toBeNull();
@@ -78,7 +79,7 @@ describe('§16 Links and boot', () => {
   it('the card renders its line and “Then: {destination}” with the › separator', () => {
     const card = (boot: Parameters<typeof BootCardView>[0]['boot']) => html(createElement(BootCardView, { boot }));
     const out = text(card({ dest: routeLabel(parseRoute('#/livestock/eggs')!.route), awayMs: 3 * 3_600_000 + 12 * 60_000 }));
-    expect(out).toContain('Loading your save · catching up 3 h 12 min…');
+    expect(out).toContain('Loading your save · away 3 h 12 min…'); // audit I18: changed on purpose (see above)
     expect(out).toContain('Then: Livestock › Eggs & fry');
     expect(card({ dest: null, awayMs: 1000 })).toContain('data-testid="boot-deeplink"');
     expect(card({ dest: null, awayMs: 1000 })).not.toContain('boot-deeplink-dest');
@@ -100,7 +101,8 @@ describe('§16 Locked panels (§5.7)', () => {
   it('Visitors before the Specialty Shop', () => {
     const out = text(html(createElement(VisitorsPanel)));
     expect(out).toContain('Visitors open with a Specialty Shop');
-    expect(out).toContain('Upgrade to a specialty shop to welcome paying visitors. Links to this page keep working — they show this until it unlocks.');
+    expect(out).toContain('Upgrade to a specialty shop to welcome paying visitors.'); // Audit 2026-11-17 (J33): no developer talk about links
+    expect(out).not.toContain('Links to this page');
     expect(out).toContain('Open Build › Facility');
   });
 
@@ -118,7 +120,8 @@ describe('ADR-0019 decision 4: links to things that no longer exist, and a newer
     expect(NOT_FOUND.listing).toMatchObject({ title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' });
     expect(NOT_FOUND.species).toMatchObject({ title: 'There’s no page for that species', detail: 'Showing every species instead.' });
     expect(NOT_FOUND.line).toMatchObject({ title: 'This line isn’t here any more', detail: 'See your lines' }); // ADR-0026 decision 9
-    expect(tooNewMessage(2)).toMatch(/newer version of Aquarium Go .* Refresh the page to get the latest version\.$/);
+    // audit 2026-11-17, I21: changed on purpose: no save formats in the player's words
+    expect(tooNewMessage(2)).toBe('This save comes from a newer version of Aquarium Go. Refresh the page to get the latest version.');
   });
 });
 
@@ -253,17 +256,23 @@ describe('§16 Notifications (DES-009; ADR-0022 decision 4)', () => {
 
 // chunk 6 (0.5 spec §16, §21's release step; ADR-0034 decision 8): the design's list without Social (dev-only), with
 // chunks 3 to 5's additions
-describe('§16 Settings › About: What’s new in 0.5', () => {
-  it('lists the 0.5 features, one line each', async () => {
-    const { WHATS_NEW_05 } = await import('@/ui/settings/SettingsPanel');
-    expect([...WHATS_NEW_05]).toEqual([
-      'Links to every screen, and a tab bar on phones',
-      'Shop filters: Prismatic only and Rare genes',
-      'New betta genes: Cambodian and Metallic',
-      'Auto-feed and Auto-clean on the tank card',
-      'Notifications while the game is open',
-      'Production lines in Livestock',
-      'Operations: the Water room and the Live food room',
+// The audit of 2026-11-17 (B17, J12; ADR-0056 decision 2) changed this on purpose: 0.9.2 still listed 0.5's seven
+// lines under "What’s new in 0.5". The section names the release it describes, and that release is the one on the
+// title screen (the same major.minor as package.json), so it can't go stale unnoticed again.
+describe('§16 Settings › About: What’s new', () => {
+  it('lists this release’s changes, one short line each, under this release’s number', async () => {
+    const { WHATS_NEW, WHATS_NEW_VERSION } = await import('@/ui/settings/SettingsPanel');
+    expect([...WHATS_NEW]).toEqual([
+      'Your first companion never dies of old age',
+      'A little food from the club if you run out of food and money',
+      'Move a whole group of animals at once',
+      'Sell spare equipment, and take down a tank you don’t need',
+      'Production lines sell by themselves, and keepers feed fry',
+      'Shop offers wait while you’re looking',
+      'Clearer advice everywhere: what’s wrong, why, and what to do',
     ]);
+    const { readFileSync } = await import('node:fs');
+    const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string };
+    expect(pkg.version.startsWith(`${WHATS_NEW_VERSION}.`), `What’s new is for ${WHATS_NEW_VERSION}; the game is ${pkg.version}`).toBe(true);
   });
 });

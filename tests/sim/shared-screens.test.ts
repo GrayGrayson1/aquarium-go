@@ -19,7 +19,7 @@ import { useGame } from '@/state/game';
 import { setSharedMode } from '@/state/sharedMode';
 import { eventLine } from '@/ui/common/notify';
 import { SHARED_MARKS_KEY, overlayMarks, readMarks, recordMark } from '@/ui/shared/marks';
-import { SHARED_WORDS, closingText, formatBytes, formatHours, reopenDate } from '@/ui/shared/words';
+import { RELOAD_CLOSINGS, RETRY_CLOSINGS, SHARED_WORDS, closingText, formatBytes, formatHours, reopenDate } from '@/ui/shared/words';
 import { SharedActivity, othersEvent } from '@/ui/shared/activity';
 import { SHARED_PHOTO_MAX_CHARS, captureSharedPhoto } from '@/ui/shared/photos';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
@@ -100,8 +100,11 @@ describe('chunk 13: the words (§8, ADR-0045, ADR-0048)', () => {
       elsewhere: /^You opened this shared shop in another tab\.$/,
       fault: /^The shared shop hit a problem and stopped\. It’s saved as of .+\.$/,
       restart: /^The shared shop’s server restarted, so it went back to its last save \(7 minutes ago\)\.$/,
-      outofstep: /^Your game keeps falling out of step with the shared shop, so it stopped\. Reload to try again\.$/,
+      // audit 2026-11-17, I11: changed on purpose (what helps); `busy`, the join limit, is new
+      // changed on purpose again (the review of I11): Try again, not Reload, which couldn't help within the hour
+      outofstep: /^Your game keeps falling out of step with the shared shop, so it stopped\. Someone who can change the speed could slow it down; then try again\.$/,
       gone: /^CalliClub has no shared shop any more\.$/,
+      busy: /^You’ve joined the shared shop a lot in the last hour\. Try again in a little while\.$/,
     };
     for (const [why, re] of Object.entries(expected)) expect(closingText(why as ClosingReason, o)).toMatch(re);
     // ADR-0049
@@ -119,7 +122,8 @@ describe('chunk 13: the words (§8, ADR-0045, ADR-0048)', () => {
     expect(formatBytes(1_250_000_000)).toBe('1.3 GB');
     expect(SHARED_WORDS.strip('Reef Club', ['Sam', 'Ann'])).toBe('Shared · Reef Club · Here: Sam, Ann');
     expect(SHARED_WORDS.titleButton('Reef Club')).toBe('Shared shop: Reef Club');
-    expect(SHARED_WORDS.firstTime('CalliClub')).toBe('Your own aquarium is saved and waits for you. Everything here is shared with CalliClub.');
+    // audit 2026-11-17, I25: changed on purpose: one more sentence, where the way back is
+    expect(SHARED_WORDS.firstTime('CalliClub')).toBe('Your own aquarium is saved and waits for you. Everything here is shared with CalliClub. To go back, open the menu at the top left and choose “Back to my aquarium”.');
     expect(SHARED_WORDS.savesHere('CalliClub')).toBe('This is CalliClub’s shared shop: it saves on the server. Your own aquarium is saved and waits for you.');
   });
 
@@ -234,3 +238,48 @@ describe("chunk 13: the interface's error boundary (§7.3)", () => {
 
 // keep the type import honest
 export type _E = GameEvent;
+
+describe('audit 2026-11-17: the closings the browser gives itself', () => {
+  it('I1 (B-230): a shop that couldn’t be reached says so, that your own aquarium is safe, and offers Try again', () => {
+    const o = { club: 'CalliClub' };
+    // the review: beside the Try again button, the lines don't also say "try again later" (changed on purpose)
+    expect(closingText('offline', o)).toBe('Can’t reach Aquarium Go online right now, so the shared shop can’t open. Your own aquarium is safe, and you can try again whenever you like.');
+    expect(closingText('unreachable', o)).toBe(
+      'Can’t reach the shared shop right now. Your own aquarium is safe. Aquarium Go online may be down, or a browser blocker (such as Brave Shields) may be stopping the connection.',
+    );
+    expect([...RETRY_CLOSINGS].sort()).toEqual(['offline', 'outofstep', 'unreachable']);
+    expect([...RELOAD_CLOSINGS]).toEqual(['build']);
+    // I8: a newer shop server, but the site still serves this build (no Reload that never turns on)
+    expect(SHARED_WORDS.siteBehind).toBe('The shared shop has been updated, but this site hasn’t caught up yet. Try again later.');
+    expect(RELOAD_CLOSINGS.has('unreachable')).toBe(false);
+  });
+
+  it('I24: signed out on the title screen (no Social there), the line says to continue the game first', () => {
+    expect(closingText('signedOut', { club: 'C', onTitle: true })).toBe('You need to be signed in to play the shared shop. Continue your game, then sign in from Social.');
+    expect(closingText('signedOut', { club: 'C' })).toBe('You need to be signed in to play the shared shop. Sign in from Social and open it again.');
+  });
+
+  it('I19: the restart closing says how long ago in words that read right', () => {
+    const at = Date.UTC(2026, 10, 17, 12, 0);
+    const line = (s: number) => closingText('restart', { club: 'C', savedAt: at, now: at + s * 1000 });
+    expect(line(40)).toBe('The shared shop’s server restarted, so it went back to its last save (just now).');
+    expect(line(70)).toBe('The shared shop’s server restarted, so it went back to its last save (1 minute ago).');
+    expect(line(7 * 60)).toBe('The shared shop’s server restarted, so it went back to its last save (7 minutes ago).');
+  });
+});
+
+describe('audit 2026-11-17: the crash cards', () => {
+  it('I17: the raw error is labelled as details to pass on; I10: a "Save & reload" that couldn’t save says so', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { PanelErrorBoundary } = await import('@/ui/panels/common/ErrorBoundary');
+    useGame.getState().setGame(shop());
+    const b = new ErrorBoundary({ name: 'interface', children: null });
+    b.state = { error: new Error('Cannot read properties of undefined'), saveFailed: true };
+    const out = renderToStaticMarkup(b.render() as never);
+    expect(out).toContain('Details to pass on: Cannot read properties of undefined');
+    expect(out).toContain('Saving didn’t work, so a reload would lose your latest play.');
+    const p = new PanelErrorBoundary({ children: null, onClose: () => {} });
+    p.state = { error: new Error('boom') };
+    expect(renderToStaticMarkup(p.render() as never)).toContain('Details to pass on: boom');
+  });
+});

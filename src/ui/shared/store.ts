@@ -22,10 +22,15 @@ export type SharedPhase = 'idle' | 'checking' | 'saving' | 'waking' | 'joining' 
 export const onScreen = (p: SharedPhase): boolean => p === 'open' || p === 'reconnecting' || p === 'rejoining';
 
 export interface SharedClosing {
-  /** The server's reason (§8), or `signedOut`: this player's sign-in couldn't be had (ADR-0049). */
-  why: ClosingReason | 'signedOut';
+  /**
+   * The server's reason (§8), or `signedOut`: this player's sign-in couldn't be had (ADR-0049); B-230 (audit I1):
+   * `offline`, Aquarium Go online couldn't be reached; `unreachable`, the shop's server couldn't be.
+   */
+  why: ClosingReason | 'signedOut' | 'offline' | 'unreachable';
   until?: string;
   savedAt?: number;
+  /** `offline`, `unreachable`: no Try again (an owner's create that never got in; a join wouldn't find the shop). */
+  noRetry?: boolean;
 }
 
 /** A line over the shop while it catches up: a fresh snapshot, or a device that can't keep up (§7.6). */

@@ -8,7 +8,7 @@ import type { SpeciesDefinition } from '@/types';
  */
 export const endlersLivebearer: SpeciesDefinition = {
   id: 'endlers_livebearer',
-  commonName: "Endler's Livebearer",
+  commonName: 'Endler’s Livebearer', // Audit 2026-11-17 (J15): a curly apostrophe, as the game writes them
   scientificName: 'Poecilia wingei',
   category: 'fish',
   group: 'livebearer',
@@ -101,12 +101,12 @@ export const endlersLivebearer: SpeciesDefinition = {
         name: 'Strain line',
         mode: 'codominant',
         alleles: [
-          { id: 'bb', name: 'Black bar', dominance: 1, frequency: 0.5 },
+          { id: 'bb', name: 'Black Bar', dominance: 1, frequency: 0.5 },
           { id: 'ti', name: 'Tiger', dominance: 1, frequency: 0.18 },
           { id: 'es', name: 'El Silverado', dominance: 1, frequency: 0.1 },
-          { id: 'ys', name: 'Yellow sword', dominance: 1, frequency: 0.08 },
-          { id: 'rc', name: 'Red chest', dominance: 1, frequency: 0.07 },
-          { id: 'lg', name: 'Lime green', dominance: 1, frequency: 0.05 },
+          { id: 'ys', name: 'Yellow Sword', dominance: 1, frequency: 0.08 },
+          { id: 'rc', name: 'Red Chest', dominance: 1, frequency: 0.07 },
+          { id: 'lg', name: 'Lime Green', dominance: 1, frequency: 0.05 },
           { id: 'pk', name: 'Peacock', dominance: 1, frequency: 0.02 },
         ],
         note: 'Each named line is a separate wild population; crossing lines gives mixed-looking offspring. Modelled as one codominant locus where only matching pairs show the named line.',

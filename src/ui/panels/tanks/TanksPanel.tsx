@@ -21,9 +21,11 @@ import { TankThumb } from '../common/TankThumb';
 import { VerdictBadge } from '../common/CompatPreview';
 import { orderedTanks, livingInTank, clutchesIn, tankValue, dailyCost, tierOf, waterReport } from '../common/derive';
 import { canChangeWaterClass, convertWaterClassCost } from '../common/tankOps';
+import { TakeDownTank } from '../build/SellBack'; // Audit 2026-11-17 (G19)
 import { WATER_CLASS_LABEL, PURPOSE_LABEL, PURPOSE_HINT, PLAYABLE_WATER_CLASSES, plural, pct } from '../common/format';
 import { tankChips, tankLineProblem } from '@/ui/common/tankChips'; // lane:automation (chunk 5)
 import { waterClassLock } from '@/sim/facility'; // chunk 7 (B-160)
+import { STOCKING_WATCH, STOCKING_DANGER } from '@/sim/water'; // Audit 2026-11-17 C15
 import { go } from '@/ui/nav/router'; // lane:automation (chunk 5)
 import { CHIP_ICON } from '@/ui/common/tankChipIcons'; // lane:automation (chunk 5)
 
@@ -79,7 +81,7 @@ export function TanksPanel() {
           <Tile icon={<Layers size={14} />} tone="aqua" label="Aquariums" value={rows.length} hint={`${rows.filter((r) => r.t.purpose === 'display').length} on display`} />
           <Tile icon={<Fish size={14} />} tone="aqua" label="Animals" value={animals} hint={rows.some((r) => r.clutches) ? `${plural(rows.reduce((a, r) => a + r.clutches, 0), 'clutch', 'clutches')} growing` : 'across all tanks'} />
           <Tile icon={<Coins size={14} />} tone="gold" label="Est. value" value={<Money value={totalValue} />} hint="if sold as set up" />
-          <Tile icon={<Gauge size={14} />} tone="coral" label="Daily upkeep" value={<Money value={totalCost} cents={totalCost < 20} />} hint="power, salt & wear" />
+          <Tile icon={<Gauge size={14} />} tone="coral" label="Daily upkeep" value={<Money value={totalCost} cents={totalCost < 20} />} hint="power & wear" /* Audit 2026-11-17 C2: salt is bought in Supplies, not billed */ />
         </div>
 
         {rows.length === 0 ? (
@@ -92,7 +94,7 @@ export function TanksPanel() {
               </Button>
             }
           >
-            Every great collection starts with one well-cycled tank.
+            Every great collection starts with one tank whose filter bacteria have grown.{/* Audit 2026-11-17 (J5) */}
           </EmptyState>
         ) : (
           <div className="pn-col pn-gap-3">
@@ -144,10 +146,10 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
               </div>
             </div>
             <span className="pn-tankcard__status" title={[...statusWhy, ...extraWhy].join('\n') || undefined}>
-              <StatusBadge status={c.status} label={c.status === 'good' ? 'Healthy' : c.status === 'watch' ? 'Watch' : 'Act now'} />
+              <StatusBadge status={c.status} label={ATTENTION_WORD[c.status] /* Audit 2026-11-17 (J10): "Danger", as the tank bar says (was "Act now") */} />
             </span>
           </div>
-          {/* why the tank is Watch / Act now — water, animal welfare or food (sim: cache.statusReasons) */}
+          {/* why the tank is Watch / Danger — water, animal welfare or food (sim: cache.statusReasons) */}
           {c.status !== 'good' && statusWhy.length > 0 && (
             <div className={clsx('pn-tankcard__why', `pn-tone-${c.status}`)} role="note">
               {statusWhy.map((line) => (
@@ -187,7 +189,7 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
         <Metric label="Welfare" value={c.welfare} icon={<Droplets size={12} />} />
         <Metric label="Beauty" value={c.beauty} icon={<Sparkles size={12} />} tone="aqua" />
         <Metric label="Exhibit" value={c.exhibitScore} icon={<Ticket size={12} />} tone="gold" />
-        <Metric label="Stocking" value={Math.min(100, c.stockingLoad * 100)} display={pct(c.stockingLoad)} icon={<Fish size={12} />} tone={c.stockingLoad > 1 ? 'danger' : c.stockingLoad > 0.85 ? 'watch' : 'good'} />
+        <Metric label="Stocking" value={Math.min(100, c.stockingLoad * 100)} display={pct(c.stockingLoad)} icon={<Fish size={12} />} tone={c.stockingLoad >= STOCKING_DANGER ? 'danger' : c.stockingLoad >= STOCKING_WATCH ? 'watch' : 'good'} /* Audit 2026-11-17 C15: the report's lines */ />
       </div>
 
       <div className="pn-tankcard__foot">
@@ -271,8 +273,9 @@ function wcLockHint(g: GameState, w: WaterClass): string {
 
 /** lane:fix-integrate-ui — what a conversion takes (new bed, salt, gear to storage) before the click (S14-06). */
 function ConvertPreview({ g, tank, wc }: { g: GameState; tank: Tank; wc: WaterClass }) {
+  const { t: tempText } = useTempText(); // (Audit 2026-11-17 review: the gear notes in °F for °F players)
   const cost = safe(() => convertWaterClassCost(g, tank.id, wc), null);
-  if (!cost || (cost.total <= 0 && cost.saltKg <= 0 && cost.equipmentOut.length === 0)) return null;
+  if (!cost || (cost.total <= 0 && cost.saltKg <= 0 && cost.equipmentOut.length === 0 && !cost.gearNotes?.length)) return null;
   const parts: string[] = [];
   if (cost.substrate > 0) parts.push(`New ${getSubstrateDef(cost.substrateKind!)?.name.toLowerCase() ?? 'substrate'} bed ${formatMoney(cost.substrate)}`);
   if (cost.saltKg > 0) {
@@ -281,9 +284,11 @@ function ConvertPreview({ g, tank, wc }: { g: GameState; tank: Tank; wc: WaterCl
   }
   const short = cost.total > g.finance.money;
   return (
-    <Callout tone={short ? 'danger' : 'info'} icon={<Coins size={16} />} title={cost.total > 0 ? `Converting costs ${formatMoney(cost.total, { cents: cost.total < 20 })}` : 'Converting uses stored salt'}>
+    <Callout tone={short ? 'danger' : 'info'} icon={<Coins size={16} />} title={cost.total > 0 ? `Converting costs ${formatMoney(cost.total, { cents: cost.total < 20 })}` : cost.saltKg > 0 ? 'Converting uses stored salt' : cost.gearChanged ? 'Converting resets your gear' : 'Before you convert' /* (review) only "no heater yet" resets nothing */}>
       {parts.length > 0 && <>{parts.join(' · ')}. </>}
       {cost.equipmentOut.length > 0 && <>Moves to storage (can’t run in the new water): {cost.equipmentOut.join(', ')}. </>}
+      {/* Audit 2026-11-17 C7 — heaters and chillers that stay are reset for the new water; a missing heater is named */}
+      {(cost.gearNotes?.length ?? 0) > 0 && <>{tempText(cost.gearNotes.join(' '))} </>}
       {short && <>You have {formatMoney(Math.max(0, g.finance.money))}.</>}
     </Callout>
   );
@@ -344,7 +349,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
         <div className="pn-field">
           <span className="pn-field__label">Water</span>
           <div className="pn-row pn-gap-2 pn-row--wrap">
-            <StatusBadge status={report.status} />
+            <StatusBadge status={report.status} label={ATTENTION_WORD[report.status] /* Audit 2026-11-17 (J10): the water's status, as the tank's ("Good" was a reading's word) */} />
             <span className="pn-dim pn-small">{tempText(report.headline)}</span>
           </div>
           {report.issues.slice(0, 2).map((i, k) => (
@@ -377,7 +382,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
         {convertGate.ok ? (
           <div className="pn-row pn-gap-2 pn-row--wrap">
             {/* lane:w2-ui — locked water types say so up front (same gates as Build › Tanks) instead of after a failed Convert */}
-            <Select<WaterClass> label="Water class" value={wc} onChange={setWc} options={PLAYABLE_WATER_CLASSES.map((w) => ({ id: w, label: wcLocked(g, w) && w !== tank.waterClass ? `${WATER_CLASS_LABEL[w]} (locked)` : WATER_CLASS_LABEL[w] }))} />
+            <Select<WaterClass> label="Water type" value={wc} onChange={setWc} options={PLAYABLE_WATER_CLASSES.map((w) => ({ id: w, label: wcLocked(g, w) && w !== tank.waterClass ? `${WATER_CLASS_LABEL[w]} (locked)` : WATER_CLASS_LABEL[w] }))} />
             <Button size="sm" data-testid="tank-convert" disabled={wc === tank.waterClass || (wcLocked(g, wc) && wc !== tank.waterClass)} title={wcLocked(g, wc) && wc !== tank.waterClass ? wcLockHint(g, wc) : undefined} onClick={() => act({ k: 'convertWaterClass', tank: tank.id, wc }, { sound: 'splash' })}>
               <Droplets size={14} /> Convert
             </Button>
@@ -393,8 +398,8 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
             {wcLocked(g, wc) ? wcLockHint(g, wc) /* lane:w2-ui */ : wc === 'brackish' || tank.waterClass === 'brackish'
               ? wc === 'brackish' && !g.progress.unlocked.includes('brackish')
                 ? 'Brackish water unlocks with the Brackish Estuaries research.'
-                : 'Changing to or from brackish water means new water, but the filter bacteria adapt and keep most of their cycle.'
-              : 'Switching between fresh and salt water means new water and re-cycling the filter.'}
+                : 'Changing to or from brackish water means new water, but the filter bacteria adapt and most of them survive.' /* Audit 2026-11-17 (J5) */
+              : 'Switching between fresh and salt water means new water, and the filter’s bacteria must grow again.' /* Audit 2026-11-17 (J5) */}
           </span>
         )}
       </div>
@@ -414,6 +419,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
         <Button size="sm" onClick={() => useUI.getState().set({ panel: 'build', panelTarget: `equipment:${tank.id}`, focusedTankId: tank.id })}>
           <Wrench size={14} /> Equipment & decor
         </Button>
+        <TakeDownTank g={g} tank={tank} /* Audit 2026-11-17 (G19) */ />
         {residents > 0 && (
           <Button size="sm" variant="ghost" onClick={() => useUI.getState().set({ panel: 'livestock', panelTarget: `tank:${tank.id}` })}>
             <Fish size={14} /> See residents

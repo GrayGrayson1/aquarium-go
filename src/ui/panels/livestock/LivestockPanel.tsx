@@ -12,16 +12,20 @@ import { useUI } from '@/state/ui';
 import { quickSellQuote, saleWarnings } from '@/sim/economy';
 import { breedingStatus, isPrismatic } from '@/sim/life';
 import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
-import { isCarried } from '@/sim/life/breeding/clutch';
+import { isCarried, youngLabel } from '@/sim/life/breeding/clutch'; // Audit 2026-11-17 (J16 review): youngLabel
+import { youngSingular } from '@/sim/life/breeding/common'; // Audit 2026-11-17 (J16 review)
+import { moduleFor } from '@/sim/life/breeding/registry'; // Audit 2026-11-17 (J16 review)
+import { clutchStatus } from '@/sim/life/breeding'; // audit E2
 import { useShell } from '../../common/shellStore';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { usePanelGame, safe } from '../common/hooks';
+import { useTempText } from '../common/hooks'; // Audit 2026-11-17 (D8)
 import { act, edit } from '../common/act';
 import { Chip, Seg, Select, EmptyState, Bar, Checkbox, Callout, SectionHead, KV, LoadMore, usePaged } from '../common/parts';
 import { CreaturePortrait, CreatureGlyph } from '../common/Portrait';
 import { OffspringOdds } from '../common/Offspring';
 import { orderedTanks, ownedCreatures, valueOf, isListed, speciesOf, creatureCondition, conditionWord, ageDaysOf, formatAge, wellbeing, morphName } from '../common/derive';
-import { PERSONALITY_LABEL, PERSONALITY_TONE, LIFE_STAGE_LABEL, CLUTCH_STAGE_LABEL, WATER_CLASS_LABEL, plural, untilTime, pct, nameList } from '../common/format';
+import { PERSONALITY_LABEL, PERSONALITY_TONE, LIFE_STAGE_LABEL, CLUTCH_STAGE_LABEL, WATER_CLASS_WORDS /* Audit 2026-11-17 (J4) */, plural, untilTime, pct, nameList } from '../common/format';
 import { SpeciesCareStrip } from '../encyclopedia/SpeciesGuide'; // lane:guide
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { ProductionTab, productionDot } from './Production'; // lane:production (chunk 4)
@@ -63,8 +67,9 @@ export function LivestockPanel() {
     else if (target.startsWith('creature:')) useUI.getState().set({ selectedCreatureId: target.slice(9) });
     else if (target.startsWith('sell:')) {
       // lane:guide — "Sell" on a creature card before the marketplace opens: this animal, ready for the shop's quick sale
+      // (audit 2026-11-17, F21: or several, comma-separated, from the listing wizard's "Quick sell")
       setTab('animals');
-      setPicked(new Set([target.slice(5)]));
+      setPicked(new Set(target.slice(5).split(',').filter(Boolean)));
       setConfirmSell(true);
     }
     useUI.getState().set({ panelTarget: null });
@@ -198,7 +203,7 @@ export function LivestockPanel() {
                     ['all', 'Everyone'],
                     ['attention', `Needs attention${attention ? ` (${attention})` : ''}`],
                     ['favorites', 'Favourites'],
-                    ['juveniles', 'Juveniles'],
+                    ['juveniles', 'Young'],
                     ['listed', 'Listed for sale'],
                   ] as [StatusFilter, string][]
                 ).map(([id, label]) => (
@@ -213,20 +218,27 @@ export function LivestockPanel() {
       }
       footer={
         tab === 'animals' && pickedList.length > 0 ? (
-          <>
-            <span className="pn-grow pn-small">
+          // Audit 2026-11-17 (review of D2): one wrapping row, so a phone's narrow sheet never cuts off a button
+          <div className="pn-footpick">
+            <span className="pn-footpick__sum pn-small">
               <b>{pickedList.length}</b> selected · worth about <Money value={pickedValue} />
             </span>
             <Button size="sm" variant="ghost" onClick={() => setPicked(new Set())}>
               <X size={14} /> Clear
             </Button>
+            {/* Audit 2026-11-17 (D2): a school, colony or brood moves in one go (one species, as List for sale asks) */}
+            {new Set(pickedList.map((c) => c.speciesId)).size === 1 && g.tankOrder.length > 1 && (
+              <Button size="sm" data-testid="move-picked" onClick={() => useShell.getState().set(pickedList.length === 1 ? { moveCreatureId: pickedList[0].id } : { moveCreatureIds: pickedList.map((c) => c.id) })}>
+                <ArrowRightLeft size={14} /> Move
+              </Button>
+            )}
             <Button size="sm" onClick={() => setConfirmSell(true)}>
               <HandCoins size={14} /> Quick sell
             </Button>
             <Button size="sm" variant="coral" onClick={listPicked}>
               <Tag size={14} /> List for sale
             </Button>
-          </>
+          </div>
         ) : undefined
       }
     >
@@ -260,11 +272,11 @@ export function LivestockPanel() {
       <Modal
         open={confirmSell}
         onClose={() => setConfirmSell(false)}
-        title="Quick sell to the local shop?"
+        title="Quick sell to the local fish store?"
         subtitle="Instant cash, no auction"
         actions={
           <>
-            <Button onClick={() => setConfirmSell(false)}>Keep them</Button>
+            <Button onClick={() => setConfirmSell(false)}>{pickedList.length === 1 ? 'Don’t sell' : 'Keep them'}</Button>
             <Button
               variant="coral"
               silent
@@ -329,6 +341,7 @@ export function LivestockPanel() {
 
 function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick, selectedId, totalAlive, resetKey, onReset }: { g: GameState; list: Creature[]; values: Map<string, number>; tankName: Map<string, string>; well: Map<string, { status: 'good' | 'watch' | 'danger'; headline: string; note?: string }>; listedIds: Set<string>; picked: Set<string>; onPick: (id: string, on: boolean) => void; selectedId: string | null; totalAlive: number; resetKey: string; onReset: () => void }) {
   const { phone, close } = useSheet();
+  const { t } = useTempText(); // Audit 2026-11-17 (D8): condition notes carry the sim's °C
   // lane:fix-panels — rows mount a page at a time (every row asks for a portrait render; 337 at once stuttered the tank)
   const { shown, more } = usePaged(list.length, resetKey);
   if (totalAlive === 0)
@@ -385,15 +398,15 @@ function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick
                     </Chip>
                   )}
                   {status && (
-                    <Chip tone="violet" icon={<Baby size={11} />} title={status.detail}>
-                      {status.label}
+                    <Chip tone="violet" icon={<Baby size={11} />} title={t(status.detail) /* Audit 2026-11-17 (J1 review): the sim writes °C */}>
+                      {t(status.label)}
                     </Chip>
                   )}
                 </span>
               </span>
               <span className="pn-lsrow__health">
-                <span className={clsx('pn-lsrow__cond', `pn-tone-${cond}`)} title={w.note}>
-                  <HeartPulse size={12} aria-hidden /> {w.headline}
+                <span className={clsx('pn-lsrow__cond', `pn-tone-${cond}`)} title={t(w.note)}>
+                  <HeartPulse size={12} aria-hidden /> {t(w.headline)}
                 </span>
                 <Bar value={c.stats.health} label={`${c.name} health`} thin />
               </span>
@@ -444,10 +457,15 @@ function sellWarningIcon(w: string) {
   return <HeartPulse size={16} />;
 }
 
+/** audit E25: how a clutch's losses read ("12 eaten, 3 to poor water"). */
+const LOSS_WORDS: Record<string, string> = { predation: 'eaten', starvation: 'starved', water: 'to poor water', crowding: 'to crowding', fungus: 'to fungus' };
+
 /** Only surface breeding states worth attention (hide idle / too young / not bred here). */
-function activeBreeding<T extends { label: string } | null>(s: T): T | null {
+function activeBreeding<T extends { label: string; detail?: string } | null>(s: T): T | null {
   if (!s) return null;
-  return /^(not breeding|not bred here|too young|conditioning)/i.test(s.label) ? null : s;
+  // audit E22: an anemone is listed only when a split is near, so the empty state can show
+  if (/^splits by itself/i.test(s.label) && /^not splitting/i.test(s.detail ?? '')) return null;
+  return /^(not breeding|not bred here|too young|conditioning|getting into breeding shape)/i.test(s.label) ? null : s;
 }
 
 function SexIcon({ sex }: { sex: Creature['sex'] }) {
@@ -456,8 +474,9 @@ function SexIcon({ sex }: { sex: Creature['sex'] }) {
   return <CircleDashed size={12} className="pn-sex" aria-label="Sex not yet visible" />;
 }
 
-function YoungView({ g }: { g: GameState }) {
+export function YoungView({ g }: { g: GameState }) { // (exported for tests/sim/audit-2026-11-17-j1.test.ts)
   const { close } = useSheet();
+  const { t } = useTempText(); // Audit 2026-11-17 (J1 review): breeding lines carry the sim's °C
   const tanks = orderedTanks(g);
   const clutches = Object.values(g.clutches).sort((a, b) => a.nextStageHour - b.nextStageHour);
   const breeders = Object.values(g.creatures)
@@ -470,7 +489,7 @@ function YoungView({ g }: { g: GameState }) {
     return (
       <EmptyState icon={<Egg size={26} />} title="No eggs or fry right now">
         Healthy, well-fed animals in the right conditions will court and spawn. Watch for bubble nests, egg clusters and pregnant pouches — they’ll appear here with a countdown.
-        {young.length > 0 && <div style={{ marginTop: 8 }}>You’re raising {plural(young.length, 'juvenile')} — find them in Animals → Juveniles.</div>}
+        {young.length > 0 && <div style={{ marginTop: 8 }}>You’re raising {plural(young.length, 'juvenile')} — find them in Animals › Young.</div>}
       </EmptyState>
     );
 
@@ -489,8 +508,8 @@ function YoungView({ g }: { g: GameState }) {
                     <span className="pn-muted pn-small">{speciesOf(c.speciesId)?.commonName}</span>
                   </div>
                   <div className="pn-small pn-dim">
-                    {s.label}
-                    {s.detail ? ` — ${s.detail}` : ''}
+                    {t(s.label)}
+                    {s.detail ? ` — ${t(s.detail)}` : ''}
                   </div>
                   {typeof s.progress === 'number' && (
                     <div style={{ marginTop: 8 }}>
@@ -521,10 +540,13 @@ function YoungView({ g }: { g: GameState }) {
               const nurseries = tanks.filter((t) => suits(t) && t.purpose === 'nursery');
               // without a nursery, only an empty tank (no tank mates to eat them) is a real alternative — never a busy display
               const others = tanks.filter((t) => suits(t) && t.purpose !== 'nursery' && !Object.values(g.creatures).some((c) => c.tankId === t.id && c.status === 'alive'));
-              const adults = tank ? Object.values(g.creatures).filter((c) => c.tankId === tank.id && c.status === 'alive' && c.id !== cl.guardedById).length : 0;
               // lane:fix-panels — a brood in a pouch or under a berried tail travels with its parent: the sim refuses
               // to move the clutch on its own, so offer to move the carrier instead of a button that always fails
               const carried = isCarried(cl);
+              // audit E2: the sim's own view of this clutch (who eats it here, room when it grows up, the per-clutch cap)
+              const st = safe(() => clutchStatus(g, cl.id), null);
+              const carrierEats = (sp?.breeding.predationWithoutNursery ?? 0) > 0;
+              const carrierPron = guard?.sex === 'female' || guard?.reproRole === 'female' ? 'her' : 'him';
               return (
                 <div key={cl.id} className="pn-card pn-clutch">
                   <div className="pn-row pn-gap-3 pn-row--top">
@@ -534,16 +556,17 @@ function YoungView({ g }: { g: GameState }) {
                     </span>
                     <div className="pn-grow">
                       <div className="pn-card__title" style={{ fontSize: 16 }}>
-                        {sp?.commonName ?? cl.speciesId} · {CLUTCH_STAGE_LABEL[cl.stage]}
+                        {/* audit E25: a Banggai father holds them in his mouth, not a pouch */}
+                        {sp?.commonName ?? cl.speciesId} · {cl.stage === 'in_pouch' && sp?.parentalCare === 'male_mouth' ? 'In his mouth' : CLUTCH_STAGE_LABEL[cl.stage]}
                       </div>
                       <div className="pn-card__sub">
-                        {cl.visual === 'egg_case' ? plural(cl.count, 'egg case') : plural(cl.count, cl.stage === 'eggs' ? 'egg' : 'young', cl.stage === 'eggs' ? 'eggs' : 'young')} in {tank?.name ?? 'a tank'}
+                        {cl.visual === 'egg_case' ? plural(cl.count, 'egg case') : cl.stage === 'eggs' ? plural(cl.count, 'egg') : sp ? plural(cl.count, youngSingular(youngLabel(cl, moduleFor(sp))), youngLabel(cl, moduleFor(sp))) /* Audit 2026-11-17 (J16 review): the brood's own word, never "1 young" */ : plural(cl.count, 'fry', 'fry')} in {tank?.name ?? 'a tank'}
                         {guard ? ` · guarded by ${guard.name}` : ''}
                       </div>
                     </div>
                     <div className="pn-clutch__eta">
                       <span className="pn-tiny pn-muted">Next stage</span>
-                      <b className="pn-num-t">{cl.nextStageHour <= g.clock.hour ? 'any moment' : untilTime(cl.nextStageHour, g.clock.hour)}</b>
+                      <b className="pn-num-t">{cl.nextStageHour <= g.clock.hour ? (st?.waitsForDark ? 'after lights-out' : 'any moment') : untilTime(cl.nextStageHour, g.clock.hour)}</b>
                     </div>
                   </div>
                   <div className="pn-row pn-gap-3" style={{ marginTop: 12 }}>
@@ -563,21 +586,29 @@ function YoungView({ g }: { g: GameState }) {
                   )}
                   {losses.length > 0 && (
                     <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>
-                      Lost so far: {losses.map(([k, n]) => `${Math.round(n)} to ${k}`).join(', ')}
+                      {/* audit E25: plain causes ("12 eaten, 3 to poor water"), not the sim's keys */}
+                      Lost so far: {losses.map(([k, n]) => `${Math.round(n)} ${LOSS_WORDS[k] ?? `to ${k}`}`).join(', ')}
                       {cl.initialCount ? ` (from ${cl.initialCount})` : ''}
                     </div>
                   )}
                   {cl.infertile && (
                     <Callout tone="watch" icon={<Egg size={15} />}>
                       {/* chunk 17: an empty shark egg case says so (its card line), and can be lifted out below */}
-                      {cl.visual === 'egg_case' && cl.notes ? cl.notes : 'These eggs can’t hatch here — they’ll dissolve naturally over time.'}
+                      {cl.visual === 'egg_case' && cl.notes ? t(cl.notes) : 'These eggs can’t hatch here — they’ll dissolve naturally over time.'}
                     </Callout>
                   )}
-                  {!cl.infertile && !carried && tank && tank.purpose !== 'nursery' && adults > 0 && (
+                  {/* audit E2: still being laid, and what a torch shows through a shark's egg case */}
+                  {!cl.infertile && (cl.pendingEggs || cl.visual === 'egg_case') && st?.detail && <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>{t(st.detail)}</div>}
+                  {/* audit E1/E2/E12: what threatens these young here (the sim's rule, not a head count of tank mates), and
+                      whether they will fit when they grow up — before it matters, not when they are rehomed */}
+                  {st && st.warnings.length > 0 && (
                     <Callout tone="watch" icon={<Egg size={15} />}>
-                      Tank mates may eat eggs and fry. A nursery tank protects them.
+                      {st.warnings.map((w) => (
+                        <div key={w}>{t(w)}.</div>
+                      ))}
                     </Callout>
                   )}
+                  {st?.keepNote && <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>{t(st.keepNote)}</div>}
                   <div className="pn-row pn-gap-2 pn-row--wrap" style={{ marginTop: 10 }}>
                     {cl.infertile && cl.visual === 'egg_case' ? (
                       <Button size="sm" variant="primary" onClick={() => act({ k: 'liftOutClutch', clutch: cl.id, from: cl.tankId }, { sound: 'splash' })}>
@@ -587,7 +618,12 @@ function YoungView({ g }: { g: GameState }) {
                       <>
                         <span className="pn-small pn-muted">
                           {guard ? `Safe with ${guard.name} until they’re released` : 'Carried by the parent until they’re released'}
-                          {guard && !inNursery && nurseries.length > 0 ? ` — move ${guard.name} to a nursery so the young hatch somewhere safe.` : '.'}
+                          {/* audit E1: the carrier eats the young once they are out, in the nursery too: say to move it back */}
+                          {guard && !inNursery && nurseries.length > 0
+                            ? ` — move ${guard.name} to a nursery so the young hatch somewhere safe${carrierEats ? `, then move ${carrierPron} back out as soon as the young are out — adults eat them` : ''}.`
+                            : guard && inNursery && carrierEats
+                              ? `. Move ${guard.name} back out as soon as the young are out — adults eat them.`
+                              : '.'}
                         </span>
                         {guard && !inNursery && nurseries.length > 0 && (
                           <Button
@@ -606,10 +642,33 @@ function YoungView({ g }: { g: GameState }) {
                       </>
                     ) : inNursery ? (
                       <>
-                        <span className="pn-small pn-tone-good pn-row pn-gap-1">
-                          <Check size={14} aria-hidden /> Growing up safely in {tank && /nursery/i.test(tank.name) ? tank.name : `the ${tank?.name ?? ''} nursery`}
-                          {nurseries.length > 0 ? ' · or move them to:' : '.'}
-                        </span>
+                        {/* audit E1: "safe" only when nothing in the nursery eats them (a parent moved in with them does) */}
+                        {st?.safe !== false ? (
+                          <span className="pn-small pn-tone-good pn-row pn-gap-1">
+                            <Check size={14} aria-hidden /> Growing up safely in {tank && /nursery/i.test(tank.name) ? tank.name : `the ${tank?.name ?? ''} nursery`}
+                            {nurseries.length > 0 ? ' · or move them to:' : '.'}
+                          </span>
+                        ) : (
+                          <>
+                            {/* review E (E1): the adult that eats them here gets the creature card's Move dialog */}
+                            {st?.moveOut && (
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => {
+                                  const out = st.moveOut!;
+                                  const who = g.creatures[out.id];
+                                  useUI.getState().set({ selectedCreatureId: out.id, ...(who?.tankId ? { focusedTankId: who.tankId, view: 'tank' as const } : {}) });
+                                  close();
+                                  useShell.getState().set({ moveCreatureId: out.id });
+                                }}
+                              >
+                                <ArrowRightLeft size={14} /> Move {st.moveOut.name}
+                              </Button>
+                            )}
+                            {nurseries.length > 0 && <span className="pn-small pn-muted">Or move them to:</span>}
+                          </>
+                        )}
                         {nurseries.slice(0, 2).map((t) => (
                           <Button key={t.id} size="sm" onClick={() => act({ k: 'moveClutch', clutch: cl.id, to: t.id, from: cl.tankId }, { sound: 'splash' })}>
                             <ArrowRightLeft size={14} /> {t.name}
@@ -624,7 +683,7 @@ function YoungView({ g }: { g: GameState }) {
                       ))
                     ) : (
                       <span className="pn-small pn-muted">
-                        No suitable nursery yet. Mark a spare {sp ? sp.waterClasses.map((w) => WATER_CLASS_LABEL[w].toLowerCase()).join(' or ') : tank?.environment ?? ''} tank as <b>Nursery</b> in Tanks{others.length ? ', or move them to an empty tank:' : '.'}
+                        No suitable nursery yet. Mark a spare {sp ? sp.waterClasses.map((w) => WATER_CLASS_WORDS[w]).join(' or ') : tank?.environment ?? ''} tank as <b>Nursery</b> in Tanks{others.length ? ', or move them to an empty tank:' : '.'}
                       </span>
                     )}
                     {!(cl.infertile && cl.visual === 'egg_case') && !carried && !inNursery && nurseries.length === 0 &&
@@ -646,6 +705,8 @@ function YoungView({ g }: { g: GameState }) {
 
 function PastView({ g, past }: { g: GameState; past: Creature[] }) {
   const { shown, more } = usePaged(past.length, past.length);
+  const { close } = useSheet(); // Audit 2026-11-17 (D11): a past resident's row opens its card (cause, lineage, history)
+  const { t } = useTempText(); // Audit 2026-11-17 (D8)
   if (past.length === 0)
     return (
       <EmptyState icon={<Heart size={24} />} title="No past residents">
@@ -660,7 +721,15 @@ function PastView({ g, past }: { g: GameState; past: Creature[] }) {
         const last = c.history.at(-1);
         return (
           <li key={c.id} className="pn-lsrow pn-lsrow--past">
-            <span className="pn-lsrow__main pn-lsrow__main--static">
+            <button
+              type="button"
+              className="pn-lsrow__main"
+              aria-label={`Open ${c.name}’s card`}
+              onClick={() => {
+                useUI.getState().set({ selectedCreatureId: c.id });
+                close();
+              }}
+            >
               <CreaturePortrait creature={c} size={44} />
               <span className="pn-lsrow__id">
                 <span className="pn-lsrow__name">
@@ -672,10 +741,10 @@ function PastView({ g, past }: { g: GameState; past: Creature[] }) {
                   {sp?.commonName ?? c.speciesId}
                   {c.morphName && c.morphName.toLowerCase() !== 'wild type' ? ` · ${c.morphName}` : ''}
                 </span>
-                <span className="pn-small pn-muted">{c.status === 'sold' ? last?.text ?? 'Sold to a new home.' : c.deathCause ? `Lost — ${c.deathCause}` : 'Passed away.'}</span>
+                <span className="pn-small pn-muted">{c.status === 'sold' ? last?.text ?? 'Sold to a new home.' : c.deathCause ? `Lost — ${t(c.deathCause)}` : 'Passed away.'}</span>
               </span>
               <Chip tone={c.status === 'sold' ? 'gold' : 'neutral'}>{c.status === 'sold' ? 'Rehomed' : 'In memory'}</Chip>
-            </span>
+            </button>
           </li>
         );
       })}

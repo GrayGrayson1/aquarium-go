@@ -88,7 +88,7 @@ export const cometGoldfish: SpeciesDefinition = {
   unlock: { requires: ['fw_coldwater'] },
   captiveBredAvailable: true,
   conservation: {
-    status: 'Least Concern (wild species, IUCN 2010); rated High invasion risk by USFWS',
+    status: 'Least Concern (wild species, IUCN 2010); rated a high invasion risk in the US',
     note: 'Goldfish have been recorded in all 50 US states. Released fish grow large, uproot plants, cloud the water, eat native fish eggs and spread carp diseases. Never release a goldfish — rehome it.',
   },
 
@@ -99,7 +99,7 @@ export const cometGoldfish: SpeciesDefinition = {
         name: 'Colour',
         mode: 'mendelian',
         alleles: [
-          { id: 'R', name: 'Red-orange', dominance: 4, frequency: 0.6 },
+          { id: 'R', name: 'Red-Orange', dominance: 4, frequency: 0.6 },
           { id: 'S', name: 'Sarasa (red & white)', dominance: 3, frequency: 0.2 },
           { id: 'Y', name: 'Yellow', dominance: 2, frequency: 0.08 },
           { id: 'w', name: 'White', dominance: 1, frequency: 0.08 },

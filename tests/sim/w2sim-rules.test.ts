@@ -280,7 +280,7 @@ describe('w2-sim finance: one daily bill, before and after staff leave over unpa
         if (seen.has(e.id)) continue;
         seen.add(e.id);
         if (/has left: their wages went unpaid/.test(e.text)) left = true;
-        const m = /in the red after today's bills \(\$([\d,.]+)\/day\)/.exec(e.text);
+        const m = /in the red after today’s bills \(\$([\d,.]+)\/day\)/.exec(e.text); // Audit 2026-11-17 (J18): the sim writes ’, as the rest of the game
         if (!m) continue;
         const quoted = Number(m[1].replace(/,/g, ''));
         expect(Math.abs(quoted - dailyOperatingCost(g).total)).toBeLessThan(1);

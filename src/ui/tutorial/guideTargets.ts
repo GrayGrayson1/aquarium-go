@@ -76,9 +76,12 @@ export function guideAim(stepId: string, hintTarget: string, starterId: string, 
     case 'market':
       return s.panel === 'market' ? null : aim(dock('market', s));
     case 'upgrade': {
-      if (s.panel !== 'build') return aim(dock('build', s), false, false);
+      // the step's own panel: Build, or Tanks for the betta's and seahorse's nursery (a tank's purpose, audit A3)
+      const home = hintTarget.startsWith('dock-') ? hintTarget.slice(5) : 'build';
+      if (s.panel !== home) return aim(dock(home, s), false, false);
+      if (home !== 'build') return null;
       // Build's tank size the reputation unlocks ("Earn a little more reputation to unlock the 40-gallon breeder"), on
-      // Tanks; a reward that isn't a tank size (a betta's nursery tanks live in Livestock) points at nothing here
+      // Tanks; a reward that isn't a tank size points at nothing here
       const tiers = TANK_TIERS.filter((t) => !!t.unlock && unlocks.includes(t.unlock)).map((t) => `[data-testid="panel-build"] [data-tier-id="${t.id}"]`);
       return tiers.length ? aim([...tiers, '[data-testid="build-tab-tanks"][aria-selected="false"]'], false, false) : null;
     }

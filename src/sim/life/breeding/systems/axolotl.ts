@@ -138,7 +138,7 @@ export const axolotlModule: BreedingModule = {
     }
     if (sp.breeding.conditions.coolingTrigger && !coolCueActive(tank, hour)) {
       cc.reasons.push('They are waiting for a seasonal cue — in the wild, cool rains trigger spawning.');
-      cc.steps.push('Chill the water by ~2 °C to simulate the rainy season: two cool water changes (tank card › Care › Cool 25%) or a lower chiller setting.'); // lane:qa-play: name the button
+      cc.steps.push('Chill the water by ~2 °C to simulate the rainy season: two cool water changes (tank card › Water › Care › Cool 25%) or a lower chiller setting.'); // lane:qa-play: name the button
     } else if (coolCueActive(tank, hour) && !isNight(tank, hour)) {
       cc.steps.push('The cue is set — courtship happens at night after the lights go out.');
     }

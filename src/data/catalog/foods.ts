@@ -11,7 +11,7 @@
  *   `isAutofeederFood` (form 'dry') is the single rule the water sim's autofeeder and the UI's fit hints both use.
  * No brand names: generic descriptions only.
  */
-import type { Environment, FoodDef, FoodForm, SpeciesDefinition } from '@/types';
+import type { Environment, FoodDef, FoodForm, FoodTag, SpeciesDefinition } from '@/types';
 import { byId } from '@/data/byId';
 
 export const FOODS: FoodDef[] = [
@@ -450,6 +450,66 @@ const FOOD_BY_ID: Record<string, FoodDef> = byId(FOODS);
 
 export function getFoodDef(id: string): FoodDef | undefined {
   return FOOD_BY_ID[id];
+}
+
+// ───────────── Audit 2026-11-17 C18 (B-224) — food tags in words a player reads ─────────────
+
+/**
+ * What each diet tag is called on the shop shelf, in running text (lower case): "micro pellets", "live copepods",
+ * never the raw tag ("pellet small", "copepod live"). Every tag has an entry, so a new tag fails the typecheck until it
+ * gets words. `biofilm` and `detritus` are grazed, not sold: see `foodTagNames`' `shelfOnly`.
+ */
+export const FOOD_TAG_NAMES: Record<FoodTag, string> = {
+  flake: 'flakes',
+  pellet_small: 'micro pellets',
+  pellet_sinking: 'sinking pellets',
+  pellet_large: 'large pellets',
+  bloodworm: 'bloodworms',
+  brine_shrimp: 'brine shrimp',
+  mysis: 'mysis shrimp',
+  daphnia: 'daphnia',
+  earthworm: 'earthworms',
+  snail_live: 'live snails',
+  algae_wafer: 'algae wafers',
+  vegetable: 'blanched vegetables',
+  nori: 'seaweed sheets',
+  copepod_live: 'live copepods',
+  coral_food: 'coral food',
+  biofilm: 'algae film',
+  detritus: 'leftovers',
+  infusoria: 'infusoria',
+  baby_brine: 'live baby brine shrimp',
+  pellet_floating: 'floating sticks',
+  seafood: 'frozen seafood',
+  shellfish: 'shell-on shellfish',
+  insect: 'live insects',
+};
+
+/** Tags an animal finds in the tank rather than on the shop shelf. */
+const NOT_ON_SHELF: ReadonlySet<string> = new Set(['biofilm', 'detritus']);
+
+/** One tag's words (an unknown tag still reads as words, not with underscores). */
+export function foodTagName(tag: string): string {
+  return (FOOD_TAG_NAMES as Record<string, string>)[tag] ?? tag.replace(/_/g, ' ');
+}
+
+/**
+ * Tags' words, in order, without repeats: `foodTagNames(sp.foods, { max: 4, shelfOnly: true })`. `shelfOnly` leaves out
+ * what can't be bought (algae film, leftovers), for advice about what to feed.
+ */
+export function foodTagNames(tags: readonly string[], opts: { max?: number; shelfOnly?: boolean } = {}): string[] {
+  const out: string[] = [];
+  for (const t of tags) {
+    if (opts.shelfOnly && NOT_ON_SHELF.has(t)) continue;
+    const w = foodTagName(t);
+    if (!out.includes(w)) out.push(w);
+  }
+  return opts.max !== undefined ? out.slice(0, opts.max) : out;
+}
+
+/** "a, b or c" (the joining word is `or` unless given). */
+export function joinFoodNames(names: readonly string[], word = 'or'): string {
+  return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} ${word} ${names[names.length - 1]}`;
 }
 
 /** Foods an animal with these accepted tags will eat. */

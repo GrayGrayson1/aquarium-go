@@ -29,7 +29,7 @@ describe('humane entry rules', () => {
     const g = showGame('betta');
     const c = wellKept(starterOf(g));
     c.illness = { kind: 'fin_rot', severity: 30, sinceHour: g.clock.hour };
-    expect(reasons(g, c)).toMatch(/unwell \(fin rot\)/i);
+    expect(reasons(g, c)).toMatch(/unwell with fin rot/i); // Audit 2026-11-17 (J14 review): the name is never in brackets ("white spot (ich)" has its own)
     wellKept(c, { health: 60 });
     expect(reasons(g, c)).toMatch(/not in show condition/i);
     wellKept(c, { injury: 25 });
@@ -68,7 +68,7 @@ describe('humane entry rules', () => {
     const g = showGame('betta');
     const c = wellKept(starterOf(g));
     c.life!.settledSinceHour = g.clock.hour - 3;
-    expect(reasons(g, c)).toMatch(/still settling in \(arrived 3 h ago\)/i);
+    expect(reasons(g, c)).toMatch(/still settling in \(arrived 3 game hours ago\)/i /* Audit 2026-11-17 (J2) */);
     c.life!.settledSinceHour = undefined;
     c.awards = { ribbons: [], wins: {}, placings: 0, bestInShow: 0, shown: 1, titles: [], lastShowHour: g.clock.hour - 5 };
     expect(reasons(g, c)).toMatch(/resting after its last show/i);

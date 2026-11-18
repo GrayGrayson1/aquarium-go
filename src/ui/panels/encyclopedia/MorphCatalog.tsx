@@ -5,6 +5,7 @@
  * Everything shown is derived from the species' genetics (src/sim/life/morphCatalog.ts) and the player's discoveries.
  * Undiscovered entries reveal only trait names the player has already seen in some morph — never hidden alleles.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { ChevronDown, ChevronRight, CircleCheck, Dna, Lock, Network, Sparkles } from 'lucide-react';
@@ -14,6 +15,7 @@ import { Chip, SectionHead } from '../common/parts';
 import { RARITY_LABEL, RARITY_TONE, plural } from '../common/format';
 import { NEW_LOCI } from '../market/offerGenetics'; // lane:genetics (0.5)
 import { discoveredMorphNames } from './morphs';
+import { ScienceLink } from '@/ui/common/ScienceLink'; // Audit 2026-11-17 (J5)
 
 const ORIGIN_LABEL: Record<PrismaticFind['origin'], string> = { shop: 'bought', bred: 'bred from a Prismatic parent', spontaneous: 'bred in your shop' };
 
@@ -70,6 +72,8 @@ export function GenesLine({ sp }: { sp: SpeciesDefinition }) {
     <section data-testid="enc-genes">
       <SectionHead title={`Genes · ${sp.genetics.loci.length}`} icon={<Dna size={14} />} /> {/* chunk 6 (DES-011): the count, as desk-catalog.png draws it */}
       <div className="pn-chips">{chips}</div>
+      {/* Audit 2026-11-17 (J5): what dominance, ladders and "codominant" mean */}
+      <ScienceLink article="how_genes_combine" label="How genes combine: dominant, recessive and additive">How genes combine</ScienceLink>
       {sp.id === 'betta' && <p className="pn-tiny pn-muted" style={{ margin: '6px 0 0' }}>New in 0.5: Cambodian (recessive, shows on red bettas) and Metallic (additive — one copy adds a sheen, two make it Metallic).</p>}
     </section>
   );
@@ -146,7 +150,7 @@ export function CatalogTree({ sp, groups, total, seenNames, seenTraits, initiall
     <section data-testid="enc-catalog">
       <SectionHead title={`Morph catalog · ${seen}/${total} seen`} icon={<Network size={14} />} />
       <p className="pn-tiny pn-muted" style={{ marginBottom: 6 }}>
-        Every colour and combination these genetics can produce, by base colour, rated by how often sellers stock it. Built from the gene table — nothing is typed in by hand.
+        Every colour and combination these genetics can produce, by base colour, rated by how often sellers stock it.
       </p>
       <div className="pn-catalog">
         {flat ? (
@@ -211,7 +215,7 @@ export function PrismaticBox({ sp, finds }: { sp: SpeciesDefinition; finds: read
         {finds.length > 0 ? (
           <>
             <strong>
-              {plural(finds.length, `Prismatic ${sp.commonName.toLowerCase()}`)} found
+              {plural(finds.length, `Prismatic ${lowerName(sp.commonName)}`)} found
             </strong>
             <ul>
               {finds.slice(0, 4).map((f) => (
@@ -223,7 +227,7 @@ export function PrismaticBox({ sp, finds }: { sp: SpeciesDefinition; finds: read
           </>
         ) : (
           <p className="pn-small" style={{ margin: 0 }}>
-            No Prismatic {sp.commonName.toLowerCase()} yet. About {shop} animals a seller stocks shimmer like this; bred young {bred[0]} — {bred[1]} with one Prismatic parent, {bred[2]} with two.
+            No Prismatic {lowerName(sp.commonName)} yet. About {shop} animals a seller stocks shimmer like this; bred young {bred[0]} — {bred[1]} with one Prismatic parent, {bred[2]} with two.
           </p>
         )}
         <p className="pn-tiny pn-muted" style={{ margin: '6px 0 0' }}>

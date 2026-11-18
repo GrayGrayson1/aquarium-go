@@ -181,6 +181,16 @@ describe('nav-sync: address → stores (NAV-010)', () => {
     R.applyRoute({ kind: 'panel', panel: 'encyclopedia', tab: 'species', target: 'species:dragon' });
     expect(useUI.getState()).toMatchObject({ panel: 'encyclopedia', panelTarget: 'tab:species' });
     expect(toastTitle()).toMatchObject({ text: 'There’s no page for that species', detail: 'Showing every species instead.' });
+    // audit B8: an animal that has died or been sold is a past resident (its card would only flash open)
+    const gone = Object.values(g.creatures)[0];
+    for (const status of ['dead', 'sold'] as const) {
+      gone.status = status;
+      useUI.getState().set({ panel: null, panelTarget: null, selectedCreatureId: null });
+      R.applyRoute({ kind: 'creature', creatureId: gone.id });
+      expect(useUI.getState()).toMatchObject({ panel: 'livestock', panelTarget: 'tab:past', selectedCreatureId: null });
+      expect(toastTitle()).toMatchObject({ text: 'That animal isn’t in your aquarium', detail: 'Showing past residents instead.' });
+    }
+    gone.status = 'alive';
     // chunk 4 review: a gone production line (DESIGN-S3D §6; the owner's words, ADR-0026 decision 9)
     R.applyRoute({ kind: 'panel', panel: 'livestock', tab: 'production', target: 'line:gone' });
     expect(useUI.getState()).toMatchObject({ panel: 'livestock', panelTarget: 'tab:production' });
@@ -381,5 +391,133 @@ describe('nav-sync: leaving a game (NAV-012)', () => {
     expect(useUI.getState()).toMatchObject({ panel: 'build', panelTarget: 'tab:tanks' });
     expect(R.useNav.getState().pending).toBeNull();
     expect(fakeLocation.hash).toBe('#/build');
+  });
+});
+
+describe('audit B6: the show-entry flow and the listing wizard have addresses', () => {
+  /** A panel on `tab`, then (one gesture later) its sub-view `sub`. */
+  async function openSub(panel: 'market' | 'shows', tab: string, sub: string) {
+    gesture();
+    useUI.getState().set({ panel, panelTarget: null });
+    R.useNav.setState({ tab: { [panel]: tab } });
+    await flush();
+    gesture();
+    R.useNav.setState({ sub: { [panel]: sub } });
+    await flush();
+  }
+
+  it('Back from the entry flow closes it and stays in Shows › Upcoming', async () => {
+    await openSub('shows', 'upcoming', 'show:s1');
+    expect(fakeLocation.hash).toBe('#/shows/enter/s1');
+    browserBack();
+    await flush();
+    expect(useUI.getState()).toMatchObject({ panel: 'shows', panelTarget: 'tab:upcoming' });
+  });
+
+  it('Back from the listing wizard closes it and stays in My listings', async () => {
+    await openSub('market', 'listings', 'sell');
+    expect(fakeLocation.hash).toBe('#/market/listings/new');
+    browserBack();
+    await flush();
+    expect(useUI.getState()).toMatchObject({ panel: 'market', panelTarget: 'tab:listings' });
+  });
+
+  it('a wizard with the player’s prices asks first: Keep editing puts its address back, Leave goes', async () => {
+    const { setLeaveGuard, answerLeave, useLeave } = await import('@/ui/panels/common/leaveGuard');
+    await openSub('market', 'listings', 'sell');
+    setLeaveGuard({ panel: 'market', title: 'Leave this listing?', detail: 'Your prices and photo won’t be kept.' });
+    try {
+      browserBack();
+      await flush();
+      expect(useLeave.getState().pending).not.toBeNull();
+      expect(useUI.getState().panelTarget).toBeNull(); // nothing applied yet
+      answerLeave(false);
+      await flush();
+      expect(fakeLocation.hash).toBe('#/market/listings/new');
+      expect(entries.slice(-2)).toEqual(['/#/market/listings', '/#/market/listings/new']);
+      browserBack();
+      await flush();
+      answerLeave(true);
+      await flush();
+      expect(useUI.getState()).toMatchObject({ panel: 'market', panelTarget: 'tab:listings' });
+      expect(useLeave.getState().guard).toBeNull();
+      expect(fakeLocation.hash).toBe('#/market/listings');
+    } finally {
+      setLeaveGuard(null);
+    }
+  });
+});
+
+describe('audit B13: the tour leaves no Back trail', () => {
+  it('its stops replace the address, and so does its end', async () => {
+    const { startTour, endTour } = await import('@/ui/tutorial/tourStore');
+    const before = pushes();
+    gesture();
+    startTour();
+    for (const panel of ['market', 'build', 'livestock', 'research'] as const) {
+      gesture(); // Next
+      useUI.getState().set({ panel, panelTarget: null });
+      await flush();
+    }
+    expect(fakeLocation.hash).toBe('#/research');
+    gesture(); // Done
+    endTour();
+    useUI.getState().set({ panel: null, panelTarget: null });
+    await flush();
+    expect(fakeLocation.hash).toBe('#/');
+    expect(pushes()).toBe(before);
+    // and the player's own navigation pushes again
+    gesture();
+    useUI.getState().set({ panel: 'build', panelTarget: null });
+    await flush();
+    expect(pushes()).toBe(before + 1);
+  });
+});
+
+describe('audit B22: Back returns to the tank it was showing', () => {
+  it('after following an alert to another tank, Back closes its card and brings back the first tank', async () => {
+    const { createTank } = await import('@/sim/tanks');
+    const other = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true, placement: { x: 4, z: 0, rotY: 0 } });
+    const first = g.tankOrder[0];
+    expect(useUI.getState().focusedTankId).toBe(first);
+    await flush();
+    expect(fakeHistory.state).toMatchObject({ aqTank: first });
+    // the bell's row: the other tank, with its card
+    gesture();
+    useUI.getState().set({ focusedTankId: other.id, view: 'tank', panel: null });
+    useShell.getState().set({ tankCardOpen: true });
+    await flush();
+    expect(fakeLocation.hash).toBe(`#/tanks/${other.id}`);
+    browserBack();
+    await flush();
+    expect(fakeLocation.hash).toBe('#/');
+    expect(useShell.getState().tankCardOpen).toBe(false);
+    expect(useUI.getState().focusedTankId).toBe(first);
+    expect(fakeHistory.state).toMatchObject({ aqTank: first });
+  });
+
+  it('review: Back to the other tank drops the follow camera as the tank switcher does', async () => {
+    const { createTank } = await import('@/sim/tanks');
+    const other = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true, placement: { x: 4, z: 0, rotY: 0 } });
+    const first = g.tankOrder[0];
+    await flush();
+    gesture();
+    useUI.getState().set({ focusedTankId: other.id, view: 'tank', panel: null });
+    useShell.getState().set({ tankCardOpen: true });
+    await flush();
+    useUI.getState().set({ followCreatureId: 'cr_x', cameraMode: 'follow' });
+    browserBack();
+    await flush();
+    expect(useUI.getState()).toMatchObject({ focusedTankId: first, followCreatureId: null, selectedCreatureId: null, cameraMode: 'front' });
+  });
+
+  it('switching tanks at #/ keeps the entry’s tank current (no new entry)', async () => {
+    const { createTank } = await import('@/sim/tanks');
+    const other = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true, placement: { x: 4, z: 0, rotY: 0 } });
+    const before = pushes();
+    useUI.getState().set({ focusedTankId: other.id });
+    await flush();
+    expect(fakeHistory.state).toMatchObject({ aqTank: other.id });
+    expect(pushes()).toBe(before);
   });
 });

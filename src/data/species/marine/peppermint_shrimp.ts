@@ -146,7 +146,7 @@ export const peppermintShrimp: SpeciesDefinition = {
     compatibilityNotes: 'Peaceful with fish and snails. Hungry individuals may steal food from, or pick at, LPS corals such as hammer and frogspawn, and occasionally zoanthids. Eaten by lionfish, groupers, hawkfish and mantis shrimp.',
     breedingOverview: 'Carries eggs under the tail after moulting and releases larvae at night. Commercial farms rear them; in a home tank a few may survive in a refugium.',
     conservationNote: 'Not assessed by the IUCN. Captive-bred peppermints are widely available — and tend to be the best Aiptasia hunters.',
-    funFact: '"Peppermint shrimp" is really a cluster of look-alike species. Studies found some kinds eat far more Aiptasia than others, which is why one shop’s peppermints clean up a tank and another’s ignore it.',
+    funFact: '“Peppermint shrimp” is really a cluster of look-alike species. Studies found some kinds eat far more Aiptasia than others, which is why one shop’s peppermints clean up a tank and another’s ignore it.',
     inGameBehavior: 'Hides in the rock by day, then creeps out at night to scavenge — and to pick off any Aiptasia it finds.',
     feedingNote: 'A night-time scavenger of leftovers and detritus. In a tank with fed fish it finds plenty; otherwise drop sinking pellets or thawed mysis or brine shrimp by its rock a few times a week. Autofeeder pellets that sink reach it too.',
     keeperTip: 'Want it to clear Aiptasia? Feed the tank lightly for a while, because well-fed peppermints ignore the pest. Captive-bred Lysmata boggessi are the most reliable hunters.',

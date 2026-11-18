@@ -14,17 +14,26 @@ import type { ListingKind } from '@/types';
 import { formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { PanelLayout } from '../common/PanelLayout';
-import { usePanelGame, useIsPhone } from '../common/hooks';
+import { usePanelGame, useIsPhone, safe } from '../common/hooks';
+import { useGame } from '@/state/game'; // audit B6/B21 review
+import { marketAccess } from '@/sim/economy'; // audit B6 review
 import { Seg } from '../common/parts';
 import { ShopTab } from './Shop';
 import { SuppliesTab } from './Supplies';
 import { ListingsTab } from './Listings';
 import { CreateListing, type WizardSeed } from './CreateListing';
 import { TrendsTab } from './Trends';
-import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { NOT_FOUND, useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1); audit B21: NOT_FOUND
+import { wholeMoney } from '@/ui/common/moneyShort'; // audit 2026-11-17 (F11)
 
 export type MarketTab = 'shop' | 'supplies' | 'listings' | 'trends';
 const MARKET_TABS: readonly MarketTab[] = ['shop', 'supplies', 'listings', 'trends'];
+
+/** Are listings open in the game on screen? (audit B6 review; true when it can’t tell; exported for tests) */
+export const listingsOpen = (): boolean => {
+  const g = useGame.getState().game;
+  return !g || safe(() => marketAccess(g).listings, true);
+};
 
 export function MarketPanel() {
   const g = usePanelGame(700);
@@ -50,7 +59,8 @@ export function MarketPanel() {
   };
   // lane:ui-shell (chunk 1) — the address follows the section and the open offer / focused food / focused listing
   useNavTab('market', tab);
-  useNavSub('market', wizard ? null : tab === 'shop' && offerId ? `offer:${offerId}` : tab === 'supplies' && focusFood ? `food:${focusFood.id}` : tab === 'listings' && focusListing ? `listing:${focusListing}` : null);
+  // audit B6: the wizard is `sell` (#/market/listings/new), so Back closes it and stays in the Market
+  useNavSub('market', wizard ? 'sell' : tab === 'shop' && offerId ? `offer:${offerId}` : tab === 'supplies' && focusFood ? `food:${focusFood.id}` : tab === 'listings' && focusListing ? `listing:${focusListing}` : null);
 
   useEffect(() => {
     if (!target) return;
@@ -70,8 +80,22 @@ export function MarketPanel() {
     } else if (target.startsWith('listing:')) {
       setTab('listings');
       setOfferId(null);
-      setFocusListing(target.slice(8));
       setWizard(null);
+      // audit B21: a link to a listing the market no longer keeps says so (the router does for addresses; the Log's
+      // and the bell's "View listing" come here directly)
+      // (review: the store's game, not the panel's copy, which can be 0.7 s old: a listing just made is there)
+      const id = target.slice(8);
+      const now = useGame.getState().game;
+      if (now && !now.market.listings.some((l) => l.id === id)) {
+        setFocusListing(null);
+        useUI.getState().toast(NOT_FOUND.listing.title, 'info', { detail: NOT_FOUND.listing.detail });
+      } else setFocusListing(id);
+    } else if ((target === 'sell' || target === 'list' || target.startsWith('list:')) && !listingsOpen()) {
+      // audit B6 review: before listings open, a link to the wizard (#/market/listings/new) opens My listings and says
+      // when they open, instead of a wizard whose every kind is "Not unlocked yet"
+      switchTab('listings');
+      const hint = safe(() => marketAccess(useGame.getState().game!).hint, undefined);
+      if (hint) useUI.getState().toast(hint, 'info');
     } else if (target === 'sell' || target === 'list') {
       setTab('listings');
       setWizard({});
@@ -90,7 +114,7 @@ export function MarketPanel() {
   const openBids = active.reduce((a, l) => a + l.bids.filter((b) => b.status === 'open').length, 0);
   const stock = g.market.stock.length;
 
-  const subtitle = wizard ? 'Create a listing' : `${formatMoney(g.finance.money)} available · ${stock} offer${stock === 1 ? '' : 's'} in stock${active.length ? ` · ${active.length} active listing${active.length === 1 ? '' : 's'}` : ''}`;
+  const subtitle = wizard ? 'Create a listing' : `${wholeMoney(g.finance.money) /* audit 2026-11-17 (F11) */} available · ${stock} offer${stock === 1 ? '' : 's'} in stock${active.length ? ` · ${active.length} active listing${active.length === 1 ? '' : 's'}` : ''}`;
 
   return (
     <PanelLayout
@@ -98,6 +122,8 @@ export function MarketPanel() {
       icon={<Store size={20} />}
       subtitle={subtitle}
       scrollKey={`${tab}:${offerId ?? ''}:${wizard ? 'w' : ''}`}
+      listKey={tab /* audit B7: back from an offer, the shop is where it was */}
+      subOpen={!!offerId || !!wizard}
       toolbar={
         wizard ? undefined : (
           <Seg<MarketTab>

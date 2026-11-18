@@ -32,6 +32,13 @@ const wrap: CSSProperties = {
   font: '500 13px/1.4 var(--font-ui, system-ui, sans-serif)',
 };
 
+/** The banner's words. Audit 2026-11-17, I16: what ends it for good, and what Keep does on the button itself. */
+export const STALE_WORDS = {
+  text: 'This aquarium was played further in another tab, so this tab has stopped saving to keep that progress safe. Close the other tab to stop this.',
+  load: 'Load the newer copy',
+  keep: 'Keep this one (replaces the other tab’s progress)',
+} as const;
+
 /** Is the banner up (this tab's running aquarium was played further elsewhere)? */
 export function useStaleBanner(): boolean {
   const saveId = useGame((s) => s.game?.saveId ?? null);
@@ -69,14 +76,14 @@ export function StaleTabBanner() {
     <div role="alert" style={wrap} data-testid="stale-tab-banner">
       <TriangleAlert size={18} aria-hidden style={{ color: 'var(--c-watch, #fbbf24)', flex: 'none' }} />
       <span style={{ flex: '1 1 260px', minWidth: 0 }}>
-        This aquarium was played further in another tab, so this tab has stopped saving to keep that progress safe.
+        {STALE_WORDS.text}
       </span>
       <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginLeft: 'auto' }}>
         <Button size="sm" variant="primary" disabled={busy} onClick={() => void loadNewer()} data-testid="stale-tab-load">
-          Load the newer copy
+          {STALE_WORDS.load}
         </Button>
         <Button size="sm" disabled={busy} onClick={() => void keepThis()} data-testid="stale-tab-keep" title="Save this tab’s aquarium over the other copy">
-          Keep this one
+          {STALE_WORDS.keep}
         </Button>
       </span>
     </div>

@@ -3,11 +3,12 @@
  * sort, and Find anything's index (what it finds, in which group, and where each result goes).
  */
 import { describe, expect, it } from 'vitest';
+import { createElement } from 'react';
 import type { ShopOffer } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { fold, matches, queryWords, score } from '@/ui/panels/common/match';
 import { offerSearchMatches, sortOffers } from '@/ui/panels/market/shopFilters';
-import { FIND_GROUPS, findAnything, needsTankText, orderResults, PER_GROUP } from '@/ui/search/searchIndex';
+import { FIND_GROUPS, findAnything, needsTankText, nodeText, orderResults, PER_GROUP } from '@/ui/search/searchIndex';
 import { DECOR } from '@/data/catalog/decor';
 import { EQUIPMENT } from '@/data/catalog/equipment';
 import { RESEARCH } from '@/data/research';
@@ -42,10 +43,10 @@ describe('QOL-003: the Shop', () => {
   it('finds an offer by species, scientific name and seller', () => {
     const g = game();
     const o = g.market.stock.find((x) => x.speciesId === 'betta') ?? ({ ...g.market.stock[0], speciesId: 'betta' } as ShopOffer);
-    expect(offerSearchMatches(o, 'betta')).toBe(true);
-    expect(offerSearchMatches(o, 'splendens')).toBe(true);
-    expect(offerSearchMatches(o, o.seller.split(' ')[0])).toBe(true);
-    expect(offerSearchMatches(o, 'shark')).toBe(false);
+    expect(offerSearchMatches(o, 'betta', g.clock.hour)).toBe(true);
+    expect(offerSearchMatches(o, 'splendens', g.clock.hour)).toBe(true);
+    expect(offerSearchMatches(o, o.seller.split(' ')[0], g.clock.hour)).toBe(true);
+    expect(offerSearchMatches(o, 'shark', g.clock.hour)).toBe(false);
   });
   it('sorts cheapest, priciest and leaving soonest, ties keeping the shop’s order', () => {
     const list = [offer('a', 30, 50), offer('b', 10, 80), offer('c', 30, 20)];
@@ -140,12 +141,63 @@ describe('QOL-004: an item no tank of yours can take (reviewer B5)', () => {
   });
   it('names every water an item allows, and nothing once a tank can take it', () => {
     const g = game();
-    expect(needsTankText(g, ['marine'], ['marine_live_rock', 'reef'])).toBe('Needs a live rock or reef tank');
+    // Audit 2026-11-17 (J4): the water type's one name in a sentence ("live rock" was a fifth)
+    expect(needsTankText(g, ['marine'], ['marine_live_rock', 'reef'])).toBe('Needs a marine live-rock or reef tank');
     expect(needsTankText(g, ['marine', 'brackish'])).toBe('Needs a marine or brackish tank');
     expect(needsTankText(g, ['freshwater'])).toBeNull();
     const t = g.tanks[g.tankOrder[0]];
     t.environment = 'marine';
     t.waterClass = 'reef';
     expect(needsTankText(g, ['marine'], ['reef'])).toBeNull();
+  });
+});
+
+describe('audit B5: Find anything finds the help', () => {
+  const science = (q: string) => orderResults(findAnything(game(), q)).filter((r) => r.group === 'Aquarium science');
+  it('finds the Aquarium science articles by their words, and opens each in the Encyclopedia', () => {
+    expect(science('ammonia').map((r) => r.key)).toContain('science:nitrogen_cycle');
+    expect(science('nitrite').map((r) => r.key)).toContain('science:nitrogen_cycle');
+    expect(science('cycling').map((r) => r.key)).toContain('science:cycling');
+    expect(science('water change')[0]?.key).toBe('science:water_changes');
+    expect(science('salinity')[0]?.key).toBe('science:salinity');
+    const hit = science('cycling').find((r) => r.key === 'science:cycling')!;
+    expect(hit).toMatchObject({ title: 'What “cycling” means', detail: 'Encyclopedia › Aquarium science' });
+    expect(hit.go).toEqual({ kind: 'route', route: { kind: 'panel', panel: 'encyclopedia', tab: 'science', target: 'science:cycling' } });
+  });
+  it('lists them after the player’s own things (review: changed on purpose from right after Screens), and not for an empty query', () => {
+    expect(FIND_GROUPS.indexOf('Aquarium science')).toBe(FIND_GROUPS.indexOf('Encyclopedia') - 1);
+    expect(findAnything(game(), '').some((r) => r.group === 'Aquarium science')).toBe(false);
+    const MINE = ['Your tanks', 'Your animals', 'In the shop', 'Food & supplies', 'Equipment'];
+    for (const q of ['betta', 'food', 'tank', 'filter']) {
+      const groups = orderResults(findAnything(game(), q)).map((r) => r.group);
+      const firstArticle = groups.indexOf('Aquarium science');
+      const mine = groups.flatMap((grp, i) => (MINE.includes(grp) ? [i] : []));
+      expect(mine.length, q).toBeGreaterThan(0);
+      if (firstArticle >= 0) expect(Math.max(...mine), q).toBeLessThan(firstArticle);
+    }
+  });
+  it('reads an article’s text without its markup', () => {
+    expect(nodeText(createElement('p', null, 'Waste becomes ', createElement('b', null, 'ammonia'), ', ', 3, ' times'))).toBe('Waste becomes  ammonia ,  3  times');
+  });
+});
+
+describe('audit B10: Find anything knows the screens’ everyday words', () => {
+  const screen = (q: string) => orderResults(findAnything(game(), q, { social: true })).filter((r) => r.group === 'Screens').map((r) => r.title);
+  it('finds Settings’ controls by what they do', () => {
+    for (const q of ['sound', 'music', 'volume', 'mute']) expect(screen(q)[0], q).toBe('Settings');
+    for (const q of ['accessibility', 'fahrenheit', 'text size', 'reduced motion']) expect(screen(q)[0], q).toBe('Settings › Play & access');
+    expect(screen('export')[0]).toBe('Settings › Saves');
+  });
+  it('finds a feature by its verb once it is open: sell, auction, hire, keeper, reward, history', () => {
+    expect(screen('sell')).toContain('Market › My listings');
+    expect(screen('auction')).toContain('Market › My listings');
+    expect(screen('hire')).toContain('Visitors › Staff');
+    expect(screen('keeper')).toContain('Visitors › Staff');
+    expect(screen('reward')).toContain('Research › Quests');
+    expect(screen('history')).toContain('Event log');
+  });
+  it('a screen’s own name still comes first', () => {
+    expect(screen('notifications')[0]).toBe('Settings › Notifications');
+    expect(screen('market supplies')[0]).toBe('Market › Supplies');
   });
 });

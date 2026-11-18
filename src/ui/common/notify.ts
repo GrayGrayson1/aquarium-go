@@ -14,18 +14,22 @@
  *    entries: progression (`progress.scan.logSeq`), exhibit scoring, the welcome-back card and duplicate checks all
  *    scan the log. The full history stays in the Log panel.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { opsDot } from './ops'; // lane:automation (chunk 5)
 import { isHeld } from '@/sim/automation/hold'; // lane:automation (chunk 5)
-import type { Creature, DecorInstance, EquipmentInstance, GameEvent, GameState, NotifyState, Tank } from '@/types';
+import type { Creature, DecorDef, DecorInstance, EquipmentInstance, GameEvent, GameState, NotifyState, Tank } from '@/types';
 import type { StatusLevel } from '@/types/reports';
 import { getEquipmentDef } from '@/data/catalog/equipment';
+import { getDecorDef, isLiving } from '@/data/catalog/decor'; // Audit 2026-11-17 (G8)
 import { getFoodDef } from '@/data/catalog/foods';
 import { tankFoodOutlook } from '@/sim/tankStatus';
 import { unseenResults } from '@/sim/shows';
 import { tankGearIssues, FIT_TONE } from '@/sim/care/fit'; // lane "fit" verdicts
 import { autofeedPause, type AutofeedPause } from '@/sim/care/autofeed'; // lane:automation (AUTO-005)
 import { inhabitantsOf } from '@/sim/water/env';
-import { tankStatusReason } from './tankStatus';
+import { tankStatusReason, TANK_STATUS_WORD } from './tankStatus'; // Audit 2026-11-17 (J10): TANK_STATUS_WORD
+import { convertTempText } from './format'; // Audit 2026-11-17 (J1)
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
 import { findSpecies } from '@/data/species';
 import { isPrismatic } from '@/sim/life/rareVariants';
 import { morphDisplayName } from '@/sim/life/genetics';
@@ -73,7 +77,7 @@ export interface TankAttention {
 const RANK: Record<AttentionLevel, number> = { good: 0, watch: 1, danger: 2 };
 export const worseLevel = <T extends AttentionLevel>(a: T, b: T): T => (RANK[b] > RANK[a] ? b : a);
 const level = (v: unknown): AttentionLevel => (v === 'danger' || v === 'watch' ? v : 'good');
-export const ATTENTION_WORD: Record<AttentionLevel, string> = { good: 'Healthy', watch: 'Watch', danger: 'Danger' };
+export const ATTENTION_WORD: Record<AttentionLevel, string> = TANK_STATUS_WORD; // Audit 2026-11-17 (J10): one table
 
 const GOOD: TankAttention = { level: 'good', items: [], tabs: {}, label: '' };
 
@@ -212,7 +216,29 @@ export function tankAttentionLevel(g: GameState, tankId: string): AttentionLevel
   const food = t.cache?.foodLevel;
   if (food === 'low' || food === 'out' || t.equipment?.some((e) => e.failed || isWorn(e)) || autofeedPaused(g, t)) w = 'watch';
   for (const it of gearFitItems(g, t)) w = worseLevel(w, it.level);
+  if (w === 'good' && strugglingDecor(t)) w = 'watch'; // Audit 2026-11-17 (G8)
   return w;
+}
+
+/** Audit 2026-11-17 (G8): a living plant or coral below this health is struggling (the decor step lowers it silently). */
+export const STRUGGLING_HEALTH = 40;
+
+/** Audit 2026-11-17 (G8): the tank's least healthy living piece under STRUGGLING_HEALTH (null: none). */
+export function strugglingDecor(t: Tank): { inst: DecorInstance; def: DecorDef } | null {
+  let worst: { inst: DecorInstance; def: DecorDef } | null = null;
+  for (const inst of t.decor ?? []) {
+    if (typeof inst.health !== 'number' || !(inst.health < STRUGGLING_HEALTH)) continue;
+    if (worst && inst.health >= (worst.inst.health ?? 0)) continue;
+    const def = getDecorDef(inst.defId);
+    if (def && isLiving(def)) worst = { inst, def };
+  }
+  return worst;
+}
+
+/** Audit 2026-11-17 (G8): the alert line, with the tank card's beauty tip's reason (src/sim/aquascape/beauty.ts). */
+export function strugglingDecorText(def: DecorDef, health: number): string {
+  const why = (def.lightNeed ?? 0.3) >= 0.5 ? 'it needs stronger light than this tank provides' : def.category !== 'plant' ? 'check salinity, temperature and nitrate' : 'check light, temperature and nutrients';
+  return `Your ${def.name.toLowerCase()} is struggling (${Math.round(health)}% health): ${why}.`;
 }
 
 const ANIMAL_WORDS = /\b(starv|hungry|ill\b|unwell|stress|health|injur|recover|weak|sick|dying)/i;
@@ -250,7 +276,8 @@ export function tankAttention(g: GameState, tankId: string): TankAttention {
     if (!e.failed) continue;
     const name = getEquipmentDef(e.defId)?.name ?? 'Equipment';
     if (said.includes(name)) continue;
-    const text = e.failMode === 'stuck_on' ? `The ${name} is stuck on — switch it off, then repair it.` : `The ${name} has failed — repair or replace it.`;
+    // Audit 2026-11-17 C9 — once switched off, a stuck heater only needs its repair (as the water report and link say)
+    const text = e.failMode === 'stuck_on' && e.on ? `The ${name} is stuck on — switch it off, then repair it.` : `The ${name} has failed — repair or replace it.`;
     items.push({ level: 'watch', source: 'gear', text, tab: 'gear', equipmentId: e.id });
   }
   // 3b. chunk 19 (QOL-002) — gear wearing out, before it fails
@@ -264,6 +291,10 @@ export function tankAttention(g: GameState, tankId: string): TankAttention {
   // 5. lane:automation (AUTO-005) — Auto-feed paused (off, jammed or empty) while someone is hungry
   const paused = autofeedPaused(g, t);
   if (paused) items.push({ level: 'watch', source: 'gear', text: autofeedPausedText(paused), tab: 'gear' });
+  // 6. Audit 2026-11-17 (G8) — a plant or coral fading toward 0% (no toast, no dot before this)
+  const fading = strugglingDecor(t);
+  // (review fix: a piece that needs stronger light is a lights problem, so its fix link is the lights, not water care)
+  if (fading) items.push({ level: 'watch', source: (fading.def.lightNeed ?? 0.3) >= 0.5 ? 'gear' : 'water', text: strugglingDecorText(fading.def, fading.inst.health ?? 0), short: `Your ${fading.def.name.toLowerCase()} is struggling.`, tab: 'life' });
   if (!items.length) return GOOD;
   items.sort((a, b) => RANK[b.level] - RANK[a.level]);
   const lvl = items.reduce<AttentionLevel>((w, it) => worseLevel(w, it.level), 'good');
@@ -375,7 +406,11 @@ const ALERT_KINDS: GameEvent['kind'][] = ['warning', 'danger', 'death'];
  * chunk 13 (SHARED-SHOPS.md §8 "Alerts list line", ADR-0045 decision 11): in a shared shop an action's line is its own
  * message with the member's name in front ("Sam: Bought 3 neon tetras for $36."); a solo game's events carry no name.
  */
-export const eventLine = (e: Pick<GameEvent, 'text' | 'byName'>): string => (e.byName ? `${e.byName}: ${e.text}` : e.text);
+export const eventLine = (e: Pick<GameEvent, 'text' | 'byName'>, unit: 'C' | 'F' = useSettings.getState().tempUnit): string => {
+  // Audit 2026-11-17 (J1): the sim writes °C into its lines; the log, the bell and Lines show the player's unit
+  const text = convertTempText(e.text, unit) ?? e.text;
+  return e.byName ? `${e.byName}: ${text}` : text;
+};
 
 export const isNews = (e: GameEvent): boolean => !!e.toast || ALERT_KINDS.includes(e.kind);
 
@@ -525,6 +560,12 @@ export function navDots(g: GameState, items: { id: string; label: string; lock?:
     if (rare) out.market = rare;
   }
   if (researchNews(g)) out.research = { level: 'new', label: 'Research finished — choose your next project', target: null };
+  else {
+    // audit 2026-11-17 (A5) — a finished quest's reward (the guide's own "First steps" first) waits to be claimed in
+    // Research › Quests, and nothing outside it said so
+    const claim = g.progress.quests.filter((q) => q.status === 'complete').length;
+    if (claim > 0) out.research = { level: 'new', label: `${plural(claim, 'quest reward')} to claim`, target: 'tab:quests' };
+  }
   // lane:automation (chunk 5, DESIGN-S3D §5.4) — red when anything needs you, amber when worth a look or held (no news)
   const ops = opsDot(g);
   if (ops) out.operations = { level: ops.level, label: ops.label, target: null };
@@ -545,7 +586,7 @@ function unseenRareOffer(g: GameState, seen: ReadonlySet<string>): NavDot | null
     if (seen.has(o.id)) continue;
     const sp = findSpecies(o.speciesId);
     if (!sp) continue;
-    if (o.creatures.some(isPrismatic)) return { level: 'new', label: `Prismatic ${sp.commonName.toLowerCase()} in the shop`, target: `offer:${o.id}` };
+    if (o.creatures.some(isPrismatic)) return { level: 'new', label: `Prismatic ${lowerName(sp.commonName)} in the shop`, target: `offer:${o.id}` };
     const lead = o.creatures.find((c) => visiblyRare(sp, c));
     if (!rare && lead) rare = { level: 'new', label: `Rare stock: ${morphDisplayName(sp, lead.morphName)}`, target: `offer:${o.id}` };
   }

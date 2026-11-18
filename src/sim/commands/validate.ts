@@ -12,6 +12,7 @@ import { ASK_NOTE_MAX, POOL_AMOUNT_MAX } from '../pool';
 type Field =
   | { t: 'id' }
   | { t: 'from' }
+  | { t: 'froms'; max: number }
   | { t: 'text'; max: number }
   | { t: 'photo' }
   | { t: 'color' }
@@ -74,6 +75,7 @@ const SCHEMA: Schema = {
   installEquipment: { tank: id, def: id, instance: id },
   repairEquipment: { tank: id, equip: id },
   removeEquipment: { tank: id, equip: id },
+  sellEquipment: { instance: id }, // Audit 2026-11-17 (G22)
   setLighting: {
     tank: id,
     preset: opt(en(['daylight', 'warm', 'planted', 'reef_actinic', 'reef_full', 'moonlight', 'sunset', 'cool'])),
@@ -90,6 +92,7 @@ const SCHEMA: Schema = {
   setBackdrop: { tank: id, backdrop: en(['black', 'deep_blue', 'frosted', 'none', 'rock_3d']) },
   buyTank: { tier: id, wc: en(WATER_CLASSES), seeded: bool, x: opt(coord), z: opt(coord), rotY: opt(coord) },
   placeTank: { tank: id, x: coord, z: coord, rotY: coord },
+  takeDownTank: { tank: id }, // Audit 2026-11-17 (G19)
   placeDecor: { tank: id, def: id, x: coord, z: coord, rotY: opt(coord), scale: opt({ t: 'num', min: 0, max: 100 }), fromStorage: opt(bool) },
   moveDecor: { tank: id, decor: id, x: coord, z: coord, rotY: opt(coord), scale: opt({ t: 'num', min: 0, max: 100 }) },
   removeDecor: { tank: id, decor: id, sell: bool },
@@ -101,6 +104,7 @@ const SCHEMA: Schema = {
   notePhoto: { creature: id },
   moveCreature: { creature: id, to: id, from: opt(from) },
   separateCreature: { creature: id, to: id, from: opt(from) },
+  moveCreatures: { creatures: { t: 'ids', max: MAX_LIST }, to: id, from: opt({ t: 'froms', max: MAX_LIST }) },
   moveClutch: { clutch: id, to: id, from: opt(from) },
   liftOutClutch: { clutch: id, from: opt(from) },
   startBreeding: { a: id, b: id, tank: opt(id) },
@@ -108,6 +112,7 @@ const SCHEMA: Schema = {
   setFavorite: { creature: id, on: bool },
   quickSell: { creatures: { t: 'ids', max: MAX_LIST } },
   buyOffer: { offer: id, tank: id, picks: opt({ t: 'ints', max: MAX_LIST, lo: 0, hi: 10_000 }), saw: opt({ t: 'ids', max: MAX_LIST }) },
+  holdOffer: { offer: id, release: opt(bool) },
   buyFood: { food: id, packs: { t: 'int', min: 1, max: 1000 } },
   buySalt: { kg: { t: 'num', min: 0, max: 10_000 } },
   buyEggs: { tins: { t: 'int', min: 1, max: 1000 } },
@@ -209,6 +214,8 @@ function check(f: Field, v: unknown): unknown {
       return isSafeId(v) ? v : BAD;
     case 'from':
       return v === '' || isSafeId(v) ? v : BAD;
+    case 'froms':
+      return Array.isArray(v) && v.length <= f.max && v.every((x) => x === '' || isSafeId(x)) ? [...v] : BAD;
     case 'text':
       return typeof v === 'string' && v.length <= f.max && !HIDDEN.test(v) ? v : BAD;
     case 'photo':

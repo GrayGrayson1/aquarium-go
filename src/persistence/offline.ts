@@ -52,7 +52,7 @@ export {
   type OfflineSummary,
   type SimulateOfflineOptions,
 } from '@/sim/catchUp';
-import { OFFLINE_HIDDEN_MIN_MS, OFFLINE_MIN_REAL_MS, defaultFocus, simulateOffline, summaryWorthShowing, type OfflineSummary } from '@/sim/catchUp';
+import { OFFLINE_HIDDEN_MIN_MS, defaultFocus, simulateOffline, summaryWorthShowing, type OfflineSummary } from '@/sim/catchUp';
 
 /**
  * lane:fix-core (S06-02) — the welcome-back card pauses the clock while it is open, so a 10× aquarium does not race
@@ -67,6 +67,7 @@ function pauseForCard(state: GameState, summary: OfflineSummary): void {
 }
 
 function publishSummary(summary: OfflineSummary): void {
+  speedSetMeanwhile = false;
   useResume.setState({ summary });
   try {
     if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('aquarium-go:offline-summary', { detail: summary }));
@@ -83,12 +84,22 @@ export const useResume = create<{ summary: OfflineSummary | null; clear: () => v
   clear: () => {
     const s = get().summary;
     set({ summary: null });
-    // Dismissing the card resumes the clock the card paused (if the player has not already pressed play).
+    // Dismissing the card resumes the clock the card paused (if the player has not already pressed play). Audit
+    // 2026-11-17, I18 (B-163): nor when they set the speed while it was open (play, then pause: their pause stands)
     const speed = s?.resumeSpeed;
+    const touched = speedSetMeanwhile;
+    speedSetMeanwhile = false;
     // chunk 11: a player action, so a command (persistence may write the store directly only to load, save and catch up)
-    if (speed && speed > 0 && useGame.getState().game?.clock.speed === 0) useGame.getState().dispatch({ k: 'setSpeed', speed: speed as 1 | 3 | 10 });
+    if (!touched && speed && speed > 0 && useGame.getState().game?.clock.speed === 0) useGame.getState().dispatch({ k: 'setSpeed', speed: speed as 1 | 3 | 10 });
   },
 }));
+
+/** B-163: the speed of the aquarium the card is about changed while the card was open. */
+let speedSetMeanwhile = false;
+useGame.subscribe((s, prev) => {
+  if (!useResume.getState().summary || !s.game || !prev.game || s.game.saveId !== prev.game.saveId) return;
+  if (s.game.clock.speed !== prev.game.clock.speed) speedSetMeanwhile = true;
+});
 
 // lane:fix-core (P5-11) — a summary belongs to the aquarium it was made for: drop it when another game (or none)
 // takes over, so a fresh New Game is never greeted with the previous aquarium's "While you were away".

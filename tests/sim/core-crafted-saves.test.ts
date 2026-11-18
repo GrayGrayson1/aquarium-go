@@ -12,6 +12,7 @@ import { advanceWorld } from '@/sim/world';
 import { migrateSave, repairState } from '@/persistence/migrations';
 import { makeLegacyV0Save } from '@/persistence/legacy';
 import { findSpecies, getSpecies } from '@/data/species';
+import { facilityStore } from '@/dev/fixtures/facility';
 import type { GameState } from '@/types';
 
 type Json = Record<string, any>;
@@ -117,5 +118,102 @@ describe('PERSIST-011: crafted saves', () => {
     expect(repairState(state)).toEqual([]);
     expect(() => advanceWorld(state, 6, {})).not.toThrow();
     for (const k of POLLUTION_KEYS) expect(Object.hasOwn(Object.prototype, k), `Object.prototype.${k}`).toBe(false);
+  });
+});
+
+/**
+ * BACKLOG B-210 — a save `repairState` passed that then threw on every step: a `visitors.live` the visitor sim can't
+ * step with, and room fixtures the layout can't read. An open shop, so the visitor sim and the layout both run.
+ */
+describe('B-210: a save whose visitors or fixtures are unreadable still steps', () => {
+  /** An aquarium store open to the public, a few hours in (so `visitors.live` is there), as a save's JSON gives it. */
+  const openShop = (): Json => {
+    const g = facilityStore();
+    advanceWorld(g, 3, {});
+    return JSON.parse(JSON.stringify(g)) as Json;
+  };
+  const steps = (s: Json) => () => {
+    for (let i = 0; i < 48; i++) advanceWorld(s as GameState, 0.5, {});
+  };
+
+  it('a healthy open shop needs no repair and keeps its live visitors and its fixtures', () => {
+    const s = openShop();
+    const before = JSON.stringify({ live: s.visitors.live, fixtures: s.facility.fixtures });
+    expect(s.visitors.live, 'the fixture has live visitors').toBeTypeOf('object');
+    expect(s.facility.fixtures.length, 'the fixture has furniture').toBeGreaterThan(0);
+    expect(repairState(s)).toEqual([]);
+    expect(JSON.stringify({ live: s.visitors.live, fixtures: s.facility.fixtures })).toBe(before);
+    expect(steps(s)).not.toThrow();
+  });
+
+  it.each<[string, (s: Json) => void]>([
+    ['a number', (s) => (s.visitors.live = 5)],
+    ['a string', (s) => (s.visitors.live = 'crowded')],
+    ['a list', (s) => (s.visitors.live = [])],
+    ['null', (s) => (s.visitors.live = null)],
+    ['an empty object', (s) => (s.visitors.live = {})],
+    ['a mix that is not a record', (s) => (s.visitors.live.mix = 4)],
+    ['a mix with a share that is not a number', (s) => (s.visitors.live.mix = { family: 'most' })],
+    ['a warnedHour that is not a record', (s) => (s.visitors.live.warnedHour = 3)],
+    ['an unreachable list that is not one', (s) => (s.visitors.live.unreachable = 'tank_1')],
+    ['a count that is not a number', (s) => (s.visitors.live.occupancy = 'many')],
+    ['takings JSON wrote as null', (s) => (s.visitors.live.pendingAdmission = null)],
+    ['a friend that is not a visit', (s) => (s.visitors.live.friend = 3)],
+    ['a reaction budget that is not a number', (s) => (s.visitors.live.reactionBudget = 'x')],
+  ])('visitors.live as %s is dropped, made again by the sim, and the world steps', (_name, damage) => {
+    const s = openShop();
+    damage(s);
+    expect(repairState(s)).toEqual(['visitors.live: unreadable, reset']);
+    expect(s.visitors.live).toBeUndefined();
+    expect(steps(s)).not.toThrow();
+    expect(Number.isFinite(s.visitors.live.occupancy) && Number.isFinite(s.visitors.live.pendingAdmission)).toBe(true);
+    expect(repairState(s), 'a second repair finds nothing').toEqual([]);
+  });
+
+  it.each<[string, unknown]>([
+    ['a number', 7],
+    ['null', null],
+    ['an object', { 0: { id: 'a', kind: 'bench', x: 0, z: 0, rotY: 0 } }],
+  ])('fixtures as %s start again as an empty list, and the world steps', (_name, value) => {
+    const s = openShop();
+    s.facility.fixtures = value;
+    expect(repairState(s)).toEqual(['facility.fixtures: rebuilt']);
+    expect(s.facility.fixtures).toEqual([]);
+    expect(steps(s)).not.toThrow();
+  });
+
+  it('unreadable fixtures are dropped from the list, the readable ones kept in order, and the world steps', () => {
+    const s = openShop();
+    const good = s.facility.fixtures.map((f: Json) => ({ ...f }));
+    s.facility.fixtures = [
+      1,
+      good[0],
+      {},
+      null,
+      { id: 'no_place', kind: 'bench', x: 'left', z: null, rotY: 0 },
+      { id: 'no_turn', kind: 'bench', x: 0, z: 0 },
+      { id: 7, kind: 'bench', x: 0, z: 0, rotY: 0 },
+      { id: '__proto__', kind: 'bench', x: 0, z: 0, rotY: 0 },
+      { id: 'no_kind', x: 0, z: 0, rotY: 0 },
+      // the fresh review's blocker 1: a kind is a key into FIXTURE_DEFS, and `FIXTURE_DEFS['__proto__']` is
+      // Object.prototype (the layout's `def.name.toLowerCase()` threw on every step)
+      { id: 'proto_kind', kind: '__proto__', x: 0, z: 0, rotY: 0 },
+      { id: 'inherited_kind', kind: 'constructor', x: 0, z: 0, rotY: 0 },
+      ...good.slice(1),
+    ];
+    // the inherited-name id goes with PERSIST-011's own scrub, the other nine here
+    expect(repairState(s)).toEqual(['facility.fixtures: invalid ids removed', 'facility.fixtures: 9 unreadable removed']);
+    expect(s.facility.fixtures).toEqual(good);
+    expect(steps(s)).not.toThrow();
+    expect(repairState(s), 'a second repair finds nothing').toEqual([]);
+  });
+
+  it('a fixture of a kind this build does not know is kept (a newer build may have placed it) and the world steps', () => {
+    const s = openShop();
+    const later = { id: 'fixture_later', kind: 'koi_fountain', x: 0.5, z: 0.5, rotY: 0 };
+    s.facility.fixtures.push(later);
+    expect(repairState(s)).toEqual([]);
+    expect(s.facility.fixtures.at(-1)).toEqual(later);
+    expect(steps(s)).not.toThrow();
   });
 });
