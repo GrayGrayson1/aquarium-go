@@ -559,3 +559,10 @@ link.
 | `production-new-nofit-<stage>` | Setting up a line: why no tank fits a stage |
 | `staff-cancover-<staffId>` | A candidate's capacity line ("Can look after about n tanks like yours") |
 | `shared-ask-limit` · `shared-closing-back` · `shared-closing-retry` | A shared shop member's line that their asks are at the limit; the closing screen's Back and Try again |
+| `quests-board-full` | Research › Quests' line when the board is full of rewards to claim |
+| `finance-ideas` | Finances' ways to raise cash (every "Ways to raise cash" link scrolls here) |
+| `water-change-salt-cash` · `water-change-raise-cash` | The Water tab's line when there is no salt for a change and no money for a bag, and its Ways to raise cash link |
+| `decor-sell-ask-<instanceId>` | Build › Decor: why a grown-in piece asks a second tap before it sells |
+| `move-group-dropped` | The group move's line when some of the group are no longer in your care |
+| `reload-confirm` · `reload-confirm-save` · `reload-confirm-anyway` | The box that asks before an in-app reload with Autosave off, its Save now and reload and its Reload anyway |
+| `error-boundary-reload-off` | The error screen's line that Autosave is off, so reloading loses play since the last save |
