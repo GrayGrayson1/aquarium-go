@@ -90,7 +90,7 @@ export function ShowCard({ g, show, onEnter }: { g: GameState; show: Show; onEnt
           {show.tier === 'club' ? `A friendly club show · judge ${show.judge}` : `${tier.name} show · judge ${show.judge}`}
         </div>
       </div>
-      <div className="sh-classes" aria-label="Classes">
+      <div className="sh-classes" role="group" aria-label="Classes">
         {show.classes.map((cl) => {
           const def = SHOW_CLASS_BY_ID[cl.classId];
           if (!def) return null;

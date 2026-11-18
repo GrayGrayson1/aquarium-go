@@ -342,6 +342,11 @@ describe('Audit 2026-11-17 (J36): screen readers hear words, not glyphs or ids',
       ['ui/panels/tanks/TanksPanel.tsx', 'label="Water class"', '<Select<WaterClass> label="Water type"'],
       ['ui/panels/visitors/VisitorsPanel.tsx', '`day ${h.day} ${h.count}`', '`Day ${h.day}: ${h.count}`'],
       ['ui/panels/operations/MapTab.tsx', "flexDirection: 'column', gap: 4 }} aria-hidden>", "<span aria-hidden className={clsx('ops-pipe__line'"],
+      // the review: an aria-label on an element with no role isn't read (J22's stage track and two more)
+      ['ui/panels/operations/LinesTab.tsx', '<div className="ops-track" aria-label=', '<span className="pn-sr">Stage: {STAGES[at]?.full ?? STAGES[at]?.label ?? \'\'}</span>'],
+      ['ui/panels/operations/LinesTab.tsx', '<span key={s.id} title={s.full}', '<span key={s.id} aria-hidden title={s.full}'],
+      ['ui/panels/shows/Upcoming.tsx', '<div className="sh-classes" aria-label="Classes">', '<div className="sh-classes" role="group" aria-label="Classes">'],
+      ['ui/panels/shows/ShowsPanel.tsx', 'aria-label={`${unseen} new`}', '<span className="pn-sr">{unseen} new</span>'],
     ];
     for (const [file, gone, now] of cases) {
       const s = src(file);
