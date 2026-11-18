@@ -21,10 +21,11 @@ line of text is listed in `docs/agent/design/CHUNK-20/WORDS.md`.
 - **Sell spare equipment, and take down a tank.** The store buys stored equipment back at half price. An empty tank
   has Take down in Tanks: its gear and decor go to storage and half the tank's price comes back.
 - **Production lines sell by themselves.** A line puts a buy-now price on its young, 10% under fair value, and lists
-  what doesn't sell again a little cheaper each time, down to half. A line takes an animal that falls ill off sale,
+  what doesn't sell again a little cheaper each time. A line takes a lot off sale while one of its animals is unwell,
   says what it is waiting for, and never loses track of young. Keepers now feed fry their first foods from your
   stock on their rounds, and the stock manager orders them.
-- **Shop offers wait while you're looking.** An offer you have open stays until you buy it or close it. Goldfish,
+- **Shop offers wait while you're looking.** An offer you have open stays past its leaving time while you decide (for
+  up to about six minutes, so a forgotten tab can't keep it for ever). Goldfish,
   comets, koi and African dwarf frogs are sold in pairs, so the first one isn't "High risk". A tank only a little
   under an animal's minimum gets a note, not "High risk". The shop says what an animal eats and whether you have it,
   and warns before you buy into a tank that is still cycling.
