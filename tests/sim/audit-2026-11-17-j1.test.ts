@@ -61,6 +61,10 @@ import { IncomeChart } from '@/ui/panels/finances/IncomeChart';
 import { probabilityWord } from '@/ui/common/format';
 import type { CompatReport } from '@/types';
 import { moveCreature } from '@/sim/life/actions';
+import { nextStepLine } from '@/ui/cards/CreatureCard';
+import { YoungView, LivestockPanel } from '@/ui/panels/livestock/LivestockPanel';
+import { breedingCheck, breedingStatus } from '@/sim/life';
+import { useUI } from '@/state/ui';
 import { convertWaterClass } from '@/sim/tankOps';
 import { matches } from '@/ui/panels/common/match';
 import { findAnything } from '@/ui/search/searchIndex';
@@ -156,6 +160,45 @@ describe('J1: a player on °F reads °F in the log, the bell, notifications and 
   it('the zebra danio’s range has both ends in °C, so both convert', () => {
     const fact = getSpecies('zebra_danio').encyclopedia.funFact;
     expect(convertTempText(fact, 'F')).toMatch(/from 76\.3 °F to 101\.5 °F/);
+  });
+
+  // the review: three places still showed the breeding lines' °C
+  it('the pairing check’s next step, and Eggs & fry’s breeding activity and chip, read °F', () => {
+    const g = base();
+    const t = g.tanks[g.tankOrder[0]];
+    const ember = Object.values(g.creatures)[0];
+    ember.sex = 'male';
+    ember.lifeStage = 'adult';
+    const bea = addCreature(g, createCreature(g, simRng(g), 'betta', { sex: 'female', ageDays: 400, name: 'Bea' }), t.id);
+    t.water.tempC = 22;
+    const step = breedingCheck(g, ember.id, bea.id).nextStep ?? '';
+    expect(step).toMatch(/27 °C/);
+    expect(nextStepLine(step, 'F')).toMatch(/^Next step: .*81 °F/);
+    expect(nextStepLine(step, 'F')).not.toMatch(/°C/);
+
+    const w = base();
+    const mossy = createTank(w, 'g20L', 'freshwater_cool', { cycled: true, name: 'Mossy' });
+    mossy.decor = Array.from({ length: 10 }, (_, i) => ({ id: `moss${i}`, defId: 'java_moss', x: -0.3 + i * 0.06, y: 0, z: 0, rotY: 0, scale: 2.4, seed: i, growth: 1, health: 100 })) as never;
+    const rng = simRng(w);
+    addCreature(w, createCreature(w, rng, 'white_cloud_minnow', { sex: 'male', ageDays: 200, name: 'Hiro' }), mossy.id);
+    const kumo = addCreature(w, createCreature(w, rng, 'white_cloud_minnow', { sex: 'female', ageDays: 200, name: 'Kumo' }), mossy.id);
+    mossy.water.tempC = 26;
+    kumo.repro.stage = 'gravid';
+    expect(breedingStatus(w, kumo.id)?.detail).toMatch(/needs ≤ 24 °C/);
+    useF();
+    useGame.setState({ game: w });
+    Object.assign(useGame.getInitialState(), useGame.getState());
+    try {
+      const young = text(renderToStaticMarkup(createElement(YoungView, { g: w })));
+      expect(young).toMatch(/Kumo .*Full of eggs — Can’t spawn yet: the water is too warm to spawn \(needs ≤ 75 °F\)/);
+      useUI.setState({ panel: 'livestock' });
+      const list = renderToStaticMarkup(createElement(LivestockPanel));
+      expect(list).toMatch(/title="Can’t spawn yet: the water is too warm to spawn \(needs ≤ 75 °F\)"/);
+      expect(`${young} ${list}`).not.toMatch(/≤ 24 °C/);
+    } finally {
+      useUI.setState({ panel: null });
+      useGame.setState({ game: null });
+    }
   });
 });
 
