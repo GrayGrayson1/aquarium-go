@@ -235,7 +235,7 @@ function CandidateRow({ g, c, on, lab, onPick }: { g: GameState; c: EntryCandida
           <span className="sh-cand__side">
             {lab ? (
               <>
-                <span className="sh-cand__score" title="Expected score before the judge's eye">
+                <span className="sh-cand__score" title="Expected score before the judge’s eye">
                   {c.expected.toFixed(1)}
                 </span>
                 <span className="sh-cand__odds">{Math.round(c.chances.ribbon * 100)}% ribbon</span>

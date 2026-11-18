@@ -113,7 +113,7 @@ describe('F2: money trouble leads to Finances', () => {
   it('the midnight debt warning and "Cash is getting low" open Finances (and the low-cash tip is a toast)', () => {
     const g = game(-20);
     devStepEconomy(g, toMidnight(g), { finance: true });
-    const red = g.log.find((e) => /in the red after today's bills/.test(e.text))!;
+    const red = g.log.find((e) => /in the red after today’s bills/.test(e.text))!; // Audit 2026-11-17 (J18): the sim writes ’, as the rest of the game
     expect(red.toast).toBe(true);
     expect(eventLink(red)).toMatchObject({ panel: 'finances', label: 'Open Finances' });
 
@@ -129,15 +129,16 @@ describe('F2: money trouble leads to Finances', () => {
   it('the club’s loans, a room money won’t restock and back in the black open Finances too', () => {
     for (const text of [
       `Good news: ${AQUARIUM_CLUB} heard you were struggling and lent you $140, interest-free. It is repaid automatically.`,
-      `${AQUARIUM_CLUB} would rather see your room full than quiet: they've lent you another $1,230, interest-free, to start again.`,
+      `${AQUARIUM_CLUB} would rather see your room full than quiet: they’ve lent you another $1,230, interest-free, to start again.`,
       `Loan repaid in full — ${AQUARIUM_CLUB} sends their thanks and a round of applause.`,
-      `Your tanks are empty and $4 won't restock them. If that's still true tomorrow, ${AQUARIUM_CLUB} will lend you enough to start again.`,
-      `You're back in the black with $12. Purchases are available again.`,
+      `Your tanks are empty and $4 won’t restock them. If that’s still true tomorrow, ${AQUARIUM_CLUB} will lend you enough to start again.`,
+      `You’re back in the black with $12. Purchases are available again.`,
+      `You're back in the black with $12. Purchases are available again.`, // Audit 2026-11-17 (J18): an older save's line still links
     ])
       expect(eventLink({ kind: 'info', text }), text).toMatchObject({ panel: 'finances' });
     // the sim still writes the phrases the link looks for (update MONEY_NEWS if this copy changes)
     const src = readFileSync(fileURLToPath(new URL('../../src/sim/economy/finance.ts', import.meta.url)), 'utf8');
-    for (const phrase of ["in the red after today's bills", 'Cash is getting low:', ', interest-free', 'Loan repaid in full', "won't restock ${", "You're back in the black"]) expect(src).toContain(phrase);
+    for (const phrase of ['in the red after today’s bills', 'Cash is getting low:', ', interest-free', 'Loan repaid in full', 'won’t restock ${', 'You’re back in the black']) expect(src).toContain(phrase); // Audit 2026-11-17 (J18): the sim writes ’, as the rest of the game
     expect(eventLink({ kind: 'info', text: 'Pip blew a bubble nest.' })).toBeNull();
   });
 
@@ -392,8 +393,8 @@ describe('F5: in debt after the club’s one-time loan, the words say so plainly
     const g = game(-40);
     g.finance.loan = { amount: 140, outstanding: 0, takenHour: 10, repaidHour: 50 };
     devStepEconomy(g, 24 - (g.clock.hour % 24) + 0.25, { finance: true });
-    const red = g.log.find((e) => /in the red after today's bills/.test(e.text))!;
-    expect(red.text).toContain("The club's one-time loan has been used, so selling is the way back above zero. If the food runs out, the club drops off a little.");
+    const red = g.log.find((e) => /in the red after today’s bills/.test(e.text))!; // Audit 2026-11-17 (J18): the sim writes ’, as the rest of the game
+    expect(red.text).toContain("The club’s one-time loan has been used, so selling is the way back above zero. If the food runs out, the club drops off a little.");
     expect(red.text).not.toContain('may be able to help');
     const out = text(renderToStaticMarkup(createElement(FinancesPanel)));
     expect(out).toContain('The aquarium club’s one-time loan has been used: sell an animal or decor to get back above zero. If your animals run out of food, the club drops off a little.');

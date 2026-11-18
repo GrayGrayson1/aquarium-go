@@ -81,7 +81,7 @@ export function fragEligibility(state: GameState, tank: Tank | undefined, inst: 
   const no = (code: FragBlock, message: string, progress = 0, hoursLeft?: number): FragEligibility => ({ ok: false, code, rule, message, progress: clamp01(progress), hoursLeft });
   if (!tank || !inst || !def) return no('unknown', 'That piece could not be found.');
   if (!isLiving(def)) return no('not_living', rule.why ?? 'Only living plants and corals can be propagated.');
-  if (!rule.can) return no('cannot', rule.why ?? `${def.name} can't be propagated by hand.`);
+  if (!rule.can) return no('cannot', rule.why ?? `${def.name} can’t be propagated by hand.`);
   if (!isUnlocked(state, def.unlock)) {
     const label = def.unlock ? (UNLOCK_KEYS as Record<string, string>)[def.unlock] ?? def.unlock : '';
     return no('locked', `Needs the “${label}” research first.`);
@@ -180,7 +180,7 @@ export function takeFrag(state: GameState, tankId: string, decorId: string): Act
       toast: true,
     });
   }
-  return { ok: true, message: `Took ${fragNounWithArticle(rule)} from the ${def.name.toLowerCase()} — it's in storage. The ${coral ? 'colony' : 'plant'} heals for ${hoursText(rule.recoveryHours)}.`, fragId: item.id };
+  return { ok: true, message: `Took ${fragNounWithArticle(rule)} from the ${def.name.toLowerCase()} — it’s in storage. The ${coral ? 'colony' : 'plant'} heals for ${hoursText(rule.recoveryHours)}.`, fragId: item.id };
 }
 
 // ───────────────────────────── frag racks & planting ─────────────────────────────

@@ -137,7 +137,7 @@ export const EQUIPMENT_KIND_LABEL: Record<EquipmentKind, string> = {
   ato: 'Auto top-off',
   co2: 'CO₂',
   autofeeder: 'Autofeeder', // lane:qa-r3 — one spelling everywhere
-  uv: 'UV sterilizer',
+  uv: 'UV steriliser',
   refugium: 'Refugium',
   wavemaker: 'Wavemaker',
   lid: 'Lid',

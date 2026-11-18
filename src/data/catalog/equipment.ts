@@ -366,7 +366,7 @@ export const EQUIPMENT: EquipmentDef[] = [
   {
     id: 'uv_sterilizer',
     kind: 'uv',
-    name: 'UV Sterilizer',
+    name: 'UV Steriliser',
     tier: 2,
     price: 95,
     upkeep: 0.08,
@@ -424,7 +424,7 @@ export const EQUIPMENT: EquipmentDef[] = [
   {
     id: 'live_food_doser',
     kind: 'doser',
-    name: 'Live-food doser',
+    name: 'Live-Food Doser',
     tier: 2,
     price: 45,
     upkeep: 0.02,

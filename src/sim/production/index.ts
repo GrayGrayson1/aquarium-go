@@ -973,7 +973,7 @@ function stepLine(state: GameState, line: ProductionLine, hour: number): void {
       if (line.running)
         emitEvent(state, {
           kind: 'info',
-          text: `${raise?.name ?? 'The raise tank'} is full, so ${m?.name ?? 'the pair'} and ${f?.name ?? 'its partner'} are kept apart until there's room.`,
+          text: `${raise?.name ?? 'The raise tank'} is full, so ${m?.name ?? 'the pair'} and ${f?.name ?? 'its partner'} are kept apart until there’s room.`,
           tankId: line.tanks.raise,
           notice: { topic: 'line_paused', vars: { line: line.name, lineId: line.id, tank: raise?.name ?? 'The raise tank', pair: `${m?.name ?? 'the pair'} and ${f?.name ?? 'its partner'}`, ...(day !== null ? { day } : {}) } },
         });
@@ -1219,7 +1219,7 @@ function release(state: GameState, line: ProductionLine, sp: SpeciesDefinition, 
     if (failed) {
       // what couldn't be listed is said once and tried again next hour (what was listed has left the batch's members)
       const n = unlisted.length;
-      notice(state, line, `list:${b.id}`, hour, { kind: 'warning', text: `${line.name}: ${n} ${youngWord(sp, unlisted, n)} couldn't be listed: ${failed}`, tankId: b.tankId });
+      notice(state, line, `list:${b.id}`, hour, { kind: 'warning', text: `${line.name}: ${n} ${youngWord(sp, unlisted, n)} couldn’t be listed: ${failed}`, tankId: b.tankId });
       continue;
     }
     b.released = true;

@@ -421,7 +421,7 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
     // and a warning beyond (DANGER: harm); tolerated but off-ideal is a note (GOOD).
     const past = p > r.max ? p - r.max : p < r.min ? r.min - p : 0;
     if (past > 0) {
-      add(past > 0.3 ? 'warning' : 'caution', 'chemistry', `This tank's pH is about ${p.toFixed(1)} — too ${p > r.max ? 'alkaline' : 'acidic'} for ${name} (pH ${r.min}–${r.max}).`, {
+      add(past > 0.3 ? 'warning' : 'caution', 'chemistry', `This tank’s pH is about ${p.toFixed(1)} — too ${p > r.max ? 'alkaline' : 'acidic'} for ${name} (pH ${r.min}–${r.max}).`, {
         mitigation: p > r.max ? 'Softer water, driftwood or almond leaves bring pH down slowly — or choose a species suited to this water.' : 'Buffer the water (and do regular water changes) to raise pH — or choose a species suited to this water.',
       });
     } else if (p > r.idealMax + 0.3 || p < r.idealMin - 0.3) {
@@ -575,7 +575,7 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
     }
   }
   if (sn.glassStrikeRisk && ctx.material === 'glass' && (ctx.glassMm ?? 99) < 10) {
-    add('warning', 'tank', `${cap(name)} strike hard enough to crack thin glass — this tank's ${ctx.glassMm} mm glass is at risk.`, { mitigation: 'Use an acrylic tank or glass at least 10 mm thick.' });
+    add('warning', 'tank', `${cap(name)} strike hard enough to crack thin glass — this tank’s ${ctx.glassMm} mm glass is at risk.`, { mitigation: 'Use an acrylic tank or glass at least 10 mm thick.' });
   }
   if (ctx.anemones > 0) {
     switch (stingHandled && sp.anemoneRelationship === 'prey_risk' ? 'handled' : sp.anemoneRelationship) {
@@ -705,7 +705,7 @@ function conspecific(m: CompatMember, ctx: CompatContext, out: Collector): void 
     out.add({
       severity: r.maleMale === 'lethal' ? 'warning' : 'caution',
       category: 'social',
-      text: `Their sexes aren't visible yet — if two turn out to be males, they are likely to fight.`,
+      text: `Their sexes aren’t visible yet — if two turn out to be males, they are likely to fight.`,
       speciesIds: ids,
       creatureIds: unknownIds,
       key,
@@ -749,16 +749,16 @@ function mutual(A: CompatMember, B: CompatMember, ctx: CompatContext, out: Colle
   const ov = Math.min(a.tempC.max, b.tempC.max) - Math.max(a.tempC.min, b.tempC.min);
   const iov = Math.min(a.tempC.idealMax, b.tempC.idealMax) - Math.max(a.tempC.idealMin, b.tempC.idealMin);
   const rng = (s: SpeciesDefinition) => `${s.tempC.min}–${s.tempC.max} °C`;
-  if (ov < 0) add('critical', 'temperature', `Their temperature needs don't overlap at all (${lower(a.commonName)} ${rng(a)}, ${lower(b.commonName)} ${rng(b)}).`);
+  if (ov < 0) add('critical', 'temperature', `Their temperature needs don’t overlap at all (${lower(a.commonName)} ${rng(a)}, ${lower(b.commonName)} ${rng(b)}).`);
   // lane:fix-water — ranges that merely touch (axolotl ≤ 21 °C, betta ≥ 21 °C) are no overlap in practice: the only
   // shared temperature is the edge where one is as cold and the other as warm as it can bear.
   else if (ov < 0.5) add('critical', 'temperature', `Their temperature needs only meet at the edge (${lower(a.commonName)} ${rng(a)}, ${lower(b.commonName)} ${rng(b)}) — too cold for one, too warm for the other.`);
   else if (ov < 2) add('warning', 'temperature', `Temperature ranges barely overlap (${lower(a.commonName)} ${rng(a)}, ${lower(b.commonName)} ${rng(b)}).`);
-  else if (iov < 0) add('caution', 'temperature', `Their ideal temperatures don't overlap — one of them will always be a little outside its comfort zone.`);
+  else if (iov < 0) add('caution', 'temperature', `Their ideal temperatures don’t overlap — one of them will always be a little outside its comfort zone.`);
   // pH
   const pov = Math.min(a.pH.max, b.pH.max) - Math.max(a.pH.min, b.pH.min);
   // Audit 2026-11-17 (D21): these three name which species wants what
-  if (pov < -0.3) add('warning', 'chemistry', `Their pH needs don't overlap: ${plural(a)} need pH ${a.pH.min}–${a.pH.max}, ${plural(b)} pH ${b.pH.min}–${b.pH.max}.`);
+  if (pov < -0.3) add('warning', 'chemistry', `Their pH needs don’t overlap: ${plural(a)} need pH ${a.pH.min}–${a.pH.max}, ${plural(b)} pH ${b.pH.min}–${b.pH.max}.`);
   else if (pov < 0.1) add('caution', 'chemistry', `pH ranges barely overlap.`);
   // Salinity
   if (a.salinitySG && b.salinitySG) {
@@ -1059,13 +1059,13 @@ function tankChecks(members: CompatMember[], ctx: CompatContext, out: Collector)
     out.add({
       severity: 'warning',
       category: 'tank',
-      text: `When grown, these animals would need ${Math.round(load * 100)}% of this tank's capacity — expect unstable water and constant stress.`,
+      text: `When grown, these animals would need ${Math.round(load * 100)}% of this tank’s capacity — expect unstable water and constant stress.`,
       speciesIds: ids,
       key: 'tank',
       mitigation: ctx.processCapUnits < ctx.spaceCapUnits ? 'A bigger filter helps; fewer animals help more.' : 'Use a larger tank or keep fewer animals.',
     });
   else if (load > 0.9)
-    out.add({ severity: 'caution', category: 'tank', text: `This stocking is near the tank's limit once everyone is full-grown (${Math.round(load * 100)}%).`, speciesIds: ids, key: 'tank' });
+    out.add({ severity: 'caution', category: 'tank', text: `This stocking is near the tank’s limit once everyone is full-grown (${Math.round(load * 100)}%).`, speciesIds: ids, key: 'tank' });
   const territoryRoom = Math.max(1, Math.floor(ctx.gallons / 10) + 1);
   if (territorial > territoryRoom && members.length > 1)
     out.add({

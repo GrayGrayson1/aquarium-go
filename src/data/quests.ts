@@ -153,7 +153,7 @@ const FLAVOURS: Record<string, StarterFlavour> = {
     feed: ['Slow food', 'Tap Target and offer frozen mysis right to {name}. Seahorses are slow, deliberate eaters — target feeding makes sure {name} gets a full share before anything else can snatch it.'],
     feedHint: 'tool-target-feed',
     water: ['Gentle and salty', 'Open the tank card and check the salinity. Seahorses need stable marine water ({salinity}) and very gentle flow.'],
-    habitat: ['Hitching posts', 'Add a plant, a soft branch or some décor from Build. Seahorses wrap their tails around it to rest.'],
+    habitat: ['Hitching posts', 'Add a plant, a soft branch or some decor from Build. Seahorses wrap their tails around it to rest.'],
     habitatPicks: ['hitching_post', 'red_ogo', 'chaetomorpha'],
     observe: ['The hitch', 'Watch {name} curl that tail around a hitching post and settle, eyes scanning independently.', ['observed:hitch', 'observed:hitched', 'observed:snick_feed']],
     upgrade: ['A nursery', 'Earn a little more reputation to unlock nursery tanks. Seahorse fry are tiny and need a safe place to grow.', ['nursery']],

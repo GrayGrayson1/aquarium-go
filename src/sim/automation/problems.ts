@@ -234,9 +234,9 @@ export function saltOutText(state: GameState, p: SupplyProblem): string {
     case 'orders_off':
       return `${name}'s orders are switched off, so nobody reorders salt mix.${lasts}`;
     case 'cash':
-      return `${name} couldn't reorder salt mix: there isn't enough cash right now.${lasts}`;
+      return `${name} couldn’t reorder salt mix: there isn’t enough cash right now.${lasts}`;
     default:
-      return `${name} couldn't reorder salt mix — today's stock budget is spent.${lasts}`;
+      return `${name} couldn’t reorder salt mix — today’s stock budget is spent.${lasts}`;
   }
 }
 

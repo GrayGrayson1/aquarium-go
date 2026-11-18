@@ -496,7 +496,7 @@ describe('C13: advice names only what the game can do', () => {
     t.water.clarity = 0.5;
     t.water.bioMaturity = 1;
     const p = param(s, 'clarity');
-    expect(p.advice).toBe('Shorten the lights to about 8 hours and change water; a UV sterilizer clears it faster.');
+    expect(p.advice).toBe('Shorten the lights to about 8 hours and change water; a UV steriliser clears it faster.'); // Audit 2026-11-17 (J18): British, as the game spells it
     expect(fixForWaterIssue(t, { text: p.reason!, advice: p.advice, param: 'clarity' })?.label).toBe('Lighting');
   });
 

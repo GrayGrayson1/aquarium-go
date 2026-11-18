@@ -38,7 +38,7 @@ export function moveCreature(state: GameState, creatureId: string, tankId: strin
   // B-127: both tanks catch up first, so the move happens at one world time; then the checks see the animal as it is
   // now (it may have died during the owed hours: the chunk 4 review)
   settleTanks(state, [c.tankId, tankId]);
-  if (c.status === 'dead' || c.status === 'sold') return { ok: false, message: `${c.name} can't be moved.` };
+  if (c.status === 'dead' || c.status === 'sold') return { ok: false, message: `${c.name} can’t be moved.` };
   if (c.tankId === tankId) return { ok: true, message: `${c.name} is already in ${tank.name}.` };
   const sp = findSpecies(c.speciesId);
   if (!sp) return { ok: false, message: 'Unknown species.' };
@@ -49,7 +49,7 @@ export function moveCreature(state: GameState, creatureId: string, tankId: strin
     /* compat lane mid-edit: fall back to the plain environment check above */
   }
   if (!gate.ok) {
-    return { ok: false, message: gate.reason ?? `${c.name} is a ${sp.environment} animal and can't live in a ${tank.environment} tank.` };
+    return { ok: false, message: gate.reason ?? `${c.name} is a ${sp.environment} animal and can’t live in a ${tank.environment} tank.` };
   }
   const from = c.tankId ? state.tanks[c.tankId]?.name ?? 'another tank' : 'holding';
   const hour = state.clock.hour;
@@ -108,7 +108,7 @@ const INTERACTION = {
 function bondMilestone(name: string, level: number, invert: boolean): string {
   if (level >= 100) return `${name} and you share a real bond.`;
   if (level >= 75) return `${name} is completely at ease with you.`;
-  if (level >= 50) return invert ? `${name} carries on calmly whenever you're near.` : `${name} now recognises you and comes over when you're near.`;
+  if (level >= 50) return invert ? `${name} carries on calmly whenever you’re near.` : `${name} now recognises you and comes over when you’re near.`;
   return `${name} is getting used to you.`;
 }
 

@@ -59,6 +59,7 @@ import { createClutch } from '@/sim/life/breeding/clutch';
 import { IncomeChart } from '@/ui/panels/finances/IncomeChart';
 import { probabilityWord } from '@/ui/common/format';
 import type { CompatReport } from '@/types';
+import { moveCreature } from '@/sim/life/actions';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -434,5 +435,21 @@ describe('J17: how often a risk happens, in words that fit “Happens …”', (
     const html = text(renderToStaticMarkup(createElement(CompatView, { report })));
     expect(html).toContain('Happens often (about 35% a week)');
     expect(html).not.toMatch(/likely \(|% \/ week/);
+  });
+});
+
+describe('J18: one spelling for each thing', () => {
+  it('the sim’s sentences use the curly apostrophe the rest of the game uses', () => {
+    const g = base();
+    const ember = Object.values(g.creatures)[0];
+    expect(saleWarnings(g, [ember.id]).join(' ')).toContain('they’re gone for good');
+    ember.status = 'dead';
+    expect(moveCreature(g, ember.id, g.tankOrder[0]).message).toBe('Ember can’t be moved.');
+  });
+
+  it('British spellings and one form for each name', () => {
+    expect(EQUIPMENT_KIND_LABEL.uv).toBe('UV steriliser');
+    expect(getEquipmentDef('uv_sterilizer')?.name).toBe('UV Steriliser');
+    expect(getEquipmentDef('live_food_doser')?.name).toBe('Live-Food Doser');
   });
 });

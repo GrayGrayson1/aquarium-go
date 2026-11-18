@@ -79,7 +79,7 @@ describe('market: buyer message bank', () => {
         }),
       );
     }
-    expect([...seen].some((m) => /aquascape is gorgeous/i.test(m) && /don't care much about rare morphs/i.test(m))).toBe(true);
+    expect([...seen].some((m) => /aquascape is gorgeous/i.test(m) && /don’t care much about rare morphs/i.test(m))).toBe(true);
     const lineage = new Set<string>();
     for (let i = 0; i < 400; i++) {
       lineage.add(
@@ -92,6 +92,6 @@ describe('market: buyer message bank', () => {
         }),
       );
     }
-    expect([...lineage].some((m) => /lineage on the axolotls, but the tank is smaller than I'd like/i.test(m))).toBe(true);
+    expect([...lineage].some((m) => /lineage on the axolotls, but the tank is smaller than I’d like/i.test(m))).toBe(true);
   });
 });

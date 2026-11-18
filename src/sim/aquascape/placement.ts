@@ -88,7 +88,7 @@ function envMessage(def: DecorDef, tank: Tank): string | null {
   }
   if (def.waterClasses && def.waterClasses.length && !def.waterClasses.includes(tank.waterClass)) {
     if (def.waterClasses.length === 1 && def.waterClasses[0] === 'reef') return `${def.name} needs a reef tank with coral lighting.`;
-    return `${def.name} can't live in this tank type.`;
+    return `${def.name} can’t live in this tank type.`;
   }
   return null;
 }
@@ -183,7 +183,7 @@ export function checkPlacement(
     return { ok: false, message: `Not enough money — ${def.name} costs $${def.price}.`, code: 'money', ...res };
   }
   if (opts.purchase === 'owned' && !state.inventory.decor.some((i) => i.defId === defId)) {
-    return { ok: false, message: `You don't have ${withArticle(def.name)} in storage.`, code: 'inventory', ...res };
+    return { ok: false, message: `You don’t have ${withArticle(def.name)} in storage.`, code: 'inventory', ...res };
   }
   return { ok: true, message: `Place ${def.name}`, ...res };
 }

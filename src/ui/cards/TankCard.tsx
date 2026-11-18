@@ -322,7 +322,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
               <span data-fix="dose-bacteria" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'bacteria' }, 'dosed', 'bubble')}>Bottled bacteria{price('bacteria')}</Chip></span>
               {salty && <span data-fix="dose-salt" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'salt' }, 'dosed', 'bubble')}>Salt mix</Chip></span>}
               <span data-fix="dose-buffer" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'buffer' }, 'dosed', 'bubble')}>Buffer{price('buffer')}</Chip></span>
-              {planted && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'fertilizer' }, 'dosed', 'bubble')}>Fertilizer{price('fertilizer')}</Chip>}
+              {planted && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'fertilizer' }, 'dosed', 'bubble')}>Fertiliser{price('fertilizer')}</Chip>}
               {reef && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'coral_supplement' }, 'dosed', 'bubble')}>Coral supplement{price('coral_supplement')}</Chip>}
             </div>
             {salty && (

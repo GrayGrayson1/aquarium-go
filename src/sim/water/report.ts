@@ -283,7 +283,7 @@ export function speciesWaterComfortImpl(species: SpeciesDefinition, tank: Tank):
       pen += 8;
       stressors.push(
         species.environment === 'brackish' && sg < r.idealMin && tank.environment === 'freshwater'
-          ? `${name[0].toUpperCase()}${name.slice(1)} live in fresh water, but a little salt suits them best — that means a brackish tank (SG ${fmt(r.idealMin, 3)}–${fmt(r.idealMax, 3)}, from Research › Brackish Estuaries); salt can't go into a freshwater tank.`
+          ? `${name[0].toUpperCase()}${name.slice(1)} live in fresh water, but a little salt suits them best — that means a brackish tank (SG ${fmt(r.idealMin, 3)}–${fmt(r.idealMax, 3)}, from Research › Brackish Estuaries); salt can’t go into a freshwater tank.`
           : `Salinity ${fmt(sg, 3)} is slightly off ideal (${fmt(r.idealMin, 3)}–${fmt(r.idealMax, 3)}).`,
       );
     }
@@ -334,10 +334,10 @@ export function speciesWaterComfortImpl(species: SpeciesDefinition, tank: Tank):
     stressors.push(`${cap(name)} want ${FLOW_LABEL[species.flowPreference]} flow; this water is too still.`);
   } else if (fm === 'bit_strong') {
     pen += 4;
-    stressors.push(`Flow is a touch strong for ${name} — fine, though they'd like it ${FLOW_LABEL[species.flowPreference]}.`);
+    stressors.push(`Flow is a touch strong for ${name} — fine, though they’d like it ${FLOW_LABEL[species.flowPreference]}.`);
   } else if (fm === 'bit_still') {
     pen += 3;
-    stressors.push(`The water is a touch still for ${name} — fine, though they'd like ${FLOW_LABEL[species.flowPreference]} flow.`);
+    stressors.push(`The water is a touch still for ${name} — fine, though they’d like ${FLOW_LABEL[species.flowPreference]} flow.`);
   }
 
   // Low level for jumpers/air breathers doesn't hurt; skip. Recent shock handled by the life lane (water.shock).
@@ -707,7 +707,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         display: `${Math.round(load * 100)}%`,
         status: st,
         ideal: 'under 85% of capacity',
-        reason: st === 'good' ? undefined : `The animals produce ${Math.round(load * 100)}% of what this tank's ${limit} can comfortably handle — chemistry will swing.${coolNote}`,
+        reason: st === 'good' ? undefined : `The animals produce ${Math.round(load * 100)}% of what this tank’s ${limit} can comfortably handle — chemistry will swing.${coolNote}`,
         advice: st === 'good' ? undefined : limit === 'filter capacity' ? 'Upgrade or add a filter, or rehome some animals.' : 'Move some animals to another tank or upgrade to a larger aquarium.',
       },
       st === 'danger' ? 'Tank is overstocked' : 'Stocking is near the limit',
@@ -930,7 +930,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
                 ? 'Green water: free-floating algae.'
                 : 'Suspended detritus and leftover food are clouding the water.',
         // Audit 2026-11-17 C13 — green water is free-floating algae: vacuuming doesn't touch it, light and nutrients do
-        advice: st === 'good' ? undefined : bloom ? 'Be patient, feed lightly; a UV sterilizer clears it faster.' : w.algae > 50 ? 'Shorten the lights to about 8 hours and change water; a UV sterilizer clears it faster.' : 'Vacuum the substrate, rinse the filter sponge in tank water and feed less.',
+        advice: st === 'good' ? undefined : bloom ? 'Be patient, feed lightly; a UV steriliser clears it faster.' : w.algae > 50 ? 'Shorten the lights to about 8 hours and change water; a UV steriliser clears it faster.' : 'Vacuum the substrate, rinse the filter sponge in tank water and feed less.',
       },
       'Water is cloudy',
     );

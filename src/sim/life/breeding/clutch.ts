@@ -353,7 +353,7 @@ function parentName(state: GameState, cl: Clutch): string {
 }
 
 const LOSS_TEXT: Record<LossCause, (sp: SpeciesDefinition) => string> = {
-  predation: () => 'they were eaten by tankmates or lost to the display — next time move them to a nursery tank',
+  predation: () => 'they were eaten by tank mates or lost to the display — next time move them to a nursery tank',
   starvation: (sp) => `the young starved — ${spName(sp)} young need suitable live food such as infusoria, baby brine shrimp or copepods`,
   water: () => 'the water quality was too poor for such delicate young',
   crowding: () => 'too many young in too little water — crowded siblings turned on each other',
@@ -519,7 +519,7 @@ function predationText(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
   const tending = isAlive(guardian) && guardian.tankId === cl.tankId && !pred.guardianEating && (cl.stage === 'eggs' || !!mod.plan.guardYoung);
   if (pred.guardianEating) return `${pred.guardianEating.name} has started eating the fry he raised — move him out of ${tank.name} now!`;
   if (mod.plan.planktonic && cl.stage !== 'eggs' && !isNurseryFor(state, tank, hour)) {
-    return `${who} ${label} are drifting into the filter and the mouths of tankmates. Move them to a nursery tank (Livestock › Eggs & fry) to save them.`;
+    return `${who} ${label} are drifting into the filter and the mouths of tank mates. Move them to a nursery tank (Livestock › Eggs & fry) to save them.`;
   }
   if (pred.conspecific.length && tending && guardian) {
     const one = pred.conspecific.length === 1;

@@ -415,7 +415,7 @@ describe('D21: lines name the species they are about', () => {
     const neon = getSpecies('neon_tetra');
     const hard = { ...structuredClone(getSpecies('platy')), id: 'fx_hard', commonName: 'Fixture rockfish', exceptionRules: [], positiveInteractions: [], pH: { min: 8.2, max: 8.8, idealMin: 8.3, idealMax: 8.6 } };
     ph = texts(evaluateComposition([simpleMember(neon, 6, 'mixed'), simpleMember(hard, 1, 'male')], { ...neutralContext(neon, hard), neutral: false, flowIndex: 1, lightLevel: 1 }).report);
-    expect(ph).toMatch(/Their pH needs don't overlap: \S.* need pH [\d.]+–[\d.]+, \S.* pH [\d.]+–[\d.]+\./);
+    expect(ph).toMatch(/Their pH needs don’t overlap: \S.* need pH [\d.]+–[\d.]+, \S.* pH [\d.]+–[\d.]+\./);
   });
 
   it('the offer’s callouts use the plural: “Royal grammas need…”', () => {

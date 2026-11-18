@@ -79,7 +79,7 @@ export function feedTank(
   const food = getFoodDef(foodId);
   if (!food) return fail('Unknown food.');
   const have = Math.floor(state.inventory.foods[foodId] ?? 0);
-  if (have < 1) return fail(`You're out of ${food.name.toLowerCase()} — buy more in the shop.`);
+  if (have < 1) return fail(`You’re out of ${food.name.toLowerCase()} — buy more in the shop.`);
 
   let targetName: string | null = null;
   let targetSp: SpeciesDefinition | undefined;
@@ -91,7 +91,7 @@ export function feedTank(
     targetName = c.name || targetSp?.commonName || 'it';
     if (targetSp && !food.tags.some((t) => targetSp!.foods.includes(t))) {
       // Audit 2026-11-17 C18 (B-224) — what it eats in shop words ("live copepods"), not raw tags ("copepod live")
-      return fail(`${targetName} won't eat ${food.name.toLowerCase()}. ${cap(pluralName(targetSp))} eat ${joinFoodNames(foodTagNames(targetSp.foods, { max: 4, shelfOnly: true }))}.`);
+      return fail(`${targetName} won’t eat ${food.name.toLowerCase()}. ${cap(pluralName(targetSp))} eat ${joinFoodNames(foodTagNames(targetSp.foods, { max: 4, shelfOnly: true }))}.`);
     }
   }
 
@@ -137,7 +137,7 @@ export function feedTank(
   const parts: string[] = [];
   // lane:qa-r3 — the note is worth seeing even where feeding is normally quiet (a click in the water): see `caution`
   let caution = false;
-  if (targetName) parts.push(`Offered ${targetName} ${food.name.toLowerCase()} with the feeding tongs — it's theirs for the next hour.`);
+  if (targetName) parts.push(`Offered ${targetName} ${food.name.toLowerCase()} with the feeding tongs — it’s theirs for the next hour.`);
   else parts.push(`Fed ${plural(servings, 'serving')} of ${food.name.toLowerCase()}.`);
   if (residents.length === 0) {
     // lane:qa-r3 — feeding an empty tank used to read like an ordinary feed
@@ -491,12 +491,12 @@ export function installEquipment(
     if (def.kind === 'skimmer') return fail('Protein skimmers only work in salt water — fresh water will not foam.');
     if (def.kind === 'co2') return fail('CO₂ injection is for freshwater planted tanks.');
     if (def.kind === 'refugium') return fail('A macroalgae refugium is a marine system.');
-    return fail(`The ${def.name} isn't made for ${tank.environment} tanks.`);
+    return fail(`The ${def.name} isn’t made for ${tank.environment} tanks.`);
   }
   const sameKind = tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind === def.kind).length;
   const max = MAX_PER_KIND[def.kind] ?? 6;
   // lane:fit — one-per-tank kinds read "already has an auto top-off", not "already has 1 auto top-offs"
-  if (sameKind >= max) return fail(max === 1 ? oneOnlyText(tank, def) /* Audit 2026-11-17 C17 */ : `This tank already has ${sameKind} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that's the most that fit.`);
+  if (sameKind >= max) return fail(max === 1 ? oneOnlyText(tank, def) /* Audit 2026-11-17 C17 */ : `This tank already has ${sameKind} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that’s the most that fit.`);
 
   let inst: EquipmentInstance | undefined;
   let fromStorage = false;
@@ -505,7 +505,7 @@ export function installEquipment(
     if (idx >= 0) {
       inst = state.inventory.equipment.splice(idx, 1)[0];
       fromStorage = true;
-    } else if (opts.instanceId || opts.fromInventory) return fail(`You don't have a spare ${def.name} in storage.`);
+    } else if (opts.instanceId || opts.fromInventory) return fail(`You don’t have a spare ${def.name} in storage.`);
   }
   const hour = state.clock.hour;
   if (!inst) {
@@ -527,7 +527,7 @@ export function installEquipment(
     const m0 = tank.water.bioMaturity;
     if (seed > m0) {
       tank.water.bioMaturity = clamp(m0 + (seed - m0) * Math.min(1, share * 1.2), 0, 1);
-      notes.push(`Its mature media seeded the tank's bacteria (cycle ${Math.round(m0 * 100)}% → ${Math.round(tank.water.bioMaturity * 100)}%).`);
+      notes.push(`Its mature media seeded the tank’s bacteria (cycle ${Math.round(m0 * 100)}% → ${Math.round(tank.water.bioMaturity * 100)}%).`);
     } else if (age > 48) {
       notes.push('The bacteria in its media died off while it sat dry.');
     }
@@ -541,7 +541,7 @@ export function installEquipment(
   // airstone-vs-CO₂ notes below, so those only appear when it has nothing to say.
   const fit = poorFit(state, tank, inst.id);
   if (fit) notes.push(`${fit.level === 'harmful' ? 'Warning' : 'Heads-up'}: ${fit.text}`);
-  if (!fit && gallons > def.gallonsRange.max * 1.05) notes.push(`It's undersized for ${aOrAn(gallons)} ${gallons}-gallon tank.`);
+  if (!fit && gallons > def.gallonsRange.max * 1.05) notes.push(`It’s undersized for ${aOrAn(gallons)} ${gallons}-gallon tank.`);
   if (!fit && def.kind === 'heater' && tank.waterClass === 'freshwater_cool') notes.push('Heads-up: this is a cool-water tank — the heater is set low as a cold-room safety net.');
   if (def.kind === 'heater' || def.kind === 'chiller') notes.push(`Set to ${inst.setting?.toFixed(1)} °C.`);
   const conflict = equipmentSummary(tank).conflict;
@@ -659,7 +659,7 @@ export function setEquipment(state: GameState, tankId: string, equipmentId: stri
   let caution = false;
   if (s.conflict) {
     caution = true;
-    notes.push(`Warning: heater ${s.heaterSet?.toFixed(1)} °C vs chiller ${s.chillerSet?.toFixed(1)} °C — they'll fight each other. ${fightAdvice(state, tank, s.heaterSet ?? 0, s.chillerSet ?? 0)}`); // Audit 2026-11-17 C7
+    notes.push(`Warning: heater ${s.heaterSet?.toFixed(1)} °C vs chiller ${s.chillerSet?.toFixed(1)} °C — they’ll fight each other. ${fightAdvice(state, tank, s.heaterSet ?? 0, s.chillerSet ?? 0)}`); // Audit 2026-11-17 C7
   }
   // lane:qa-r3 — a thermostat set outside what these animals need says so, with the setting to aim for
   if ((def.kind === 'heater' || def.kind === 'chiller') && patch.setting !== undefined && inst.on && !inst.failed) {

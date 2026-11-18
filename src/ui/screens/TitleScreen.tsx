@@ -233,7 +233,7 @@ export function TitleScreen() {
           <motion.button {...item(1)} type="button" className={`ag-menubtn ${latest ? '' : 'ag-menubtn--primary'}`} data-testid="title-new-game" onClick={onNew} onPointerEnter={prewarmNow} onFocus={prewarmNow}>
             <Sparkles size={18} aria-hidden />
             <span className="ag-menubtn__text">
-              <span>New Game</span>
+              <span>New game</span>
               {/* audit I14: an invite link with no save waits for the first game: say so here */}
               {!latest && <span className="ag-menubtn__sub" data-testid={invited ? 'title-invited' : undefined}>{invited ? SOCIAL_COPY.titleInvited : 'Choose your first companion'}</span>}
             </span>

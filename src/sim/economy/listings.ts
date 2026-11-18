@@ -185,7 +185,7 @@ function pairCheck(a: Creature, b: Creature): string | null {
   if (['egg', 'larva', 'fry'].includes(a.lifeStage) || ['egg', 'larva', 'fry'].includes(b.lifeStage)) return 'These animals are too young to sell as a pair — list them as juveniles.';
   switch (sp.sexSystem) {
     case 'gonochoristic': {
-      if (a.sex === 'unknown' || b.sex === 'unknown') return `Their sexes can't be told apart yet, so they can't be sold as a pair. List them as a group instead.`;
+      if (a.sex === 'unknown' || b.sex === 'unknown') return `Their sexes can’t be told apart yet, so they can’t be sold as a pair. List them as a group instead.`;
       if (a.sex === b.sex) return `A pair needs one male and one female — these are both ${a.sex}s. List them as a group instead.`;
       return null;
     }
@@ -194,7 +194,7 @@ function pairCheck(a: Creature, b: Creature): string | null {
     case 'simultaneous_hermaphrodite':
       return null; // any two can form a pair
     default:
-      return `Pairs don't apply to ${speciesPlural(a.speciesId)}. List them as a group instead.`;
+      return `Pairs don’t apply to ${speciesPlural(a.speciesId)}. List them as a group instead.`;
   }
 }
 
@@ -231,10 +231,10 @@ function resolveContents(state: GameState, spec: Pick<ListingSpec, 'kind' | 'cre
   for (const id of ids) {
     const c = state.creatures[id];
     if (!c) return { ...base, ok: false, message: 'One of those animals could not be found.' };
-    if (c.status === 'dead') return { ...base, ok: false, message: `${c.name} has died and can't be listed.` };
+    if (c.status === 'dead') return { ...base, ok: false, message: `${c.name} has died and can’t be listed.` };
     if (c.status === 'sold') return { ...base, ok: false, message: `${c.name} has already been sold.` };
     if (c.status === 'listed') return { ...base, ok: false, message: `${c.name} is already listed.` };
-    if (c.status !== 'alive') return { ...base, ok: false, message: `${c.name} can't be listed right now.` };
+    if (c.status !== 'alive') return { ...base, ok: false, message: `${c.name} can’t be listed right now.` };
     if (c.tankId && activeListingFor(state, c.tankId)) return { ...base, ok: false, message: `${c.name}'s tank is listed as a whole aquarium.` };
     creatures.push(c);
   }
@@ -827,7 +827,7 @@ function orgOf(buyer: BuyerProfile | undefined): string | undefined {
  * so it doesn't eat or age there (docs/KNOWN_LIMITATIONS.md).
  */
 export const holdingText = (name: string): string =>
-  `${name} was not part of the sale and is resting in a holding container (they don't eat or age there). Move ${name} to a tank when you can.`;
+  `${name} was not part of the sale and is resting in a holding container (they don’t eat or age there). Move ${name} to a tank when you can.`;
 
 /** The single path through which every sale happens (accept, accepted counter, buy-now). */
 function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via: 'accept' | 'counter' | 'buy_now', rng: Rng): ActionResult {
@@ -880,7 +880,7 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
     }
     pushCapped(r.c.history, { hour: now, kind: 'moved', text: `Moved to ${to?.name ?? 'another tank'} — not part of the sale of ${check.tank?.name ?? 'its tank'}.` }, 40);
     // Say where they went (S03-04): the log entry opens the animal.
-    emitEvent(state, { kind: 'info', text: `${r.c.name} wasn't part of the sale and now lives in ${to?.name ?? 'another tank'}.`, creatureId: r.c.id, tankId: r.toTankId, toast: true });
+    emitEvent(state, { kind: 'info', text: `${r.c.name} wasn’t part of the sale and now lives in ${to?.name ?? 'another tank'}.`, creatureId: r.c.id, tankId: r.toTankId, toast: true });
   }
 
   // 3. Exactly the listed contents leave.
@@ -1103,7 +1103,7 @@ export function counterBid(state: GameState, listingId: string, bidId: string, a
   if (l.status !== 'active') return fail(statusMessage(l));
   const b = l.bids.find((x) => x.id === bidId);
   if (!b) return fail('That offer could not be found.');
-  if (b.status === 'countered') return fail(`You've already countered — waiting for ${b.buyerName ?? 'the buyer'}.`);
+  if (b.status === 'countered') return fail(`You’ve already countered — waiting for ${b.buyerName ?? 'the buyer'}.`);
   if (b.status !== 'open') return fail(`That offer is no longer open (${b.status}).`);
   if (b.expiresHour <= state.clock.hour) {
     b.status = 'expired';
@@ -1349,7 +1349,7 @@ function checkIntegrity(state: GameState, l: Listing, rng: Rng): boolean {
     // re-checked until it can go ahead.
     if (l.blocked && validateForSale(state, l).ok) {
       delete l.blocked;
-      emitEvent(state, { kind: 'info', text: `"${l.title}" can sell again — every animal that isn't part of the sale has somewhere to go.`, listingId: l.id, tankId: tank.id });
+      emitEvent(state, { kind: 'info', text: `"${l.title}" can sell again — every animal that isn’t part of the sale has somewhere to go.`, listingId: l.id, tankId: tank.id });
     }
     const sig = tankSignature(tank);
     if (l.snapshot.signature && sig !== l.snapshot.signature && !has(`sig:${sig}`)) {
@@ -1357,7 +1357,7 @@ function checkIntegrity(state: GameState, l: Listing, rng: Rng): boolean {
       if (onlyAdditions(l.snapshot.signature, sig)) {
         // Gear or decor added after listing stays with the seller (completeSale hands it back), so buyers price the
         // listing exactly as before: no re-pricing, no change of heart (lane:fix-econ, S03-01).
-        emitEvent(state, { kind: 'info', text: `What you added to "${tank.name}" after listing it isn't part of the sale — it goes back to storage if the tank sells. Offers are unchanged.`, listingId: l.id, tankId: tank.id });
+        emitEvent(state, { kind: 'info', text: `What you added to "${tank.name}" after listing it isn’t part of the sale — it goes back to storage if the tank sells. Offers are unchanged.`, listingId: l.id, tankId: tank.id });
       } else {
         markChanged(l, 'The aquascape or equipment changed after listing.');
         repriceBids(state, l, rng, 'the layout change', 0.35, 'changed');
@@ -1369,7 +1369,7 @@ function checkIntegrity(state: GameState, l: Listing, rng: Rng): boolean {
       addAlert('water');
       markChanged(l, 'Water quality crashed after listing.');
       repriceBids(state, l, rng, 'the water problems', 0.4, 'water', 0.85);
-      emitEvent(state, { kind: 'warning', text: `Water quality in "${tank.name}" crashed while it's listed. Buyers noticed — fix the water to protect the sale.`, listingId: l.id, tankId: tank.id, toast: true });
+      emitEvent(state, { kind: 'warning', text: `Water quality in "${tank.name}" crashed while it’s listed. Buyers noticed — fix the water to protect the sale.`, listingId: l.id, tankId: tank.id, toast: true });
     } else if (status === 'good' && has('water')) {
       removeAlert('water');
     }

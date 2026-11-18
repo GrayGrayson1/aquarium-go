@@ -38,7 +38,7 @@ const fail = (message: string): ActionResult => ({ ok: false, message });
 
 function needMoney(state: GameState, price: number, what: string): ActionResult {
   const money = state.finance.money;
-  if (money < 0) return fail(`You're ${fmtMoney(-money)} in debt, so purchases are paused. Sell something or wait for income first.`);
+  if (money < 0) return fail(`You’re ${fmtMoney(-money)} in debt, so purchases are paused. Sell something or wait for income first.`);
   return fail(`Not enough money for ${what}: it costs ${fmtMoney(price)} and you have ${fmtMoney(money)}.`);
 }
 
@@ -81,9 +81,9 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
   try {
     gate = environmentGate(sp, tank);
   } catch {
-    gate = sp.environment === tank.environment ? { ok: true } : { ok: false, reason: `${sp.commonName} can't live in a ${tank.environment} tank.` };
+    gate = sp.environment === tank.environment ? { ok: true } : { ok: false, reason: `${sp.commonName} can’t live in a ${tank.environment} tank.` };
   }
-  if (!gate.ok) return fail(gate.reason ?? `${sp.commonName} can't live in this tank's water.`);
+  if (!gate.ok) return fail(gate.reason ?? `${sp.commonName} can’t live in this tank’s water.`);
 
   const total = offer.creatures.length;
   if (total === 0) {
@@ -308,7 +308,7 @@ export interface BuyTankOptions {
 export function buyTank(state: GameState, tierId: string, waterClass: WaterClass, placement?: { x: number; z: number; rotY: number }, opts: BuyTankOptions = {}): ActionResult & { tankId?: string } {
   const tier = TANK_TIER_BY_ID[tierId];
   if (!tier) return fail('Unknown tank size.');
-  if (!isUnlocked(state, tier.unlock)) return fail(`The ${tier.name} isn't available yet (${unlockHint(tier.unlock)}).`);
+  if (!isUnlocked(state, tier.unlock)) return fail(`The ${tier.name} isn’t available yet (${unlockHint(tier.unlock)}).`);
   const waterLock = waterClassLock(state, waterClass); // chunk 7 (B-160): the rule, not only Build's screen
   if (waterLock) return fail(waterLock);
   let spot: { x: number; z: number; rotY: number } | null = placement ?? null;
@@ -320,7 +320,7 @@ export function buyTank(state: GameState, tierId: string, waterClass: WaterClass
     }
   }
   // Audit 2026-11-17 (G19): the real ways out (taking an empty tank down, an auction once it opens, a bigger venue)
-  if (!spot) return fail(`There's no floor space for ${aOrAn(tier.name)} ${tier.name}. Choose a smaller size, move a tank, or take down an empty tank you no longer need in Tanks${isUnlocked(state, 'tank_auctions') ? ' (or auction one in Market › My listings)' : ''}. A bigger venue (Build › Facility) adds room.`);
+  if (!spot) return fail(`There’s no floor space for ${aOrAn(tier.name)} ${tier.name}. Choose a smaller size, move a tank, or take down an empty tank you no longer need in Tanks${isUnlocked(state, 'tank_auctions') ? ' (or auction one in Market › My listings)' : ''}. A bigger venue (Build › Facility) adds room.`);
   const gear = kitEquipmentFor(state, tierId, waterClass);
   const kit = tankKitPrice(tierId, waterClass, !!opts.seeded, state);
   if (!canAfford(state, kit.total)) return needMoney(state, kit.total, `the ${tier.name} kit`);
@@ -336,10 +336,10 @@ export function buyTank(state: GameState, tierId: string, waterClass: WaterClass
   emitEvent(state, {
     kind: 'tip',
     text: opts.seeded
-      ? `Your ${tier.name} is set up with seeded media, so it's partly cycled. Add animals gradually and keep testing the water.`
+      ? `Your ${tier.name} is set up with seeded media, so it’s partly cycled. Add animals gradually and keep testing the water.`
       : // Audit 2026-11-17 C5 — new water reads zero ammonia and nitrite from the start, so "wait until they read zero"
         // was passed at once; say what to watch instead, and how long (a pinch a day: about a week in the sim)
-        `Your ${tier.name} is filled, but it isn't cycled yet. Drop in a pinch of food each day until the tank card’s Biological filter reads Mature before adding animals — about a week, or a few days with bottled bacteria.`,
+        `Your ${tier.name} is filled, but it isn’t cycled yet. Drop in a pinch of food each day until the tank card’s Biological filter reads Mature before adding animals — about a week, or a few days with bottled bacteria.`,
     tankId: tank.id,
     toast: true,
   });
@@ -355,8 +355,8 @@ export function buyEquipment(state: GameState, tankId: string, defId: string): A
   if (!def) return fail('Unknown equipment.');
   const tank = state.tanks[tankId];
   if (!tank) return fail('Choose a tank to install it in.');
-  if (!isUnlocked(state, def.unlock)) return fail(`${def.name} isn't available yet (${unlockHint(def.unlock)}).`);
-  if (def.environments?.length && !def.environments.includes(tank.environment)) return fail(`${def.name} isn't made for ${tank.environment} tanks.`);
+  if (!isUnlocked(state, def.unlock)) return fail(`${def.name} isn’t available yet (${unlockHint(def.unlock)}).`);
+  if (def.environments?.length && !def.environments.includes(tank.environment)) return fail(`${def.name} isn’t made for ${tank.environment} tanks.`);
   if (!canAfford(state, def.price)) return needMoney(state, def.price, def.name);
   const res = installEquipment(state, tankId, defId, { purchased: true });
   if (!res.ok) return res;
@@ -374,7 +374,7 @@ export function buyFood(state: GameState, foodId: string, packs: number): Action
   if (!def) return fail('Unknown food.');
   const n = Math.floor(finite(packs, 0));
   if (n < 1 || n > 99) return fail('Choose between 1 and 99 packs.');
-  if (!isUnlocked(state, def.unlock)) return fail(`${def.name} isn't available yet (${unlockHint(def.unlock)}).`);
+  if (!isUnlocked(state, def.unlock)) return fail(`${def.name} isn’t available yet (${unlockHint(def.unlock)}).`);
   // chunk 17 (ADR-0053 decision 5): a food sold with certain animals waits until one of them can be bought
   if (!isFoodAvailable(state, def)) return fail(`The shop sells ${def.name} once you can buy ${soldWithWords(def)}.`);
   const price = roundCents(def.price * n);

@@ -302,7 +302,7 @@ describe('G19 (the owner’s answer): an empty tank can be taken down', () => {
       const r = buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true });
       if (!r.ok) msg = r.message;
     }
-    expect(msg).toBe('There\'s no floor space for a 10 Gallon. Choose a smaller size, move a tank, or take down an empty tank you no longer need in Tanks. A bigger venue (Build › Facility) adds room.');
+    expect(msg).toBe('There’s no floor space for a 10 Gallon. Choose a smaller size, move a tank, or take down an empty tank you no longer need in Tanks. A bigger venue (Build › Facility) adds room.');
   });
 });
 

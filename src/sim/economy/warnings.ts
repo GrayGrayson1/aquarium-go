@@ -26,14 +26,14 @@ export function saleWarnings(state: GameState, creatureIds: readonly string[]): 
   const sick = creatures.filter((c) => c.illness || (c.stats?.health ?? 100) < 50);
   if (sick.length) out.push(`${sick.map((c) => c.name).join(', ')} ${sick.length === 1 ? 'is' : 'are'} unwell. Buyers will see it, and selling sick animals can cost reputation.`);
   const starter = creatures.find((c) => c.isStarter);
-  if (starter) out.push(`${starter.name} is your very first animal. Once sold, they're gone for good.`);
+  if (starter) out.push(`${starter.name} is your very first animal. Once sold, they’re gone for good.`);
   const clutches = Object.values(state.clutches ?? {}).filter((cl) => cl.count > 0);
   for (const c of creatures) {
     const mine = clutches.filter((cl) => cl.guardedById === c.id);
     const carried = mine.find(carriesClutch);
     const guarded = mine.find((cl) => !carriesClutch(cl));
     if (carried) out.push(`${c.name} is carrying ${YOUNG(carried)} — they go with ${pronoun(c) === 'they' ? 'them' : pronoun(c) === 'he' ? 'him' : 'her'} if sold.`);
-    else if (['pregnant', 'berried', 'brooding', 'gravid'].includes(c.repro?.stage ?? '')) out.push(`${c.name} is expecting young — they'd be born in someone else's tank.`);
+    else if (['pregnant', 'berried', 'brooding', 'gravid'].includes(c.repro?.stage ?? '')) out.push(`${c.name} is expecting young — they’d be born in someone else’s tank.`);
     // audit E12: a cichlid pair's other parent, staying, goes on tending the brood alone (pairGuards)
     const otherId = guarded ? (guarded.motherId === c.id ? guarded.fatherId : guarded.motherId) : null;
     const other = otherId && !ids.has(otherId) ? state.creatures[otherId] : undefined;

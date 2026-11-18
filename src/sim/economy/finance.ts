@@ -285,7 +285,7 @@ function runMidnight(state: GameState, endedDay0: number, end: number): void {
     f.strandedSinceHour = end;
     emitEvent(state, {
       kind: 'tip',
-      text: `Your ${state.tankOrder.length ? 'tanks are empty' : 'room is empty'} and ${fmtMoney(Math.max(0, f.money))} won't restock ${state.tankOrder.length ? 'them' : 'it'}. If that's still true tomorrow, ${AQUARIUM_CLUB} will lend you enough to start again.`,
+      text: `Your ${state.tankOrder.length ? 'tanks are empty' : 'room is empty'} and ${fmtMoney(Math.max(0, f.money))} won’t restock ${state.tankOrder.length ? 'them' : 'it'}. If that’s still true tomorrow, ${AQUARIUM_CLUB} will lend you enough to start again.`,
       toast: true,
     });
   } else if (end - f.strandedSinceHour >= RESTART_AFTER_HOURS - 1e-6) {
@@ -298,7 +298,7 @@ function runMidnight(state: GameState, endedDay0: number, end: number): void {
     const tips = cashSuggestions(state);
     // audit 2026-11-17 (F5) — after the one-time loan, say plainly that no loan is coming, and what still helps
     const loanNote = f.loan
-      ? " The club's one-time loan has been used, so selling is the way back above zero. If the food runs out, the club drops off a little."
+      ? " The club’s one-time loan has been used, so selling is the way back above zero. If the food runs out, the club drops off a little."
       : ` If it lasts ${Math.round(LOAN_AFTER_DEBT_HOURS / 24)} days, ${AQUARIUM_CLUB} may be able to help.`;
     const alive = Object.values(state.creatures).some((c) => c.status === 'alive' || c.status === 'listed');
     const shelf = state.tankOrder.map((id) => state.tanks[id]?.cache?.foodLevel).filter(Boolean);
@@ -310,7 +310,7 @@ function runMidnight(state: GameState, endedDay0: number, end: number): void {
         : "Purchases are paused, food included — nothing is ever taken from you, but keep feeding from the shelf and raise cash before it runs low.";
     emitEvent(state, {
       kind: 'warning',
-      text: `You're ${fmtMoney(-f.money)} in the red after today's bills (${fmtMoney(ahead.total)}/day). ${status}${tips.length ? ` Ideas: ${tips.slice(0, 3).join(' ')}` : ''}${loanNote}`,
+      text: `You’re ${fmtMoney(-f.money)} in the red after today’s bills (${fmtMoney(ahead.total)}/day). ${status}${tips.length ? ` Ideas: ${tips.slice(0, 3).join(' ')}` : ''}${loanNote}`,
       toast: true,
     });
     f.lastWarnHour = state.clock.hour;
@@ -355,7 +355,7 @@ function grantLoan(state: GameState, restart?: number): void {
   emitEvent(state, {
     kind: 'celebrate',
     text: restart
-      ? `${capitalise(AQUARIUM_CLUB)} would rather see your room full than quiet: they've lent you ${again ? 'another ' : ''}${fmtMoney(amount)}, interest-free, to start again — enough for ${state.tankOrder.length ? 'a new animal' : 'a tank kit and a new animal'} and a few days of bills. It is repaid automatically from a quarter of your future daily income.`
+      ? `${capitalise(AQUARIUM_CLUB)} would rather see your room full than quiet: they’ve lent you ${again ? 'another ' : ''}${fmtMoney(amount)}, interest-free, to start again — enough for ${state.tankOrder.length ? 'a new animal' : 'a tank kit and a new animal'} and a few days of bills. It is repaid automatically from a quarter of your future daily income.`
       : `Good news: ${AQUARIUM_CLUB} heard you were struggling and lent you ${fmtMoney(amount)}, interest-free. It is repaid automatically from a quarter of your future daily income. This is a one-time lifeline, so plan your running costs carefully.`,
     toast: true,
   });
@@ -434,7 +434,7 @@ export function stepFinance(state: GameState, dt: number, ctx: SimContext): void
     if (f.debtSinceHour === undefined) f.debtSinceHour = state.clock.hour;
   } else if (f.debtSinceHour !== undefined) {
     delete f.debtSinceHour;
-    emitEvent(state, { kind: 'info', text: `You're back in the black with ${fmtMoney(f.money)}. Purchases are available again.` });
+    emitEvent(state, { kind: 'info', text: `You’re back in the black with ${fmtMoney(f.money)}. Purchases are available again.` });
   }
 
   if (f.debtSinceHour !== undefined && !f.loan && end - f.debtSinceHour >= LOAN_AFTER_DEBT_HOURS) grantLoan(state);

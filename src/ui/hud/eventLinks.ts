@@ -93,7 +93,8 @@ const EGGS_AND_FRY: EventLink = { panel: 'livestock', target: 'tab:young', where
  * Audit 2026-11-17 (F2) — money news opens Finances, where the ways to raise cash are: the midnight debt warning, "Cash
  * is getting low", the club's loans and their repayment, an empty room money won't restock, and back in the black.
  */
-export const MONEY_NEWS = /in the red after today's bills|^Cash is getting low|lent you (another )?\S+, interest-free|^Loan repaid in full|won't restock (them|it)\.|^You're back in the black/;
+// Audit 2026-11-17 (J18): the sim's lines now use ’; older saves' log lines keep '
+export const MONEY_NEWS = /in the red after today[’']s bills|^Cash is getting low|lent you (another )?\S+, interest-free|^Loan repaid in full|won[’']t restock (them|it)\.|^You[’']re back in the black/;
 
 /** The panel a log event opens, or null (tank / creature links are handled by the caller). */
 export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId' | 'offerId'>): EventLink | null {

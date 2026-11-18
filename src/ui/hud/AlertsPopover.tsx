@@ -183,7 +183,7 @@ function TankAlerts({ game }: { game: GameState }) {
     return (
       <div key={`gear-${t.id}`} className="ag-alert-gear">
         {names.length > 0 && (
-          <button type="button" className="ag-alert-row is-watch" data-testid="alert-equipment" title="Open the tank card's equipment" onClick={open}>
+          <button type="button" className="ag-alert-row is-watch" data-testid="alert-equipment" title="Open the tank card’s equipment" onClick={open}>
             <PowerOff size={16} aria-hidden />
             <span className="ag-grow">
               <span className="ag-alert-row__title">{t.name}</span>
@@ -196,7 +196,7 @@ function TankAlerts({ game }: { game: GameState }) {
         )}
         {/* chunk 19 (QOL-002) — gear wearing out lights the bell (common/notify.ts), so the drawer names it too */}
         {worn.length > 0 && (
-          <button type="button" className="ag-alert-row is-watch" data-testid="alert-equipment-worn" title="Open the tank card's equipment" onClick={open}>
+          <button type="button" className="ag-alert-row is-watch" data-testid="alert-equipment-worn" title="Open the tank card’s equipment" onClick={open}>
             <Wrench size={16} aria-hidden />
             <span className="ag-grow">
               <span className="ag-alert-row__title">{t.name}</span>
@@ -216,7 +216,7 @@ function TankAlerts({ game }: { game: GameState }) {
       key={`autofeed-${t.id}`}
       className="ag-alert-row is-watch"
       data-testid="alert-autofeed-paused"
-      title="Open the tank card's equipment"
+      title="Open the tank card’s equipment"
       onClick={() => {
         sfx('open');
         useShell.getState().set({ popover: null });
@@ -237,7 +237,7 @@ function TankAlerts({ game }: { game: GameState }) {
       key={`fit-${t.id}`}
       className={clsx('ag-alert-row', items.some((i) => i.level === 'danger') ? 'is-danger' : 'is-watch')}
       data-testid="alert-gear-fit"
-      title="Open the tank card's equipment"
+      title="Open the tank card’s equipment"
       onClick={() => {
         sfx('open');
         useTankCardTab.setState({ want: 'gear' });

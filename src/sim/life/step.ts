@@ -285,14 +285,14 @@ function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
         const obj = p.they === 'she' ? 'her' : p.they === 'he' ? 'him' : 'them';
         return { kind: 'injury', cause: `injuries from ${by.label}`, text: `${name} has passed away from injuries — ${by.label} kept ${by.verb} ${obj}. Keep them apart.` };
       }
-      return { kind: 'injury', cause: 'injuries from tank mates', text: `${name} has passed away from injuries caused by tank mates. Some animals simply can't share a tank.` };
+      return { kind: 'injury', cause: 'injuries from tank mates', text: `${name} has passed away from injuries caused by tank mates. Some animals simply can’t share a tank.` };
     }
     case 'harassment': {
       const p = pronoun(c);
-      return { kind: 'injury', cause: 'harassment by a tank mate', text: `${name} has passed away after being chased and bitten by a tank mate. A female must be moved out of a male's tank as soon as spawning is over, and ${p.they === 'they' ? 'harassed animals need' : 'a harassed animal needs'} a tank of ${p.their} own to recover.` };
+      return { kind: 'injury', cause: 'harassment by a tank mate', text: `${name} has passed away after being chased and bitten by a tank mate. A female must be moved out of a male’s tank as soon as spawning is over, and ${p.they === 'they' ? 'harassed animals need' : 'a harassed animal needs'} a tank of ${p.their} own to recover.` };
     }
     case 'fighting':
-      return { kind: 'injury', cause: 'fighting with a rival', text: `${name} has passed away from wounds taken fighting a rival. Two dominant ${pluralName(spName)} can't share a tank — separate rivals as soon as the fighting starts.` };
+      return { kind: 'injury', cause: 'fighting with a rival', text: `${name} has passed away from wounds taken fighting a rival. Two dominant ${pluralName(spName)} can’t share a tank — separate rivals as soon as the fighting starts.` };
     case 'age':
       return { kind: 'old_age', cause: 'old age', text: `${name} passed away peacefully of old age. Thank you for giving ${name} such a good life.` };
     default:

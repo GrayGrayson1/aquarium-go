@@ -393,7 +393,7 @@ describe('PROD-009, PROD-010: paused by you, and waiting for room', () => {
     expect(line.waiting).toBe(true);
     expect(lineStatus(line)).toBe('waiting');
     expect(f.mother.repro.lineHold).toBe(true);
-    expect(g.log.some((e) => e.text === `Grow-out is full, so Cinder and Blaze are kept apart until there's room.`)).toBe(true);
+    expect(g.log.some((e) => e.text === `Grow-out is full, so Cinder and Blaze are kept apart until there’s room.`)).toBe(true);
     // room again: the young move on (cycled quarantine), the line restarts by itself and says so
     filler.water.bioMaturity = 1;
     run(g, 3);
@@ -900,15 +900,15 @@ describe('the chunk 4 review: ownership, keep tanks, the pair list, and the line
     const made = () => g.market.listings.filter((l) => l.creatureIds.some((id) => members.has(id))).length;
     run(g, 3);
     expect(batch!.released).toBeFalsy();
-    const said = g.log.filter((e) => /couldn't be listed: You can run up to 24 listings at once\./.test(e.text));
+    const said = g.log.filter((e) => /couldn’t be listed: You can run up to 24 listings at once\./.test(e.text));
     expect(said.length).toBe(1);
-    expect(said[0].text).toMatch(/^Betta line: 2 bettas couldn't be listed/);
+    expect(said[0].text).toMatch(/^Betta line: 2 bettas couldn’t be listed/);
     expect(made()).toBe(1); // the juveniles listed
     expect(withdrawListing(g, fillerIds[0]).ok).toBe(true);
     run(g, 2);
     expect(batch!.released).toBe(true);
     expect(made()).toBe(2);
-    expect(g.log.filter((e) => /couldn't be listed/.test(e.text)).length).toBe(1);
+    expect(g.log.filter((e) => /couldn’t be listed/.test(e.text)).length).toBe(1);
   });
 
   it('a quarantine tank that isn’t cycled (below 0.4) holds the batch, says so once, and takes it once it has cycled', () => {

@@ -31,11 +31,11 @@ export function moveCreatures(state: GameState, creatureIds: readonly string[], 
   // B-127: every tank involved catches up first, so the checks see the animals as they are now
   settleTanks(state, [...new Set(list.map((c) => c.tankId)), tankId]);
   for (const c of list) {
-    if (c.status === 'dead' || c.status === 'sold') return { ok: false, message: `${c.name} can't be moved.` };
+    if (c.status === 'dead' || c.status === 'sold') return { ok: false, message: `${c.name} can’t be moved.` };
     const sp = findSpecies(c.speciesId);
     if (!sp) return { ok: false, message: 'Unknown species.' };
     const gate = environmentGate(sp, tank);
-    if (!gate.ok) return { ok: false, message: gate.reason ?? `${c.name} can't live in ${tank.name}.` };
+    if (!gate.ok) return { ok: false, message: gate.reason ?? `${c.name} can’t live in ${tank.name}.` };
   }
   const movers = list.filter((c) => c.tankId !== tankId);
   if (movers.length === 0) return { ok: true, message: `They are already in ${tank.name}.` };

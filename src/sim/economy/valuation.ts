@@ -635,7 +635,7 @@ export function fragValue(state: GameState, item: DecorInstance): FragValue {
   const wave = 0.9 + (hashStr(`${def.id}|${week}`) % 1000) / 1000 * 0.22;
   m *= pushFactor(factors, wave >= 1 ? 'In demand this week' : 'Quiet week for these', wave);
   const supply = fragSupplyFactor(state);
-  if (supply.recent > 0) m *= pushFactor(factors, 'Frags on the market', supply.mult, `${supply.recent} recent frag sale${supply.recent === 1 ? '' : 's'} have filled some buyers' tanks`);
+  if (supply.recent > 0) m *= pushFactor(factors, 'Frags on the market', supply.mult, `${supply.recent} recent frag sale${supply.recent === 1 ? '' : 's'} have filled some buyers’ tanks`);
   const expected = roundCents(base * clamp(m, 0.1, 6));
   return { expected, low: roundCents(expected * 0.85), high: roundCents(expected * 1.2), base: roundCents(base), factors };
 }
