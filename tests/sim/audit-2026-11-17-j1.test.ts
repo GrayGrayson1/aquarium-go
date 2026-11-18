@@ -377,6 +377,10 @@ describe('J14: internal ids and tags are shown as words', () => {
     expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'Tank the oscar', verb: 'attacking' });
     c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Ember the betta (harassment).' });
     expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'Ember the betta', verb: 'chasing' });
+    c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Ember the betta, which keeps chasing her.' });
+    expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'Ember the betta', verb: 'chasing' }); // the review: her pronoun, not "it"
+    c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Ember the betta, which keeps chasing it.' });
+    expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'Ember the betta', verb: 'chasing' }); // an earlier build's line
     c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by the anemone, which stings.' });
     expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'the anemone', verb: 'stinging' }); // next's review: a sting stings
   });

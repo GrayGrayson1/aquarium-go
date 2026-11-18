@@ -99,7 +99,7 @@ export function lastHurtBy(c: Creature, nowHour: number): { label: string; verb:
     if (!(nowHour - (h[i]?.hour ?? -Infinity) <= HURT_BY_WINDOW_H)) break;
     const text = h[i]?.kind === 'note' ? h[i].text ?? '' : '';
     // Audit 2026-11-17 (J14): "Hurt by Rex the tiger barb, which nips fins." (older saves: "… (fin nip).")
-    const m = /^Hurt by (.+?)(, which nips[^.]*| in a fight|, which keeps chasing it|, which stings)\.$/.exec(text) ?? /^Hurt by (.+) \(([a-z ]+)\)\.$/.exec(text);
+    const m = /^Hurt by (.+?)(, which nips[^.]*| in a fight|, which keeps chasing (?:it|her|him|them)|, which stings)\.$/.exec(text) ?? /^Hurt by (.+) \(([a-z ]+)\)\.$/.exec(text);
     if (m) return { label: m[1], verb: /nip/.test(m[2]) ? 'nipping' : /harassment|chasing/.test(m[2]) ? 'chasing' : /sting/.test(m[2]) ? 'stinging' : 'attacking' };
   }
   return null;
@@ -109,7 +109,9 @@ export function lastHurtBy(c: Creature, nowHour: number): { label: string; verb:
 export const HURT_BY_WINDOW_H = 48;
 
 /** Audit 2026-11-17 (J14): how a tank mate hurt an animal, for its History ("Hurt by Rex the tiger barb, which nips fins."). */
-const HURT_HOW: Record<string, string> = { fin_nip: ', which nips fins', gill_nip: ', which nips at gills', coral_nip: ', which nips at it', harassment: ', which keeps chasing it', aggression: ' in a fight', sting: ', which stings' };
+// (J14 review: the hurt animal by its pronoun, as the card says it: "which keeps chasing her", not "it")
+const HURT_HOW: Record<string, (them: string) => string> = { fin_nip: () => ', which nips fins', gill_nip: () => ', which nips at gills', coral_nip: (them) => `, which nips at ${them}`, harassment: (them) => `, which keeps chasing ${them}`, aggression: () => ' in a fight', sting: () => ', which stings' };
+const objectPronoun = (c: Creature): string => (c.sex === 'female' ? 'her' : c.sex === 'male' ? 'him' : 'them');
 
 export function lifeMeta(c: Creature): NonNullable<Creature['life']> {
   if (!c.life) c.life = {};
@@ -693,7 +695,7 @@ export function applyIncident(state: GameState, env: TankEnv, list: { c: Creatur
   actor.c.stats.stress = clamp(actor.c.stats.stress + 2, 0, 100);
   if (throttle(v, `inc:${risk.kind}:${actor.c.id}`, hour, 8)) {
     ctx.emit({ kind, text: msg.replace(/\s+/g, ' ').trim(), tankId: env.tank.id, creatureId: v.id });
-    pushHistory(v, { hour, kind: 'note', text: `Hurt by ${actorLabel}${HURT_HOW[risk.kind] ?? ''}.` }); // Audit 2026-11-17 (J14): words, not "(fin nip)"
+    pushHistory(v, { hour, kind: 'note', text: `Hurt by ${actorLabel}${HURT_HOW[risk.kind]?.(objectPronoun(v)) ?? ''}.` }); // Audit 2026-11-17 (J14): words, not "(fin nip)"
   }
   if (v.stats.health <= 0) {
     // The cause is what did most of the harm, the rule a death from accumulated harm follows (explainDeath), not
