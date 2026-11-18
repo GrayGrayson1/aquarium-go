@@ -97,8 +97,10 @@ function retuneForClass(state: GameState, t: Tank): { notes: string[]; changed: 
       }
       // (review) a setting the tank card's stepper can show (a cool tank's heater would want 14 °C)
       const set = Math.min(dial.max, Math.max(dial.min, want));
-      // (confirmation review) a chiller switched off by an earlier conversion to warm water comes back on for water
-      // that needs cooling, as a new install would be: cool → tropical → cool left it off while saying "reset"
+      // (confirmation review) a working chiller that is off comes on for water that needs cooling, as a new install
+      // would be (the tank is empty, and everything that stays is set as new): cool → tropical → cool left the one
+      // the first conversion had switched off still off, while saying "reset". That includes one the player had
+      // switched off; the line says it is switched on.
       const wake = kind === 'chiller' && !e.on && !e.failed;
       const same = e.setting !== undefined && Math.abs(e.setting - set) < 0.05;
       if (same && !wake) continue;

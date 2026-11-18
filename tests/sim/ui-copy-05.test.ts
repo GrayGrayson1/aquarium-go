@@ -264,7 +264,7 @@ describe('§16 Settings › About: What’s new', () => {
     const { WHATS_NEW, WHATS_NEW_VERSION } = await import('@/ui/settings/SettingsPanel');
     expect([...WHATS_NEW]).toEqual([
       'Your first companion never dies of old age',
-      'A little food from the club when the till is empty',
+      'A little food from the club if you run out of food and money',
       'Move a whole group of animals at once',
       'Sell spare equipment, and take down a tank you don’t need',
       'Production lines sell by themselves, and keepers feed fry',

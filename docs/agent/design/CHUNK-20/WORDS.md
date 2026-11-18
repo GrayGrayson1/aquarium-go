@@ -89,7 +89,7 @@ How to read it:
 | A notification (outside the game), a market special (“Today only: {morph}”): its body (J2) | {seller} · {$price}. Leaves in {6 h}.<br>(at its hour) … Leaves ending now. | {seller} · {$price}. Leaves in {about 1 min}.<br>(not at 1×) … Leaves in {under a minute} at {3}×. / … Leaves in {about 1 min} (paused).<br>(at its hour) … Leaves now. |
 | **Amends ADR-0034 decision 8.** Settings › About, the “What’s new” section’s title (B17, J12) | What’s new in 0.5 | What’s new in 0.10 |
 | **Answer 1.** **Amends ADR-0034 decision 8.** Settings › About › What’s new, line 1 (each release replaces all seven lines) (B17, J12) | Links to every screen, and a tab bar on phones | Your first companion never dies of old age |
-| **Answer 2.** **Amends ADR-0034 decision 8.** Settings › About › What’s new, line 2 (B17, J12) | Shop filters: Prismatic only and Rare genes | A little food from the club when the till is empty |
+| **Answer 2.** **Amends ADR-0034 decision 8.** Settings › About › What’s new, line 2 (B17, J12) | Shop filters: Prismatic only and Rare genes | A little food from the club if you run out of food and money |
 | **Amends ADR-0034 decision 8.** Settings › About › What’s new, line 3 (B17, J12) | New betta genes: Cambodian and Metallic | Move a whole group of animals at once |
 | **Answer 7.** **Amends ADR-0034 decision 8.** Settings › About › What’s new, line 4 (B17, J12) | Auto-feed and Auto-clean on the tank card | Sell spare equipment, and take down a tank you don’t need |
 | **Answer 9.** **Amends ADR-0034 decision 8.** Settings › About › What’s new, line 6 (B17, J12) | Production lines in Livestock | Shop offers wait while you’re looking |

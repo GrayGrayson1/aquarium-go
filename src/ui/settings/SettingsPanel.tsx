@@ -522,7 +522,7 @@ function SoloSavesTab() {
 export const WHATS_NEW_VERSION = '0.10';
 export const WHATS_NEW = [
   'Your first companion never dies of old age',
-  'A little food from the club when the till is empty',
+  'A little food from the club if you run out of food and money',
   'Move a whole group of animals at once',
   'Sell spare equipment, and take down a tank you don’t need',
   'Production lines sell by themselves, and keepers feed fry',
