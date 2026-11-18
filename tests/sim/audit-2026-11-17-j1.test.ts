@@ -52,7 +52,7 @@ import { lowerName } from '@/data/speciesWords';
 import { pluralName, speciesSingular } from '@/sim/economy/util';
 import { plural as compatPlural, the as compatThe } from '@/sim/compat/text';
 import { spName, spPlural } from '@/sim/life/breeding/common';
-import { livestockSummary } from '@/sim/economy/valuation';
+import { livestockSummary, creatureValue } from '@/sim/economy/valuation';
 import { fillTemplate } from '@/sim/facility/reactions';
 import { saleWarnings } from '@/sim/economy/warnings';
 import { withArticle } from '@/sim/economy/util';
@@ -395,7 +395,14 @@ describe('J14: internal ids and tags are shown as words', () => {
     const g = base();
     const c = Object.values(g.creatures)[0];
     c.illness = { kind: 'stress_coloration', severity: 40, sinceHour: g.clock.hour } as never;
-    expect(creatureShowReasons(g, c).join(' | ')).toMatch(/Unwell \(stress colouring\)/);
+    expect(creatureShowReasons(g, c).join(' | ')).toMatch(/Unwell with stress colouring — rest at home/);
+    // the review: a name with its own brackets ("white spot (ich)") is never inside more brackets
+    c.illness = { kind: 'ich', severity: 40, sinceHour: g.clock.hour } as never;
+    const sp = getSpecies('betta');
+    expect(illnessName('ich', sp)).toBe('white spot (ich)');
+    expect(creatureShowReasons(g, c).join(' | ')).toMatch(/Unwell with white spot \(ich\) — rest at home until recovered/);
+    expect(creatureValue(g, c).factors.map((x) => x.note ?? '').join(' | ')).toMatch(/Currently ill with white spot \(ich\) — most buyers wait/);
+    expect([...creatureShowReasons(g, c), ...creatureValue(g, c).factors.map((x) => x.note ?? '')].join(' ')).not.toMatch(/\([^()]*\([^()]*\)[^()]*\)/);
   });
 });
 

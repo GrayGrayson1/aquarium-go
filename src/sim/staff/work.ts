@@ -796,7 +796,7 @@ export function keeperVisit(state: GameState, m: StaffMember, tankId: string, ro
       if (c.tankId !== tank.id || c.status !== 'alive' || !c.illness || c.illness.severity < 25) continue;
       if (!throttled(state, `ill:${c.id}:${c.illness.kind}`, 72)) continue;
       noteIssue(day, `${c.name} looks unwell`);
-      emitEvent(state, { kind: 'warning', text: `${firstName(m)} noticed ${c.name} in ${tank.name} looks unwell (${illnessName(c.illness.kind, findSpecies(c.speciesId))}). Treatment is your call — see ${c.name}’s card.`, tankId: tank.id, creatureId: c.id });
+      emitEvent(state, { kind: 'warning', text: `${firstName(m)} noticed ${c.name} in ${tank.name} looks unwell: ${illnessName(c.illness.kind, findSpecies(c.speciesId))}. Treatment is your call — see ${c.name}’s card.`, tankId: tank.id, creatureId: c.id });
     }
   }
   const done = keeperWaterCare(state, m, tank, round, hour);

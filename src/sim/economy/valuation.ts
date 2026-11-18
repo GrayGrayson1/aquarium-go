@@ -144,7 +144,7 @@ export function creatureValue(state: GameState, c: Creature): ValueBreakdown {
   if (c.illness) {
     const sev = normSeverity(c.illness.severity);
     hm *= 1 - 0.45 * Math.max(0.2, sev);
-    hNote = `Currently ill (${illnessName(c.illness.kind, findSpecies(c.speciesId))}) — most buyers wait for recovery`; // Audit 2026-11-17 (J14)
+    hNote = `Currently ill with ${illnessName(c.illness.kind, findSpecies(c.speciesId))} — most buyers wait for recovery`; // Audit 2026-11-17 (J14); not in brackets (the review: the name may carry its own brackets, "white spot (ich)")
   }
   const stress = clamp(finite(c.stats?.stress, 0), 0, 100);
   if (stress > 60) hm *= 1 - (stress - 60) / 400;
