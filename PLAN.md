@@ -2276,6 +2276,28 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   latest commit"; run alone, in the background) went through this time (`dep-dbkh6lp5efls73d5kt40`, about 10 min, its
   tests first). All three read 0.9.2: both `version.json` files `{"id":"74c9302-…","version":"0.9.2"}`, the shop
   server's `/health` 0.9.2.
+- **0.10.0, released 2026-11-17** at the owner's go-ahead in the session ("You have my full permission to go ahead and
+  find issues and just deploy fixes"; ADR-0056): chunk 20, the audit of 2026-11-17, with the audit of 2026-11-11
+  merged into it. Step 1's "the owner has played it" waived by that request. The four checks on the final code
+  `658f720`: typecheck, unit 311 files and 4,761 tests, build, e2e 414 of 415 (the one failure B-204's route walk in
+  WebKit, 10 of 10 alone in each browser; chunk 20's "Checks" has the passes before it, `cf0f5cb` 415 of 415); the
+  release commit `de56552` (docs only on top of it) passed typecheck, unit 4,761 and the build. `next` pushed from
+  the internal clone (`582e640..de56552`), then merged there onto a fresh `origin/main` as `296291b` (its tree
+  `de56552`'s) and pushed. Pages run `44237212964` deployed it (its typecheck and unit tests first);
+  `version.json` reads `{"id":"296291b-…","version":"0.10.0"}`. **Not done yet, and each needs the owner:**
+  - *The shop server and the Render static site are still on 0.9.2* (`/health` 0.9.2, build `f128a63f7d57f4b9`; the
+    static site's `version.json` `74c9302`). The Render CLI's sign-in has expired ("your token is expired; run `render
+    login`"): the owner runs `render login`, then `render deploys create srv-dbbt6gbncjis73c23br0 --commit
+    296291b0d38abb2e3bdcb54a8ae00c4d0af9214d --confirm --wait -o text` (the shop server; its `/health` must then read
+    0.10.0 with a new `build`), then `render deploys create srv-dath0mfavr4c73dgk3j0 --commit
+    296291b0d38abb2e3bdcb54a8ae00c4d0af9214d --confirm --wait -o text` (the static site, about 10 minutes). Until the
+    shop server is deployed, Pages (0.10.0) and the server (0.9.2) disagree about the shared build, so a shared shop
+    opened from Pages says the shop is updating; until the static site is deployed, aquarium-go.onrender.com is the
+    old game.
+  - *The Supabase project is paused* (`INACTIVE`; ADR-0056 decision 4): nobody can sign in and no shared shop opens
+    from either site until the owner presses Restore in its dashboard. The keep-awake job's runs fail until then (by
+    design: that is its signal). After the restore and the two deploys: `npx vite-node scripts/shared-smoke.ts` from
+    the internal clone, and `node scripts/online-smoke.mjs` once it makes its own sign-up club (B-229).
 
 ## Product decisions in force
 
