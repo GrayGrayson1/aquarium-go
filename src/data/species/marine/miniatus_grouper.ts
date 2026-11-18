@@ -155,7 +155,7 @@ export const miniatusGrouper: SpeciesDefinition = {
   sourceReferences: [
     { id: 'fishbase-cephalopholis-miniata', title: 'FishBase — Cephalopholis miniata (Coral hind)', url: 'https://www.fishbase.se/summary/Cephalopholis-miniata.html', tier: 1, facts: ['max 50 cm TL', 'depth 2–150 m', '~80% of diet small fish (mainly Pseudanthias), rest crustaceans', 'harems of a male and 2–12 females', 'territories up to 475 m²', 'IUCN Least Concern (2017/2018 assessment)', 'high fishing and climate vulnerability'] },
     { id: 'liveaquaria-miniatus', title: 'LiveAquaria — Miniatus Grouper', url: 'https://www.liveaquaria.com/products/miniatus-grouper', tier: 2, facts: ['min tank 180 gal', 'max 14 in in aquaria (18 in wild)', 'aggressive', 'reef compatible with caution', 'not to be trusted with invertebrates or small fish', 'price ~$150'] },
-    { id: 'wikipedia-cephalopholis-miniata', title: 'Wikipedia — Cephalopholis miniata (citing IUCN, FishBase, FAO)', url: 'https://en.wikipedia.org/wiki/Cephalopholis_miniata', tier: 3, facts: ['protogynous hermaphrodite', 'juveniles orange-yellow with fewer spots', 'ambushes sea goldies from below', 'popular in public aquaria'] },
+    { id: 'wikipedia-cephalopholis-miniata', title: 'Wikipedia — Cephalopholis miniata', url: 'https://en.wikipedia.org/wiki/Cephalopholis_miniata', tier: 3, facts: ['protogynous hermaphrodite', 'juveniles orange-yellow with fewer spots', 'ambushes sea goldies from below', 'popular in public aquaria'] },
   ],
   confidenceNotes: [
     'Size: FishBase max 50 cm TL; LiveAquaria says ~14 in (36 cm) in aquaria. The game uses 42 cm, matching the brief’s conservative 40–45 cm.',

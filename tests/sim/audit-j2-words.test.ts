@@ -12,6 +12,9 @@ import { offerSearchMatches } from '@/ui/panels/market/shopFilters';
 import type { ShopOffer } from '@/types';
 import { unlockLink } from '@/ui/hud/eventLinks';
 import { tourStops } from '@/ui/tutorial/tourStops';
+import { fireWords } from '@/ui/panels/visitors/StaffTab';
+import { addStaffDirect, fireStaff } from '@/sim/staff';
+import { formatMoney } from '@/ui/kit';
 import { CRITERION_LABEL } from '@/data/shows';
 import { AUTOMATION_LOCK_HINT } from '@/ui/cards/Automation';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
@@ -41,8 +44,13 @@ describe('Audit 2026-11-17 (J22): jargon gets plain words where it appears', () 
     expect(SEX_LABEL.unknown).toBe('Sex not known yet');
     expect(PURPOSE_HINT.breeding).toBe('Getting ready to spawn, away from tank mates.');
     expect(CRITERION_LABEL.deportment).toBe('Behaviour');
-    expect(AUTOMATION_LOCK_HINT).toBe('Research Better Life Support, or raise Husbandry mastery by caring for your tanks.');
+    expect(AUTOMATION_LOCK_HINT).toBe('Research Better Life Support, or raise husbandry mastery by caring for your tanks.');
     expect(UNLOCK_RULE_BY_KEY.gear_autofeeder.hint).toBe(AUTOMATION_LOCK_HINT);
+    // the review: one way to write a mastery track in a sentence, lower case, as every unlock hint and card line does
+    // (the Research panel's rows name the tracks: "Husbandry", "Breeding"...)
+    const prose = [...Object.values(UNLOCK_RULE_BY_KEY).map((r) => r.hint ?? ''), AUTOMATION_LOCK_HINT, src('ui/panels/operations/Overview.tsx'), src('ui/cards/CreatureCard.tsx')].join('\n');
+    expect(prose).not.toMatch(/(Husbandry|Breeding|Aquascaping|Marine|Business|Exhibition) mastery/);
+    expect(prose).toMatch(/husbandry mastery/);
   });
 
   it('the words typed into the screens', () => {
@@ -62,7 +70,7 @@ describe('Audit 2026-11-17 (J22): jargon gets plain words where it appears', () 
       ['ui/panels/shows/EnterFlow.tsx', 'Purse <', 'Prizes <b>'],
       // the review: the class's purse is split 55 / 27 / 18 % (PRIZE_SPLIT), so it's "Prizes", as Upcoming says
       ['ui/panels/shows/EnterFlow.tsx', 'Prize <b>', 'Prizes <b>{money(cl.purse)}</b>'],
-      ['ui/panels/operations/Overview.tsx', 'husbandry mastery with regular care', 'raise Husbandry mastery by caring for your tanks.'],
+      ['ui/panels/operations/Overview.tsx', 'husbandry mastery with regular care', 'raise husbandry mastery by caring for your tanks.'],
       ['ui/panels/operations/LinesTab.tsx', '{ id: \'quarantine\', label: \'QT\' }', 'full: \'Quarantine\''],
       ['ui/panels/visitors/StaffTab.tsx', '<RoleTag role={m.role} />', 'docent: \'gives talks\''],
     ];
@@ -184,6 +192,24 @@ describe('Audit 2026-11-17 (J27): lines say what you got, and promise nothing th
     for (const f of ['sim/life/breeding/systems/shrimp.ts', 'sim/life/breeding/clutch.ts']) expect(src(f)).not.toMatch(/this shop (for now|can’t|yet)|isn’t available yet/);
   });
 
+  it('a species the game doesn’t breed says so one way, as the encyclopedia does: “can’t be bred in Aquarium Go”, no “yet”', () => {
+    const inert = ALL_SPECIES.filter((sp) => moduleFor(sp).id === 'not_in_game');
+    expect(inert.length).toBeGreaterThan(0);
+    for (const sp of inert) {
+      const mod = moduleFor(sp);
+      expect(mod.explain?.({ ...sp, breeding: { ...sp.breeding, notes: '' } }), sp.id).toBe(`${sp.commonName} is rarely or never bred in home aquariums, so it can’t be bred in Aquarium Go.`);
+      expect(mod.force(null as never, null as never, null as never, null as never, 0), sp.id).toBe('This species can’t be bred in Aquarium Go.');
+    }
+    const s = src('sim/life/breeding/systems/inert.ts');
+    expect(s).not.toMatch(/\byet\b/);
+    expect(s).toContain('can’t be bred in Aquarium Go: ${note}');
+    for (const f of ['sim/life/breeding/actions.ts', 'sim/production/index.ts']) {
+      expect(src(f), f).not.toContain('can’t be bred here yet');
+      expect(src(f), f).toContain("'This species can’t be bred in Aquarium Go.'");
+    }
+    expect(src('ui/panels/encyclopedia/EncyclopediaPanel.tsx')).toContain('(Can’t be bred in Aquarium Go.)');
+  });
+
   it('a facility level you have reached reads “reached”', () => {
     const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 7 });
     g.facility.level = 'aquarium_store';
@@ -218,7 +244,8 @@ describe('Audit 2026-11-17 (J30): numbers say what they count', () => {
       ['ui/panels/operations/WaterTab.tsx', 'gal batches below 60%', 'gal batches when the salt water reserve is below 60%'],
       ['ui/panels/operations/WaterTab.tsx', '>Short Day {', '>Short on Day {'],
       ['ui/panels/operations/WaterTab.tsx', 'reorders ${whenText(', 'reorders ${whenPhrase('],
-      ['ui/panels/operations/MapTab.tsx', 'Runs short about Day', 'Runs short on about Day'],
+      ['ui/panels/operations/MapTab.tsx', 'Runs short about Day', 'Runs short around Day'],
+      ['ui/panels/operations/MapTab.tsx', 'Runs short on about Day', '`Runs short around Day ${salt.shortDay}`'], // the review: "on about" read awkwardly
       ['ui/panels/operations/MapTab.tsx', '* 3} a day`', '* 3} servings a day`'],
       ['ui/panels/operations/MapTab.tsx', 'FOOD_ROOM.coneYield} a day', 'FOOD_ROOM.coneYield} servings a day'],
       ['ui/panels/operations/MapTab.tsx', '{g1(r.f)} fresh + {g1(r.s)} salt', '{g1(r.f)} gal fresh + {g1(r.s)} gal salt'],
@@ -303,7 +330,7 @@ describe('Audit 2026-11-17 (J33): no developer talk on player screens', () => {
 describe('Audit 2026-11-17 (J34): a confirm button says what it does', () => {
   it('letting someone go, choosing a pair, the orders link and quick sell’s cancel', () => {
     const cases: [string, string, string][] = [
-      ['ui/panels/visitors/StaffTab.tsx', "'Confirm'", '`Let ${first(m)} go (final day’s pay)`'],
+      ['ui/panels/visitors/StaffTab.tsx', "'Confirm'", '{armed ? words.label : \'Let go\'}'],
       ['ui/panels/livestock/ProductionSetup.tsx', '          Done\n        </Button>\n      }\n    >\n      <p>Only adult pairs', '          Use this pair\n'],
       ['ui/panels/operations/Problems.tsx', "        {(opsSnapshot(g).forecast?.m.name ?? 'Stock manager').split(' ')[0]}’s orders", "Turn on {(opsSnapshot(g).forecast?.m.name ?? 'Stock manager').split(' ')[0]}’s orders"],
       // the review: "Turn on" must turn them on, not open Manual mode (ui-copy-s3d clicks it through turnOnStockOrders)
@@ -315,6 +342,25 @@ describe('Audit 2026-11-17 (J34): a confirm button says what it does', () => {
       expect(s, `${file}: ${gone}`).not.toContain(gone);
       expect(s, `${file}: ${now}`).toContain(now);
     }
+  });
+});
+
+describe('Audit 2026-11-17 (J34, the review): the let-go button is true whether or not the till covers the final pay', () => {
+  it('“final day’s pay” only when fireStaff will pay it', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 7 });
+    const rosa = addStaffDirect(g, { name: 'Rosa Diaz', role: 'stock_manager', skill: 2, trait: 'planner' });
+    expect(fireWords(rosa, rosa.wage)).toEqual({ label: 'Let Rosa go (final day’s pay)', title: `Let Rosa go with a final day’s pay (${formatMoney(rosa.wage)})` });
+    expect(fireWords(rosa, rosa.wage - 0.01).label).toBe('Let Rosa go (no final day’s pay)');
+    // and the sim does what the label says, both ways
+    g.finance.money = rosa.wage - 0.01;
+    expect(fireWords(rosa, g.finance.money).label).toContain('no final');
+    expect(fireStaff(g, rosa.id).ok).toBe(true);
+    expect(g.finance.money).toBe(rosa.wage - 0.01);
+    const maya = addStaffDirect(g, { name: 'Maya Okafor', role: 'stock_manager', skill: 2, trait: 'planner' });
+    g.finance.money = maya.wage;
+    expect(fireWords(maya, g.finance.money).label).toBe('Let Maya go (final day’s pay)');
+    expect(fireStaff(g, maya.id).ok).toBe(true);
+    expect(g.finance.money).toBe(0);
   });
 });
 
@@ -376,6 +422,9 @@ describe('Audit 2026-11-17 (J37): the species pages read as sentences', () => {
     expect(sp('ocellaris_clownfish').starterBlurb).toMatch(/— and a secret: every clownfish starts life as a male\.$/);
     for (const id of ['brownbanded_bamboo_shark', 'epaulette_shark', 'coral_catshark']) expect(JSON.stringify(sp(id))).not.toContain('real keepers');
     expect(JSON.stringify(sp('betta'))).toContain('follows your cursor or finger');
+    // every species: a pointer is a cursor or a finger (the figure-eight puffer was left for after the merge)
+    for (const x of ALL_SPECIES) expect(JSON.stringify(x), x.id).not.toMatch(/follows your (finger|cursor)(?! or finger)|tracks your finger/);
+    expect(sp('figure_eight_puffer').encyclopedia.inGameBehavior).toContain('follows your cursor or finger along the front of the tank.');
     for (const id of ['axolotl', 'fighting_conch', 'peppermint_shrimp', 'cleaner_shrimp', 'chocolate_tang', 'kole_tang']) {
       const e = sp(id).encyclopedia as unknown as Record<string, unknown>;
       for (const k of ['funFact', 'keeperTip', 'breedingOverview', 'summary']) expect(String(e[k] ?? ''), `${id}.${k}`).not.toContain('"');
@@ -386,9 +435,11 @@ describe('Audit 2026-11-17 (J37): the species pages read as sentences', () => {
 
 describe('Audit 2026-11-17 (J38, the part that needs no choice): source titles without research notes', () => {
   it('no “title verified via…”, “(citing …)” or “(summarising …)” in a shown title, and no builder note in a fact', () => {
-    for (const id of ['axolotl', 'cleaner_shrimp', 'coral_catshark', 'flame_hawkfish', 'foxface_rabbitfish']) {
-      for (const s of getSpecies(id).sourceReferences) expect(s.title, id).not.toMatch(/verified via|\(citing|\(summarising/);
+    // every species (the review: five named ones didn't cover the miniatus grouper's "(citing IUCN, FishBase, FAO)")
+    for (const sp of ALL_SPECIES) {
+      for (const s of sp.sourceReferences) expect(s.title, sp.id).not.toMatch(/verified via|\(citing|\(summarising/);
     }
+    expect(getSpecies('miniatus_grouper').sourceReferences.map((s) => s.title)).toContain('Wikipedia — Cephalopholis miniata');
     expect(getSpecies('freshwater_angelfish').sourceReferences.flatMap((s) => s.facts)).not.toContain('15 cm TL (size field 10.5)');
     expect(getSpecies('freshwater_angelfish').sourceReferences.flatMap((s) => s.facts)).toContain('15 cm TL');
     expect(getSpecies('axolotl').sourceReferences.map((s) => s.title)).toContain('Tyrp1 is the Mendelian determinant of the axolotl copper mutant — Scientific Reports (2024)');
