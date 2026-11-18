@@ -481,9 +481,9 @@ function LightingBlock({ tank, readOnly }: { tank: Tank; readOnly: boolean }) {
       </div>
       <div className="ag-row">
         <span className="ag-grow ag-small">
-          <Moon size={13} aria-hidden style={{ verticalAlign: '-2px' }} /> Moonlight after dark
+          <Moon size={13} aria-hidden style={{ verticalAlign: '-2px' }} /> Moonlight at night
         </span>
-        <Toggle label="Moonlight after dark" checked={L.moonlight} disabled={readOnly} onChange={(v) => set({ moonlight: v })} />
+        <Toggle label="Moonlight at night" /* Audit 2026-11-17 (J19): the Lights popover’s words */ checked={L.moonlight} disabled={readOnly} onChange={(v) => set({ moonlight: v })} />
       </div>
     </div>
   );

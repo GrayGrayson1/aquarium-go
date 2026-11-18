@@ -60,6 +60,8 @@ import { IncomeChart } from '@/ui/panels/finances/IncomeChart';
 import { probabilityWord } from '@/ui/common/format';
 import type { CompatReport } from '@/types';
 import { moveCreature } from '@/sim/life/actions';
+import { setLighting } from '@/sim/care';
+import { setOpenHours } from '@/sim/facility/actions';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -451,5 +453,15 @@ describe('J18: one spelling for each thing', () => {
     expect(EQUIPMENT_KIND_LABEL.uv).toBe('UV steriliser');
     expect(getEquipmentDef('uv_sterilizer')?.name).toBe('UV Steriliser');
     expect(getEquipmentDef('live_food_doser')?.name).toBe('Live-Food Doser');
+  });
+});
+
+describe('J19: one way to write a clock time', () => {
+  it('the lights and the opening hours say “7:00 AM”, as the top bar does', () => {
+    const g = base();
+    const t = g.tankOrder[0];
+    expect(setLighting(g, t, { onHour: 7, offHour: 23 }).message).toMatch(/^Lights 7:00 AM–11:00 PM \(16 h\) at \d+%\./);
+    expect(setOpenHours(g, 10, 21).message).toBe('Open 10:00 AM–9:00 PM.');
+    expect(setOpenHours(g, 16, 24).message).toBe('Open 4:00 PM–12:00 AM.');
   });
 });

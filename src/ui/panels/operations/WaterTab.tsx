@@ -228,7 +228,7 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
         <Machine
           icon={<FlaskConical size={16} aria-hidden />}
           name="Salt Mixing Station"
-          sub={`${g0(batch)} gal batches · 12 h · $${WATER_ROOM.mixerUpkeep.toFixed(2)}/day`}
+          sub={`${g0(batch)} gal batches · 12 hours each · $${WATER_ROOM.mixerUpkeep.toFixed(2)}/day` /* Audit 2026-11-17 (J19): as "ready 12 hours later" says it */}
           status={
             mixHeld ? (
               <Status tone="watch" icon="held">Held</Status>

@@ -23,7 +23,7 @@ import { noteBreedingFood } from '../life/breeding';
 import { plural as pluralName, cap } from '../compat/text';
 import { refreshFoodStatus, tankFoodOutlook } from '../tankStatus';
 import { aOrAn } from '../economy/util'; // lane:w2-ui ("an 800-gallon tank")
-import { photoperiodTooLong } from '../time';
+import { photoperiodTooLong, formatClock } from '../time'; // Audit 2026-11-17 (J19): formatClock
 import { MAX_PER_KIND, KIND_PLURAL, idealBand, defaultSettingFor, fightAdvice } from './tuning'; // lane:fit — shared with the fit verdicts
 import { installedFit, oneOnlyText, type FitVerdict } from './fit'; // lane:fit (Audit 2026-11-17 C17: oneOnlyText)
 import { groupEaters, whoPhrase } from './autofeed'; // lane:fit (lane:qa-r3: groupEaters, whoPhrase); Audit 2026-11-17 (J3): FOOD_TAG_WORDS → foodTagNames
@@ -744,8 +744,8 @@ export function setLighting(
   if (patch.offHour !== undefined && Number.isFinite(patch.offHour)) L.offHour = ((patch.offHour % 24) + 24) % 24;
   if (patch.moonlight !== undefined) L.moonlight = patch.moonlight;
   const period = ((L.offHour - L.onHour + 24) % 24) || 24;
-  const hh = (h: number) => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
-  const notes = [`Lights ${hh(L.onHour)}–${hh(L.offHour)} (${Math.round(period)} h) at ${Math.round(L.intensity * 100)}%.`];
+  // Audit 2026-11-17 (J19): the clock as the top bar and the steppers write it ("7:00 AM–11:00 PM", not "7:00–23:00")
+  const notes = [`Lights ${formatClock(L.onHour)}–${formatClock(L.offHour)} (${Math.round(period)} h) at ${Math.round(L.intensity * 100)}%.`];
   if (photoperiodTooLong(L, state.facility?.closeHour)) {
     notes.push(period > 15 ? 'Long days of light feed algae — keep the day to the open hours, or 8–10 hours if algae is a problem.' /* Audit 2026-11-17 (J5) */ : 'The lights stay on after the doors close — that feeds algae without anyone seeing it.');
   }

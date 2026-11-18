@@ -6,6 +6,7 @@ import type { FacilityLevelId, FacilityState, GameState } from '@/types';
 import type { ActionResult } from '../care';
 import { emitEvent } from '../context';
 import { nextId } from '../ids';
+import { formatClock } from '../time'; // Audit 2026-11-17 (J19)
 import { withArticle } from '../economy/util'; // lane:w2-ui
 import { spend, earn } from '../economy';
 import { FIXTURE_DEFS, getFacilityLevel, nextFacilityLevelDef, type FacilityLevelDef, type FixtureKind } from '@/data/facilities';
@@ -139,7 +140,7 @@ export function setOpenToPublic(state: GameState, open: boolean): ActionResult {
   if (!isUnlocked(state, 'visitors')) return { ok: false, message: 'Visitors unlock with your first shop.' };
   fac.openToPublic = true;
   if (fac.admission <= 0) fac.admission = getFacilityLevel(fac.level).defaultAdmission;
-  if (!state.isShowcase) emitEvent(state, { kind: 'visitor', text: `Doors open! Admission is $${fac.admission}. Visitors come ${fac.openHour}:00–${fac.closeHour}:00.`, toast: true });
+  if (!state.isShowcase) emitEvent(state, { kind: 'visitor', text: `Doors open! Admission is $${fac.admission}. Visitors come ${formatClock(fac.openHour)}–${formatClock(fac.closeHour)}.` /* Audit 2026-11-17 (J19): the top bar's clock */, toast: true });
   return { ok: true, message: 'Open to the public.' };
 }
 
@@ -158,7 +159,7 @@ export function setOpenHours(state: GameState, openHour: number, closeHour: numb
   if (c - o < 4) return { ok: false, message: 'Stay open at least 4 hours.' };
   state.facility.openHour = o;
   state.facility.closeHour = c;
-  return { ok: true, message: `Open ${o}:00–${c}:00.` };
+  return { ok: true, message: `Open ${formatClock(o)}–${formatClock(c)}.` }; // Audit 2026-11-17 (J19): "Open 10:00 AM–9:00 PM."
 }
 
 /** Validate a spot for a tank of `tierId` (pass `ignoreTankId` when moving an existing tank). */
