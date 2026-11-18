@@ -11,7 +11,7 @@ import { useGame } from '@/state/game';
 import { opsSnapshot } from '@/ui/common/ops';
 import { ProblemsView } from '@/ui/panels/operations/Problems';
 import { dayOf } from '@/sim/time';
-import { QUARANTINE_HOURS, quarantineBusyUntil, restartDay } from '@/sim/production';
+import { QUARANTINE_HOURS, lineWaitsOn, quarantineBusyUntil, restartDay } from '@/sim/production';
 import { lineView } from '@/sim/production/view';
 import { facility } from './support/automation';
 import { automationProblems, saltCap, upgradePrep, waterRoom } from '@/sim/automation';
@@ -111,6 +111,25 @@ describe('Audit 2026-11-17 (H1 second review): a line waiting on an unwell anima
     delete sick.illness;
     sick.stats.health = 95;
     expect(lineView(g, line)!.next.waitsOn).toBeUndefined();
+  });
+
+  it('moved out (or protected), the sick animal is no longer named, in the same hour (final review)', () => {
+    const { g, lineId, tanks } = lineFarm(17);
+    const line = g.production!.lines.find((l) => l.id === lineId)!;
+    const rng = simRng(g);
+    const kid = (name: string) => addCreature(g, createCreature(g, rng, 'betta', { ageDays: 8, name, motherId: line.pair.motherId, fatherId: line.pair.fatherId }), tanks.qt.id);
+    const sick = kid('Sequin');
+    const well = kid('Velvet');
+    sick.illness = { kind: 'fin_rot', severity: 50, sinceHour: g.clock.hour } as never;
+    sick.stats.health = 30;
+    line.batches = [{ id: 'b1', creatureIds: [sick.id, well.id], sortedHour: 0, tankId: tanks.qt.id, quarantinedHour: g.clock.hour - 200 }];
+    expect(lineWaitsOn(g, line)?.id).toBe(sick.id);
+    sick.tankId = tanks.keep.id; // the player moves it to another tank (the line's step hasn't run yet)
+    expect(lineWaitsOn(g, line)).toBeNull();
+    expect(lineView(g, line)!.quarantined.waitsOn).toBeUndefined();
+    sick.tankId = tanks.qt.id;
+    sick.favorite = true; // a favourite (protected): the line never lists it, so it doesn't wait on it
+    expect(lineWaitsOn(g, line)).toBeNull();
   });
 
   it('a relisted batch taken off sale for an unwell animal keeps its quarantine tank while it waits on it', () => {

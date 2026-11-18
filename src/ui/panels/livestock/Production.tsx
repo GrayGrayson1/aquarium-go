@@ -476,7 +476,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
           </>
         }
       >
-        <p>Its animals stay in the tanks they're in, the line slot frees up, and its numbers stay in its history.</p>
+        <p>Its animals stay in the tanks they’re in, the line slot frees up, and its numbers stay in its history.</p>
       </Modal>
       {addingQt && <AddQuarantine g={g} line={line} onClose={() => setAddingQt(false)} />}
       {sorting && <SortSheet g={g} line={line} onClose={() => setSorting(false)} />}
