@@ -92,11 +92,13 @@ test.describe('phone 390×844 (touch)', () => {
           .filter((x) => x !== null);
       });
     expect(await page.locator('[data-testid="panel-livestock"] .pn-foot button').count()).toBe(4);
-    expect(await outside()).toEqual([]);
+    // (confirmation review) the start-up toasts sit just above a phone sheet's list, and their band is re-measured every
+    // 300 ms (Toasts.tsx useSheetBand), so for a moment after the footer appears they can still cover its first line:
+    // wait for the footer to be clear rather than measuring in that moment (it failed once in Chromium this way)
+    await expect.poll(outside, { timeout: 5_000 }).toEqual([]);
     // and on the narrowest phone the game supports
     await page.setViewportSize({ width: 360, height: 780 });
-    await page.waitForTimeout(400);
-    expect(await outside()).toEqual([]);
+    await expect.poll(outside, { timeout: 5_000 }).toEqual([]);
   });
 
   test('Settings opens at full height from the same top', async ({ page }) => {

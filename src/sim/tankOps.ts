@@ -97,10 +97,15 @@ function retuneForClass(state: GameState, t: Tank): { notes: string[]; changed: 
       }
       // (review) a setting the tank card's stepper can show (a cool tank's heater would want 14 °C)
       const set = Math.min(dial.max, Math.max(dial.min, want));
-      if (e.setting !== undefined && Math.abs(e.setting - set) < 0.05) continue;
+      // (confirmation review) a chiller switched off by an earlier conversion to warm water comes back on for water
+      // that needs cooling, as a new install would be: cool → tropical → cool left it off while saying "reset"
+      const wake = kind === 'chiller' && !e.on && !e.failed;
+      const same = e.setting !== undefined && Math.abs(e.setting - set) < 0.05;
+      if (same && !wake) continue;
       e.setting = set;
+      if (wake) e.on = true;
       changed = true;
-      notes.push(`The ${def.name} is reset to ${set.toFixed(1)} °C for the new water.`);
+      notes.push(wake ? `The ${def.name} is switched on and set to ${set.toFixed(1)} °C for the new water.` : `The ${def.name} is reset to ${set.toFixed(1)} °C for the new water.`);
     }
   }
   const needsHeat = CLASS_DEFAULTS[t.waterClass].temp.idealMin > ROOM_TEMP_C + 1;

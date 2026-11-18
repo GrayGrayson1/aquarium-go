@@ -305,6 +305,29 @@ describe('C7: converting between cool, tropical and planted water resets the hea
     expect(chiller.setting).toBe(THERMOSTAT_DIAL.chiller.max);
   });
 
+  // (confirmation review) …and back: the chiller that conversion switched off comes on again for water that needs it
+  it('cool → tropical → cool: the chiller is switched back on, and the line says so', () => {
+    const { s, t } = coolTank();
+    const chiller = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'chiller')!;
+    const name = getEquipmentDef(chiller.defId)!.name;
+    expect(convertWaterClass(s, t.id, 'freshwater_tropical').ok).toBe(true);
+    expect(chiller.on).toBe(false);
+    const back = convertWaterClassCost(s, t.id, 'freshwater_cool');
+    expect(back.gearNotes.some((n) => n.startsWith(`The ${name} is switched on and set to `) && n.endsWith(' °C for the new water.'))).toBe(true);
+    expect(chiller.on).toBe(false); // the preview changes nothing
+    const r = convertWaterClass(s, t.id, 'freshwater_cool');
+    expect(r.ok).toBe(true);
+    expect(chiller.on).toBe(true);
+    expect(chiller.setting!).toBeLessThan(22); // cooling water kept below the room's temperature
+    // a failed chiller is the player's to repair: it isn't switched on
+    const again = coolTank();
+    const broken = again.t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'chiller')!;
+    expect(convertWaterClass(again.s, again.t.id, 'freshwater_tropical').ok).toBe(true);
+    broken.failed = true;
+    expect(convertWaterClass(again.s, again.t.id, 'freshwater_cool').ok).toBe(true);
+    expect(broken.on).toBe(false);
+  });
+
   it('with only "no heater yet" to say, nothing counts as reset (the preview isn’t titled "resets your gear")', () => {
     const { s, t } = coolTank();
     t.equipment = t.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'chiller');
