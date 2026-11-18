@@ -52,7 +52,7 @@ import { resolveMorph, morphDisplayName, predictOffspringMorphs } from '../life/
 import { sizeAtAge } from '../life/growth';
 import { environmentGate, previewAddition } from '../compat';
 import { tankDailyCost } from '../water';
-import { activeListingFor, createListing, withdrawListing, DEFAULT_LISTING_HOURS } from '../economy/listings';
+import { activeListingFor, createListing, marketAccess, withdrawListing, DEFAULT_LISTING_HOURS, MAX_ACTIVE_LISTINGS } from '../economy/listings';
 import { bundleValue, creatureValue } from '../economy/valuation';
 import { fmtMoney } from '../economy/util';
 import { buyTank, tankKitPrice } from '../economy/purchases';
@@ -795,6 +795,19 @@ export function quarantineWaitsOn(state: GameState, tankId: string): Creature | 
   return null;
 }
 
+/**
+ * Why a line's batch past its hold isn't on the market yet, in words, or null when nothing the screens can name holds it
+ * (Audit 2026-11-17, H1 records check: they said "Lists Day {a day that had passed}"). The same checks release() and
+ * createListing make; no save field.
+ */
+export function listingHeldUp(state: GameState): string | null {
+  if (isHeld(state, 'lines')) return 'Held by manual mode';
+  const access = marketAccess(state);
+  if (!access.listings) return access.hint ?? 'The market isn’t open yet';
+  if (state.market.listings.filter((l) => l.status === 'active').length >= MAX_ACTIVE_LISTINGS) return `The market’s ${MAX_ACTIVE_LISTINGS} listing slots are all in use`;
+  return null;
+}
+
 /** The unwell animal one of the line's quarantine tanks waits on, if any. */
 export function lineWaitsOn(state: GameState, line: ProductionLine): Creature | null {
   for (const id of line.tanks.quarantine) {
@@ -944,6 +957,8 @@ function countSales(state: GameState, line: ProductionLine): void {
     const open: string[] = [];
     let unsold = false;
     let pulled = false;
+    /** What the listings that ended unsold asked a head, by part (H1 records check: a relisting never asks more). */
+    const asked: { juveniles?: number; adults?: number } = {};
     /** What comes back from a closed listing is the batch's again (a batch listed in two parts: the review's lost young). */
     const takeBack = (back: Creature[]) => {
       b.creatureIds = [...new Set([...b.creatureIds, ...back.map((c) => c.id)])];
@@ -982,13 +997,18 @@ function countSales(state: GameState, line: ProductionLine): void {
         if (l.status === 'expired' && line.rules.autoList) {
           takeBack(back);
           unsold = true;
+          const part = l.kind === 'juveniles' ? 'juveniles' : 'adults';
+          if (l.buyNow && l.creatureIds.length) asked[part] = Math.min(asked[part] ?? Infinity, l.buyNow / l.creatureIds.length);
         } else if (sp) leftToPlayer(state, line, sp, back, b.tankId, l.status === 'expired' ? 'that didn’t sell' : 'taken off sale');
       }
     }
     if (open.length) b.listingIds = open;
     else delete b.listingIds; // §3.2 rule 10
     if (unsold || pulled) b.released = false; // release() lists them again (pulled: once they're well)
-    if (unsold) b.relists = (b.relists ?? 0) + 1;
+    if (unsold) {
+      b.relists = (b.relists ?? 0) + 1;
+      if (asked.juveniles !== undefined || asked.adults !== undefined) b.lastAsk = { ...b.lastAsk, ...asked };
+    }
   }
   // A batch is done once its hold ended and none of its listings is still open.
   if (line.batches) {
@@ -1180,6 +1200,7 @@ function pruneNoticed(state: GameState, line: ProductionLine): void {
       (kind === 'full' && !state.clutches[id]) ||
       (kind === 'keepfull' && (!c || c.status !== 'alive' || c.tankId === line.tanks.keep)) ||
       (kind === 'list' && !batches.has(id)) ||
+      (kind === 'floor' && !batches.has(id)) ||
       (kind === 'cycle' && (!state.tanks[id] || quarantineReady(state.tanks[id]))) ||
       (kind === 'qtfull' && (!state.tanks[id] || !(line.batches ?? []).some((b) => !b.tankId && !b.released))) || // said again for the next batch it holds up
       (kind === 'ill' && !(line.batches ?? []).some((b) => b.id === id && b.creatureIds.some((cid) => !!state.creatures[cid] && unwellForSale(state.creatures[cid])))); // until it's well
@@ -1296,13 +1317,31 @@ function release(state: GameState, line: ProductionLine, sp: SpeciesDefinition, 
       // is shown with cents; the market's own "Listed …" line is left out: this one says it, with the price
       const n = g.creatures.length;
       const fair = bundleValue(state, g.kind, g.creatures).expected;
-      const { price, lowest } = linePrice(fair, relists);
+      const ladder = linePrice(fair, relists);
+      // never more a head than the listing that just ended asked (young grow while listed: today's fair value can be
+      // over 11 % up, and 0.81 of it above 0.9 of the old), a dollar under it for the lot; at the ladder's floor, no
+      // more than it (the floor stays the floor). Animals grown out of the juveniles' lot keep its ask. (H1 records check)
+      const part = g.kind === 'juveniles' ? 'juveniles' : 'adults';
+      const lastEach = relists ? b.lastAsk?.[part] ?? b.lastAsk?.[part === 'juveniles' ? 'adults' : 'juveniles'] : undefined;
+      let price = ladder.price;
+      let capped = false;
+      if (lastEach !== undefined) {
+        const last = lastEach * n;
+        const cap = Math.max(1, ladder.lowest ? Math.floor(last + 1e-9) : Math.ceil(last - 1e-9) - 1);
+        if (cap < price) {
+          price = cap;
+          capped = true;
+        }
+      }
+      const lowest = price <= 1 || (ladder.lowest && !capped);
       const r = createListing(state, { kind: g.kind, creatureIds: g.creatures.map((c) => c.id), reserve: price, buyNow: price, durationHours: DEFAULT_LISTING_HOURS }, { quiet: true });
       if (r.ok && r.listingId) {
         ids.push(r.listingId);
         const title = state.market.listings.find((x) => x.id === r.listingId)?.title ?? `${n} ${youngWord(sp, g.creatures, n)}`;
         const each = `${fmtMoney(price / n)}${n === 1 ? '' : ' each'}`;
-        const atFloor = relists > 0 && lowest && !linePrice(fair, relists - 1).lowest; // said once, when it gets there
+        // said once, when it can't go lower: the ladder at its floor (not the cap), or $1
+        const atFloor = relists > 0 && lowest && line.noticed?.[`floor:${b.id}`] === undefined;
+        if (atFloor) (line.noticed ??= {})[`floor:${b.id}`] = hour;
         const text = relists
           ? `${line.name}: ${title} didn’t sell, so ${n === 1 ? 'it’s' : 'they’re'} listed again at ${each}${atFloor ? ', the lowest the line goes' : ''}`
           : `${line.name}: ${title} listed · Buy now ${each}`;

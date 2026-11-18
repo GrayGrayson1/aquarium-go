@@ -16,6 +16,11 @@ import { ProblemsView } from '@/ui/panels/operations/Problems';
 import { ProductionTab } from '@/ui/panels/livestock/Production';
 import { lineView } from '@/sim/production/view';
 import { lineFarm } from './support/production';
+import { createListing } from '@/sim/economy/listings';
+import { createTank } from '@/sim/tanks';
+import { createCreature, addCreature } from '@/sim/life';
+import { simRng } from '@/sim/rng';
+import { setLineRunning } from '@/sim/production';
 
 const nav = { tab: () => {}, view: () => {} };
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
@@ -79,5 +84,35 @@ describe('Audit 2026-11-17 (H4): a due pair that can’t get into condition', ()
     f.tanks.breed.water.tempC = 27;
     expect(lineView(g, line)!.next.notReady?.drag).toBe('conditioning');
     expect(render(createElement(LinesTab, { g, small: false }))).toContain('Not ready yet: they need rich food (bloodworms, brine shrimp or daphnia) to get into condition');
+  });
+});
+
+describe('Audit 2026-11-17 (H1 records check): a batch past its hold that the line couldn’t list', () => {
+  it('says why (the listing slots are full), or that it lists as soon as it can: never a day that has passed', () => {
+    const f = lineFarm(17);
+    const g = f.g;
+    const line = g.production!.lines[0];
+    const rng = simRng(g);
+    const kids = [0, 1, 2].map(() => addCreature(g, createCreature(g, rng, 'betta', { ageDays: 8, motherId: line.pair.motherId, fatherId: line.pair.fatherId }), f.tanks.qt.id));
+    line.batches = [{ id: 'b1', creatureIds: kids.map((c) => c.id), sortedHour: 0, tankId: f.tanks.qt.id, quarantinedHour: g.clock.hour - 200 }];
+    const fillers = createTank(g, 'g40B', 'freshwater_tropical', { cycled: true, placement: { x: 24, z: 2, rotY: 0 }, name: 'Fillers' });
+    while (g.market.listings.filter((l) => l.status === 'active').length < 24) {
+      const c = addCreature(g, createCreature(g, rng, 'neon_tetra', { ageDays: 40 }), fillers.id);
+      expect(createListing(g, { kind: 'creature', creatureIds: [c.id], reserve: 5, durationHours: 168 * 3 }).ok).toBe(true);
+    }
+    use(g);
+    const v = lineView(g, line)!;
+    expect(v.quarantined.listsDay).toBeUndefined();
+    expect(v.quarantined.listsWhy).toBe('The market’s 24 listing slots are all in use');
+    const tile = render(createElement(ProductionTab, { g, sel: null, onSelect: () => {} }));
+    expect(tile).toContain('Quarantine 3 The market’s 24 listing slots are all in use');
+    expect(tile).not.toMatch(/Lists Day/);
+    const lines = render(createElement(LinesTab, { g, small: false }));
+    expect(lines).toContain('3 juveniles in Quarantine · the market’s 24 listing slots are all in use');
+    expect(lines).not.toMatch(/lists Day/);
+    // a slot free, but the line is paused: nothing to name, and still no past day
+    g.market.listings.find((l) => l.status === 'active')!.status = 'withdrawn';
+    setLineRunning(g, line.id, false);
+    expect(lineView(g, line)!.quarantined.listsWhy).toBe('Lists as soon as it can');
   });
 });

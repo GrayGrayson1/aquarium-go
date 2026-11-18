@@ -14,7 +14,7 @@ import { makeTankInfo, readinessDrag, readinessTarget, READY, spPlural, type Rea
 import { planAutofeed } from '../care/autofeed';
 import { bestOpenBid } from '../economy/listings';
 import { isLineYoung } from './costs';
-import { QUARANTINE_HOURS, lineStatus, lineWaitsOn, productionLines, quarantineBusyUntil, quarantineFull, quarantineReady, raiseTankFull, restartDay, unsoldYoung, unwellForSale, youngPlaces, youngSizeCm, type LineStatus } from './index';
+import { QUARANTINE_HOURS, lineStatus, lineWaitsOn, listingHeldUp, productionLines, quarantineBusyUntil, quarantineFull, quarantineReady, raiseTankFull, restartDay, unsoldYoung, unwellForSale, youngPlaces, youngSizeCm, type LineStatus } from './index';
 
 export type StageId = 'breed' | 'raise' | 'sort' | 'quarantine' | 'sell';
 
@@ -34,7 +34,7 @@ export interface LineView {
   raising: { count: number; word: string; dayOf?: number; ofDays?: number; full: boolean; waiting: number; feeding?: { food: string; meals: number }; places?: { used: number; cap: number }; /** Hours until the brood's next stage (chunk 6, DES-013: "next stage in 6 h"). */ nextStageIn?: number; /** The day the brood is raised and sorted (DES-013: "sorting on Day 42"). */ sortDay?: number };
   /** Quarantine: the batch in its hold (its word: "juveniles", or the species' plural once grown), days left, the day
    * it lists; or the day a busy shared tank frees up. */
-  quarantined: { count: number; word: string; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number; uncycledTank?: Tank; /** Audit 2026-11-17 (H1): the line's young in its quarantine tanks that no batch tracks (the line never lists them again). */ unsold: number; /** A free, cycled quarantine tank with no room for the waiting batch. */ fullTank?: Tank; /** Past its hold, the batch waits on this unwell animal (H1 second review); `busyTank` without `busyUntilDay`: held past its hold for another reason. */ waitsOn?: Creature };
+  quarantined: { count: number; word: string; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number; uncycledTank?: Tank; /** Audit 2026-11-17 (H1): the line's young in its quarantine tanks that no batch tracks (the line never lists them again). */ unsold: number; /** A free, cycled quarantine tank with no room for the waiting batch. */ fullTank?: Tank; /** Past its hold, the batch waits on this unwell animal (H1 second review); `busyTank` without `busyUntilDay`: held past its hold for another reason. */ waitsOn?: Creature; /** Past its hold and not listed yet: why, or "Lists as soon as it can" (no `listsDay` then: never a day that has passed). */ listsWhy?: string };
   /** Sell: the line's open listings and the best open bid among them; the buy-now price an animal (the lowest, when
    * several listings are open), and the listing's title when there's one ("12 juvenile bettas"; Audit 2026-11-17, H1). */
   selling: { listed: number; bestBid?: number; each?: number; title?: string; listings: number };
@@ -134,9 +134,10 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     const grown = members.length > 0 && members.every((c) => c.lifeStage !== 'juvenile');
     quarantined.word = grown ? (quarantined.count === 1 ? lowerName(sp.commonName) : spPlural(sp)) : quarantined.count === 1 ? 'juvenile' : 'juveniles';
     quarantined.daysLeft = Math.max(0, Math.ceil((end - now) / 24));
-    quarantined.listsDay = dayOf(end);
+    if (end > now + 1e-9) quarantined.listsDay = dayOf(end);
     quarantined.holdFraction = Math.max(0, Math.min(1, (now - inHold.quarantinedHour) / QUARANTINE_HOURS));
     if (end <= now + 1e-9 && waitsOn) quarantined.waitsOn = waitsOn; // past its hold: it waits on the unwell one
+    else if (end <= now + 1e-9) quarantined.listsWhy = listingHeldUp(state) ?? 'Lists as soon as it can'; // H1 records check
   } else if ((line.batches ?? []).some((b) => !b.tankId)) {
     // a batch waits: when does the first busy quarantine tank free up? (a day ahead only: a tank held past its hold
     // promises none, H1 second review)

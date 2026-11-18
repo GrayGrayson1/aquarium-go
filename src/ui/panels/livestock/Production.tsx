@@ -292,7 +292,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
     ? { value: `${v.raising.count} ${v.raising.word}`, hint: v.raising.dayOf !== undefined ? `${raiseName} · day ${v.raising.dayOf} of ${v.raising.ofDays}` : `${raiseName}${v.raising.full ? ' · full' : ''}` }
     : { value: '—', hint: raiseName };
   const quarantine = v.quarantined.count > 0
-    ? { value: String(v.quarantined.count), hint: v.quarantined.waitsOn ? `Waits until ${v.quarantined.waitsOn.name} is well` : line.rules.autoList ? `Lists Day ${v.quarantined.listsDay}` : daysLeft(v.quarantined.daysLeft) }
+    ? { value: String(v.quarantined.count), hint: v.quarantined.waitsOn ? `Waits until ${v.quarantined.waitsOn.name} is well` : v.quarantined.listsWhy ? v.quarantined.listsWhy : line.rules.autoList ? `Lists Day ${v.quarantined.listsDay}` : daysLeft(v.quarantined.daysLeft) }
     : v.quarantined.waitsOn
       ? { value: '—', hint: `Waits until ${v.quarantined.waitsOn.name} is well` }
     : v.quarantined.busyTank

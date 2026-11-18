@@ -1405,6 +1405,11 @@ export interface ProductionBatch {
   listingIds?: Id[];
   /** Times what didn't sell was listed again (each 10 % cheaper; Audit 2026-11-17, H1). Absent: never. */
   relists?: number;
+  /**
+   * What the listing that just ended unsold asked a head, by part (the juveniles' lot, the adults'): a relisting never
+   * asks more (Audit 2026-11-17, H1: young grow while listed). Only with `relists`. Absent: the price ladder alone.
+   */
+  lastAsk?: { juveniles?: number; adults?: number };
 }
 
 /** lane:production — what a paused line is missing (ADR-0025 decision 10): a parent, or a stage's tank. */

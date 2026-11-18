@@ -43,7 +43,10 @@ function doing(g: GameState, line: ProductionLine, v: LineView): string {
     const h = v.raising.nextStageIn;
     return `${v.raising.count} ${v.raising.word} in ${v.raise?.name ?? 'the raise tank'}${days}${h !== undefined && h <= NEXT_STAGE_SHOWN_H ? ` · next stage in ${h} h` : ''}`;
   }
-  if (v.quarantined.count > 0) return `${v.quarantined.count} ${v.quarantined.word} in ${v.quarantine?.name ?? 'quarantine'}${v.quarantined.listsDay ? ` · lists Day ${v.quarantined.listsDay}` : ''}`;
+  if (v.quarantined.count > 0) {
+    const why = v.quarantined.listsWhy; // past its hold, not listed yet: never a day that has passed (H1 records check)
+    return `${v.quarantined.count} ${v.quarantined.word} in ${v.quarantine?.name ?? 'quarantine'}${v.quarantined.listsDay ? ` · lists Day ${v.quarantined.listsDay}` : why ? ` · ${why.charAt(0).toLowerCase()}${why.slice(1)}` : ''}`;
+  }
   const why = notReadyText(v); // Audit 2026-11-17 (H4): a due pair that can't get into condition says why
   if (why) return `Not ready yet: ${why}`;
   if (v.next.days !== undefined) return `Next clutch in ${v.next.days} ${v.next.days === 1 ? 'day' : 'days'}`;

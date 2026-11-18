@@ -528,7 +528,7 @@ function TankDetails({ ctx, id }: { ctx: Ctx; id: string }) {
         {places && <Kv k="Places" v={`${places.used} of ${places.cap}`} />}
         <Kv k="Feeding" v={doser ? 'Live-food doser' : feeder && animals > 0 ? 'Autofeeder' : (g.staff?.roster ?? []).some((m) => m.role === 'aquarist' && m.tankIds.includes(id)) ? 'Keepers’ rounds' : 'By hand'} />
         <Kv k="Water" v={need ? `${g1(need.fresh + need.salt)} gal a day from the Water room` : changerOf(t) ? 'Auto Water Changer' : 'By hand'} />
-        {v && <Kv k="Next" v={v.quarantined.listsDay && line?.tanks.quarantine.includes(id) ? `Lists Day ${v.quarantined.listsDay}` : v.next.days !== undefined ? `Next clutch in ${v.next.days} days` : '—'} />}
+        {v && <Kv k="Next" v={v.quarantined.listsDay && line?.tanks.quarantine.includes(id) ? `Lists Day ${v.quarantined.listsDay}` : v.quarantined.listsWhy && line?.tanks.quarantine.includes(id) ? v.quarantined.listsWhy : v.next.days !== undefined ? `Next clutch in ${v.next.days} days` : '—'} />}
       </div>
       <div className="ops-card__actions">
         <Button size="sm" onClick={() => go({ kind: 'tankCard', tankId: id, tab: 'water' })}>

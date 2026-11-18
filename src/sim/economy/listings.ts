@@ -116,7 +116,7 @@ export const LISTING_DURATION_PRESETS: ListingDurationPreset[] = [
   { hours: 120, label: '5 days', realLabel: realLabel(120), note: 'Widest reach' },
 ];
 export const DEFAULT_LISTING_HOURS = 48;
-const MAX_ACTIVE_LISTINGS = 24;
+export const MAX_ACTIVE_LISTINGS = 24;
 const BIDS_CAP = 60;
 const CLOSED_LISTINGS_KEPT = 40;
 const CLOSED_PHOTOS_KEPT = 5;
