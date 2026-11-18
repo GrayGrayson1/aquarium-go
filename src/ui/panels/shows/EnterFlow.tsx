@@ -130,7 +130,7 @@ export function EnterFlow({ g, show, initialClass, onBack, onDone }: { g: GameSt
                   </span>
                   <span className="sh-standard">
                     <span>
-                      Prize <b>{money(cl.purse)}</b>
+                      Prizes <b>{money(cl.purse)}</b>
                     </span>
                     <span>About {cl.field} other exhibitors</span>
                   </span>
