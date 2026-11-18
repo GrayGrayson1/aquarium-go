@@ -113,15 +113,22 @@ test.describe('phone 390×844 (touch)', () => {
 
   test('audit B18: More and Settings swipe closed from their header, as panels do', async ({ page }) => {
     await phoneGame(page);
-    /** A downward swipe from the middle of `sel` (a mouse pointer: the drag is the same). */
+    /**
+     * A downward swipe from the middle of `sel` (a mouse pointer: the drag is the same), at a hand's pace: a move a
+     * frame, about a fifth of a second in all. Ten moves sent in one burst can all land before the drag's first frame,
+     * and WebKit then ended the gesture where it began (the full-height Settings sheet stayed open 7 times in 8 when
+     * this case ran alone on a quiet machine; it had passed in two full runs on a busy one).
+     */
     const swipe = async (sel: string) => {
       const r = (await rect(page, sel))!;
       const x = r.left + r.width / 2;
       const y = r.top + r.height / 2;
       await page.mouse.move(x, y);
       await page.mouse.down();
-      await page.mouse.move(x, y + 80, { steps: 4 });
-      await page.mouse.move(x, y + 240, { steps: 6 });
+      for (let i = 1; i <= 12; i++) {
+        await page.mouse.move(x, y + i * 20);
+        await page.waitForTimeout(16);
+      }
       await page.mouse.up();
     };
     await tid(page, 'dock-more').tap();
