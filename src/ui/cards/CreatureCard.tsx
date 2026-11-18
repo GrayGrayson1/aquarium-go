@@ -96,6 +96,7 @@ import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isM
 import { ConditionNotes } from './ConditionNotes'; // Audit 2026-11-17 (D8, D16)
 import { MoveGroupButton } from './MoveGroupButton'; // Audit 2026-11-17 (D2)
 import { AutofeederVerdict, RealLifeTips, openSpeciesGuide } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
+import { socialWord, socialDetail } from '../panels/common/Profile'; // Audit 2026-11-17 (J9 review): the chip's words
 import { Badge, Button, Chip, Meter, Section, StatusBadge, formatMoney, KV, Empty } from '../kit';
 import { setCameraMode } from '../hud/ToolRail';
 import { MoveCreatureModal } from './MoveCreatureModal';
@@ -263,9 +264,9 @@ function CareFacts({ sp, tankGallons, unit, c, nowHour }: { sp: SpeciesDefinitio
         {flow?.label ?? sentenceCase(sp.flowPreference)}
       </KV>
       <KV label={<><Users size={13} aria-hidden /> Social</>} hint={sp.social.note}>
-        {sentenceCase(sp.social.kind)}
-        {/* Audit 2026-11-17 (J9): the ideal read as a minimum ("groups of 12+" above "Keep at least six") */}
-        {sp.social.minGroup > 1 ? (sp.social.idealGroup > sp.social.minGroup ? ` · at least ${sp.social.minGroup}, ideally ${sp.social.idealGroup}+` : ` · at least ${sp.social.minGroup}`) : ''}
+        {/* Audit 2026-11-17 (J9 and its review): the care chip's words, then the ideal ("School of 6+, ideally 12+") */}
+        {socialWord(sp)}
+        {socialDetail(sp)}
       </KV>
       <KV label={<><Box size={13} aria-hidden /> Tank</>} hint={tankGallons && tankGallons < sp.recommendedMinTankGallons ? `This tank is ${tankGallons} gal — smaller than recommended.` : undefined}>
         {sp.recommendedMinTankGallons}+ gal

@@ -39,7 +39,8 @@ import { useGame } from '@/state/game';
 import { useShell } from '@/ui/common/shellStore';
 import { ARTICLES } from '@/ui/panels/encyclopedia/science';
 import { getWaterReport } from '@/sim/water';
-import { socialWord } from '@/ui/panels/common/Profile';
+import { socialWord, socialDetail } from '@/ui/panels/common/Profile';
+import { ALL_SPECIES } from '@/data/species';
 import { TANK_STATUS_WORD } from '@/ui/common/tankStatus';
 import { ATTENTION_WORD } from '@/ui/common/notify';
 import { ACHIEVEMENTS } from '@/data/achievements';
@@ -294,6 +295,30 @@ describe('J9: species pages give advice their own numbers and diets agree with',
     expect(getSpecies('flame_hawkfish').encyclopedia.keeperTip).not.toMatch(/seafood/);
     expect(getSpecies('dwarf_gourami').encyclopedia.feedingNote).not.toMatch(/floating pellets/);
     expect(getSpecies('figure_eight_puffer').encyclopedia.funFact).toMatch(/Its old name, biocellatus/);
+  });
+
+  // the review: six group species have a minimum of 1, and the chip read "Groups of 1+"
+  it('the care chip and the creature card agree with the data for every species; no chip says “1+”', () => {
+    for (const sp of ALL_SPECIES) {
+      const { kind, minGroup: min, idealGroup: ideal } = sp.social;
+      const chip = socialWord(sp);
+      const card = `${chip}${socialDetail(sp)}`; // the card's Social row: the chip's words, then the detail
+      expect(chip, sp.id).not.toMatch(/\b[01]\+/);
+      const n = /(\d+)\+/.exec(chip);
+      if (n) expect(Number(n[1]), `${sp.id}: the chip's number is the minimum`).toBe(min);
+      if (min > 1) expect(card, sp.id).toMatch(new RegExp(`\\b${min}\\+|at least ${min}\\b`));
+      if (kind === 'group' && min <= 1) expect(chip, sp.id).toBe('Alone or in groups');
+      const best = /ideally (\d+)\+/.exec(card);
+      if (best) expect(Number(best[1]), sp.id).toBe(ideal);
+      if (ideal > Math.max(1, min) && (min > 1 || kind === 'group')) expect(best, `${sp.id}: the card gives the ideal`).not.toBeNull();
+    }
+    const card = (id: string) => `${socialWord(getSpecies(id))}${socialDetail(getSpecies(id))}`;
+    expect(card('amano_shrimp')).toBe('Alone or in groups, ideally 5+');
+    expect(card('cardinal_tetra')).toBe('School of 6+, ideally 12+');
+    expect(card('cherry_shrimp')).toBe('Colony of 3+, ideally 10+');
+    expect(card('swordtail')).toBe('Harem · at least 3, ideally 4+');
+    expect(card('spotted_scat')).toBe('Groups of 6+');
+    expect(card('ocellaris_clownfish')).toBe('Bonded pair');
   });
 });
 
