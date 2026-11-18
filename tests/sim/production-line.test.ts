@@ -925,7 +925,7 @@ describe('the chunk 4 review: ownership, keep tanks, the pair list, and the line
     const waiting = line.batches?.find((b) => !b.tankId);
     expect(waiting).toBeDefined();
     run(g, 6);
-    const said = g.log.filter((e) => e.text === 'Betta line: Quarantine isn’t cycled yet, so the juveniles wait in Grow-out.');
+    const said = g.log.filter((e) => e.text === 'Betta line: Quarantine’s filter bacteria are still growing, so the juveniles wait in Grow-out.' /* Audit 2026-11-17 (J5 review) */);
     expect(said.length).toBe(1);
     expect(lineView(g, line)!.quarantined.uncycledTank?.id).toBe(f.qt.id);
     // still cycling by the water report's own line (below 0.4 with animals: "Tank is still cycling"): it waits

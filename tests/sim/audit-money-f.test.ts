@@ -488,7 +488,7 @@ describe('F4: buying animals into a tank that is still cycling says so first', (
   it('after paying, the not-cycled note is a toast, not only a log line', () => {
     const { g, t, o } = cyclingShop(0.2);
     expect(buyOffer(g, o.id, t.id).ok).toBe(true);
-    const e = g.log.find((x) => /not cycled yet/.test(x.text))!;
+    const e = g.log.find((x) => /filter bacteria are still growing/.test(x.text))!; // Audit 2026-11-17 (J5 review): was "not cycled yet"
     expect(e.toast).toBe(true);
   });
 });
