@@ -56,6 +56,6 @@ describe('AUTO-038: machines', () => {
   });
 
   it('the live-food doser is tank equipment, opened by Live Food Cultures', () => {
-    expect(getEquipmentDef('live_food_doser')).toMatchObject({ kind: 'doser', unlock: 'live_food_room', name: 'Live-Food Doser' }); // Audit 2026-11-17 (J18): Title Case, as the catalogue
+    expect(getEquipmentDef('live_food_doser')).toMatchObject({ kind: 'doser', unlock: 'live_food_room', name: 'Live-food doser' });
   });
 });

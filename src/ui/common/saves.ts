@@ -148,7 +148,7 @@ export async function loadIntoGame(slot: string): Promise<GameState | null> {
         // the review of I10: a save that threw is a save that didn't land: stop, and say so (it used to load anyway)
         console.warn('[ui] autosave before load failed', e);
         showParked();
-        useUI.getState().toast('Saving failed — try again, or export a copy from Settings › Saves.', 'danger'); // Audit 2026-11-17 (J20)
+        useUI.getState().toast('Couldn’t save this game first, so the other save didn’t load. Try again, or export a copy from Settings › Saves.', 'danger'); // Audit 2026-11-17 (J20 review): say the load stopped
         return null;
       }
     }

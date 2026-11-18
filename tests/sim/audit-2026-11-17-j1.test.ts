@@ -537,7 +537,7 @@ describe('J18: one spelling for each thing', () => {
   it('British spellings and one form for each name', () => {
     expect(EQUIPMENT_KIND_LABEL.uv).toBe('UV steriliser');
     expect(getEquipmentDef('uv_sterilizer')?.name).toBe('UV Steriliser');
-    expect(getEquipmentDef('live_food_doser')?.name).toBe('Live-Food Doser');
+    expect(getEquipmentDef('live_food_doser')?.name).toBe('Live-food doser'); // ADR-0032's approved name, everywhere
   });
 
   it('the US spelling still finds what the game spells the British way (the review)', () => {

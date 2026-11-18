@@ -424,7 +424,7 @@ export const EQUIPMENT: EquipmentDef[] = [
   {
     id: 'live_food_doser',
     kind: 'doser',
-    name: 'Live-Food Doser',
+    name: 'Live-food doser',
     tier: 2,
     price: 45,
     upkeep: 0.02,
