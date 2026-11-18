@@ -51,6 +51,7 @@ import {
 } from '@/sim/production';
 import { juvenileSlots } from '@/sim/life/breeding/common';
 import { fmtMoney } from '@/sim/economy/util';
+import { bundleValue } from '@/sim/economy/valuation';
 import { lineView } from '@/sim/production/view';
 import { createListing, withdrawListing } from '@/sim/economy/listings';
 import { repairState } from '@/persistence/migrations';
@@ -1137,6 +1138,14 @@ describe('Audit 2026-11-17 (H1): young a line leaves in quarantine', () => {
     expect(listed.reduce((a, l) => a + l.creatureIds.length, 0)).toBe(living.length); // it left the adults untracked
     expect(unsoldYoung(g, line)).toEqual([]);
     expect(g.log.filter((e) => /^Betta line: .* didn’t sell, so (they’re|it’s) listed again at /.test(e.text)).length).toBe(2);
+    // records check: each part asks no more a head than its last listing did
+    for (const kind of ['juveniles', 'group'] as const) {
+      const before = first.find((l) => l.kind === kind)!;
+      const after = listed.find((l) => l.kind === kind)!;
+      expect(after.buyNow! / after.creatureIds.length).toBeLessThan(before.buyNow! / before.creatureIds.length);
+    }
+    expect(line.batches?.[0].lastAsk?.juveniles).toBeDefined();
+    expect(line.batches?.[0].lastAsk?.adults).toBeDefined();
   });
 
   it('a line listing the player withdraws: the line says where they are and leaves them to the player', () => {
@@ -1220,6 +1229,60 @@ describe('Audit 2026-11-17 (H1): young a line leaves in quarantine', () => {
     expect(quarantineBusyUntil(g, f.qt.id)).toBeLessThanOrEqual(g.clock.hour); // held, past its hold
     (line.batches ??= []).push({ id: 'bnext', creatureIds: [], sortedHour: g.clock.hour }); // a batch behind it
     expect(restartDay(g, line)).toBeNull();
+  });
+
+  it('young whose fair value rose 20 % since they were listed are relisted for less a head, not more (records check)', () => {
+    const f = farm({ seed: 151 });
+    const g = f.g;
+    const line = start(f);
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const ids = new Set(young(f, f.qt.id).map((c) => c.id));
+    const { l, buyers } = endUnsold(f, line, ids);
+    const n = l.creatureIds.length;
+    run(g, 1);
+    expect(l.status).toBe('expired');
+    buyers();
+    for (const x of g.market.buyers) x.budget = 1; // nobody buys the relisting either, so it can be read
+    // they've grown: today's fair value is 20 % up, and the ladder's second step (× 0.81) would now ask more than × 0.9 did
+    (g.market.demand ??= {}).betta = 1.2 * (g.market.demand?.betta ?? 1);
+    const ladder = linePrice(bundleValue(g, 'juveniles', l.creatureIds.map((id) => g.creatures[id])).expected, 1).price;
+    expect(ladder).toBeGreaterThan(l.buyNow!);
+    run(g, 1);
+    const again = lineListings(g, ids).find((x) => x.id !== l.id)!;
+    expect(again.creatureIds.length).toBe(n);
+    expect(again.buyNow).toBe(l.buyNow! - 1); // a dollar under what the lot asked
+    expect(line.batches?.[0].lastAsk).toEqual({ juveniles: l.buyNow! / n });
+    expect(g.log.some((e) => e.text === `Betta line: ${again.title} didn’t sell, so they’re listed again at ${fmtMoney(again.buyNow! / n)} each`)).toBe(true);
+  });
+
+  it('lastAsk: repaired when unreadable or without relists, kept when sound, and absent leaves the hash as it was', () => {
+    const f = farm({ seed: 152 });
+    const g = f.g;
+    const line = start(f);
+    line.batches = [{ id: 'b1', creatureIds: [], sortedHour: 0, released: true, relists: 2, lastAsk: { juveniles: 4.5 } }];
+    const save = () => JSON.parse(JSON.stringify(g));
+    expect(repairState(save()).filter((r) => /lastAsk/.test(r))).toEqual([]);
+    const h = stateHash(g);
+    line.batches[0].lastAsk = { juveniles: 4.5, adults: 12 };
+    expect(stateHash(g)).not.toBe(h);
+    delete line.batches[0].lastAsk;
+    const without = stateHash(g);
+    line.batches[0].lastAsk = { juveniles: 4.5 };
+    expect(stateHash(g)).toBe(h);
+    delete line.batches[0].lastAsk;
+    expect(stateHash(g)).toBe(without);
+    for (const bad of [{ juveniles: -1 }, { juveniles: 'x' }, { calves: 3 }, 7]) {
+      const s = save();
+      s.production.lines[0].batches[0].lastAsk = bad;
+      expect(repairState(s).some((r: string) => /lastAsk: unreadable, removed/.test(r))).toBe(true);
+      expect(s.production.lines[0].batches[0].lastAsk).toBeUndefined();
+    }
+    const orphan = save();
+    delete orphan.production.lines[0].batches[0].relists;
+    orphan.production.lines[0].batches[0].lastAsk = { juveniles: 3 };
+    repairState(orphan);
+    expect(orphan.production.lines[0].batches[0].lastAsk).toBeUndefined();
   });
 
   it('cheap lots follow the rule: priced as a lot, each relisting at least a dollar lower, the floor half of fair value', () => {

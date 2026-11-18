@@ -1086,6 +1086,15 @@ function repairProduction(s: Json, repairs: string[]): void {
             delete b.relists;
             repairs.push(`${at}.batch ${shortId(b.id)}.relists: unreadable, removed`);
           }
+          // Audit 2026-11-17 (H1): what the last unsold listing asked a head, by part; only with relists
+          if (b.lastAsk !== undefined) {
+            const price = (v: unknown) => v === undefined || (typeof v === 'number' && Number.isFinite(v) && v > 0);
+            const ask = b.lastAsk as Json;
+            if (b.relists === undefined || !isObj(ask) || Object.keys(ask).some((k) => k !== 'juveniles' && k !== 'adults') || !price(ask.juveniles) || !price(ask.adults)) {
+              delete b.lastAsk;
+              repairs.push(`${at}.batch ${shortId(b.id)}.lastAsk: unreadable, removed`);
+            }
+          }
         }
         if (good.length) l.batches = good;
         else delete l.batches;
