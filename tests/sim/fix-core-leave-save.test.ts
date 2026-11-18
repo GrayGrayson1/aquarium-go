@@ -126,7 +126,7 @@ describe('audit 2026-11-17, I10 (B-123): a save that didn’t land is never igno
       Object.defineProperty(useResume.getState().summary!, 'resumeSpeed', { get: () => { throw new Error('boom'); } });
       setStorageBackend(mem);
       expect(await loadIntoGame('slot1')).toBeNull();
-      expect(useUI.getState().toasts.map((t) => t.text)).toContain('Saving failed — please try again.');
+      expect(useUI.getState().toasts.map((t) => t.text)).toContain('Saving failed — try again, or export a copy from Settings › Saves.'); // Audit 2026-11-17 (J20)
       expect(useGame.getState().game!.saveId).toBe(a.saveId);
       useResume.setState({ summary: null });
       vi.restoreAllMocks();

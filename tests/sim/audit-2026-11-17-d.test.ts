@@ -490,7 +490,7 @@ describe('D2: a school moves in one go', () => {
     expect(one.message).toMatch(/^Courtship interrupted — Ram 3 moved to /);
     const r = applyCommand(s, { k: 'moveCreatures', creatures: rams.map((c) => c.id), to: to.id, from: rams.map(() => from.id) });
     expect(r.ok).toBe(true);
-    expect(r.message.startsWith(`Moved 5 german blue rams to ${to.name}. Give them a little while to settle in.`)).toBe(true);
+    expect(r.message.startsWith(`Moved 5 German blue rams to ${to.name}. Give them a little while to settle in.`)).toBe(true); // Audit 2026-11-17 (J15): the proper noun keeps its capital
     expect(r.message).toContain(one.message);
     expect(r.message).not.toMatch(/Ram 0 moved|Moved Ram 0/);
   });

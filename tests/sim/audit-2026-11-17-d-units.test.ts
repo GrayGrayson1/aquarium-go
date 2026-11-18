@@ -33,7 +33,7 @@ describe('D8: compatibility reasons and the card’s condition notes show the pl
     const temp = r.reasons.find((x) => x.category === 'temperature' && x.severity !== 'info')!;
     expect(temp.text).toMatch(/°C/);
     const html = renderToStaticMarkup(createElement(CompatView, { report: r }));
-    expect(html).toMatch(/too warm for white cloud mountain minnows/);
+    expect(html).toMatch(/too warm for White Cloud Mountain minnows/); // Audit 2026-11-17 (J15): the mountain's name keeps its capitals
     expect(html).toContain(convertTempText(temp.text, 'F')!.split(' — ')[0]);
     expect(html).toMatch(/°F/);
     expect(html).not.toMatch(/°(\s|&nbsp;| )*C/);
