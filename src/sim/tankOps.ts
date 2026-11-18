@@ -170,7 +170,7 @@ export function convertWaterClass(state: GameState, tankId: string, wc: WaterCla
   const bill: string[] = [];
   if (cost.substrate > 0) bill.push(`${getSubstrateDef(cost.substrateKind!)?.name.toLowerCase() ?? 'new'} bed $${cost.substrate}`);
   if (cost.saltKg > 0) bill.push(cost.saltCost > 0 ? `${cost.saltKg} kg of salt${cost.saltFromStore > 0 ? ` (${Math.round(cost.saltFromStore * 10) / 10} kg from storage)` : ''} $${cost.saltCost}` : `${cost.saltKg} kg of salt from storage`);
-  if (cost.total > state.finance.money) return { ok: false, message: `Converting to ${WATER_CLASS_WORDS[wc]} needs $${cost.total} (${bill.join(', ')}) — you have $${Math.floor(state.finance.money)}.` };
+  if (cost.total > state.finance.money) return { ok: false, message: `Converting to a ${WATER_CLASS_WORDS[wc]} tank needs $${cost.total} (${bill.join(', ')}) — you have $${Math.floor(state.finance.money)}.` };
   if (cost.substrate > 0 && !spend(state, cost.substrate, 'decor', `${getSubstrateDef(cost.substrateKind!)?.name ?? 'Substrate'} for ${t.name}`)) return { ok: false, message: 'Not enough money' };
   if (cost.saltCost > 0 && !spend(state, cost.saltCost, 'consumables', `Salt mix to convert ${t.name}`)) return { ok: false, message: 'Not enough money' };
   if (cost.saltFromStore > 0) state.inventory.salt = Math.max(0, Math.round(((state.inventory.salt ?? 0) - cost.saltFromStore) * 100) / 100);
@@ -233,7 +233,7 @@ export function convertWaterClass(state: GameState, tankId: string, wc: WaterCla
   }
   const paid = bill.length ? ` ${bill.map((b) => b.charAt(0).toUpperCase() + b.slice(1)).join(', ')}.` : '';
   const gear = gearOut.length ? ` Moved to storage — it can’t run in this water: ${gearOut.join(', ')}.` : '';
-  return { ok: true, message: `Converted to ${WATER_CLASS_WORDS[wc]}.${paid}${stored ? ` ${stored} decor item${stored === 1 ? '' : 's'} moved to storage.` : ''}${gear}${extra}${retuned.length ? ` ${retuned.join(' ')}` : ''}` };
+  return { ok: true, message: `Converted to a ${WATER_CLASS_WORDS[wc]} tank.${paid}${stored ? ` ${stored} decor item${stored === 1 ? '' : 's'} moved to storage.` : ''}${gear}${extra}${retuned.length ? ` ${retuned.join(' ')}` : ''}` };
 }
 
 export function setBackdrop(state: GameState, tankId: string, backdrop: BackdropKind): OpResult {

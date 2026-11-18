@@ -61,6 +61,7 @@ import { IncomeChart } from '@/ui/panels/finances/IncomeChart';
 import { probabilityWord } from '@/ui/common/format';
 import type { CompatReport } from '@/types';
 import { moveCreature } from '@/sim/life/actions';
+import { convertWaterClass } from '@/sim/tankOps';
 import { matches } from '@/ui/panels/common/match';
 import { findAnything } from '@/ui/search/searchIndex';
 import { setLighting, feedTank } from '@/sim/care';
@@ -227,6 +228,18 @@ describe('J4: one water type, one name (a label, and the same name inside a sent
     const r = previewAddition(g, t.id, { speciesId: 'axolotl', count: 1 });
     const line = r.reasons.map((x) => x.text).find((x) => /normally kept in/.test(x)) ?? '';
     expect(line).toMatch(/not a planted freshwater setup\./);
+  });
+
+  it('converting a tank names a tank, not an adjective (the review)', () => {
+    const g = base();
+    const t = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true });
+    if (!g.progress.unlocked.includes('marine_basics')) g.progress.unlocked.push('marine_basics');
+    g.finance.money = 0; // salt mix costs money
+    const short = convertWaterClass(g, t.id, 'marine_fowlr');
+    expect(short.ok).toBe(false);
+    expect(short.message).toMatch(/^Converting to a marine fish-only tank needs \$\d+/);
+    g.finance.money = 100000;
+    expect(convertWaterClass(g, t.id, 'marine_fowlr').message).toMatch(/^Converted to a marine fish-only tank\./);
   });
 });
 
