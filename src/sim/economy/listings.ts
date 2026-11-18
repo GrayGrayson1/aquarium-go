@@ -336,7 +336,8 @@ function buildSnapshot(state: GameState, kind: ListingKind, creatures: Creature[
     const c = creatures[0];
     const sexes = creatures.map((x) => x.sex).filter((s) => s !== 'unknown');
     // Audit 2026-11-17 (J14): words, not ids or signs ("juvenile/adult", "1♂ 0♀", "showoff", a score with no scale)
-    const stages = [...new Set(creatures.map((x) => x.lifeStage))].join(' and ');
+    const stageList = [...new Set(creatures.map((x) => x.lifeStage))];
+    const stages = stageList.length <= 1 ? stageList.join('') : `${stageList.slice(0, -1).join(', ')} and ${stageList[stageList.length - 1]}`; // (J14 review: "juvenile, adult and elder", not "… and … and …")
     const males = sexes.filter((s) => s === 'male').length;
     const females = sexes.filter((s) => s === 'female').length;
     const sexWords = [males ? `${males} male${males === 1 ? '' : 's'}` : '', females ? `${females} female${females === 1 ? '' : 's'}` : ''].filter(Boolean).join(', ');

@@ -5,8 +5,20 @@
 import type { GameState, Creature, Clutch } from '@/types';
 import { findSpecies } from '@/data/species';
 import { moduleFor } from '../life/breeding/registry';
+import { youngLabel } from '../life/breeding/clutch'; // Audit 2026-11-17 (J16 review)
+import { youngSingular } from '../life/breeding/common'; // Audit 2026-11-17 (J16 review)
 
-const YOUNG = (cl: Clutch): string => (cl.stage === 'eggs' ? `${cl.count} egg${cl.count === 1 ? '' : 's'}` : `${cl.count} young`); // Audit 2026-11-17 (J16): "1 egg"
+/**
+ * Audit 2026-11-17 (J16 and its review): the brood in the Eggs & fry card's word, one or many: "1 egg", "120 eggs" (also
+ * in a pouch or a mouth), "1 larva", "12 fry" (it said "1 eggs", then "1 young").
+ */
+const YOUNG = (cl: Clutch): string => {
+  const sp = findSpecies(cl.speciesId);
+  const label = sp ? youngLabel(cl, moduleFor(sp)) : cl.stage === 'eggs' || cl.stage === 'in_pouch' ? 'eggs' : 'fry';
+  return `${cl.count} ${cl.count === 1 ? youngSingular(label) : label}`;
+};
+/** "they" for a brood, "it" for one. */
+const them = (cl: Clutch): string => (cl.count === 1 ? 'it' : 'them');
 const pronoun = (c: Creature): string => (c.sex === 'male' ? 'he' : c.sex === 'female' ? 'she' : 'they');
 
 /** Is this clutch carried by (not just guarded by) its parent — it travels with the animal. */
@@ -32,15 +44,15 @@ export function saleWarnings(state: GameState, creatureIds: readonly string[]): 
     const mine = clutches.filter((cl) => cl.guardedById === c.id);
     const carried = mine.find(carriesClutch);
     const guarded = mine.find((cl) => !carriesClutch(cl));
-    if (carried) out.push(`${c.name} is carrying ${YOUNG(carried)} — they go with ${pronoun(c) === 'they' ? 'them' : pronoun(c) === 'he' ? 'him' : 'her'} if sold.`);
+    if (carried) out.push(`${c.name} is carrying ${YOUNG(carried)} — ${carried.count === 1 ? 'it goes' : 'they go'} with ${pronoun(c) === 'they' ? 'them' : pronoun(c) === 'he' ? 'him' : 'her'} if sold.`);
     else if (['pregnant', 'berried', 'brooding', 'gravid'].includes(c.repro?.stage ?? '')) out.push(`${c.name} is expecting young — they’d be born in someone else’s tank.`);
     // audit E12: a cichlid pair's other parent, staying, goes on tending the brood alone (pairGuards)
     const otherId = guarded ? (guarded.motherId === c.id ? guarded.fatherId : guarded.motherId) : null;
     const other = otherId && !ids.has(otherId) ? state.creatures[otherId] : undefined;
     const pairSp = guarded ? findSpecies(guarded.speciesId) : undefined;
     const otherTends = !!guarded && !!pairSp && !!moduleFor(pairSp).plan.pairGuards && !!other && (other.status === 'alive' || other.status === 'listed') && other.tankId === guarded.tankId;
-    if (guarded && otherTends) out.push(`${c.name} is guarding ${YOUNG(guarded)} with ${other!.name}, who will go on tending them alone.`);
-    else if (guarded) out.push(`${c.name} is guarding ${YOUNG(guarded)} — with no parent tending them, eggs fungus and fry get eaten.`);
+    if (guarded && otherTends) out.push(`${c.name} is guarding ${YOUNG(guarded)} with ${other!.name}, who will go on tending ${them(guarded)} alone.`);
+    else if (guarded) out.push(`${c.name} is guarding ${YOUNG(guarded)} — with no parent tending ${them(guarded)}, eggs fungus and fry get eaten.`);
     else if (['guarding', 'laying', 'spawning', 'depositing'].includes(c.repro?.stage ?? '') && mine.length === 0) out.push(`${c.name} is in the middle of spawning — the clutch is lost if ${pronoun(c)} ${pronoun(c) === 'they' ? 'go' : 'goes'} now.`);
   }
   for (const c of creatures) {

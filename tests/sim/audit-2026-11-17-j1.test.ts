@@ -381,6 +381,27 @@ describe('J14: internal ids and tags are shown as words', () => {
     expect(lastHurtBy(c, g.clock.hour)).toEqual({ label: 'the anemone', verb: 'stinging' }); // next's review: a sting stings
   });
 
+  it('a listing of three life stages names them as a list (the review)', () => {
+    let summary = '';
+    for (let seed = 1; seed <= 20 && !summary; seed++) {
+      const g = newGame({ starterId: 'axolotl', starterName: 'Mochi', seed });
+      devOpenMarket(g);
+      const cs = (['juvenile', 'adult', 'elder'] as const).map((stage, i) => {
+        const c = addCreature(g, createCreature(g, simRng(g), 'axolotl', { ageDays: 60 + i * 400 }), g.tankOrder[0]);
+        c.lifeStage = stage;
+        c.stats.health = 100;
+        delete c.illness;
+        return c;
+      });
+      const ids = cs.map((c) => c.id);
+      const pv = previewListing(g, { kind: 'group', creatureIds: ids });
+      if (!pv.ok) continue;
+      const r = createListing(g, { kind: 'group', creatureIds: ids, reserve: pv.suggestedReserve, buyNow: 0, durationHours: 24 });
+      summary = g.market.listings.find((x) => x.id === r.listingId)?.snapshot.summary ?? '';
+    }
+    expect(summary).toMatch(/ · juvenile, adult and elder · /);
+  });
+
   it('a listing’s row reads in words: stages, sexes, personality and a health out of 100', () => {
     let summary = '';
     for (let seed = 1; seed <= 20 && !summary; seed++) {
@@ -462,7 +483,13 @@ describe('J16: plurals and articles built for the value they hold', () => {
     const cl = createClutch(g, { sp: getSpecies('discus'), tank: home, mother: f, father: m, hour: g.clock.hour, stage: 'eggs', count: 1, visual: 'eggs_adhesive', nextStageHour: g.clock.hour + 40, guardedById: m.id });
     m.repro.stage = 'guarding';
     m.repro.clutchId = cl.id;
-    expect(saleWarnings(g, [m.id])).toContain('Rio is guarding 1 egg with Sol, who will go on tending them alone.');
+    expect(saleWarnings(g, [m.id])).toContain('Rio is guarding 1 egg with Sol, who will go on tending it alone.');
+    // the review: one carried young reads in the brood's own word, and "it"
+    const c2 = createClutch(g, { sp: getSpecies('discus'), tank: home, mother: f, father: m, hour: g.clock.hour, stage: 'in_pouch', count: 1, visual: 'pouch', nextStageHour: g.clock.hour + 40, guardedById: m.id });
+    cl.count = 0;
+    expect(saleWarnings(g, [m.id])).toContain('Rio is carrying 1 egg — it goes with him if sold.');
+    c2.count = 30;
+    expect(saleWarnings(g, [m.id])).toContain('Rio is carrying 30 eggs — they go with him if sold.');
     expect(withArticle('Aquarium Store')).toBe('an Aquarium Store');
     expect(withArticle('uncommon', true)).toBe('An uncommon');
   });
