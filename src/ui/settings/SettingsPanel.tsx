@@ -513,15 +513,21 @@ function SoloSavesTab() {
   );
 }
 
-/** chunk 6 (0.5 spec §16, §21's release step; ADR-0034 decision 8) — Settings › About's "What’s new in 0.5". */
-export const WHATS_NEW_05 = [
-  'Links to every screen, and a tab bar on phones',
-  'Shop filters: Prismatic only and Rare genes',
-  'New betta genes: Cambodian and Metallic',
-  'Auto-feed and Auto-clean on the tank card',
-  'Notifications while the game is open',
-  'Production lines in Livestock',
-  'Operations: the Water room and the Live food room',
+/**
+ * chunk 6 (0.5 spec §16, §21's release step; ADR-0034 decision 8) — Settings › About's "What’s new". The audit of
+ * 2026-11-17 (findings B17 and J12; ADR-0056 decision 2): it still listed 0.5's seven lines in 0.9.2, so it now
+ * names the release it describes and lists what this one brings; each release that changes what players do
+ * replaces the lines and the version beside them.
+ */
+export const WHATS_NEW_VERSION = '0.10';
+export const WHATS_NEW = [
+  'Your first companion never dies of old age',
+  'A little food from the club when the till is empty',
+  'Move a whole group of animals at once',
+  'Sell spare equipment, and take down a tank you don’t need',
+  'Production lines sell by themselves, and keepers feed fry',
+  'Shop offers wait while you’re looking',
+  'Clearer advice everywhere: what’s wrong, why, and what to do',
 ] as const;
 
 function AboutTab() {
@@ -541,9 +547,9 @@ function AboutTab() {
           icon={<Tag size={16} />}
         />
       </Section>
-      <Section title="What’s new in 0.5">
+      <Section title={`What’s new in ${WHATS_NEW_VERSION}`}>
         <ul className="ag-whatsnew" data-testid="settings-whats-new">
-          {WHATS_NEW_05.map((line) => (
+          {WHATS_NEW.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>

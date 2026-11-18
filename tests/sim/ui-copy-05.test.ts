@@ -256,17 +256,23 @@ describe('§16 Notifications (DES-009; ADR-0022 decision 4)', () => {
 
 // chunk 6 (0.5 spec §16, §21's release step; ADR-0034 decision 8): the design's list without Social (dev-only), with
 // chunks 3 to 5's additions
-describe('§16 Settings › About: What’s new in 0.5', () => {
-  it('lists the 0.5 features, one line each', async () => {
-    const { WHATS_NEW_05 } = await import('@/ui/settings/SettingsPanel');
-    expect([...WHATS_NEW_05]).toEqual([
-      'Links to every screen, and a tab bar on phones',
-      'Shop filters: Prismatic only and Rare genes',
-      'New betta genes: Cambodian and Metallic',
-      'Auto-feed and Auto-clean on the tank card',
-      'Notifications while the game is open',
-      'Production lines in Livestock',
-      'Operations: the Water room and the Live food room',
+// The audit of 2026-11-17 (B17, J12; ADR-0056 decision 2) changed this on purpose: 0.9.2 still listed 0.5's seven
+// lines under "What’s new in 0.5". The section names the release it describes, and that release is the one on the
+// title screen (the same major.minor as package.json), so it can't go stale unnoticed again.
+describe('§16 Settings › About: What’s new', () => {
+  it('lists this release’s changes, one short line each, under this release’s number', async () => {
+    const { WHATS_NEW, WHATS_NEW_VERSION } = await import('@/ui/settings/SettingsPanel');
+    expect([...WHATS_NEW]).toEqual([
+      'Your first companion never dies of old age',
+      'A little food from the club when the till is empty',
+      'Move a whole group of animals at once',
+      'Sell spare equipment, and take down a tank you don’t need',
+      'Production lines sell by themselves, and keepers feed fry',
+      'Shop offers wait while you’re looking',
+      'Clearer advice everywhere: what’s wrong, why, and what to do',
     ]);
+    const { readFileSync } = await import('node:fs');
+    const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string };
+    expect(pkg.version.startsWith(`${WHATS_NEW_VERSION}.`), `What’s new is for ${WHATS_NEW_VERSION}; the game is ${pkg.version}`).toBe(true);
   });
 });
