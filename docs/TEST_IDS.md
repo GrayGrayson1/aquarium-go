@@ -566,3 +566,4 @@ link.
 | `move-group-dropped` | The group move's line when some of the group are no longer in your care |
 | `reload-confirm` · `reload-confirm-save` · `reload-confirm-anyway` | The box that asks before an in-app reload with Autosave off, its Save now and reload and its Reload anyway |
 | `error-boundary-reload-off` | The error screen's line that Autosave is off, so reloading loses play since the last save |
+| `param-help-<paramKey>` · `science-link-<articleId>` | A reading's plain-words gloss on the tank card's Water tab; a link to the Aquarium science article that explains a word (on the Water tab, beside compatibility, on an offer's genes and in a morph catalogue) |

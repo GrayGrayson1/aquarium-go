@@ -7458,16 +7458,17 @@
       "id": "AUD-003",
       "slice": "ALL",
       "source": "ADR-0056; PLAN.md chunk 20",
-      "description": "A production line sells its young by itself through a buy-now price, and lists again what doesn't sell, a little cheaper each time.",
+      "description": "A production line sells its young by itself through a buy-now price on the whole lot, and lists again what doesn't sell, a little cheaper each time.",
       "acceptance": [
-        "A line lists each lot with a buy-now price (and reserve) of its fair value less 10 %, so a buyer takes it without the player; an expired listing's animals go back to the batch and are listed again 10 % cheaper and at least a dollar less each time, never below half of fair value, and no young one is dropped.",
-        "The log says \"{Line}: {lot} listed · Buy now {price} each\" and, on a relisting, \"{Line}: {lot} didn’t sell, so they’re listed again at {price} each\"; the Sell stage and the set-up's step 3 say \"Buy now at fair value −10%\".",
-        "A listing withdrawn, cancelled, or left while \"List automatically\" is off ends with the line's notice that the young are back in its quarantine tank and how to list them; a line takes a listing off sale while one of its animals is ill."
+        "A line lists each lot with a buy-now price (and reserve) of the lot's fair value less 10 %, so a buyer takes it without the player; an expired listing's animals go back to the batch and are listed again about 10 % and at least $1 cheaper each time, never below half of the lot's fair value ($1 at least), and no young one is dropped.",
+        "The log says \"{Line}: {lot} listed · Buy now {price} each\" and, on a relisting, \"{Line}: {lot} didn’t sell, so they’re listed again at {price} each\" (with \", the lowest the line goes\" at the floor); the Sell stage says \"Buy now at fair value −10% · a little cheaper each time it’s listed again\" and the set-up's step 3 \"Buy now at fair value −10%\".",
+        "An animal that falls unwell (an illness, or health under 45) takes its lot off sale (\"{Line}: off sale while {name} is unwell.\") and the line lists nothing with it until it is well or moved out, with no restart day promised meanwhile; a listing withdrawn, cancelled, or left while \"List automatically\" is off ends with the line's notice that the young are back in its quarantine tank and that it won't list them again."
       ],
       "tasks": [],
       "tests": [
         "tests/sim/production-line.test.ts",
-        "tests/sim/production-ui.test.ts"
+        "tests/sim/production-ui.test.ts",
+        "tests/sim/automation-problems-ui.test.ts"
       ],
       "evidence": [],
       "status": "GREEN",
@@ -7573,9 +7574,9 @@
       "source": "ADR-0056; PLAN.md chunk 20",
       "description": "Keepers feed fry their first foods on their rounds, and say so when there are none in stock.",
       "acceptance": [
-        "On a round a keeper gives each brood past its yolk the first of its stage's foods in stock (at most two servings a round, one while ammonia or nitrite is at Watch), unless a working live-food doser feeds the tank or the young were offered food in the last 4 hours; no random draw.",
-        "With none in stock the keeper says \"{Keeper} couldn’t feed the {young} in {tank}: no {foods} in stock. Buy food in Market › Supplies.\" and the day's report flags \"No first foods for the {young} in {tank}\"; a fry-only tank's keeper line reads \"{Keeper} feeds the fry their first foods and keeps the water clean.\".",
-        "The stock manager's plan orders the first foods the keepers will give the broods in their tanks."
+        "On a round a keeper gives each brood past its yolk the first of its stage's foods in stock: at most two servings a brood a round (one while ammonia or nitrite is at Watch), and none in a tank a working live-food doser feeds or whose young were offered food in the last 4 hours; no random draw.",
+        "With none in stock the keeper says \"{Keeper} couldn’t feed the {young} in {tank}: no {foods} in stock. Buy food in Market › Supplies.\" and the day's report flags \"No first foods for the {young} in {tank}\"; a fry-only tank's keeper line reads \"{Keeper} feeds the fry their first foods and keeps the water clean.\" (with a working doser, that the doser feeds the fry, or that it has none of their food in stock).",
+        "The stock manager orders those first foods at what the keepers will give (the keeper's servings a round, for the rounds that tank gets), after the grown animals' food is covered."
       ],
       "tasks": [],
       "tests": [
