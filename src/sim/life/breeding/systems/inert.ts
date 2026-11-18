@@ -37,12 +37,12 @@ export const notInGameModule: BreedingModule = {
   plan: NONE,
   explain: (sp) => {
     const note = sp.breeding.notes?.trim();
-    return note ? note : `${sp.commonName} is rarely or never bred in home aquariums, so breeding isn’t part of this game yet.`;
+    return note ? note : `${sp.commonName} is rarely or never bred in home aquariums, so it can’t be bred in Aquarium Go.`;
   },
   step: () => {},
   check: (cc) => {
     const note = cc.sp.breeding.notes?.trim();
-    cc.reasons.push(note ? `${cc.sp.commonName} can’t be bred here yet: ${note}` : `${cc.sp.commonName} is rarely bred in captivity and can’t be bred in this game yet.`);
+    cc.reasons.push(note ? `${cc.sp.commonName} can’t be bred in Aquarium Go: ${note}` : `${cc.sp.commonName} is rarely bred in captivity and can’t be bred in Aquarium Go.`);
   },
-  force: () => 'This species cannot be bred in the game yet.',
+  force: () => 'This species can’t be bred in Aquarium Go.',
 };

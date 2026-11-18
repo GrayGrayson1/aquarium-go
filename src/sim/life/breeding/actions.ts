@@ -68,7 +68,7 @@ export function startBreeding(state: GameState, aId: string, bId: string, tankId
   const ev = evaluatePair(state, aId, bId, true);
   if (!ev.sp || !ev.mod || !ev.male || !ev.female) return no(ev.reasons[0] ?? 'These two can’t breed.');
   const { sp, mod, male, female } = ev;
-  if (!mod.breedable) return no(mod.explain?.(sp) ?? ev.reasons[0] ?? 'This species can’t be bred here yet.');
+  if (!mod.breedable) return no(mod.explain?.(sp) ?? ev.reasons[0] ?? 'This species can’t be bred in Aquarium Go.');
   if (ev.startBlockers.length) return no(`${ev.startBlockers[0]}${ev.nextStep ? ` ${ev.nextStep}` : ''}`);
 
   // Where: bettas meet in the male's (nest) tank; others in the requested tank, or wherever one of them lives.

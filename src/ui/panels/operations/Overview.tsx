@@ -574,7 +574,7 @@ function EarlyOverview({ g, tier, nav, small }: { g: GameState; tier: OpsTier; n
   ) : (
     <div className="ops-card ops-card--dashed" data-testid="ops-assisted">
       <Kicker>Assisted care</Kicker>
-      <span className="ops-muted">Research Better Life Support, or raise Husbandry mastery by caring for your tanks.</span>
+      <span className="ops-muted">Research Better Life Support, or raise husbandry mastery by caring for your tanks.</span>
     </div>
   );
   const lineRow = line && v && (

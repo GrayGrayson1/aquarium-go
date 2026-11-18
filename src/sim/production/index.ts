@@ -396,7 +396,7 @@ export function linePairCheck(state: GameState, aId: string, bId: string): { ok:
   if (taken) return { ok: false, message: `${taken.name} already uses ${lineOfParent(state, a.id) ? a.name : b.name}.`, inLine: taken.name };
   const ev = evaluatePair(state, a.id, b.id);
   if (!ev.sp || !ev.mod || !ev.male || !ev.female) return { ok: false, message: ev.reasons[0] ?? 'These two can’t breed.' };
-  if (!ev.mod.breedable) return { ok: false, message: ev.mod.explain?.(ev.sp) ?? ev.reasons[0] ?? 'This species can’t be bred here yet.' };
+  if (!ev.mod.breedable) return { ok: false, message: ev.mod.explain?.(ev.sp) ?? ev.reasons[0] ?? 'This species can’t be bred in Aquarium Go.' };
   const hour = state.clock.hour;
   if (!isMature(ev.male, ev.sp, hour) || !isMature(ev.female, ev.sp, hour)) return { ok: false, message: ev.reasons[0] ?? 'Both need to be adults.' };
   // A male and a female (any two for simultaneous hermaphrodites): a role problem is one of evaluatePair's hard reasons.
