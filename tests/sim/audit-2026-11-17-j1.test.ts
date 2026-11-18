@@ -61,6 +61,8 @@ import { IncomeChart } from '@/ui/panels/finances/IncomeChart';
 import { probabilityWord } from '@/ui/common/format';
 import type { CompatReport } from '@/types';
 import { moveCreature } from '@/sim/life/actions';
+import { matches } from '@/ui/panels/common/match';
+import { findAnything } from '@/ui/search/searchIndex';
 import { setLighting, feedTank } from '@/sim/care';
 import { warningText } from '@/persistence/storage';
 import { setOpenHours } from '@/sim/facility/actions';
@@ -488,6 +490,16 @@ describe('J18: one spelling for each thing', () => {
     expect(EQUIPMENT_KIND_LABEL.uv).toBe('UV steriliser');
     expect(getEquipmentDef('uv_sterilizer')?.name).toBe('UV Steriliser');
     expect(getEquipmentDef('live_food_doser')?.name).toBe('Live-Food Doser');
+  });
+
+  it('the US spelling still finds what the game spells the British way (the review)', () => {
+    expect(matches('sterilizer', 'UV Steriliser')).toBe(true);
+    expect(matches('uv sterilizers', 'UV sterilisers')).toBe(true);
+    expect(matches('fertilizer', 'Liquid Fertiliser')).toBe(true);
+    expect(matches('color', 'Colour morphs')).toBe(true);
+    expect(matches('sterilizer', 'Canister Filter')).toBe(false);
+    const found = findAnything(base(), 'sterilizer').map((r) => r.title);
+    expect(found).toContain('UV Steriliser');
   });
 });
 
