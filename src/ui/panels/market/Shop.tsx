@@ -577,7 +577,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
                   label={`Include individual ${i + 1}`}
                   hideLabel
                   disabled={lot}
-                  title={lot ? 'Sold as one lot — this group includes a Prismatic' : undefined}
+                  title={lot ? 'Sold together — this group includes a Prismatic' : undefined}
                   onChange={(v) => {
                     const n = new Set(picked);
                     if (v) n.add(i);

@@ -486,7 +486,7 @@ function YoungView({ g }: { g: GameState }) {
     return (
       <EmptyState icon={<Egg size={26} />} title="No eggs or fry right now">
         Healthy, well-fed animals in the right conditions will court and spawn. Watch for bubble nests, egg clusters and pregnant pouches — they’ll appear here with a countdown.
-        {young.length > 0 && <div style={{ marginTop: 8 }}>You’re raising {plural(young.length, 'juvenile')} — find them in Animals → Juveniles.</div>}
+        {young.length > 0 && <div style={{ marginTop: 8 }}>You’re raising {plural(young.length, 'juvenile')} — find them in Animals › Young.</div>}
       </EmptyState>
     );
 

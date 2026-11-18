@@ -10,6 +10,8 @@ import { SEX_LABEL, PURPOSE_HINT, sexLabel } from '@/ui/panels/common/format';
 import { sexRoleText } from '@/ui/common/format';
 import { offerSearchMatches } from '@/ui/panels/market/shopFilters';
 import type { ShopOffer } from '@/types';
+import { unlockLink } from '@/ui/hud/eventLinks';
+import { tourStops } from '@/ui/tutorial/tourStops';
 import { CRITERION_LABEL } from '@/data/shows';
 import { AUTOMATION_LOCK_HINT } from '@/ui/cards/Automation';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
@@ -57,7 +59,9 @@ describe('Audit 2026-11-17 (J22): jargon gets plain words where it appears', () 
       ['ui/panels/livestock/Production.tsx', 'Pair conditioning', 'Pair getting ready'],
       ['ui/panels/shows/Upcoming.tsx', 'Purse <', 'Prizes <strong>'],
       ['ui/panels/shows/Upcoming.tsx', 'table show', 'A friendly club show · judge'],
-      ['ui/panels/shows/EnterFlow.tsx', 'Purse <', 'Prize <b>'],
+      ['ui/panels/shows/EnterFlow.tsx', 'Purse <', 'Prizes <b>'],
+      // the review: the class's purse is split 55 / 27 / 18 % (PRIZE_SPLIT), so it's "Prizes", as Upcoming says
+      ['ui/panels/shows/EnterFlow.tsx', 'Prize <b>', 'Prizes <b>{money(cl.purse)}</b>'],
       ['ui/panels/operations/Overview.tsx', 'husbandry mastery with regular care', 'raise Husbandry mastery by caring for your tanks.'],
       ['ui/panels/operations/LinesTab.tsx', '{ id: \'quarantine\', label: \'QT\' }', 'full: \'Quarantine\''],
       ['ui/panels/visitors/StaffTab.tsx', '<RoleTag role={m.role} />', 'docent: \'gives talks\''],
@@ -90,7 +94,7 @@ describe('Audit 2026-11-17 (J22): jargon gets plain words where it appears', () 
     // the Shop's search: an animal whose sex isn't known is found by "unsexed" and by its card's words
     const offer = (speciesId: string) => {
       const c = createCreature(g, rng, speciesId, { ageDays: 60 });
-      return { ...g.market.stock[0], speciesId, kind: 'single', creatures: [c] } as ShopOffer;
+      return { ...g.market.stock[0], speciesId, kind: 'creature', creatures: [c] } as ShopOffer;
     };
     const ramshorn = offer('ramshorn_snail');
     const nerite = offer('nerite_snail');
@@ -122,7 +126,7 @@ describe('Audit 2026-11-17 (J25): one word for one thing', () => {
   it('the screens say the same thing the same way', () => {
     const cases: [string, string, string][] = [
       ['ui/hud/ToolRail.tsx', 'label="Watch"', 'label="Just watch"'],
-      ['ui/tutorial/tourStops.ts', 'Watch hides everything so you can just', 'Just watch hides everything'],
+      ['ui/tutorial/tourStops.ts', 'Watch hides everything so you can just', "${ctx.mobile ? 'Watch' : 'Just watch'} hides everything"],
       ['ui/panels/build/BuildPanel.tsx', 'Too pricey', '`Need ${formatMoney(Math.ceil(kit.total - g.finance.money - 1e-6))} more`'],
       ['ui/panels/research/ResearchPanel.tsx', 'Can’t afford', '`Need ${formatMoney(Math.ceil(cost - g.finance.money - 1e-6))} more`'],
       ['ui/panels/build/FragAction.tsx', 'holding system', 'Waiting in storage, where they don’t grow.'],
@@ -142,6 +146,25 @@ describe('Audit 2026-11-17 (J25): one word for one thing', () => {
       expect(s, `${file}: ${gone}`).not.toContain(gone);
       expect(s, `${file}: ${now}`).toContain(now);
     }
+  });
+
+  it('the review: sentences that point at a renamed label name it as the screen shows it', () => {
+    const cases: [string, string, string][] = [
+      ['ui/panels/livestock/LivestockPanel.tsx', 'Animals → Juveniles', 'find them in Animals › Young.'],
+      ['ui/hud/eventLinks.ts', 'the Shows calendar', "'Regional shows are in Shows › Upcoming.'"],
+      ['ui/panels/market/Shop.tsx', 'Sold as one lot', "'Sold together — this group includes a Prismatic'"],
+    ];
+    for (const [file, gone, now] of cases) {
+      const s = src(file);
+      expect(s, `${file}: ${gone}`).not.toContain(gone);
+      expect(s, `${file}: ${now}`).toContain(now);
+    }
+    expect(unlockLink('shows_national')?.where).toBe('National championships are in Shows › Upcoming.');
+    // the tour names the tool as the rail shows it: "Watch" on a phone's rail, "Just watch" elsewhere
+    const tools = (mobile: boolean) => tourStops({ mobile, unlocked: () => true, social: false }).find((t) => t.id === 'tools')!.body;
+    expect(tools(false)).toContain('Just watch hides everything so you can enjoy the view.');
+    expect(tools(true)).toContain('. Watch hides everything so you can enjoy the view.');
+    expect(src('ui/hud/ToolRail.tsx')).toContain('label="Just watch"\n        shortLabel="Watch"');
   });
 });
 

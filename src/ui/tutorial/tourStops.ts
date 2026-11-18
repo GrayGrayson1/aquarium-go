@@ -39,7 +39,8 @@ export function tourStops(ctx: TourContext): TourStop[] {
   add({ id: 'alerts', title: 'Alerts', body: 'The bell lists what needs you: a tank in trouble, a sale, a show result. Each line takes you there.', target: ['[data-testid="hud-alerts"]'] });
   add({ id: 'find', title: 'Find anything', body: ctx.mobile ? 'Search every animal, item, research project and screen, from More.' : 'Search every animal, item, research project and screen. On a keyboard, press / or ⌘K.', target: ctx.mobile ? ['[data-testid="dock-more"]'] : ['[data-testid="hud-find"]'] });
   add({ id: 'tanks', title: 'Your tanks', body: 'Switch between tanks, open the tank card (water, equipment, residents, value) or step back to see the whole room.', target: ['.ag-tankbar'] });
-  add({ id: 'tools', title: 'Tank tools', body: 'Feed, target-feed, tap the glass, take photos and set the lights. Just watch hides everything so you can enjoy the view.', target: ['.ag-toolrail'] });
+  // Audit 2026-11-17 (review of J25): the tool is "Just watch", shortened to "Watch" on a phone's rail: name what's shown
+  add({ id: 'tools', title: 'Tank tools', body: `Feed, target-feed, tap the glass, take photos and set the lights. ${ctx.mobile ? 'Watch' : 'Just watch'} hides everything so you can enjoy the view.`, target: ['.ag-toolrail'] });
   if (!ctx.mobile) add({ id: 'camera', title: 'Camera', body: 'Front, Orbit, Follow an animal or a Close-up. Drag to look around; scroll or pinch to zoom.', target: ['[data-tutorial-id="camera-modes"]'] });
   add({ id: 'market', title: 'Market', body: 'Shop for animals, Supplies for food and gear, My listings to sell your own, History & demand for prices.', target: panelTabs('market'), open: 'market' });
   add({ id: 'build', title: 'Build', body: 'New tanks, decor, equipment, substrate and a bigger venue. Pick a piece of decor and place it right in the tank; Build stays open for the next one.', target: panelTabs('build'), open: 'build' });
