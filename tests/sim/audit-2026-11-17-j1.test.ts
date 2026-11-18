@@ -122,6 +122,10 @@ describe('J1: a player on °F reads °F in the log, the bell, notifications and 
     expect(f('(about −1 °C, gentle)')).toBe('(about −2 °F, gentle)');
     // absolute temperatures are untouched by the new rules
     expect(f('needs 24 °C+')).toBe('needs 75 °F+');
+    // the review: the adjective ("a cool 18 °C room") is a temperature; the verb is a difference
+    expect(f('Keep it in a cool 18 °C room.')).toBe('Keep it in a cool 64 °F room.');
+    expect(f('A warm 28 °C tank suits it.')).toBe('A warm 82 °F tank suits it.');
+    expect(f('Warms about 1 °C at night.')).toBe('Warms about 2 °F at night.');
     expect(formatTempDelta(2, 'F')).toBe('4 °F');
     expect(formatTempDelta(2, 'C')).toBe('2 °C');
   });
