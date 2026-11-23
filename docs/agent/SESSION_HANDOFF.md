@@ -19,10 +19,10 @@ it's used up.
   build exit 0, e2e 414 of 415 (the one failure B-204's route walk in WebKit: 10 of 10 alone in each browser; `cf0f5cb`
   before it was 415 of 415). Nine area reviews, three confirmation reviews and a final review (no blockers; PLAN.md
   chunk 20 has what each found). **Released to GitHub Pages as 0.10.0** (`main` = `296291b`, run `44237212964`,
-  `version.json` 0.10.0). **Three steps wait for the owner** (PLAN.md "Releases", 0.10.0, has the commands): `render
-  login` (the CLI's sign-in expired), then the shop server's and the static site's deploys from `296291b` (both still
-  0.9.2, so a shared shop opened from Pages says the shop is updating); and Restore on the paused Supabase project
-  (nobody can sign in until then). After them: the shared smoke, and check `/health` and both `version.json` files.
+  `version.json` 0.10.0). On 2026-11-23 the owner approved the Render CLI's sign-in and restored the paused Supabase
+  project; the shop server and the Render static site were then deployed from `296291b` (both read 0.10.0), the
+  shared smoke passed 27 of 27 and the keep-awake job passed. Nothing of the release is waiting. The online smoke
+  still can't run (B-229).
 - **Read first, in this order:** ADR-0056; `docs/agent/design/CHUNK-20/WORDS.md` (every new or changed line, for the
   owner; 26 lines amend an earlier approved wording and say so); `docs/agent/OWNER_QUESTIONS.md` group M (41
   decisions left as they were, each with what the game does today); BACKLOG B-232 (what the round left open).

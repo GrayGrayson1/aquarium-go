@@ -2284,20 +2284,16 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   release commit `de56552` (docs only on top of it) passed typecheck, unit 4,761 and the build. `next` pushed from
   the internal clone (`582e640..de56552`), then merged there onto a fresh `origin/main` as `296291b` (its tree
   `de56552`'s) and pushed. Pages run `44237212964` deployed it (its typecheck and unit tests first);
-  `version.json` reads `{"id":"296291b-…","version":"0.10.0"}`. **Not done yet, and each needs the owner:**
-  - *The shop server and the Render static site are still on 0.9.2* (`/health` 0.9.2, build `f128a63f7d57f4b9`; the
-    static site's `version.json` `74c9302`). The Render CLI's sign-in has expired ("your token is expired; run `render
-    login`"): the owner runs `render login`, then `render deploys create srv-dbbt6gbncjis73c23br0 --commit
-    296291b0d38abb2e3bdcb54a8ae00c4d0af9214d --confirm --wait -o text` (the shop server; its `/health` must then read
-    0.10.0 with a new `build`), then `render deploys create srv-dath0mfavr4c73dgk3j0 --commit
-    296291b0d38abb2e3bdcb54a8ae00c4d0af9214d --confirm --wait -o text` (the static site, about 10 minutes). Until the
-    shop server is deployed, Pages (0.10.0) and the server (0.9.2) disagree about the shared build, so a shared shop
-    opened from Pages says the shop is updating; until the static site is deployed, aquarium-go.onrender.com is the
-    old game.
-  - *The Supabase project is paused* (`INACTIVE`; ADR-0056 decision 4): nobody can sign in and no shared shop opens
-    from either site until the owner presses Restore in its dashboard. The keep-awake job's runs fail until then (by
-    design: that is its signal). After the restore and the two deploys: `npx vite-node scripts/shared-smoke.ts` from
-    the internal clone, and `node scripts/online-smoke.mjs` once it makes its own sign-up club (B-229).
+  `version.json` reads `{"id":"296291b-…","version":"0.10.0"}`. **Finished on 2026-11-23** (the owner: "just get it
+  all done you have my permission"; he approved the Render CLI's new sign-in and pressed Restore on the paused
+  Supabase project in his browser, which the session could not do): the project came back `ACTIVE_HEALTHY`; the shop
+  server was deployed from `296291b` (deploy `dep-dc27sl5g1s2s73dkpj5g`; `/health` 0.10.0, build
+  `58ab849c3ef33fc2`, on the database), then the Render static site (deploy `dep-dc27t62jnfac73f1mulg`;
+  `version.json` `296291b`, 0.10.0). `npx vite-node scripts/shared-smoke.ts` from the internal clone at `296291b`: 27
+  of 27 checks passed. The keep-awake job, started by hand (run `45233981416`), passed (its scheduled run of
+  2026-11-19 had failed while the project was paused, as designed). Between 2026-11-17 and 2026-11-23 Pages was on
+  0.10.0 with the shop server on 0.9.2 and the project paused: nobody could sign in or open a shared shop.
+  `scripts/online-smoke.mjs` did not run: it still needs its own sign-up club (B-229).
 
 ## Product decisions in force
 
