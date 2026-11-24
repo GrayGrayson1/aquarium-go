@@ -28,6 +28,7 @@ import { buildTankEnv, habitatFit, livingIn, stressFactors, stressTarget, waterP
 import { illnessDef } from './illness';
 import { foodsFor, menuFor } from '@/data/species/guide'; // lane:guide
 import { residentsOf, touchResidents } from '../residents'; // lane:perf2
+import { stampDiscovery } from './discovery'; // chunk 21
 
 export interface CreateCreatureOptions {
   sex?: Sex;
@@ -138,9 +139,15 @@ export function addCreature(state: GameState, c: Creature, tankId: string | null
 /** Record a creature's species + morph in the encyclopedia progress (deduped). Call when buying/birthing. */
 export function registerDiscovery(state: GameState, c: Creature): void {
   const p = state.progress;
-  if (!p.discoveredSpecies.includes(c.speciesId)) p.discoveredSpecies.push(c.speciesId);
+  if (!p.discoveredSpecies.includes(c.speciesId)) {
+    p.discoveredSpecies.push(c.speciesId);
+    stampDiscovery(state, c.speciesId); // chunk 21: the Collection's dates
+  }
   const key = `${c.speciesId}:${c.morphName}`;
-  if (!p.discoveredMorphs.includes(key)) p.discoveredMorphs.push(key);
+  if (!p.discoveredMorphs.includes(key)) {
+    p.discoveredMorphs.push(key);
+    stampDiscovery(state, key);
+  }
 }
 
 /** Resolve appearance from genome (+ per-individual variation). */
@@ -180,7 +187,7 @@ export { rollGenome, inheritGenome, resolvePhenotype, describeGenetics, predictO
 export { isPrismatic, isLotOffer, prismaticChance, prismaticChanceForPair, oneInLabel, assignPrismatic, forcePrismatic, sanitizeRareVariant } from './rareVariants';
 export { morphCatalog, catalogEntry, morphTierOf, seenTraitIds, strainOf, strainsOf, strainTier, matchStrains, predictOffspringStrains, validateStrains, tierForShare } from './morphCatalog';
 export type { CatalogEntry, CatalogGroup, MorphCatalog } from './morphCatalog';
-export { recordFinds } from './discovery';
+export { recordFinds, stampDiscovery } from './discovery';
 export { PERSONALITY_INFO, allowedTags as allowedPersonalityTags } from './personality';
 export { generateName, suggestNames, nameMoodsFor } from './names';
 export { ageDaysOf, lifeStageFor, sizeAtAge, adultSizeFor, adultSizeOf, sizePotentialFactor, gallonsNeededNow } from './growth';

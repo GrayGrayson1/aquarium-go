@@ -9,6 +9,7 @@
  * `#/shows/enter/:showId` (audit B6: the show-entry flow and the listing wizard (`/new`) have addresses, so Back
  * closes them and stays in the panel) ·
  * `#/research[/unlocks|/quests|/achievements]` · `#/finances` · `#/encyclopedia[/science[/:articleId]|/:speciesId]` ·
+ * `#/encyclopedia/collection[/:speciesId]` (chunk 21: the Collection, a species' card open) ·
  * `#/social[/clubs|/trading|/friends|/leaderboards|/join/:code]` · `#/settings[/play|/saves|/notifications|/about]` ·
  * `#/more` · `#/log` · lane:automation (chunk 5, DESIGN-S3D §6): `#/operations[/water|/feed|/lines|/map|/issues|/manual]`
  * (the Map takes `?layer=water|food|animals`) · `#/build/facility/water|food` · `#/market/supplies/salt|brine_shrimp_eggs`.
@@ -69,7 +70,7 @@ const PANEL_TABS: Record<NavPanel, readonly TabSpec[]> = {
   build: tabs(['tanks', null, 'Tanks'], ['decor', 'decor', 'Decor'], ['equipment', 'equipment', 'Equipment'], ['substrate', 'substrate', 'Substrate'], ['facility', 'facility', 'Facility']),
   research: tabs(['research', null, 'Research'], ['unlocks', 'unlocks', 'Unlock map'], ['quests', 'quests', 'Quests'], ['achievements', 'achievements', 'Achievements']),
   finances: [],
-  encyclopedia: tabs(['species', null, 'Species'], ['science', 'science', 'Aquarium science']),
+  encyclopedia: tabs(['species', null, 'Species'], ['science', 'science', 'Aquarium science'], ['collection', 'collection', 'Collection']), // chunk 21: Collection
   log: [],
   shows: tabs(['upcoming', null, 'Upcoming'], ['entries', 'entries', 'Entries'], ['results', 'results', 'Results'], ['trophies', 'trophies', 'Trophy case']),
   social: tabs(['overview', null, 'Overview'], ['clubs', 'clubs', 'Clubs'], ['trading', 'trading', 'Trading'], ['friends', 'friends', 'Friends'], ['leaderboards', 'leaderboards', 'Leaderboards']),
@@ -178,6 +179,7 @@ export function parseRoute(hash: string): ParsedRoute | null {
     }
     case 'encyclopedia':
       if (b === 'science') return { route: panel('encyclopedia', 'science', c ? `science:${c}` : undefined) };
+      if (b === 'collection') return { route: panel('encyclopedia', 'collection', c ? `collection:${c}` : undefined) }; // chunk 21
       return { route: b ? panel('encyclopedia', 'species', `species:${b}`) : panel('encyclopedia', 'species') };
     case 'social':
       // lane:social (chunk 6) — an invite highlights Clubs, as the approved screen phone-join does (§13.3)
@@ -251,6 +253,8 @@ export function formatRoute(route: Route, filters?: ShopFilters): string {
     if (species) return `#/encyclopedia/${enc(species)}`;
     const article = after(target, 'science:');
     if (article) return `#/encyclopedia/science/${enc(article)}`;
+    const card = after(target, 'collection:'); // chunk 21
+    if (card) return `#/encyclopedia/collection/${enc(card)}`;
   }
   if (p === 'shows') {
     const show = after(target, 'show:'); // audit B6
@@ -309,6 +313,7 @@ export function routeForPanelTarget(p: NavPanel, target: string): Route | null {
     case 'encyclopedia':
       if (after(target, 'species:')) return panel(p, 'species', target);
       if (after(target, 'science:')) return panel(p, 'science', target);
+      if (after(target, 'collection:')) return panel(p, 'collection', target); // chunk 21
       return null;
     case 'livestock':
       if (target === 'young' || target === 'clutches') return panel(p, 'young');

@@ -6,7 +6,7 @@ import type { GameState, WaterClass, Creature, Sex } from '@/types';
 import { SCHEMA_VERSION } from '@/persistence/schema';
 import { simRng, mulberry32 } from './rng';
 import { createTank } from './tanks';
-import { createCreature, addCreature, recordFinds } from './life';
+import { createCreature, addCreature, recordFinds, registerDiscovery } from './life';
 import { initMarket } from './economy';
 import { initialFacility, initProgress, findFreeSpot, settleStartingProgress } from './facility';
 import { starterAquascape } from './aquascape';
@@ -129,6 +129,7 @@ function emptyState(seed: number, starterId: string): GameState {
       discoveredMorphs: [],
       discoveredStrains: [], // lane:genetics
       prismaticFinds: [], // lane:genetics
+      discoveredAt: {}, // chunk 21: the Collection's dates
     },
     visitors: {
       today: { day: 1, count: 0, revenue: 0, tips: 0, satisfactionSum: 0 },
@@ -211,8 +212,7 @@ export function newGame(opts: NewGameOptions): GameState {
   creature.history = [{ hour: state.clock.hour, kind: 'acquired', text: `Arrived as your very first ${lowerName(species.commonName)}.` }];
   addCreature(state, creature, tank.id);
 
-  state.progress.discoveredSpecies.push(opts.starterId);
-  state.progress.discoveredMorphs.push(`${opts.starterId}:${creature.morphName}`);
+  registerDiscovery(state, creature); // the starter's species + morph (chunk 21: dated for the Collection)
   recordFinds(state, creature); // lane:genetics — the starter's named strain, if it has one (starters are never rolled Prismatic)
 
   initProgress(state, opts.starterId);

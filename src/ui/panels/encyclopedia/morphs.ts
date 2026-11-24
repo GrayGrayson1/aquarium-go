@@ -6,6 +6,7 @@
  * aliases) occurs in a morph the player has discovered for that species. Pure helpers; no sim/RNG impact.
  */
 import type { SpeciesDefinition } from '@/types';
+import type { CatalogEntry } from '@/sim/life/morphCatalog';
 
 const NO_MORPHS_RE = /\((?:no morphs|natural|individual|shells vary|juvenile|behavioural)/i;
 const STOP = new Set(['and', 'the', 'of', 'no', 'morphs']);
@@ -70,4 +71,17 @@ export function seenMorphChips(sp: Pick<SpeciesDefinition, 'id' | 'commonName' |
     if (names.some((_n, i) => matches(i))) seen.add(chip.label);
   }
   return seen;
+}
+
+/** A phenotype rule's player-facing name ("Halfmoon"), or its id when the species has no such rule. */
+export function ruleName(sp: Pick<SpeciesDefinition, 'genetics'>, id: string): string {
+  return sp.genetics.phenotypes.find((r) => r.id === id)?.name ?? id;
+}
+
+/**
+ * What an undiscovered morph shows: the trait names already seen elsewhere, ??? for the rest (never a hidden allele).
+ * Shared by the morph catalog and the Collection (chunk 21; moved here from MorphCatalog.tsx, which re-exports it).
+ */
+export function catalogHint(sp: Pick<SpeciesDefinition, 'genetics'>, e: Pick<CatalogEntry, 'traitIds'>, seenTraits: ReadonlySet<string>): string {
+  return e.traitIds.map((id) => (seenTraits.has(id) ? ruleName(sp, id) : '???')).join(' · ');
 }
