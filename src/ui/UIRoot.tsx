@@ -27,7 +27,7 @@ import { SimFailureBanner } from './common/SimFailureBanner'; // lane:core (chun
 import { SharedClosingCard, SharedFirstTime, SharedNotices, SharedOpening, SharedStillHere } from './shared/SharedScreens'; // chunk 13
 import { SaveLossConfirm } from './common/SaveLossConfirm'; // audit 2026-11-17, I3
 import { ReloadConfirm } from './common/ReloadConfirm'; // audit 2026-11-17, the review of I2
-import { RevealHost } from './reveal/RevealCard'; // chunk 21 (rare-hatch reveals)
+import { RevealHost } from './reveal/RevealHost'; // chunk 21 (rare-hatch reveals)
 import { useSharedMode } from '@/state/sharedMode';
 import { applyPlatformStorage } from './platformBoot';
 import './styles/shell.css';

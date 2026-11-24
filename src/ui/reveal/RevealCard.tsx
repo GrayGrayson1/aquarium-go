@@ -1,14 +1,14 @@
 /**
  * Chunk 21, feature B: the rare-hatch reveal card. OWNER: lane "reveal".
  *
- * When young are born and one is a rare first for the collection (the rule: src/ui/reveal/finds.ts), a card opens over
- * the game: a short build-up, then the animal's picture, name, morph, rarity chips and "New for your collection", with
- * "See it" (the animal's card), "Open collection" (the Collection's address, #/encyclopedia/collection/{species}) and
- * Close. Several finds make one card with a pager (Left and Right arrows turn it too). It waits behind other dialogs,
- * the guide's current step and the welcome-back card (src/ui/reveal/blockers.ts), and opens once the way is clear. The
- * kit's Modal gives it the dialog's manners: Escape and a tap outside close it, Tab stays inside, focus comes back
- * afterwards. With reduced motion there is no build-up and no animation, just the card. The toast and the log line
- * the sim writes for the same birth stay as they are. Reads the game; never writes it.
+ * RevealHost (src/ui/reveal/RevealHost.tsx) opens it over the game when young are born and one is a rare first for the
+ * collection (the rule: src/ui/reveal/finds.ts): a short build-up, then the animal's picture, name, morph, rarity chips
+ * and "New for your collection", with "See it" (the animal's card), "Open collection" (the Collection's address,
+ * #/encyclopedia/collection/{species}) and Close. Several finds make one card with a pager (Left and Right arrows turn
+ * it too). The kit's Modal gives it the dialog's manners: Escape and a tap outside close it, Tab stays inside, focus
+ * comes back afterwards. With reduced motion there is no build-up and no animation, just the card. The toast and the
+ * log line the sim writes for the same birth stay as they are. Loaded on demand (its own chunk). Reads the game;
+ * never writes it.
  */
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -21,52 +21,17 @@ import { Button, IconButton, Modal } from '../kit';
 import { Portrait } from '../common/Portrait';
 import { MorphTierBadge, PrismaticBadge, StrainBadge } from '../common/Prismatic';
 import { safe } from '../common/safe';
-import { usePrefs } from '../common/prefs';
 import { go, parseNav } from '../nav/router';
 import { REVEAL_WORDS, collectionHash, revealView, type RevealFind } from './finds';
-import { readRevealBlockers, revealWaitReason } from './blockers';
-import { startRevealFeed } from './feed';
 import { useReveal } from './store';
 import './reveal.css';
 
 /** The build-up before the animal shows. */
 export const BUILD_UP_MS = 1300;
-/** How often a waiting reveal looks again whether it may open. */
-const RETRY_MS = 500;
 
 const osReducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-/** An animal still in the shop (one that has died or been sold since its birth is left out). */
-function stillHere(f: RevealFind): boolean {
-  const c = useGame.getState().game?.creatures[f.creatureId];
-  return !!c && (c.status === 'alive' || c.status === 'listed');
-}
-
-/** Watches the game for finds and opens the card when nothing is in the way. Mounted once, in UIRoot. */
-export function RevealHost() {
-  useEffect(() => startRevealFeed(), []);
-  const on = usePrefs((s) => s.revealFinds !== false);
-  const waiting = useReveal((s) => s.waiting.length > 0);
-  const open = useReveal((s) => !!s.open);
-  // the switch turned off: what waits is dropped and an open card closes
-  useEffect(() => {
-    if (!on) useReveal.getState().clear();
-  }, [on]);
-  useEffect(() => {
-    if (!on || !waiting || open) return;
-    let t = 0;
-    const attempt = () => {
-      if (revealWaitReason(readRevealBlockers()) === null) useReveal.getState().show(stillHere);
-      else t = window.setTimeout(attempt, RETRY_MS);
-    };
-    // a beat first: the catch-up's welcome-back card is published just after the commit that queued its finds
-    t = window.setTimeout(attempt, 350);
-    return () => window.clearTimeout(t);
-  }, [on, waiting, open]);
-  return <RevealCard />;
-}
-
-function RevealCard() {
+/** The card (loaded on demand by RevealHost, src/ui/reveal/RevealHost.tsx). */
+export function RevealCard() {
   const pages = useReveal((s) => s.open);
   const page = useReveal((s) => s.page);
   const opened = useReveal((s) => s.opened);
