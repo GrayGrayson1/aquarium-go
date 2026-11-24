@@ -3,7 +3,7 @@
  * full species pages (every encyclopedia field, care chips, gets-along/avoid via speciesPair, morphs, sources) and
  * the "Aquarium Science" articles. Never implies releasing animals is okay. OWNER: lane "ui-panels".
  *
- * Deep links: 'species:<id>' | 'science:<articleId>' | 'tab:science'
+ * Deep links: 'species:<id>' | 'science:<articleId>' | 'tab:science' | chunk 21: 'collection:<id>' | 'tab:collection'
  */
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
@@ -28,11 +28,14 @@ import { seenMorphChips, discoveredMorphNames, hasNoNamedMorphs, noMorphsNote } 
 import { GeneticsSections } from './MorphCatalog'; // lane:genetics
 import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { LayoutGrid } from 'lucide-react'; // chunk 21 (the Collection)
+import { CollectionView } from './CollectionView'; // chunk 21
+import { collectionPercent, foundSpecies, formatPercent, speciesProgress } from './collection'; // chunk 21
 import { convertSourceTempText } from '@/ui/common/format'; // Audit 2026-11-17 (J1)
 import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
 import { lifespanDaysText } from '@/ui/common/lifespan'; // Audit 2026-11-17 (D20)
 
-type Tab = 'species' | 'science';
+type Tab = 'species' | 'science' | 'collection'; // chunk 21: + 'collection'
 type Show = 'all' | 'discovered' | 'freshwater' | 'marine' | 'brackish'; // lane:brackish: + 'brackish'
 
 export function EncyclopediaPanel() {
@@ -41,14 +44,26 @@ export function EncyclopediaPanel() {
   const [tab, setTab] = useState<Tab>('species');
   const [speciesId, setSpeciesId] = useState<string | null>(null);
   const [article, setArticle] = useState<string | null>(null);
+  /** chunk 21 — the Collection's open card (one at a time), and a count bumped when a link asks to show it. */
+  const [card, setCard] = useState<string | null>(null);
+  const [reveal, setReveal] = useState(0);
   /** lane:ui-shell (B-115) — a section switch closes the open species page or article. */
   const switchTab = (t: Tab) => {
     setTab(t);
     setSpeciesId(null);
     setArticle(null);
+    setCard(null);
+  };
+  /** chunk 21 — the Collection with a species' card open and in view (an address, the species page's link). */
+  const openCard = (id: string) => {
+    setTab('collection');
+    setSpeciesId(null);
+    setArticle(null);
+    setCard(id);
+    setReveal((n) => n + 1);
   };
   useNavTab('encyclopedia', tab); // lane:ui-shell (chunk 1)
-  useNavSub('encyclopedia', tab === 'species' && speciesId ? `species:${speciesId}` : tab === 'science' && article ? `science:${article}` : null);
+  useNavSub('encyclopedia', tab === 'species' && speciesId ? `species:${speciesId}` : tab === 'science' && article ? `science:${article}` : tab === 'collection' && card ? `collection:${card}` : null);
 
   useEffect(() => {
     if (!target) return;
@@ -58,20 +73,35 @@ export function EncyclopediaPanel() {
     } else if (target.startsWith('science:')) {
       setTab('science');
       setArticle(target.slice(8));
-    } else if (target === 'tab:science') switchTab('science');
+    } else if (target.startsWith('collection:')) openCard(target.slice(11)); // chunk 21
+    else if (target === 'tab:science') switchTab('science');
+    else if (target === 'tab:collection') switchTab('collection'); // chunk 21
     else if (target.startsWith('tab:')) switchTab('species');
     useUI.getState().set({ panelTarget: null });
   }, [target]);
 
   if (!g) return null;
-  const known = discoveredSet(g);
+  const known = foundSpecies(g); // chunk 21: the rule moved to ./collection (one rule for the grid and the Collection)
   const total = ALL_SPECIES.length;
+  const collected = formatPercent(collectionPercent(g)); // chunk 21
 
   return (
     <PanelLayout
       title="Encyclopedia"
       icon={<BookOpen size={20} />}
-      subtitle={`${known.size} of ${total} species discovered · ${g.progress.discoveredMorphs.length} ${g.progress.discoveredMorphs.length === 1 ? 'morph' : 'morphs'} seen${(g.progress.prismaticFinds?.length ?? 0) > 0 ? ` · ${g.progress.prismaticFinds!.length} Prismatic` : ''}`}
+      subtitle={
+        <>
+          {/* chunk 21: the Collection's percentage leads, a link to it from the other sections */}
+          {tab === 'collection' ? (
+            `${collected} collected`
+          ) : (
+            <button type="button" className="ag-linkbtn ag-col-sublink" data-testid="enc-collection-link" onClick={() => switchTab('collection')}>
+              {collected} collected
+            </button>
+          )}
+          {` · ${known.size} of ${total} species discovered · ${g.progress.discoveredMorphs.length} ${g.progress.discoveredMorphs.length === 1 ? 'morph' : 'morphs'} seen${(g.progress.prismaticFinds?.length ?? 0) > 0 ? ` · ${g.progress.prismaticFinds!.length} Prismatic` : ''}`}
+        </>
+      }
       scrollKey={`${tab}:${speciesId ?? ''}`}
       listKey={tab /* audit B7: back from a species page, the list is where it was */}
       subOpen={!!speciesId}
@@ -85,14 +115,30 @@ export function EncyclopediaPanel() {
           items={[
             { id: 'species', label: <><BookOpen size={14} /> Species</> },
             { id: 'science', label: <><FlaskConical size={14} /> Aquarium science</> },
+            { id: 'collection', label: <><LayoutGrid size={14} /> Collection</> }, // chunk 21
           ]}
         />
       }
     >
       {tab === 'species' && speciesId ? (
-        <SpeciesPage g={g} id={speciesId} known={known.has(speciesId)} knownSet={known} onBack={() => setSpeciesId(null)} onOpen={setSpeciesId} />
+        <SpeciesPage g={g} id={speciesId} known={known.has(speciesId)} knownSet={known} onBack={() => setSpeciesId(null)} onOpen={setSpeciesId} onCollection={openCard} />
       ) : tab === 'species' ? (
         <SpeciesGrid g={g} known={known} onOpen={setSpeciesId} />
+      ) : tab === 'collection' ? (
+        // chunk 21: the Collection
+        <CollectionView
+          g={g}
+          open={card}
+          onOpen={setCard}
+          reveal={reveal}
+          availability={(sp) => availability(g, sp)}
+          onSpeciesPage={(id) => {
+            setTab('species');
+            setCard(null);
+            setSpeciesId(id);
+          }}
+          onOffer={(offerId) => useUI.getState().set({ panel: 'market', panelTarget: `offer:${offerId}` })}
+        />
       ) : (
         <Science open={article} setOpen={setArticle} />
       )}
@@ -109,12 +155,6 @@ function availability(g: GameState, sp: SpeciesDefinition): { text: string; offe
   if (offer) return { text: 'In the shop now', offerId: offer.id, available: true };
   if (safe(() => speciesUnlocked(g, sp), false)) return { text: 'Unlocked to buy', available: true };
   return { text: lockHintOf(g, sp) || 'Keep exploring to discover', available: false };
-}
-
-function discoveredSet(g: GameState): Set<string> {
-  const s = new Set(g.progress.discoveredSpecies);
-  for (const c of Object.values(g.creatures)) if (c.status !== 'dead') s.add(c.speciesId);
-  return s;
 }
 
 function SpeciesGrid({ g, known, onOpen }: { g: GameState; known: Set<string>; onOpen: (id: string) => void }) {
@@ -209,7 +249,7 @@ function mateName(sp: SpeciesDefinition, known: Set<string>): string {
   return known.has(sp.id) ? sp.commonName : 'Undiscovered';
 }
 
-function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState; id: string; known: boolean; knownSet: Set<string>; onBack: () => void; onOpen: (id: string) => void }) {
+function SpeciesPage({ g, id, known, knownSet, onBack, onOpen, onCollection }: { g: GameState; id: string; known: boolean; knownSet: Set<string>; onBack: () => void; onOpen: (id: string) => void; onCollection: (id: string) => void }) {
   const sp = findSpecies(id);
   const pairs = useMemo(() => {
     if (!sp) return { good: [], bad: [] as { s: SpeciesDefinition; v: CompatVerdict; why: string }[] };
@@ -273,6 +313,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
   const morphFinds = discoveredMorphNames(g.progress.discoveredMorphs, sp.id).filter((n) => !chipLabels.has(n.toLowerCase()));
   const noMorphs = hasNoNamedMorphs(sp);
   const owned = Object.values(g.creatures).filter((c) => c.speciesId === sp.id && (c.status === 'alive' || c.status === 'listed')).length;
+  const card = speciesProgress(g, sp); // chunk 21: its Collection card
 
   return (
     <SubView onBack={onBack} backLabel="All species">
@@ -292,6 +333,14 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
             {owned > 0 && <Chip tone="aqua">You keep {owned}</Chip>}
           </div>
           <p className="pn-lead">{tempText(e.summary)}</p>
+          {/* chunk 21: its card in the Collection */}
+          {!card.noMorphs && (
+            <div>
+              <button type="button" className="ag-linkbtn" data-testid="enc-to-collection" onClick={() => onCollection(sp.id)}>
+                <LayoutGrid size={13} aria-hidden /> Collection: {card.morphsSeen.toLocaleString('en-US')} of {card.morphsTotal.toLocaleString('en-US')} morphs
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

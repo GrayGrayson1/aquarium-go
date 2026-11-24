@@ -65,6 +65,8 @@ const CANONICAL = [
   '#/encyclopedia/science',
   '#/encyclopedia/science/nitrogen_cycle',
   '#/encyclopedia/betta',
+  '#/encyclopedia/collection', // chunk 21: the Collection
+  '#/encyclopedia/collection/betta', // chunk 21: a species' card open
   '#/social',
   '#/social/clubs',
   '#/social/trading',
@@ -111,6 +113,9 @@ describe('nav routes: §6.2 round trip', () => {
     expect(r('#/shows/enter')).toEqual({ kind: 'panel', panel: 'shows', tab: 'upcoming' });
     expect(r('#/encyclopedia/betta')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'species', target: 'species:betta' });
     expect(r('#/encyclopedia/science/nitrogen_cycle')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'science', target: 'science:nitrogen_cycle' });
+    // chunk 21: the Collection, and a species' card open in it
+    expect(r('#/encyclopedia/collection')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'collection' });
+    expect(r('#/encyclopedia/collection/betta')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'collection', target: 'collection:betta' });
     // chunk 6: an invite highlights Clubs, as the approved screen phone-join does (§6.2 names no tab for it)
     expect(r('#/social/join/HIGHLAND-4821')).toEqual({ kind: 'panel', panel: 'social', tab: 'clubs', target: 'join:HIGHLAND-4821' });
     expect(r('#/settings')).toEqual({ kind: 'settings', tab: 'general' });
@@ -226,6 +231,13 @@ describe('nav routes: what the router sends to a panel (B-115)', () => {
     expect(routeForPanelTarget('tanks', 'tank:t1')).toBeNull();
   });
 
+  it('chunk 21: the Collection’s commands map to its address; its tab is an explicit target too', () => {
+    expect(routeForPanelTarget('encyclopedia', 'collection:betta')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'collection', target: 'collection:betta' });
+    expect(routeForPanelTarget('encyclopedia', 'tab:collection')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'collection' });
+    expect(panelTargetFor({ kind: 'panel', panel: 'encyclopedia', tab: 'collection' })).toBe('tab:collection');
+    expect(formatRoute({ kind: 'panel', panel: 'encyclopedia', tab: 'collection', target: 'collection:betta' })).toBe('#/encyclopedia/collection/betta');
+  });
+
   it('normalizeRoute and sameRoute treat a missing tab as the first tab', () => {
     expect(normalizeRoute({ kind: 'panel', panel: 'shows' })).toEqual({ kind: 'panel', panel: 'shows', tab: 'upcoming' });
     expect(sameRoute({ kind: 'panel', panel: 'shows' }, { kind: 'panel', panel: 'shows', tab: 'upcoming' })).toBe(true);
@@ -259,6 +271,9 @@ describe('nav routes: the loading card pill (§16)', () => {
     expect(routeLabel(parseRoute('#/social/join/X')!.route)).toBe('Social › Club invite');
     expect(routeLabel(parseRoute('#/shows/enter/s1')!.route)).toBe('Shows › Enter a show'); // audit B6
     expect(routeLabel(parseRoute('#/market/listings/new')!.route)).toBe('Market › New listing');
+    // chunk 21: a card's address never names its species (it may be undiscovered)
+    expect(routeLabel(parseRoute('#/encyclopedia/collection')!.route)).toBe('Encyclopedia › Collection');
+    expect(routeLabel(parseRoute('#/encyclopedia/collection/axolotl')!.route, { species: () => 'Axolotl' })).toBe('Encyclopedia › Collection');
     expect(routeLabel({ kind: 'home' })).toBeNull();
   });
 
