@@ -578,3 +578,12 @@ link.
 | `hatch-reveal-see` | "See it": closes the card and opens the animal's card |
 | `hatch-reveal-collection` | "Open collection": closes the card and opens `#/encyclopedia/collection/{speciesId}` (the Collection, feature A) |
 | `notify-reveal-finds` | Settings › Notifications › In the game: the "Reveal rare finds" switch |
+
+## Chunk 21, "What next?" (feature C; src/ui/next)
+
+| test id | element |
+|---|---|
+| `hud-next` | The tank bar's "What next?" button (also the N key); `aria-expanded` while its sheet is open |
+| `next-sheet` · `next-close` | The "What next?" sheet (a dialog under the tank bar) and its Close |
+| `next-action-<n>` | An action in the sheet, best first (`next-action-0` is the big top one; at most four); `data-rule` is its rule (`danger`, `guide`, `hungry`, `care`, `expiring`, `ready`, `unlock`, `quest`, `collect`) and `data-next-key` its key (`hungry:<tankId>`, `guide:<stepId>`, `collect` …) |
+| `next-calm` | "You’re all caught up…", when only the collection is left to suggest |
