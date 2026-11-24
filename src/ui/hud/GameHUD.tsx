@@ -54,6 +54,7 @@ import { FindAnything, useFindKeys } from '../search/FindAnything'; // chunk 19 
 import { DecorCamPad, isDecorating } from './DecorCamPad'; // chunk 19 (ADR-0055 decision 4, QOL-005)
 import { UnlockHelpHost } from '../panels/common/UnlockHelp'; // chunk 19 (ADR-0055 decision 5, QOL-006): the one lock box
 import { Tour } from '../tutorial/Tour'; // chunk 19 (ADR-0055 decision 7, QOL-008)
+import { toggleWhatNext, whatNextReachable } from '../next/WhatNext'; // chunk 21 (C)
 
 const CALM_AFTER_MS = 6000;
 /** How long after a waking touch its click counts as part of the wake. */
@@ -193,7 +194,7 @@ export function sheetScroller(t: HTMLElement): HTMLElement | null {
   return root.querySelector<HTMLElement>('.pn-body, .ag-sheet__body, .ag-alerts-pop__body');
 }
 
-/** Keyboard: Space pause · 1/2/3 speed · F feed · T tank card · V view · [ ] tanks · H watch · P photo · Esc back out. */
+/** Keyboard: Space pause · 1/2/3 speed · F feed · T tank card · V view · [ ] tanks · H watch · P photo · N what next · Esc back out. */
 function useHudKeys() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -257,6 +258,12 @@ function useHudKeys() {
         case 'H':
           sfx('close');
           enterCinematic('watch');
+          break;
+        case 'n':
+        case 'N':
+          // chunk 21 (C) — "What next?", while its button is on screen (a phone's full panel hides the tank bar)
+          if (!whatNextReachable()) return;
+          toggleWhatNext();
           break;
         case 'p':
         case 'P':
