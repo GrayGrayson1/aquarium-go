@@ -12,6 +12,8 @@ import { addCreature, createCreature } from '@/sim/life';
 import { normalizeGenome } from '@/sim/life/genetics';
 import { createClutch, mintJuveniles } from '@/sim/life/breeding/clutch';
 import { forcePrismatic } from '@/sim/life/rareVariants';
+import { simulateOffline } from '@/sim/catchUp';
+import { GAME_HOURS_PER_REAL_SECOND } from '@/sim/time';
 import { useGame } from '@/state/game';
 import { usePrefs } from '@/ui/common/prefs';
 import type { RevealFind } from '@/ui/reveal/finds';
@@ -85,6 +87,19 @@ describe('the feed from the game store', () => {
   const betta = getSpecies('betta');
   const genome: Genome = normalizeGenome(betta, { alleles: { color: ['royal', 'royal'], pattern: ['butterfly', 'butterfly'], fins: ['halfmoon', 'halfmoon'] }, potentials: {} as Genome['potentials'] });
 
+  /** A game with a betta brood (a new named strain) due `inHours` from now, and its nursery. */
+  function due(inHours: number): GameState {
+    const g = newGame({ starterId: 'betta', starterName: 'S', seed: 5 });
+    const tank = createTank(g, 'g29', 'freshwater_tropical', { cycled: true, name: 'Nursery' });
+    tank.purpose = 'nursery';
+    const mom = createCreature(g, simRng(g), 'betta', { sex: 'female', ageDays: 120, genome });
+    const dad = createCreature(g, simRng(g), 'betta', { sex: 'male', ageDays: 120, genome });
+    addCreature(g, mom, null);
+    addCreature(g, dad, null);
+    createClutch(g, { sp: betta, tank, mother: mom, father: dad, hour: g.clock.hour - 100, stage: 'fry', count: 4, visual: 'fry_cloud', nextStageHour: g.clock.hour + inHours });
+    return g;
+  }
+
   /** A game whose next commit mints a brood with a new named strain (and `force` Prismatic young). */
   function commits(force = 0): { before: GameState; after: GameState } {
     const g = newGame({ starterId: 'betta', starterName: 'S', seed: 5 });
@@ -122,6 +137,20 @@ describe('the feed from the game store', () => {
     expect(useReveal.getState().waiting).toHaveLength(2);
     useGame.getState().setGame(structuredClone(after) as GameState);
     expect(useReveal.getState().waiting).toHaveLength(2);
+  });
+
+  it('the hidden-tab catch-up is one commit: its births queue together, to open after the welcome-back card', () => {
+    const before = due(2);
+    before.clock.speed = 1;
+    useGame.getState().setGame(before);
+    const after = structuredClone(before) as GameState;
+    forcePrismatic('bred', 2);
+    const summary = simulateOffline(after, (6 / GAME_HOURS_PER_REAL_SECOND) * 1000);
+    expect(summary.births).toBeGreaterThan(1);
+    useGame.getState().setGame(after);
+    // the first youngster (Prismatic, first of the strain) and its Prismatic sibling
+    expect(useReveal.getState().waiting).toHaveLength(2);
+    expect(useReveal.getState().open).toBeNull();
   });
 
   it('another aquarium arriving with finds in its log reveals none of them (no replay after a load)', () => {
