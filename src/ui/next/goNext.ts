@@ -16,8 +16,12 @@ import type { NextTo } from './nextBest';
 /** The guide targets "Show me" does something for (TutorialCoach's `showMe`; a `dock-…` target opens that panel). */
 const SHOW_ME = new Set(['tool-feed', 'tool-target-feed', 'tank-card-toggle', 'creature-name', 'scene', 'follow-starter']);
 
-export function goNext(to: NextTo): void {
-  guardLeave(() => goNow(to));
+/** Go there. `onGo` runs only if it really goes (the listing wizard's question may keep the player where they are). */
+export function goNext(to: NextTo, onGo?: () => void): void {
+  guardLeave(() => {
+    onGo?.();
+    goNow(to);
+  });
 }
 
 function goNow(to: NextTo): void {

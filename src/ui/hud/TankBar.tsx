@@ -196,7 +196,7 @@ export function TankBar() {
               </span>
             )}
             {gallons > 0 && <span className="ag-switcher__gal"> · {gallons} gal</span>}
-            {n > 1 && <span className="ag-switcher__gal"> · {idx + 1}/{n}</span>}
+            {n > 1 && <span className="ag-switcher__gal ag-switcher__index"> · {idx + 1}/{n}</span>}
           </span>
         </div>
         <button type="button" className="ag-switcher__arrow" data-testid="tank-next" aria-label={arrowLabel(1)} title={arrowCue(1) ? arrowLabel(1) : undefined} disabled={n < 2} onClick={() => cycleTank(1)}>
