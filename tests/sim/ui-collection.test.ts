@@ -231,6 +231,7 @@ describe('the Collection’s numbers', () => {
     expect(formatPercent(99.9)).toBe('99%');
     expect(formatPercent(100)).toBe('100%');
     expect(formatPercent(Number.NaN)).toBe('0%');
+    expect(formatPercent(0.05)).toBe('0%');
   });
 });
 
@@ -315,6 +316,16 @@ describe('missing morphs: the hint and how to find it', () => {
     const both = e.traitIds.filter(twoCopy).map((id) => betta.genetics.phenotypes.find((r) => r.id === id)!.name);
     expect(howToFind(betta, e, all)).toBe(`Shows when both parents carry ${both.length === 1 ? both[0] : `${both.slice(0, -1).join(', ')} and ${both[both.length - 1]}`}.`);
     expect(howToFind(betta, e, new Set())).toBe('Shows when both parents carry a trait you haven’t seen yet.');
+    // a seen two-copy trait beside an unseen one-copy trait: the unseen one is mentioned, never named
+    const rule = (id: string) => betta.genetics.phenotypes.find((r) => r.id === id)!;
+    const mixed = cat.entries.find((x) => x.tier !== 'common' && x.tier !== 'uncommon' && x.traitIds.some(twoCopy) && x.traitIds.some((id) => !twoCopy(id) && rule(id).when.length > 0))!;
+    expect(mixed).toBeDefined();
+    const hidden = mixed.traitIds.find((id) => !twoCopy(id) && rule(id).when.length > 0)!;
+    const partial = new Set([...all].filter((id) => id !== hidden));
+    const named = mixed.traitIds.filter(twoCopy).map((id) => rule(id).name);
+    const line = howToFind(betta, mixed, partial);
+    expect(line).toBe(`Shows when both parents carry ${named.length === 1 ? named[0] : `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}`}. It also needs a trait you haven’t seen yet.`);
+    expect(line).not.toContain(rule(hidden).name);
   });
 });
 

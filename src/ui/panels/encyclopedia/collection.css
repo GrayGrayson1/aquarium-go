@@ -23,6 +23,9 @@
 .ag-col-row__chev { flex: none; color: var(--c-ink-3); }
 .ag-col-empty { margin: 0; }
 
+/* a portrait in a row or a card head (hidden from screen readers: the words beside it say what it is) */
+.ag-col-pic { flex: none; display: inline-flex; }
+
 /* ── filters ── */
 .ag-col-filters { display: grid; gap: 8px; margin-bottom: 12px; }
 

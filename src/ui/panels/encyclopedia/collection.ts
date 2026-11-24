@@ -174,7 +174,8 @@ export function collectionPercent(g: GameState): number {
 /** "12%", or "0.5%" below 10 (the percentage keeps a tenth so the first finds show). */
 export function formatPercent(p: number): string {
   const v = Math.max(0, Math.min(100, Number.isFinite(p) ? p : 0));
-  return v === 0 || v >= 10 ? `${Math.floor(v)}%` : `${(Math.floor(v * 10) / 10).toFixed(1)}%`;
+  const tenth = Math.floor(v * 10) / 10;
+  return tenth === 0 || v >= 10 ? `${Math.floor(v)}%` : `${tenth.toFixed(1)}%`;
 }
 
 // ───────────────────────────── the cards ─────────────────────────────
@@ -241,8 +242,9 @@ function needsBothParents(rule: PhenotypeRule): boolean {
  * One honest line on how to find a missing morph, from its tier, its traits and whether the species breeds here:
  *  1. Common or uncommon, or a species whose young can't show new morphs: where sellers stand (SELLER_LINE).
  *  2. Otherwise, from its traits (a catch-all base such as "Wild Type" is no trait), naming only traits already seen:
- *     - a trait that needs both parents (two copies, or none of an allele): "Shows when both parents carry {seen
- *       ones}", with "a trait you haven’t seen yet" standing in for unseen ones;
+ *     - a seen trait that needs both parents (two copies, or none of an allele): "Shows when both parents carry
+ *       {them}.", plus "It also needs a trait you haven’t seen yet." when any of its traits is unseen;
+ *     - traits that need both parents, none of them seen: "Shows when both parents carry a trait you haven’t seen yet.";
  *     - only traits one parent can pass on, all seen: "Breed it from parents showing {them}.";
  *     - only such traits, one unseen: the sellers' line (nothing to breed from yet).
  * It never names a trait the player hasn't seen, an allele, or a strain's recipe.
@@ -254,9 +256,9 @@ export function howToFind(sp: SpeciesDefinition, e: Pick<CatalogEntry, 'traitIds
   const both = rules.filter(needsBothParents);
   if (both.length) {
     const seen = both.filter((r) => seenTraits.has(r.id)).map((r) => r.name);
-    const unseen = both.some((r) => !seenTraits.has(r.id));
     if (!seen.length) return 'Shows when both parents carry a trait you haven’t seen yet.';
-    return `Shows when both parents carry ${listWords(seen)}${unseen ? ' and a trait you haven’t seen yet' : ''}.`;
+    const unseen = rules.some((r) => !seenTraits.has(r.id));
+    return `Shows when both parents carry ${listWords(seen)}.${unseen ? ' It also needs a trait you haven’t seen yet.' : ''}`;
   }
   if (rules.length && rules.every((r) => seenTraits.has(r.id))) return `Breed it from parents showing ${listWords(rules.map((r) => r.name))}.`;
   return seller;

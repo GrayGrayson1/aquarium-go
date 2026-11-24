@@ -220,7 +220,9 @@ function TipRow({ t, onOpen, onOffer }: { t: NearlyThere; onOpen: (id: string) =
   // (a pair's and a species' tip are about found species; the shop's is about one still undiscovered)
   return (
     <button type="button" className="ag-col-row" data-testid={`collection-tip-${t.kind}`} onClick={() => (t.kind === 'shop' ? onOffer(t.offerId) : onOpen(sp.id))}>
-      <SpeciesPortrait speciesId={sp.id} size={36} silhouette={t.kind === 'shop'} />
+      <span className="ag-col-pic" aria-hidden>
+        <SpeciesPortrait speciesId={sp.id} size={36} silhouette={t.kind === 'shop'} />
+      </span>
       <span className="ag-col-row__main">
         <span className="ag-col-row__title">{title}</span>
         <span className="ag-col-row__text">{text}</span>
@@ -246,7 +248,9 @@ function RecentRow({ r, onOpen }: { r: RecentFind; onOpen: (id: string) => void 
   if (!sp) return null;
   return (
     <button type="button" className="ag-col-row" data-testid="collection-recent-row" onClick={() => onOpen(sp.id)}>
-      <SpeciesPortrait speciesId={sp.id} size={36} />
+      <span className="ag-col-pic" aria-hidden>
+        <SpeciesPortrait speciesId={sp.id} size={36} />
+      </span>
       <span className="ag-col-row__main">
         <span className="ag-col-row__title">{sp.commonName}</span>
         <span className="ag-col-row__text">{recentWords(r)}</span>
@@ -273,7 +277,9 @@ function SpeciesCard({ g, p, open, onToggle, availability, onSpeciesPage, onOffe
   return (
     <article className={clsx('ag-col-card', open && 'is-open', !p.found && 'is-unknown', p.status === 'complete' && 'is-complete')} data-testid={`collection-card-${sp.id}`} data-status={p.status} data-found={p.found ? '1' : '0'}>
       <button type="button" className="ag-col-card__head" aria-expanded={open} aria-controls={bodyId} onClick={onToggle} data-testid={`collection-toggle-${sp.id}`}>
-        <SpeciesPortrait speciesId={sp.id} size={52} silhouette={!p.found} />
+        <span className="ag-col-pic" aria-hidden>
+          <SpeciesPortrait speciesId={sp.id} size={52} silhouette={!p.found} />
+        </span>
         <span className="ag-col-card__main">
           <span className="ag-col-card__name">{p.found ? sp.commonName : 'Undiscovered'}</span>
           <span className="ag-col-card__meta">{metaLine(p, avail)}</span>
