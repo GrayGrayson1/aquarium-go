@@ -29,7 +29,9 @@ import {
   type RecentFind,
   type SpeciesProgress,
   type StatusFilter,
+  CATALOG_SPECIES,
 } from './collection';
+import { useCatalogsReady } from './catalogWarmup'; // review S8
 import './collection.css';
 
 /** What an undiscovered species' card says about getting one (the Encyclopedia's own rule, EncyclopediaPanel). */
@@ -74,10 +76,12 @@ export function CollectionView({ g, open, onOpen, reveal, availability, onSpecie
   const pending = useRef<{ id: string; block: ScrollLogicalPosition } | null>(null);
 
   const p = g.progress;
-  const summary = useMemo(() => collectionSummary(g), [p.discoveredSpecies, p.discoveredMorphs, p.discoveredStrains, p.prismaticFinds, g.creatures]); // eslint-disable-line react-hooks/exhaustive-deps
-  const cards = useMemo(() => collectionCards(g, { status, env }), [p.discoveredSpecies, p.discoveredMorphs, p.discoveredStrains, p.prismaticFinds, g.creatures, status, env]); // eslint-disable-line react-hooks/exhaustive-deps
-  const recent = useMemo(() => recentFinds(g, 5), [p.discoveredAt, p.discoveredStrains, p.prismaticFinds]); // eslint-disable-line react-hooks/exhaustive-deps
-  const tips = useMemo(() => nearlyThere(g, 3), [p.discoveredSpecies, p.discoveredMorphs, g.creatures, g.market.stock, Math.floor(g.clock.hour)]); // eslint-disable-line react-hooks/exhaustive-deps
+  // review S8: every species' catalog, built in slices the first time (catalogWarmup), so no frame is held for long
+  const ready = useCatalogsReady(CATALOG_SPECIES, 'all');
+  const summary = useMemo(() => (ready ? collectionSummary(g) : null), [ready, p.discoveredSpecies, p.discoveredMorphs, p.discoveredStrains, p.prismaticFinds, g.creatures]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cards = useMemo(() => (ready ? collectionCards(g, { status, env }) : []), [ready, p.discoveredSpecies, p.discoveredMorphs, p.discoveredStrains, p.prismaticFinds, g.creatures, status, env]); // eslint-disable-line react-hooks/exhaustive-deps
+  const recent = useMemo(() => recentFinds(g, 5), [p.discoveredAt, p.discoveredSpecies, p.discoveredMorphs, p.discoveredStrains, p.prismaticFinds]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tips = useMemo(() => (ready ? nearlyThere(g, 3) : []), [ready, p.discoveredSpecies, p.discoveredMorphs, g.creatures, g.market.stock, Math.floor(g.clock.hour)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // a link asked for a card: show every card, so it can't be filtered away, then bring it into view
   useEffect(() => {
@@ -115,6 +119,17 @@ export function CollectionView({ g, open, onOpen, reveal, availability, onSpecie
     if (open !== id) onOpen(id);
     else if (!hidden) bringIntoView(); // nothing changes on screen, so no render will do it
   };
+
+  if (!summary)
+    return (
+      <div className="ag-col" ref={root} data-testid="collection" aria-busy="true">
+        <section className="ag-col-head" data-testid="collection-counting">
+          <p className="pn-small pn-muted ag-col-empty" role="status">
+            Counting your collection…
+          </p>
+        </section>
+      </div>
+    );
 
   return (
     <div className="ag-col" ref={root} data-testid="collection">
