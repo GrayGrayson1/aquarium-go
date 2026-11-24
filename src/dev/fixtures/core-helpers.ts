@@ -5,7 +5,7 @@
  */
 import type { GameState, Tank, WaterClass, Creature, FacilityLevelId, DecorInstance, Sex } from '@/types';
 import { createTank } from '@/sim/tanks';
-import { createCreature, addCreature } from '@/sim/life';
+import { createCreature, addCreature, registerDiscovery } from '@/sim/life';
 import { simRng, visualRng } from '@/sim/rng';
 import { nextId } from '@/sim/ids';
 import { starterAquascape, placeDecor } from '@/sim/aquascape';
@@ -246,9 +246,7 @@ export function stockTank(state: GameState, tankId: string, entries: StockEntry[
       });
       addCreature(state, c, tankId);
       out.push(c);
-      if (!state.progress.discoveredSpecies.includes(speciesId)) state.progress.discoveredSpecies.push(speciesId);
-      const morph = `${speciesId}:${c.morphName}`;
-      if (!state.progress.discoveredMorphs.includes(morph)) state.progress.discoveredMorphs.push(morph);
+      registerDiscovery(state, c); // species + morph (chunk 21: dated for the Collection)
     }
   }
   return out;

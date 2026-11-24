@@ -15,7 +15,7 @@ import type { SimContext } from '@/sim/context';
 import { nextId } from '@/sim/ids';
 import { simRng, type Rng } from '@/sim/rng';
 import { findSpecies } from '@/data/species';
-import { createCreature, addCreature, sizeAtAge, assignPrismatic, isPrismatic, prismaticChance, oneInLabel, recordFinds, strainTier } from '@/sim/life';
+import { createCreature, addCreature, sizeAtAge, assignPrismatic, isPrismatic, prismaticChance, oneInLabel, recordFinds, strainTier, stampDiscovery } from '@/sim/life';
 import type { MorphStrain } from '@/types';
 import { TIER_WORD } from '@/data/rarity';
 import { foodTagNames, joinFoodNames } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3)
@@ -764,6 +764,7 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
     const key = `${sp.id}:${c.morphName}`;
     if (!state.progress.discoveredMorphs.includes(key)) {
       state.progress.discoveredMorphs.push(key);
+      stampDiscovery(state, key); // chunk 21: dated for the Collection
       newMorphs.push(c.morphName);
     }
   }

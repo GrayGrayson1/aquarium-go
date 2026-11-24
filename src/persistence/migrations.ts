@@ -957,11 +957,38 @@ export function repairState(s: Json): string[] {
   renameLegacyMorphs(s);
   renameOverlays(s, repairs); // chunk 6, B-194
   backfillFinds(s as GameState); // lane:genetics — only fills lists a pre-0.4 save lacks; silent
+  repairDiscoveredAt(s, repairs); // chunk 21 (the Collection): after the renames and the backfill, so the lists are final
   if (s.isShowcase === undefined) s.isShowcase = false;
   scrubNonFinite(s, repairs); // chunk 6 (PERSIST-004 A2): nothing unreadable is left anywhere
   // Keep the id counter ahead of every id we know about so new ids never collide after a repair.
   s.idCounter = Math.max(s.idCounter, maxIdSuffix(s));
   return repairs;
+}
+
+/**
+ * chunk 21 (the Collection) — `progress.discoveredAt` is optional: absent, nothing happens (the stateHash of a save
+ * without it is unchanged). Present, it must be a record; a date is kept only when it is a finite number and its key
+ * (a usable key) is still in discoveredSpecies, discoveredMorphs or discoveredStrains, so the record can never outgrow
+ * the lists (which have their own limits). Anything else is removed with a note.
+ */
+function repairDiscoveredAt(s: Json, repairs: string[]): void {
+  const p = s.progress;
+  if (!isObj(p) || p.discoveredAt === undefined) return;
+  if (!isObj(p.discoveredAt)) {
+    repairs.push('progress.discoveredAt: unreadable, removed');
+    delete p.discoveredAt;
+    return;
+  }
+  const listed = new Set<string>([...strings(p.discoveredSpecies), ...strings(p.discoveredMorphs), ...strings(p.discoveredStrains)]);
+  const at = p.discoveredAt as Record<string, unknown>;
+  const keep = (k: string) => isSafeKey(k) && listed.has(k) && typeof at[k] === 'number' && Number.isFinite(at[k]);
+  const keys = Object.keys(at);
+  const bad = keys.filter((k) => !keep(k)).length;
+  if (!bad) return;
+  const kept: Record<string, number> = {};
+  for (const k of keys) if (keep(k)) kept[k] = at[k] as number;
+  p.discoveredAt = kept;
+  repairs.push(`progress.discoveredAt: ${bad} unreadable ${bad === 1 ? 'date' : 'dates'} removed`);
 }
 
 /** A well-formed id, as text for a repair note. */

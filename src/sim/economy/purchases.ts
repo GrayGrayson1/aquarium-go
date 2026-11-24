@@ -8,7 +8,7 @@ import { refreshFoodStatus } from '../tankStatus';
 import { installEquipment } from '../care';
 import { MAX_PER_KIND } from '../care/tuning'; // Audit 2026-11-17 (G25)
 import { environmentGate } from '../compat';
-import { addCreature, isLotOffer, recordFinds } from '../life';
+import { addCreature, isLotOffer, recordFinds, registerDiscovery } from '../life';
 import { generateName } from '../life/names';
 import { mulberry32, hashString } from '../rng';
 import { createTank, defaultSubstrate } from '../tanks';
@@ -125,9 +125,7 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
     pushCapped(c.history, { hour: now, kind: 'acquired', text: `Bought from ${offer.seller} for ${fmtMoney(perPrice)}.` }, 40);
     addCreature(state, c, tankId);
     bought.push(c);
-    if (!state.progress.discoveredSpecies.includes(c.speciesId)) state.progress.discoveredSpecies.push(c.speciesId);
-    const mk = `${c.speciesId}:${c.morphName}`;
-    if (!state.progress.discoveredMorphs.includes(mk)) state.progress.discoveredMorphs.push(mk);
+    registerDiscovery(state, c); // species + morph, as before; chunk 21: dated for the Collection
     recordFinds(state, c); // lane:genetics — named strains + Prismatic finds (silent; the encyclopedia shows them)
   }
 
