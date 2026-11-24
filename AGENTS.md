@@ -19,6 +19,7 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
 | Shared shops (chunks 10 to 13): a shop a club plays together, live, on a small Render server | `docs/agent/design/SHARED-SHOPS.md` |
 | Requirements checklist (ids, acceptance criteria, status) | `docs/agent/REQUIREMENTS.json` |
 | Known issues and deferred work | `docs/agent/BACKLOG.md`, `docs/KNOWN_LIMITATIONS.md` |
+| Ideas the owner liked but hasn't asked to build yet | `docs/agent/IDEAS.md` |
 | What a future server would authorise; the debt multiplayer would magnify | `docs/agent/TRUST_BOUNDARY.md`, `docs/agent/DEBT_INVENTORY.md` |
 | Owner decisions and design ADRs | `docs/agent/decisions/` |
 | Code layers, data flow, the determinism contract | `docs/ARCHITECTURE.md` |
