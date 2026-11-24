@@ -10,7 +10,7 @@
  * afterwards. With reduced motion there is no build-up and no animation, just the card. The toast and the log line
  * the sim writes for the same birth stay as they are. Reads the game; never writes it.
  */
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useGame } from '@/state/game';
@@ -71,22 +71,21 @@ function RevealCard() {
   const page = useReveal((s) => s.page);
   const opened = useReveal((s) => s.opened);
   const reduced = useSettings((s) => s.reducedMotion) || osReducedMotion();
-  const [building, setBuilding] = useState(false);
-  const labelId = useId();
   const count = pages?.length ?? 0;
   const isOpen = count > 0;
-
-  // the build-up plays once per opening (paging shows the next animal at once); the animal arrives with a chime
+  // the build-up plays once per opening (paging shows the next animal at once): `builtFor` is the opening whose
+  // build-up has finished, so a new opening starts on its build-up from its very first frame
+  const [builtFor, setBuiltFor] = useState(-1);
+  const building = isOpen && !reduced && builtFor !== opened;
   useEffect(() => {
     if (!isOpen) return;
+    // the animal arrives with a chime
     if (reduced) {
-      setBuilding(false);
       sfx('unlock', { volume: 0.7 });
       return;
     }
-    setBuilding(true);
     const t = window.setTimeout(() => {
-      setBuilding(false);
+      setBuiltFor(opened);
       sfx('unlock', { volume: 0.7 });
     }, BUILD_UP_MS);
     return () => window.clearTimeout(t);
@@ -122,11 +121,18 @@ function RevealCard() {
     go(to ? to.route : { kind: 'panel', panel: 'encyclopedia' });
   };
   return (
-    <Modal open={isOpen} onClose={close} testId="hatch-reveal" width={400} labelledBy={labelId}>
+    <Modal
+      open={isOpen}
+      onClose={close}
+      testId="hatch-reveal"
+      width={400}
+      title={
+        <span className="ag-hatch__title">
+          <Sparkles size={15} aria-hidden /> {shown ? REVEAL_WORDS.over : REVEAL_WORDS.buildUp}
+        </span>
+      }
+    >
       <div className="ag-hatch" data-phase={shown ? 'shown' : 'build'}>
-        <div className="ag-overline ag-hatch__over" id={labelId}>
-          <Sparkles size={12} aria-hidden /> {shown ? REVEAL_WORDS.over : REVEAL_WORDS.buildUp}
-        </div>
         <div className="ag-hatch__live" aria-live="polite">
           <AnimatePresence mode="wait" initial={false}>
             {shown ? (
@@ -147,27 +153,29 @@ function RevealCard() {
             )}
           </AnimatePresence>
         </div>
-        {shown && count > 1 && (
-          <div className="ag-hatch__pager">
-            <IconButton label={REVEAL_WORDS.previous} disabled={page <= 0} onClick={() => useReveal.getState().turn(-1)} data-testid="hatch-reveal-prev">
-              <ChevronLeft size={16} />
-            </IconButton>
-            <span className="ag-hatch__count" data-testid="hatch-reveal-pager">
-              {REVEAL_WORDS.pager(page + 1, count)}
-            </span>
-            <IconButton label={REVEAL_WORDS.next} disabled={page >= count - 1} onClick={() => useReveal.getState().turn(1)} data-testid="hatch-reveal-next">
-              <ChevronRight size={16} />
-            </IconButton>
-          </div>
-        )}
         {shown && (
-          <div className="ag-row ag-hatch__actions">
-            <Button variant="primary" onClick={seeIt} data-testid="hatch-reveal-see">
-              {REVEAL_WORDS.see}
-            </Button>
-            <Button onClick={openCollection} data-testid="hatch-reveal-collection">
-              {REVEAL_WORDS.collection}
-            </Button>
+          <div className="ag-hatch__foot">
+            {count > 1 && (
+              <div className="ag-hatch__pager">
+                <IconButton label={REVEAL_WORDS.previous} disabled={page <= 0} onClick={() => useReveal.getState().turn(-1)} data-testid="hatch-reveal-prev">
+                  <ChevronLeft size={16} />
+                </IconButton>
+                <span className="ag-hatch__count" data-testid="hatch-reveal-pager">
+                  {REVEAL_WORDS.pager(page + 1, count)}
+                </span>
+                <IconButton label={REVEAL_WORDS.next} disabled={page >= count - 1} onClick={() => useReveal.getState().turn(1)} data-testid="hatch-reveal-next">
+                  <ChevronRight size={16} />
+                </IconButton>
+              </div>
+            )}
+            <div className="ag-row ag-hatch__actions">
+              <Button variant="primary" onClick={seeIt} data-testid="hatch-reveal-see">
+                {REVEAL_WORDS.see}
+              </Button>
+              <Button onClick={openCollection} data-testid="hatch-reveal-collection">
+                {REVEAL_WORDS.collection}
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -185,7 +193,7 @@ function FindPage({ find }: { find: RevealFind }) {
   return (
     <>
       <div className="ag-hatch__stage">
-        <Portrait subject={c} shape="circle" size={192} className="ag-hatch__portrait" alt={`${view.name}, ${view.morph}`} />
+        <Portrait subject={c} shape="circle" size={192} className="ag-hatch__portrait" />
       </div>
       <h3 className="ag-hatch__name" data-testid="hatch-reveal-name">
         {view.name}
