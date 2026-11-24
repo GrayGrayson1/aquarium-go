@@ -7,7 +7,10 @@ import { describe, expect, it } from 'vitest';
 import type { Creature, GameState, Listing } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { tutorialSkip, unlock } from '@/sim/facility/progression';
-import { refreshTankCache } from '@/sim/world';
+import { advanceWorld, refreshTankCache } from '@/sim/world';
+import { UNLOCK_KEYS } from '@/data/unlockKeys';
+import { opsSnapshot } from '@/ui/common/ops';
+import { issueViews } from '@/ui/panels/operations/issues';
 import { tutorialChain } from '@/data/quests';
 import { ensureShowsState } from '@/sim/shows/state';
 import { refillCalendar } from '@/sim/shows/schedule';
@@ -125,6 +128,25 @@ describe('What next? after the guide', () => {
     expect(list[3]).toMatchObject({ key: 'quest:q_feed_routine', title: 'Feeding routine' });
     // the same state ranks the same way every time
     expect(nextBestActions(g)).toEqual(list);
+  });
+
+  it('a Water room and a Live food room with no salt mix or eggs: Operations’ problems are listed, so not all caught up', () => {
+    // (as dev.unlockAll leaves a game: every key unlocked, the rooms installed on the next step, nothing in stock;
+    // chunk 21's merge review: the e2e case's "nothing to do" game was such a game)
+    const g = game({ money: 0 });
+    for (const key of Object.keys(UNLOCK_KEYS)) unlock(g, key, { silent: true });
+    advanceWorld(g, 1);
+    g.finance.money = 0;
+    expect(g.facility.water && g.facility.food).toBeTruthy();
+    const issues = issueViews(g, opsSnapshot(g).problems);
+    expect(issues.length).toBeGreaterThan(0);
+    const list = nextBestActions(g);
+    expectRanked(list);
+    const ops = list.filter((a) => a.key.startsWith('ready:ops:'));
+    // Problems' own words, at most two, to Operations (its Problems view once the Desk is there, else the item's tab)
+    expect(ops.map((a) => a.title)).toEqual(issues.slice(0, 2).map((i) => i.title));
+    for (const a of ops) expect(a).toMatchObject({ rule: 'ready', where: 'Operations', to: { kind: 'route', route: { kind: 'panel', panel: 'operations' } } });
+    expect(nothingUrgent(list)).toBe(false);
   });
 
   it('a quest under half way, and one already claimed, are not "nearly done"', () => {

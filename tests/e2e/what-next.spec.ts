@@ -55,7 +55,9 @@ test.describe('What next? on a computer (1440×900)', () => {
 
   test('N opens it, the arrows reach its actions, Escape gives the focus back; with nothing to do it offers the collection', async ({ page }) => {
     await openApp(page);
-    await quickGame(page, 'betta');
+    // (not everything unlocked: dev.unlockAll researches the Water room and the Live food room, which the next step
+    // installs with no salt mix or eggs, and those are real problems that "What next?" lists from Operations)
+    await quickGame(page, 'betta', { unlockAll: false });
     await aq(page, 'act', 'tutorialSkip');
     await aq(page, 'dev.setSpeed', 0);
     // no money: nothing to buy, nothing wrong in a new tank
@@ -74,10 +76,12 @@ test.describe('What next? on a computer (1440×900)', () => {
     await expect(tid(page, 'next-sheet')).toBeHidden();
     await expect(tid(page, 'hud-next')).toBeFocused();
     await expect(tid(page, 'hud-next')).toHaveAttribute('aria-expanded', 'false');
-    // the collection goes to the Encyclopedia (its Collection once that route exists)
+    // the collection goes to the Encyclopedia's Collection (#/encyclopedia/collection)
     await tid(page, 'hud-next').click();
     await tid(page, 'next-action-0').click();
     await expect(tid(page, 'panel-encyclopedia')).toBeVisible();
+    await expect(tid(page, 'collection-summary')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe('#/encyclopedia/collection');
   });
 
   test('while the guide runs, its step is the top action and does what the guide’s own button does', async ({ page }) => {
