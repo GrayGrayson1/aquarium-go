@@ -567,3 +567,12 @@ link.
 | `reload-confirm` · `reload-confirm-save` · `reload-confirm-anyway` | The box that asks before an in-app reload with Autosave off, its Save now and reload and its Reload anyway |
 | `error-boundary-reload-off` | The error screen's line that Autosave is off, so reloading loses play since the last save |
 | `param-help-<paramKey>` · `science-link-<articleId>` | A reading's plain-words gloss on the tank card's Water tab; a link to the Aquarium science article that explains a word (on the Water tab, beside compatibility, on an offer's genes and in a morph catalogue) |
+
+## Chunk 21, "What next?" (feature C; src/ui/next)
+
+| test id | element |
+|---|---|
+| `hud-next` | The tank bar's "What next?" button (also the N key); `aria-expanded` while its sheet is open |
+| `next-sheet` · `next-close` | The "What next?" sheet (a dialog under the tank bar) and its Close |
+| `next-action-<n>` | An action in the sheet, best first (`next-action-0` is the big top one; at most four); `data-rule` is its rule (`danger`, `guide`, `hungry`, `care`, `expiring`, `ready`, `unlock`, `quest`, `collect`) and `data-next-key` its key (`hungry:<tankId>`, `guide:<stepId>`, `collect` …) |
+| `next-calm` | "You’re all caught up…", when only the collection is left to suggest |
