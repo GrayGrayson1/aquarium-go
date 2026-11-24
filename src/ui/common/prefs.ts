@@ -6,10 +6,12 @@ import { create } from 'zustand';
 export interface UIPrefs {
   /** Fade the HUD after a few seconds without input while watching a tank. */
   calmHud: boolean;
+  /** Chunk 21 (rare-hatch reveals): a card over the game for a rare birth (src/ui/reveal). On by default. */
+  revealFinds: boolean;
 }
 
 const KEY = 'aquarium-go.ui-prefs.v1';
-const DEFAULTS: UIPrefs = { calmHud: true };
+const DEFAULTS: UIPrefs = { calmHud: true, revealFinds: true };
 
 function load(): UIPrefs {
   try {

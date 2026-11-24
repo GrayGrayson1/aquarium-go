@@ -567,3 +567,14 @@ link.
 | `reload-confirm` · `reload-confirm-save` · `reload-confirm-anyway` | The box that asks before an in-app reload with Autosave off, its Save now and reload and its Reload anyway |
 | `error-boundary-reload-off` | The error screen's line that Autosave is off, so reloading loses play since the last save |
 | `param-help-<paramKey>` · `science-link-<articleId>` | A reading's plain-words gloss on the tank card's Water tab; a link to the Aquarium science article that explains a word (on the Water tab, beside compatibility, on an offer's genes and in a morph catalogue) |
+
+## Chunk 21, rare-hatch reveals (feature B; src/ui/reveal)
+
+| test id | element |
+|---|---|
+| `hatch-reveal` | The reveal card (a dialog over the game for a rare first in a brood: one card per brood or catch-up, with a pager) |
+| `hatch-reveal-name` | The animal's name on the open page (absent during the build-up) |
+| `hatch-reveal-pager` · `hatch-reveal-prev` · `hatch-reveal-next` | "1 of 3" and its Previous find / Next find buttons (shown with two finds or more; Left and Right turn it too) |
+| `hatch-reveal-see` | "See it": closes the card and opens the animal's card |
+| `hatch-reveal-collection` | "Open collection": closes the card and opens `#/encyclopedia/collection/{speciesId}` (the Collection, feature A) |
+| `notify-reveal-finds` | Settings › Notifications › In the game: the "Reveal rare finds" switch |
