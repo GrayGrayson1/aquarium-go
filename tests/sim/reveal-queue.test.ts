@@ -18,7 +18,7 @@ import { useGame } from '@/state/game';
 import { usePrefs } from '@/ui/common/prefs';
 import type { RevealFind } from '@/ui/reveal/finds';
 import { EMPTY_REVEAL, addFinds, closeCard, openWaiting, turnPage, useReveal, type RevealState } from '@/ui/reveal/store';
-import { revealWaitReason, type RevealBlockers } from '@/ui/reveal/blockers';
+import { PLACING_TOOLS, revealWaitReason, type RevealBlockers } from '@/ui/reveal/blockers';
 import { startRevealFeed } from '@/ui/reveal/feed';
 
 const find = (id: string): RevealFind => ({ creatureId: id, speciesId: 'betta', eventId: `ev_${id}`, prismatic: true });
@@ -48,6 +48,20 @@ describe('the queue', () => {
     expect(openWaiting(s)).toEqual({});
   });
 
+  it('a morph-only find records its species’ game day; another aquarium forgets them', () => {
+    const morphOnly = (id: string, speciesId: string, w: number): RevealFind => ({ creatureId: id, speciesId, eventId: `ev_${id}`, prismatic: false, morphOnlyWindow: w });
+    let s = st();
+    s = { ...s, ...addFinds(s, 's1', [find('a'), morphOnly('b', 'platy', 4)]) };
+    expect(s.morphShown).toEqual({ platy: 4 });
+    s = { ...s, ...openWaiting(s) };
+    s = { ...s, ...addFinds(s, 's1', [morphOnly('c', 'betta', 5)]) };
+    expect(s.morphShown).toEqual({ platy: 4, betta: 5 });
+    // a repeat of an animal already on the card records nothing
+    s = { ...s, ...addFinds(s, 's1', [morphOnly('c', 'koi', 5)]) };
+    expect(s.morphShown).toEqual({ platy: 4, betta: 5 });
+    expect({ ...s, ...addFinds(s, 's2', [find('x')]) }.morphShown).toEqual({});
+  });
+
   it('opening leaves out animals that are gone, and opens nothing when none is left', () => {
     const s = st({ waiting: [find('a'), find('b')] });
     expect(openWaiting(s, (f) => f.creatureId === 'b').open?.map((f) => f.creatureId)).toEqual(['b']);
@@ -68,7 +82,7 @@ describe('the queue', () => {
 });
 
 describe('when the card waits', () => {
-  const clear: RevealBlockers = { screen: 'game', hidden: false, welcomeBack: false, touring: false, guideSpotlight: false, otherDialog: false, photo: false, hudHidden: false };
+  const clear: RevealBlockers = { screen: 'game', hidden: false, welcomeBack: false, touring: false, guideSpotlight: false, otherDialog: false, photo: false, hudHidden: false, typing: false, placing: false };
   it('opens only on the game screen with nothing in the way', () => {
     expect(revealWaitReason(clear)).toBeNull();
     expect(revealWaitReason({ ...clear, screen: 'title' })).toBe('screen');
@@ -80,6 +94,13 @@ describe('when the card waits', () => {
     expect(revealWaitReason({ ...clear, otherDialog: true })).toBe('otherDialog');
     expect(revealWaitReason({ ...clear, photo: true })).toBe('photo');
     expect(revealWaitReason({ ...clear, hudHidden: true })).toBe('hudHidden');
+    // the chunk's review (S5, N6): never while the player types in a field, or places or moves something
+    expect(revealWaitReason({ ...clear, typing: true })).toBe('typing');
+    expect(revealWaitReason({ ...clear, placing: true })).toBe('placing');
+  });
+
+  it('placing means the decor and tank placement tools, not feeding or tapping', () => {
+    expect([...PLACING_TOOLS].sort()).toEqual(['decor_move', 'decor_place', 'tank_place']);
   });
 });
 
@@ -166,6 +187,36 @@ describe('the feed from the game store', () => {
     useGame.getState().setGame(before);
     useGame.getState().setGame(after);
     expect(useReveal.getState().waiting).toEqual([]);
+  });
+
+  it('the feed keeps the one-a-day limit across commits: a second legendary first that day is not queued', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'S', seed: 5 });
+    g.clock.hour = 24 * 3 + 8;
+    const legendary = (fins: string): Genome => normalizeGenome(betta, { alleles: { color: ['red', 'red'], pattern: ['solid', 'solid'], fins: [fins, fins], cambodian: ['c', 'c'], metallic: ['me', 'me'] }, potentials: {} as Genome['potentials'] });
+    const mint = (state: GameState, gen: Genome) => {
+      const tank = createTank(state, 'g29', 'freshwater_tropical', { cycled: true, name: `Nursery ${Object.keys(state.tanks).length}` });
+      tank.purpose = 'nursery';
+      const mom = createCreature(state, simRng(state), 'betta', { sex: 'female', ageDays: 120, genome: gen });
+      const dad = createCreature(state, simRng(state), 'betta', { sex: 'male', ageDays: 120, genome: gen });
+      addCreature(state, mom, null);
+      addCreature(state, dad, null);
+      const cl = createClutch(state, { sp: betta, tank, mother: mom, father: dad, hour: state.clock.hour - 100, stage: 'fry', count: 3, visual: 'fry_cloud', nextStageHour: state.clock.hour });
+      mintJuveniles(state, cl, tank, betta, state.clock.hour, null);
+    };
+    useGame.getState().setGame(structuredClone(g) as GameState);
+    mint(g, legendary('halfmoon'));
+    useGame.getState().setGame(structuredClone(g) as GameState);
+    expect(useReveal.getState().waiting).toHaveLength(1);
+    expect(useReveal.getState().morphShown).toEqual({ betta: 3 });
+    g.clock.hour += 6;
+    mint(g, legendary('plakat'));
+    useGame.getState().setGame(structuredClone(g) as GameState);
+    expect(useReveal.getState().waiting).toHaveLength(1);
+    g.clock.hour += 24;
+    mint(g, legendary('crown'));
+    useGame.getState().setGame(structuredClone(g) as GameState);
+    expect(useReveal.getState().waiting).toHaveLength(2);
+    expect(useReveal.getState().morphShown).toEqual({ betta: 4 });
   });
 
   it('leaving the game drops what waits', () => {

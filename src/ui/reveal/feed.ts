@@ -33,7 +33,7 @@ export function startRevealFeed(): () => void {
       return;
     }
     if (!prev || prev.saveId !== next.saveId || prev.log === next.log || next.isShowcase || !revealsOn()) return;
-    const finds = safe('revealFinds', () => revealFindsInCommit(prev, next), []);
+    const finds = safe('revealFinds', () => revealFindsInCommit(prev, next, r.morphShown), []);
     if (finds.length) r.add(next.saveId, finds);
   });
 }
