@@ -11,7 +11,7 @@
  * never writes it.
  */
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useIsPresent } from 'motion/react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useGame } from '@/state/game';
 import { useSettings } from '@/state/settings';
@@ -150,6 +150,9 @@ export function RevealCard() {
 
 /** One animal: its picture, name, morph, chips and why it is a find. */
 function FindPage({ find }: { find: RevealFind }) {
+  // a page on its way out (paging fades it first) is no longer the page on screen: no test id, as the toasts do, so
+  // the name read while paging is always the new page's
+  const present = useIsPresent();
   const c = useGame((s) => s.game?.creatures[find.creatureId]);
   const g = useGame.getState().game;
   const view = g ? safe('revealView', () => revealView(g, find), null) : null;
@@ -160,7 +163,7 @@ function FindPage({ find }: { find: RevealFind }) {
       <div className="ag-hatch__stage">
         <Portrait subject={c} shape="circle" size={192} className="ag-hatch__portrait" />
       </div>
-      <h3 className="ag-hatch__name" data-testid="hatch-reveal-name">
+      <h3 className="ag-hatch__name" data-testid={present ? 'hatch-reveal-name' : undefined}>
         {view.name}
       </h3>
       <div className="ag-hatch__morph">{view.morph}</div>

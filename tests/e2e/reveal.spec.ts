@@ -10,6 +10,9 @@ const goHash = (page: Page, h: string) => page.evaluate((x) => void (location.ha
 
 /** Four nurseries whose fry grow up 0.5, 6, 12 and 18 game hours after the build (one brood per step below). */
 const RECIPE = {
+  // a recipe names its format and version (the presets' `r()` adds them); without them the lab builds a blank shop
+  format: 'aquarium-go-scenario',
+  version: 1,
   name: 'Reveal e2e',
   tanks: [0.5, 6, 12, 18].map((at, i) => ({
     name: `Nursery ${'ABCD'[i]}`,
@@ -22,8 +25,10 @@ const RECIPE = {
 };
 
 async function playScenario(page: Page): Promise<void> {
-  const built = await aq<{ ok: boolean; saveId: string }>(page, 'scenario.play', RECIPE);
+  const built = await aq<{ ok: boolean; saveId: string; issues: { level: string; message: string }[] }>(page, 'scenario.play', RECIPE);
   expect(built.ok).toBe(true);
+  // a part the lab skipped would leave a nursery out: say which, rather than time out waiting for four broods
+  expect(built.issues.filter((i) => i.level === 'error')).toEqual([]);
   await waitForState(page, `g.saveId === ${JSON.stringify(built.saveId)} && Object.keys(g.clutches).length === 4`);
 }
 
@@ -60,8 +65,12 @@ test.describe('Rare-hatch reveals', () => {
     await tid(page, 'hatch-reveal-next').click();
     await expect(tid(page, 'hatch-reveal-pager')).toHaveText('2 of 3');
     await expect(tid(page, 'hatch-reveal-name')).not.toHaveText(first);
+    const second = (await tid(page, 'hatch-reveal-name').textContent()) ?? '';
     await page.keyboard.press('ArrowRight');
     await expect(tid(page, 'hatch-reveal-pager')).toHaveText('3 of 3');
+    // (the second page fades out before the third comes in: wait for the third's name)
+    await expect(tid(page, 'hatch-reveal-name')).not.toHaveText(second);
+    await expect(tid(page, 'hatch-reveal-name')).not.toHaveText(first);
     await expect(tid(page, 'hatch-reveal-next')).toBeDisabled();
     // the toast and the log line stay as they were
     expect(await probe<number>(page, `g.log.filter(e => e.kind === 'celebrate' && /^Prismatic!/.test(e.text)).length`)).toBe(3);
@@ -115,7 +124,7 @@ test.describe('Rare-hatch reveals', () => {
     { name: 'phone', width: 390, height: 844 },
     { name: 'phone held sideways', width: 844, height: 390 },
   ]) {
-    test(`the card fits a ${vp.name} (${vp.width}×${vp.height}), and Open collection goes to the Encyclopedia`, async ({ page }) => {
+    test(`the card fits a ${vp.name} (${vp.width}×${vp.height}), and Open collection opens the species' card in the Collection`, async ({ page }) => {
       test.setTimeout(120_000);
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await openApp(page);
@@ -125,11 +134,13 @@ test.describe('Rare-hatch reveals', () => {
       await expect(tid(page, 'hatch-reveal-pager')).toHaveText(/^1 of [2-9]$/);
       for (const id of ['hatch-reveal-see', 'hatch-reveal-collection', 'hatch-reveal-next']) await expect(tid(page, id)).toBeInViewport({ ratio: 1 });
       await expect(tid(page, 'hatch-reveal').getByRole('button', { name: 'Close' })).toBeInViewport({ ratio: 1 });
-      // feature A's Collection, by address (#/encyclopedia/collection/{species}); the Encyclopedia either way
+      // the Collection (chunk 21, feature A) at #/encyclopedia/collection/{species}, the guppies' card open
       await tid(page, 'hatch-reveal-collection').click();
       await expect(tid(page, 'hatch-reveal')).toHaveCount(0);
       await expect(tid(page, 'panel-encyclopedia')).toBeVisible();
-      await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/^#\/encyclopedia/);
+      await expect(tid(page, 'collection')).toBeVisible();
+      await expect(tid(page, 'collection-toggle-fancy_guppy')).toHaveAttribute('aria-expanded', 'true');
+      await expect.poll(() => page.evaluate(() => location.hash)).toBe('#/encyclopedia/collection/fancy_guppy');
     });
   }
 });
