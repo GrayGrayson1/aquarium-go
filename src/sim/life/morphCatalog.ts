@@ -164,14 +164,47 @@ function stockShares(species: SpeciesDefinition, phenotypes: readonly CatalogPhe
 }
 
 const CATALOGS = new Map<string, MorphCatalog>();
+/** chunk 21 (review S8) — catalogs being built a slice at a time (warmCatalog), by species id. */
+const BUILDS = new Map<string, CatalogBuild>();
 
-/** The species' full morph catalog (cached; computed on first use). */
+/** The species' full morph catalog (cached; computed on first use, or finishing a build warmCatalog began). */
 export function morphCatalog(species: SpeciesDefinition): MorphCatalog {
   const hit = CATALOGS.get(species.id);
   if (hit) return hit;
-  const built = buildCatalog(species);
+  const b = BUILDS.get(species.id) ?? startBuild(species);
+  while (!stepBuild(b, Number.POSITIVE_INFINITY));
+  BUILDS.delete(species.id);
+  const built = finishBuild(b);
   CATALOGS.set(species.id, built);
   return built;
+}
+
+/** chunk 21 (review S8) — is the species' catalog built and cached? (Nothing is built to answer.) */
+export function catalogReady(species: SpeciesDefinition): boolean {
+  return CATALOGS.has(species.id);
+}
+
+/**
+ * chunk 21 (review S8) — build the species' catalog a slice at a time, so a screen can spread the work over several
+ * frames: each call walks up to `genotypes` more genotypes, in the same order and with the same arithmetic as
+ * morphCatalog, so the catalog is identical however it is sliced (and morphCatalog finishes a build begun here).
+ * True once it is built and cached. No clock and no RNG here: the caller decides how many slices fit in a frame.
+ */
+export function warmCatalog(species: SpeciesDefinition, genotypes: number): boolean {
+  if (CATALOGS.has(species.id)) return true;
+  let b = BUILDS.get(species.id);
+  if (!b) BUILDS.set(species.id, (b = startBuild(species)));
+  if (!stepBuild(b, Math.max(1, Math.floor(genotypes)))) return false;
+  BUILDS.delete(species.id);
+  CATALOGS.set(species.id, finishBuild(b));
+  return true;
+}
+
+/** The catalog built afresh, uncached, `slice` genotypes at a time (the slicing never changes it; tests compare). */
+export function buildMorphCatalog(species: SpeciesDefinition, slice = Number.POSITIVE_INFINITY): MorphCatalog {
+  const b = startBuild(species);
+  while (!stepBuild(b, Math.max(1, slice)));
+  return finishBuild(b);
 }
 
 /**
@@ -211,7 +244,24 @@ function ruleScorer(species: SpeciesDefinition, states: { pair: [string, string]
   };
 }
 
-function buildCatalog(species: SpeciesDefinition): MorphCatalog {
+/** A catalog being built: the genotype walk's position and what it has recorded so far (chunk 21: resumable). */
+interface CatalogBuild {
+  species: SpeciesDefinition;
+  rulesById: Map<string, PhenotypeRule>;
+  records: Map<string, CatalogPhenotype>;
+  record: (weight: number, m: RuleMatches) => void;
+  /** Genotypes (exact) or samples walked so far, and how many there are. */
+  n: number;
+  total: number;
+  exact: boolean;
+  states: { pair: [string, string]; p: number }[][];
+  idx: number[];
+  score: ((rule: PhenotypeRule) => number) | null;
+  rng: ReturnType<typeof mulberry32> | null;
+  g: Genome;
+}
+
+function startBuild(species: SpeciesDefinition): CatalogBuild {
   const loci = species.genetics.loci;
   const rulesById = new Map(species.genetics.phenotypes.map((r) => [r.id, r] as const));
   const records = new Map<string, CatalogPhenotype>();
@@ -238,11 +288,32 @@ function buildCatalog(species: SpeciesDefinition): MorphCatalog {
   const states = loci.map(locusStates);
   const total = states.reduce((n, s) => n * s.length, 1);
   const exact = total <= MAX_EXACT_GENOTYPES;
-  if (exact) {
-    const scorer = ruleScorer(species, states);
-    const idx = new Array<number>(loci.length).fill(0);
-    const score = scorer(idx);
-    for (let n = 0; n < total; n++) {
+  const idx = new Array<number>(loci.length).fill(0);
+  return {
+    species,
+    rulesById,
+    records,
+    record,
+    n: 0,
+    total: exact ? total : SAMPLE_GENOTYPES,
+    exact,
+    states,
+    idx,
+    score: exact ? ruleScorer(species, states)(idx) : null,
+    // Defensive: a seeded sample (deterministic per species) if a future species' space is too large to walk.
+    rng: exact ? null : mulberry32(hashString(`catalog:${species.id}`)),
+    g,
+  };
+}
+
+/** Walk up to `limit` more genotypes (or samples); true when the walk is done. */
+function stepBuild(b: CatalogBuild, limit: number): boolean {
+  const { species, states, idx, record, g } = b;
+  const loci = species.genetics.loci;
+  const end = Math.min(b.total, b.n + limit);
+  if (b.exact) {
+    const score = b.score!;
+    for (let n = b.n; n < end; n++) {
       let rem = n;
       let weight = 1;
       for (let i = 0; i < loci.length; i++) {
@@ -254,9 +325,8 @@ function buildCatalog(species: SpeciesDefinition): MorphCatalog {
       record(weight, selectRules(species, score));
     }
   } else {
-    // Defensive: a seeded sample (deterministic per species) if a future species' space is too large to walk.
-    const rng = mulberry32(hashString(`catalog:${species.id}`));
-    for (let n = 0; n < SAMPLE_GENOTYPES; n++) {
+    const rng = b.rng!;
+    for (let n = b.n; n < end; n++) {
       for (const locus of loci) {
         const draw = () => (locus.alleles.length ? rng.weighted(locus.alleles, (a) => a.frequency).id : '?');
         g.alleles[locus.id] = [draw(), draw()];
@@ -264,7 +334,13 @@ function buildCatalog(species: SpeciesDefinition): MorphCatalog {
       record(1 / SAMPLE_GENOTYPES, matchRules(species, g));
     }
   }
+  b.n = end;
+  return b.n >= b.total;
+}
 
+/** Shares, strain tiers and the colour tree, once the walk is done. */
+function finishBuild(b: CatalogBuild): MorphCatalog {
+  const { species, rulesById, records, exact } = b;
   const phenotypes = [...records.values()];
   // B-194: what sellers really stock (a Rare find keeps the most striking of several rolls)
   const shares = stockShares(species, phenotypes, rulesById, pickedShare(species));

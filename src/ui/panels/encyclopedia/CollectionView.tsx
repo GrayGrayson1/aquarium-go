@@ -13,7 +13,6 @@ import { findSpecies } from '@/data/species';
 import { Button } from '@/ui/kit';
 import { Bar, Chip, EmptyState, SectionHead, Tile } from '../common/parts';
 import { SpeciesPortrait } from '../common/Portrait';
-import { useReducedMotion } from '../common/hooks';
 import { ENV_LABEL, RARITY_LABEL, RARITY_TONE } from '../common/format';
 import { noMorphsNote } from './morphs';
 import {
@@ -29,7 +28,9 @@ import {
   type RecentFind,
   type SpeciesProgress,
   type StatusFilter,
+  CATALOG_SPECIES,
 } from './collection';
+import { useCatalogsReady } from './catalogWarmup'; // review S8
 import './collection.css';
 
 /** What an undiscovered species' card says about getting one (the Encyclopedia's own rule, EncyclopediaPanel). */
@@ -65,19 +66,20 @@ const num = (n: number) => n.toLocaleString('en-US');
 export function CollectionView({ g, open, onOpen, reveal, availability, onSpeciesPage, onOffer }: CollectionViewProps) {
   const [status, setStatus] = useState<StatusFilter>('all');
   const [env, setEnv] = useState<EnvFilter>('all');
-  const reduced = useReducedMotion();
   const root = useRef<HTMLDivElement>(null);
   /**
    * A card to bring into view once it is on screen: to the top when a link, a suggestion or a recent find opened it;
    * just into view when its own header did (another card closing above can move it).
    */
-  const pending = useRef<{ id: string; block: ScrollLogicalPosition } | null>(null);
+  const pending = useRef<{ id: string; block: 'start' | 'nearest' } | null>(null);
 
   const p = g.progress;
-  const summary = useMemo(() => collectionSummary(g), [p.discoveredSpecies, p.discoveredMorphs, p.discoveredStrains, p.prismaticFinds, g.creatures]); // eslint-disable-line react-hooks/exhaustive-deps
-  const cards = useMemo(() => collectionCards(g, { status, env }), [p.discoveredSpecies, p.discoveredMorphs, p.discoveredStrains, p.prismaticFinds, g.creatures, status, env]); // eslint-disable-line react-hooks/exhaustive-deps
-  const recent = useMemo(() => recentFinds(g, 5), [p.discoveredAt, p.discoveredStrains, p.prismaticFinds]); // eslint-disable-line react-hooks/exhaustive-deps
-  const tips = useMemo(() => nearlyThere(g, 3), [p.discoveredSpecies, p.discoveredMorphs, g.creatures, g.market.stock, Math.floor(g.clock.hour)]); // eslint-disable-line react-hooks/exhaustive-deps
+  // review S8: every species' catalog, built in slices the first time (catalogWarmup), so no frame is held for long
+  const ready = useCatalogsReady(CATALOG_SPECIES, 'all');
+  const summary = useMemo(() => (ready ? collectionSummary(g) : null), [ready, p.discoveredSpecies, p.discoveredMorphs, p.discoveredStrains, p.prismaticFinds, g.creatures]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cards = useMemo(() => (ready ? collectionCards(g, { status, env }) : []), [ready, p.discoveredSpecies, p.discoveredMorphs, p.discoveredStrains, p.prismaticFinds, g.creatures, status, env]); // eslint-disable-line react-hooks/exhaustive-deps
+  const recent = useMemo(() => recentFinds(g, 5), [p.discoveredAt, p.discoveredSpecies, p.discoveredMorphs, p.discoveredStrains, p.prismaticFinds]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tips = useMemo(() => (ready ? nearlyThere(g, 3) : []), [ready, p.discoveredSpecies, p.discoveredMorphs, g.creatures, g.market.stock, Math.floor(g.clock.hour)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // a link asked for a card: show every card, so it can't be filtered away, then bring it into view
   useEffect(() => {
@@ -92,7 +94,7 @@ export function CollectionView({ g, open, onOpen, reveal, availability, onSpecie
     const el = root.current?.querySelector<HTMLElement>(`[data-testid="collection-card-${want.id}"]`);
     if (!el) return;
     pending.current = null;
-    el.scrollIntoView?.({ block: want.block, behavior: reduced ? 'auto' : 'smooth' });
+    scrollInPanel(el, want.block);
     el.querySelector<HTMLElement>('.ag-col-card__head')?.focus({ preventScroll: true });
   };
   useEffect(bringIntoView);
@@ -115,6 +117,17 @@ export function CollectionView({ g, open, onOpen, reveal, availability, onSpecie
     if (open !== id) onOpen(id);
     else if (!hidden) bringIntoView(); // nothing changes on screen, so no render will do it
   };
+
+  if (!summary)
+    return (
+      <div className="ag-col" ref={root} data-testid="collection" aria-busy="true">
+        <section className="ag-col-head" data-testid="collection-counting">
+          <p className="pn-small pn-muted ag-col-empty" role="status">
+            Counting your collection…
+          </p>
+        </section>
+      </div>
+    );
 
   return (
     <div className="ag-col" ref={root} data-testid="collection">
@@ -230,6 +243,28 @@ function TipRow({ t, onOpen, onOffer }: { t: NearlyThere; onOpen: (id: string) =
       <ChevronRight size={16} className="ag-col-row__chev" aria-hidden />
     </button>
   );
+}
+
+/** The gap kept above a card brought into view (px). */
+const SCROLL_PAD = 8;
+
+/**
+ * Bring a card into view by scrolling the panel's own list (its `.pn-body`) and nothing else. Never scrollIntoView: it
+ * also scrolls every scrollable ancestor, and the sheet (overflow: hidden) moved up, taking its header and Close button
+ * off screen (review of chunk 21, the viewport walk). 'start' puts the card at the top; 'nearest' moves only as far as
+ * it must. It jumps rather than glides: WebKit dropped a smooth scroll asked for while another was still gliding (a
+ * card opened by an address just after one opened by a tap stayed out of view), and a jump needs no reduced-motion case.
+ */
+export function scrollInPanel(el: HTMLElement, block: 'start' | 'nearest'): void {
+  const body = el.closest<HTMLElement>('.pn-body');
+  if (!body) return;
+  const b = body.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  let delta = 0;
+  if (block === 'start' || r.top < b.top + SCROLL_PAD) delta = r.top - b.top - SCROLL_PAD;
+  else if (r.bottom > b.bottom - SCROLL_PAD) delta = Math.min(r.bottom - b.bottom + SCROLL_PAD, r.top - b.top - SCROLL_PAD);
+  if (Math.abs(delta) < 1) return;
+  body.scrollTop = Math.max(0, body.scrollTop + delta);
 }
 
 /** "New species · New morph: Red Veiltail · Named strain: … · Prismatic: …" */

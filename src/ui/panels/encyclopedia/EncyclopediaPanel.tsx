@@ -30,7 +30,8 @@ import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { LayoutGrid } from 'lucide-react'; // chunk 21 (the Collection)
 import { CollectionView } from './CollectionView'; // chunk 21
-import { collectionPercent, foundSpecies, formatPercent, speciesProgress } from './collection'; // chunk 21
+import { collectionPercent, foundSpecies, formatPercent, percentCatalogs, speciesProgress } from './collection'; // chunk 21
+import { useCatalogsReady } from './catalogWarmup'; // chunk 21 (review S8)
 import { convertSourceTempText } from '@/ui/common/format'; // Audit 2026-11-17 (J1)
 import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
 import { lifespanDaysText } from '@/ui/common/lifespan'; // Audit 2026-11-17 (D20)
@@ -80,10 +81,15 @@ export function EncyclopediaPanel() {
     useUI.getState().set({ panelTarget: null });
   }, [target]);
 
+  // chunk 21 (review S8): the subtitle's percentage reads only catalogs already built; the found species' are built in
+  // slices (catalogWarmup), never all at once on the Species tab
+  const pctSpecies = g ? percentCatalogs(g) : [];
+  const pctReady = useCatalogsReady(pctSpecies, pctSpecies.map((sp) => sp.id).join(','));
+
   if (!g) return null;
   const known = foundSpecies(g); // chunk 21: the rule moved to ./collection (one rule for the grid and the Collection)
   const total = ALL_SPECIES.length;
-  const collected = formatPercent(collectionPercent(g)); // chunk 21
+  const collected = pctReady ? `${formatPercent(collectionPercent(g))} collected` : 'Your collection'; // chunk 21
 
   return (
     <PanelLayout
@@ -91,15 +97,16 @@ export function EncyclopediaPanel() {
       icon={<BookOpen size={20} />}
       subtitle={
         <>
-          {/* chunk 21: the Collection's percentage leads, a link to it from the other sections */}
+          {/* chunk 21: the Collection's percentage leads, a link to it from the other sections. Review S7: the morph
+              count left the subtitle (it counted names the Collection doesn't: its header has the one count) */}
           {tab === 'collection' ? (
-            `${collected} collected`
+            collected
           ) : (
             <button type="button" className="ag-linkbtn ag-col-sublink" data-testid="enc-collection-link" onClick={() => switchTab('collection')}>
-              {collected} collected
+              {collected}
             </button>
           )}
-          {` · ${known.size} of ${total} species discovered · ${g.progress.discoveredMorphs.length} ${g.progress.discoveredMorphs.length === 1 ? 'morph' : 'morphs'} seen${(g.progress.prismaticFinds?.length ?? 0) > 0 ? ` · ${g.progress.prismaticFinds!.length} Prismatic` : ''}`}
+          {` · ${known.size} of ${total} species discovered${(g.progress.prismaticFinds?.length ?? 0) > 0 ? ` · ${g.progress.prismaticFinds!.length} Prismatic` : ''}`}
         </>
       }
       scrollKey={`${tab}:${speciesId ?? ''}`}

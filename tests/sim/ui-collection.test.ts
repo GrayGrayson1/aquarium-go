@@ -9,12 +9,14 @@ import { afterEach, describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CollectionView } from '@/ui/panels/encyclopedia/CollectionView';
+import { EncyclopediaPanel } from '@/ui/panels/encyclopedia/EncyclopediaPanel';
+import { useGame } from '@/state/game';
 import type { GameState, Genome, SpeciesDefinition } from '@/types';
 import { ALL_SPECIES, getSpecies } from '@/data/species';
 import { newGame } from '@/sim/newGame';
 import { createTank } from '@/sim/tanks';
 import { simRng } from '@/sim/rng';
-import { createCreature, addCreature, registerDiscovery, stampDiscovery, morphCatalog, seenTraitIds, forcePrismatic } from '@/sim/life';
+import { createCreature, addCreature, registerDiscovery, stampDiscovery, morphCatalog, seenTraitIds, forcePrismatic, predictOffspringMorphs } from '@/sim/life';
 import { normalizeGenome } from '@/sim/life/genetics';
 import { createClutch, mintJuveniles } from '@/sim/life/breeding/clutch';
 import { buyOffer, generateOffer } from '@/sim/economy';
@@ -36,6 +38,7 @@ import {
   speciesProgress,
   SELLER_LINE,
   PAIR_MIN_CHANCE,
+  pairOddsKey,
 } from '@/ui/panels/encyclopedia/collection';
 
 afterEach(() => forcePrismatic('bred', 0));
@@ -113,11 +116,15 @@ describe('progress.discoveredAt: every discovery is dated', () => {
 
   it('never dates a name every object inherits', () => {
     const g = game();
+    const before = Object.keys(g.progress.discoveredAt ?? {});
     stampDiscovery(g, '__proto__');
     stampDiscovery(g, 'constructor');
+    stampDiscovery(g, 'toString');
     stampDiscovery(g, '');
-    expect(Object.keys(g.progress.discoveredAt ?? {})).not.toContain('constructor');
-    expect(Object.getPrototypeOf(g.progress.discoveredAt)).toBe(Object.prototype);
+    // (review N9: the old prototype check could not fail; these can: without the guard 'constructor', 'toString' and
+    // '' would be dated)
+    expect(Object.keys(g.progress.discoveredAt ?? {})).toEqual(before);
+    for (const k of ['constructor', 'toString', '']) expect(Object.hasOwn(g.progress.discoveredAt!, k)).toBe(false);
   });
 });
 
@@ -153,23 +160,42 @@ describe('progress.discoveredAt in a save', () => {
     expect((raw as unknown as GameState).progress.discoveredAt).toBeUndefined();
   });
 
-  it('keeps only finite hours of keys still in the lists; the rest are removed with notes', () => {
+  // Review N2 (changed on purpose): a date whose key this build doesn't list is kept, not removed. A newer build may date
+  // a kind of find this one doesn't know, and its save must never lose anything here; the Collection reads only the
+  // dates of finds in its lists (see "recently found").
+  it('keeps every finite hour under a usable key, known or not; unreadable ones are removed with notes', () => {
     const g = game();
     const at = g.progress.discoveredAt!;
-    const good = { ...at };
     const raw = clonePlain(g) as unknown as GameState;
-    const bad = raw.progress.discoveredAt as Record<string, unknown>;
-    bad.axolotl = 12; // not a discovery
-    bad['betta:Made Up'] = 3; // not a discovery
-    bad[raw.progress.discoveredSpecies[0]] = 'soon'; // a discovery, unreadable
-    bad['constructor'] = 5;
-    Object.defineProperty(bad, '__proto__', { value: 7, enumerable: true, configurable: true, writable: true });
+    const dates = raw.progress.discoveredAt as Record<string, unknown>;
+    dates.axolotl = 12; // not a discovery here
+    dates['betta:Made Up'] = 3; // not a morph this build knows
+    dates['egg:betta:cl_9'] = 40; // a kind of find a newer build might date
+    dates[raw.progress.discoveredSpecies[0]] = 'soon'; // a discovery, unreadable
+    dates['betta:Other'] = null; // unreadable
+    dates['constructor'] = 5;
+    Object.defineProperty(dates, '__proto__', { value: 7, enumerable: true, configurable: true, writable: true });
     const repairs = repairState(raw as unknown as Record<string, unknown>);
-    // (inherited names go first, in the save-wide scrub; the record's own check takes the other three)
-    expect(repairs).toEqual(expect.arrayContaining(['progress.discoveredAt: key "constructor" is not a valid id, removed', 'progress.discoveredAt: key "__proto__" is not a valid id, removed', 'progress.discoveredAt: 3 unreadable dates removed']));
-    const { [raw.progress.discoveredSpecies[0]]: _gone, ...rest } = good;
-    expect(raw.progress.discoveredAt).toEqual(rest);
+    // (inherited names go first, in the save-wide scrub; the record's own check takes the other two)
+    expect(repairs).toEqual(expect.arrayContaining(['progress.discoveredAt: key "constructor" is not a valid id, removed', 'progress.discoveredAt: key "__proto__" is not a valid id, removed', 'progress.discoveredAt: 2 unreadable dates removed']));
+    const { [raw.progress.discoveredSpecies[0]]: _gone, ...rest } = at;
+    expect(raw.progress.discoveredAt).toEqual({ ...rest, axolotl: 12, 'betta:Made Up': 3, 'egg:betta:cl_9': 40 });
     expect(Object.hasOwn(raw.progress.discoveredAt!, '__proto__')).toBe(false);
+    // the save with them round-trips with no repairs
+    expect(roundTrip(raw).repairs).toEqual([]);
+  });
+
+  it('a record far beyond every find there is is trimmed to the first 30,000 dates, with a note', () => {
+    const g = game();
+    const raw = clonePlain(g) as unknown as GameState;
+    const dates = raw.progress.discoveredAt as Record<string, number>;
+    const n = Object.keys(dates).length;
+    for (let i = 0; i < 30_005; i++) dates[`made:up:${i}`] = i;
+    const repairs = repairState(raw as unknown as Record<string, unknown>);
+    expect(repairs).toContain(`progress.discoveredAt: ${n + 30_005 - 30_000} beyond 30000 removed`);
+    const kept = Object.keys(raw.progress.discoveredAt!);
+    expect(kept).toHaveLength(30_000);
+    expect(kept.slice(0, n)).toEqual(Object.keys(g.progress.discoveredAt!)); // the oldest written are kept
   });
 });
 
@@ -346,6 +372,13 @@ describe('recently found', () => {
     expect(recentFinds(g, 1)).toHaveLength(1);
   });
 
+  it('reads only dates of finds in the lists (a newer build’s or a stray date never names anything)', () => {
+    const g = game();
+    const before = recentFinds(g);
+    g.progress.discoveredAt = { ...g.progress.discoveredAt, axolotl: 900, 'axolotl:Copper': 900, 'betta:Made Up': 900, 'egg:betta:cl_9': 900 };
+    expect(recentFinds(g)).toEqual(before);
+  });
+
   it('an older save without dates shows only what carries its own hour (Prismatic finds)', () => {
     const g = game();
     delete g.progress.discoveredAt;
@@ -397,6 +430,58 @@ describe('nearly there', () => {
     dad.status = 'dead';
     expect(bestPairFind(g)).toBeNull();
   });
+
+  it('another aquarium with the same animal ids never reads this one’s pair odds (review S6)', () => {
+    const pairIn = (color: [string, string], fins: [string, string]) => {
+      const g = game(5);
+      const tank = createTank(g, 'g29', 'freshwater_tropical', { cycled: true, name: 'Pair' });
+      const genome = normalizeGenome(betta, { alleles: { color, pattern: ['solid', 'solid'], fins }, potentials: {} as Genome['potentials'] });
+      const mom = addCreature(g, createCreature(g, simRng(g), 'betta', { sex: 'female', ageDays: 120, genome, name: 'Ruby' }), tank.id);
+      const dad = addCreature(g, createCreature(g, simRng(g), 'betta', { sex: 'male', ageDays: 120, genome: clonePlain(genome), name: 'Blaze' }), tank.id);
+      mom.repro.partnerId = dad.id;
+      dad.repro.partnerId = mom.id;
+      return { g, mom, dad };
+    };
+    const a = pairIn(['red', 'red'], ['veil', 'halfmoon']);
+    const first = bestPairFind(a.g)!;
+    expect(first).not.toBeNull();
+    // a new game with the same seed: the same ids, other genes (the old cache, keyed by ids, answered with a's odds)
+    const b = pairIn(['royal', 'royal'], ['crown', 'crown']);
+    expect([b.mom.id, b.dad.id]).toEqual([a.mom.id, a.dad.id]);
+    expect(pairOddsKey(betta, b.mom, b.dad)).not.toBe(pairOddsKey(betta, a.mom, a.dad));
+    const second = bestPairFind(b.g)!;
+    // what b's own genes give, worked out afresh
+    const cat = morphCatalog(betta);
+    const names = new Set(b.g.progress.discoveredMorphs.filter((k) => k.startsWith('betta:')).map((k) => k.slice(6)));
+    const fresh = predictOffspringMorphs(betta, b.mom.genome, b.dad.genome)
+      .filter((o) => cat.byName.has(o.morphName) && !names.has(o.morphName) && o.chance >= PAIR_MIN_CHANCE)
+      .sort((x, y) => y.chance - x.chance)[0];
+    expect(second).toMatchObject({ chance: fresh.chance, hint: catalogHint(betta, cat.byName.get(fresh.morphName)!, seenTraitIds(betta, names)) });
+    expect(second).not.toEqual(first);
+    // and back in the first aquarium, its own odds again
+    expect(bestPairFind(a.g)).toEqual(first);
+  });
+});
+
+// ───────────────────────────── one morph count ─────────────────────────────
+
+describe('one morph count (review S7)', () => {
+  afterEach(() => useGame.setState({ game: null }));
+
+  it('after a yellow tang joins, the Collection counts the morphs it collects, and the subtitle has no other count', () => {
+    const g = game();
+    const tang = addCreature(g, createCreature(g, simRng(g), 'yellow_tang', { ageDays: 200, name: 'Sunny' }), null);
+    registerDiscovery(g, tang); // as buying records it
+    expect(g.progress.discoveredMorphs).toHaveLength(2); // the betta's and the tang's
+    const s = collectionSummary(g); // builds every catalog, so the subtitle's percentage is ready below
+    expect(s.morphsSeen).toBe(1); // a species with no named colour morphs has none to count
+    expect(s.morphsSeen).toBe(collectionCards(g).reduce((n, c) => n + c.morphsSeen, 0));
+    useGame.setState({ game: g });
+    const html = renderToStaticMarkup(createElement(EncyclopediaPanel));
+    const sub = /class="pn-head__sub"[^>]*>(.*?)<\/div>/.exec(html)?.[1].replace(/<[^>]+>/g, '') ?? '';
+    expect(sub).toBe(`${formatPercent(s.percent)} collected · 2 of ${N} species discovered`);
+    expect(sub).not.toMatch(/morph/);
+  });
 });
 
 // ───────────────────────────── the view, server-rendered ─────────────────────────────
@@ -404,8 +489,11 @@ describe('nearly there', () => {
 describe('the Collection view (server-rendered)', () => {
   const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
   const tag = (markup: string, testId: string) => new RegExp(`<[^>]*data-testid="${testId}"[^>]*>`).exec(markup)?.[0] ?? '';
-  const view = (g: GameState, open: string | null) =>
-    renderToStaticMarkup(
+  // (every catalog built first, as the warm-up does before the view shows its numbers: ui-collection-warmup.test.ts
+  // covers the view while they are still being built)
+  const view = (g: GameState, open: string | null) => {
+    collectionSummary(g);
+    return renderToStaticMarkup(
       createElement(CollectionView, {
         g,
         open,
@@ -416,6 +504,7 @@ describe('the Collection view (server-rendered)', () => {
         onOffer: () => {},
       }),
     );
+  };
 
   it('the header, the empty recent list of an older save, and a discovered and an undiscovered card', () => {
     const g = game();

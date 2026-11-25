@@ -31,6 +31,7 @@ import type { Creature, Environment, GameState, PhenotypeRule, Rarity, SpeciesDe
 import { ALL_SPECIES, findSpecies } from '@/data/species';
 import { morphCatalog, seenTraitIds, predictOffspringMorphs, type CatalogEntry } from '@/sim/life';
 import { breedingSystemInfo } from '@/sim/life/breeding';
+import { allelePair } from '@/sim/life/genetics';
 import { catalogHint, hasNoNamedMorphs } from './morphs';
 
 export type CollectionStatus = 'complete' | 'in_progress' | 'not_started';
@@ -169,6 +170,15 @@ export function collectionPercent(g: GameState): number {
   let sum = 0;
   for (const sp of ALL_SPECIES) if (k.found.has(sp.id) || k.seen.has(sp.id)) sum += progressOf(sp, k).score;
   return percentOf(sum, ALL_SPECIES.length);
+}
+
+/** Species whose morph lists name morphs: the only ones with a catalog to build (chunk 21, review S8). */
+export const CATALOG_SPECIES: readonly SpeciesDefinition[] = ALL_SPECIES.filter((sp) => !hasNoNamedMorphs(sp));
+
+/** The catalogs collectionPercent reads: species found, or with a morph seen, whose morph lists name morphs. */
+export function percentCatalogs(g: GameState): SpeciesDefinition[] {
+  const k = known(g);
+  return CATALOG_SPECIES.filter((sp) => k.found.has(sp.id) || k.seen.has(sp.id));
 }
 
 /** "12%", or "0.5%" below 10 (the percentage keeps a tenth so the first finds show). */
@@ -322,6 +332,9 @@ export interface RecentFind {
 export function recentFinds(g: GameState, limit = 5): RecentFind[] {
   const p = g.progress;
   const strains = new Set(p.discoveredStrains ?? []);
+  // only dates of finds this build lists (a save keeps dates a newer build wrote for finds of a kind it doesn't know)
+  const species = new Set(p.discoveredSpecies);
+  const morphs = new Set(p.discoveredMorphs);
   const groups = new Map<string, RecentFind & { order: number }>();
   let order = 0;
   const groupOf = (speciesId: string, hour: number) => {
@@ -336,7 +349,7 @@ export function recentFinds(g: GameState, limit = 5): RecentFind[] {
     if (typeof hour !== 'number' || !Number.isFinite(hour)) continue;
     const i = key.indexOf(':');
     if (i < 0) {
-      if (findSpecies(key)) groupOf(key, hour).newSpecies = true;
+      if (species.has(key) && findSpecies(key)) groupOf(key, hour).newSpecies = true;
       continue;
     }
     const sp = findSpecies(key.slice(0, i));
@@ -344,7 +357,7 @@ export function recentFinds(g: GameState, limit = 5): RecentFind[] {
     const rest = key.slice(i + 1);
     const strain = strains.has(key) ? sp.genetics.strains?.find((s) => s.id === rest) : undefined;
     if (strain) groupOf(sp.id, hour).strains.push(strain.name);
-    else groupOf(sp.id, hour).morphs.push(rest);
+    else if (morphs.has(key)) groupOf(sp.id, hour).morphs.push(rest);
   }
   for (const f of p.prismaticFinds ?? []) if (Number.isFinite(f.hour) && findSpecies(f.speciesId)) groupOf(f.speciesId, f.hour).prismatic.push(f.name);
   return [...groups.values()]
@@ -366,16 +379,31 @@ export type NearlyThere =
 /** Young from a pair: at least this share must be a missing morph for the pair to be suggested. */
 export const PAIR_MIN_CHANCE = 0.05;
 
-/** speciesId|motherId|fatherId → the pair's expected young (genomes never change, so this never goes stale). */
+/**
+ * A pair's expected young, by species and the two parents' alleles (review S6: never by creature ids, which repeat in
+ * another save, a new game or a shared shop). The young's morph names depend on the alleles alone, so this never goes
+ * stale and another aquarium can never read a wrong entry.
+ */
 const PAIR_ODDS = new Map<string, { morphName: string; chance: number }[]>();
 const PAIR_ODDS_MAX = 200;
+
+/** The alleles that name a genome's morphs, locus by locus (allelePair's reading, as the prediction reads them). */
+export function genomeKey(sp: SpeciesDefinition, c: Pick<Creature, 'genome'>): string {
+  return sp.genetics.loci.map((l) => allelePair(l, c.genome).join('/')).join(',');
+}
+
+/** The cache key for a pair's expected young (exported for the tests). */
+export function pairOddsKey(sp: SpeciesDefinition, mom: Pick<Creature, 'genome'>, dad: Pick<Creature, 'genome'>): string {
+  return `${sp.id}|${genomeKey(sp, mom)}|${genomeKey(sp, dad)}`;
+}
 
 const kept = (c: Creature | undefined): c is Creature => !!c && (c.status === 'alive' || c.status === 'listed');
 
 /**
  * The best missing morph any of the player's bonded pairs could produce, or null. Only pairs the game already shows
  * "Expected young" for (Livestock: an animal and its partner, both kept), with predictOffspringMorphs, the helper that
- * card uses: it names no more than that card does, and the suggestion shows only the catalog hint. Cached per pair.
+ * card uses: it names no more than that card does, and the suggestion shows only the catalog hint. Cached by the
+ * parents' alleles (PAIR_ODDS).
  */
 export function bestPairFind(g: GameState): Extract<NearlyThere, { kind: 'pair' }> | null {
   const k = known(g);
@@ -392,7 +420,8 @@ export function bestPairFind(g: GameState): Extract<NearlyThere, { kind: 'pair' 
     done.add(key);
     const sp = findSpecies(a.speciesId);
     if (!sp || !k.found.has(sp.id) || !hasMorphs(sp) || !canBreedMorphs(sp)) continue;
-    let odds = PAIR_ODDS.get(key);
+    const oddsKey = pairOddsKey(sp, mom, dad);
+    let odds = PAIR_ODDS.get(oddsKey);
     if (!odds) {
       try {
         odds = predictOffspringMorphs(sp, mom.genome, dad.genome);
@@ -400,7 +429,7 @@ export function bestPairFind(g: GameState): Extract<NearlyThere, { kind: 'pair' 
         odds = [];
       }
       if (PAIR_ODDS.size >= PAIR_ODDS_MAX) PAIR_ODDS.clear();
-      PAIR_ODDS.set(key, odds);
+      PAIR_ODDS.set(oddsKey, odds);
     }
     const cat = morphCatalog(sp);
     const names = k.seen.get(sp.id) ?? new Set<string>();
