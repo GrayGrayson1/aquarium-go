@@ -90,7 +90,8 @@ import {
   convertTempText, // lane:guide
 } from '../common/format';
 import { dietGuide, feedingLine, temperatureGuide, FLOW_GUIDE } from '@/data/species/guide'; // lane:guide
-import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
+import { Hourglass, ArrowDown } from 'lucide-react'; // Audit 2026-11-17 (D20); chunk 22 (C-6)
+import { glow } from '../common/glow'; // chunk 22 (C-6)
 import { lifespanFacts } from '../common/lifespan'; // Audit 2026-11-17 (D20)
 import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isMemoryCard } from './conditionWords'; // Audit 2026-11-17 (D10, D12, D17)
 import { ConditionNotes } from './ConditionNotes'; // Audit 2026-11-17 (D8, D16)
@@ -185,7 +186,7 @@ function NameEditor({ c, readOnly }: { c: Creature; readOnly: boolean }) {
   );
 }
 
-function BehaviourLine({ id }: { id: string }) {
+function BehaviourLine({ id, breeding }: { id: string; /** chunk 22 (C-6): the card has a Breeding section to jump to */ breeding?: boolean }) {
   useInterval(700);
   const rt = runtime.creatures.get(id);
   const label = rt?.behavior ? sentenceCase(rt.behavior) : null;
@@ -193,6 +194,13 @@ function BehaviourLine({ id }: { id: string }) {
     <div className="ag-behaviour">
       <span className="ag-behaviour__pulse" aria-hidden />
       <span className="ag-muted">Right now:</span> <strong>{label ?? 'Settling in'}</strong>
+      {/* chunk 22 (C-6): Breeding sits under Condition, Personality, Appearance, Lineage and Value: about seven swipes
+          down on a phone, with nothing at the top ("Courting") leading to it */}
+      {breeding && (
+        <button type="button" className="ag-fixlink ag-behaviour__jump" data-testid="creature-jump-breeding" onClick={() => { sfx('click'); glow('[data-testid="creature-card"] [data-fix="breeding"]', { block: 'start' }); }}>
+          Breeding <ArrowDown size={12} aria-hidden />
+        </button>
+      )}
     </div>
   );
 }
@@ -630,7 +638,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
       {/* lane:w2-ui — feed this animal from its card (on phones the card covers the Target feed prompt) */}
       {!readOnly && <FeedRow c={c} game={game} />}
 
-      {!gone && <BehaviourLine id={c.id} />}
+      {!gone && <BehaviourLine id={c.id} breeding={!!sp} />}
 
       {c.illness && !gone && (
         // lane:guide — the illness's own name, symptom and cure for this species (it used to say "check the water and
@@ -776,7 +784,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
       )}
 
       {sp && !gone && (
-        <Section title={<><Egg size={12} aria-hidden /> Breeding</>}>
+        <Section title={<><Egg size={12} aria-hidden /> Breeding</>} fix="breeding">
           <Breeding c={c} game={game} sp={sp} />
           {!readOnly && tank && (
             <SeparateRow c={c} game={game} />

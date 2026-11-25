@@ -50,6 +50,7 @@
 
 .ag-behaviour { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; padding: 10px 12px; border-radius: 14px; background: linear-gradient(90deg, rgba(94, 234, 212, 0.1), rgba(94, 234, 212, 0.02)); border: 1px solid rgba(94, 234, 212, 0.2); font-size: calc(13px * var(--text-scale)); }
 .ag-behaviour strong { font-weight: 640; }
+.ag-behaviour__jump { margin: 0 0 0 auto; flex: none; } /* chunk 22 (C-6): the way down to Breeding */
 .ag-behaviour__pulse { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--c-aqua); flex: none; }
 .ag-behaviour__pulse::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 1px solid var(--c-aqua); animation: ag-ping 1.8s var(--ease-out) infinite; }
 @keyframes ag-ping { from { transform: scale(0.6); opacity: 0.9; } to { transform: scale(1.8); opacity: 0; } }

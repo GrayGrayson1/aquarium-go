@@ -222,7 +222,12 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
         ) : (
           <div className="pn-col pn-gap-3">
             <p className="pn-small pn-muted" style={{ margin: 0 }}>
-              For <b className="pn-dim">{tank.name}</b> · {gallonsOf(tank)} gallons. Manage installed gear in Build › Equipment.
+              For <b className="pn-dim">{tank.name}</b> · {gallonsOf(tank)} gallons. Manage installed gear in{' '}
+              {/* chunk 22 (C-15): the pointer is a link (Build has the search, the kind chips and the tank picker) */}
+              <button type="button" className="pn-inline-link" data-testid="supplies-open-build-equipment" onClick={() => useUI.getState().set({ panel: 'build', panelTarget: 'tab:equipment' })}>
+                Build › Equipment
+              </button>
+              .
             </p>
             {byKind.map(([kind, rows]) => (
               <div key={kind} className="pn-col pn-gap-2">

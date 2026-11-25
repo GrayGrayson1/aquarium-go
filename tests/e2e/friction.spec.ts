@@ -11,7 +11,9 @@
  * - A-5: the tooltips name the keys (Feed F, Tank card T, Room V, the tank arrows, Photo P, Just watch H);
  * - A-6: on a phone held sideways the tank card's chips, problem lines and Move tank scroll with its content, so a
  *   reading and the care buttons fit between the tabs and the tab bar (they had 0 to 23 px);
- * - A-7: there too, Settings' "Save now" ends the scrolling page (a fixed footer left 33 px of settings).
+ * - A-7: there too, Settings' "Save now" ends the scrolling page (a fixed footer left 33 px of settings);
+ * - C-6: an animal's card has a way down to its Breeding section (about seven swipes on a phone);
+ * - C-15: Supplies' pointer to Build › Equipment is a link.
  */
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import { aq, openApp, probe, quickGame, tid } from './helpers';
@@ -108,6 +110,28 @@ function suite(touch: boolean) {
     expect(l.hours).toBe(48);
     expect(l.reserve).toBeGreaterThan(0);
     expect(l.photo).toBe(false);
+  });
+
+  test('C-6: an animal’s card jumps to its Breeding section', async ({ page }) => {
+    await game(page);
+    const id = await starterId(page);
+    await page.evaluate((c) => { location.hash = `#/livestock/animal/${c}`; }, id);
+    const card = tid(page, 'creature-card');
+    await expect(card).toBeVisible();
+    const breeding = card.locator('[data-fix="breeding"]');
+    await expect(breeding).not.toBeInViewport();
+    await press(tid(page, 'creature-jump-breeding'));
+    await expect(breeding.locator('.ag-section__title, h3, h4').first()).toBeInViewport();
+  });
+
+  test('C-15: Supplies’ “Build › Equipment” opens it', async ({ page }) => {
+    await game(page);
+    await page.evaluate(() => { location.hash = '#/market/supplies'; });
+    const link = tid(page, 'supplies-open-build-equipment');
+    await link.scrollIntoViewIfNeeded();
+    await press(link);
+    await expect(tid(page, 'panel-build')).toBeVisible();
+    await expect(tid(page, 'build-tab-equipment')).toHaveAttribute('aria-selected', 'true');
   });
 }
 
