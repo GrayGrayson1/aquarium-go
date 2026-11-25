@@ -15,14 +15,21 @@
 
 /* Phones held upright (chunk 21 review B1): the tank switcher needs the tank bar's whole width for its status line (the
    tank's status, food and gear words and the "2/3" index; hud.css's phone rule), so the button leaves the bar and floats
-   at the screen's right edge at mid-height: over the tank's lower right corner at most, below the toasts, above the
-   guide card, the tool hint, the food picker and the tab bar, and away from the bell. It rises above the guide card when
-   that reaches higher (TutorialCoach publishes --coach-clear) and, in the room view, above the Reset view chip, which
-   rises with the guide. It steps aside while a bottom sheet (a panel, a tank or animal card) or a tool's picker has the
-   screen, as the tool rail does. A phone held sideways keeps it in the tank bar, which is wide enough there. */
+   at the screen's right edge. A phone held sideways keeps it in the tank bar, which is wide enough there.
+   Where (the confirmation review, F1): float.ts sets --next-top, a little below the middle (clear of the room view's
+   edge cue, centred at half height), kept under the toast column (two toasts under the tank bar) and above the guide
+   card or its pill, the tool hint and the tool row (in the room view, the Reset view chip). With no room between them
+   (a tall guide card on a short phone) it adds `is-crowded` and the button steps aside until there is: the guide card
+   shows the same step meanwhile. Until float.ts has run, 55% of the height. It also steps aside while a bottom sheet (a
+   panel, a tank or animal card) or a tool's picker has the screen, as the tool row does.
+   Layers (C1): `position: fixed` makes the anchor a stacking context, so its sheet's own z-index counts only inside it.
+   Closed, the anchor is at 1: over the room view's edge cue, under every layer that has one (the bell drawer, More,
+   the tab bar, the toasts, the sheets). Open, the anchor is lifted above the toasts and the guide card, as the sheet
+   was before it floated. */
 @media (max-width: 720px) and (min-height: 501px) {
-  .ag-popanchor.ag-next-anchor { position: fixed; right: var(--edge-r); bottom: max(calc(50% - 24px), var(--coach-clear, 0px)); transition: bottom .35s var(--ease), opacity .2s; }
-  .ag-hud.is-facility .ag-popanchor.ag-next-anchor { bottom: max(calc(50% - 24px), calc(var(--coach-clear, 0px) + 110px)); }
+  .ag-popanchor.ag-next-anchor { position: fixed; z-index: 1; right: var(--edge-r); top: var(--next-top, calc(55% - 24px)); transition: top .35s var(--ease), opacity .2s; }
+  .ag-popanchor.ag-next-anchor:has(> .ag-next-pop) { z-index: calc(var(--z-toast) + 2); }
+  .ag-popanchor.ag-next-anchor.is-crowded:not(:has(> .ag-next-pop)),
   .ag-hud.has-bottom-sheet .ag-popanchor.ag-next-anchor, .ag-hud:has(.ag-toolpop) .ag-popanchor.ag-next-anchor { opacity: 0; visibility: hidden; transition: opacity .2s, visibility 0s .2s; }
   .ag-hudpill.ag-hudbtn.ag-next-btn { min-height: 48px; padding: 0 10px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
 }

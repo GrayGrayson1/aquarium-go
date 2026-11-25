@@ -576,11 +576,14 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-switcher__status:has(.ag-switcher__food) .ag-switcher__gal:not(.ag-switcher__index) { display: none; }
 }
 /* chunk 21 review B1 — phones: the status line keeps its icon and every word (its status, the food or gear chip and the
-   "2/3" index) at 360 px with the largest text, now that "What next?" has left the bar on a phone held upright: its
-   parts are spaced by their own " · " (no flex gap but the icon's), and the bar's padding is a little tighter */
+   "2/3" index) at 360 px with the largest text, now that "What next?" has left the bar on a phone held upright: the
+   icon keeps 4 px to the word and each " · …" part 2.5 px before its dot (a margin: the part's own leading space
+   collapses, as a flex item's does, and a narrow no-break space draws only 1 px in WebKit; the confirmation review, F2),
+   instead of the 5 px gaps, and the bar's padding is a little tighter */
 @media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   .ag-switcher__status { gap: 0; }
   .ag-switcher__status > svg { margin-right: 4px; }
+  .ag-switcher__status > span { margin-left: 2.5px; }
   .ag-tankbar { gap: 4px; }
   .ag-tankbar .ag-hudbtn { padding: 0 9px; }
   .ag-switcher { padding: 0 2px; }

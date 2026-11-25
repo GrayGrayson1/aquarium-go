@@ -3,8 +3,9 @@
  * button, and up to three more under it (the ranking: ./nextBest.ts). Pressing an action goes there and closes the
  * sheet (./goNext.ts). With nothing to do it says so and offers the collection.
  *
- * Its own chunk (chunk 21 review S3): WhatNext.tsx, in the main chunk, loads it the first time it's wanted (or at
- * idle), with the ranking and the way there, so the main chunk carries only the button.
+ * Its own chunk (chunk 21 review S3): WhatNext.tsx, in the main chunk, loads it when the pointer or the focus reaches
+ * the button, when it opens, or a few seconds after the HUD is up, with the ranking and the way there, so the main
+ * chunk carries only the button.
  *
  * The sheet is one of the shell's popovers (`popover: 'next'`), so it closes as they do: Escape, a press elsewhere,
  * another popover opening. It takes the focus when it opens (its title, as a panel does, §18; the arrow keys and Tab
