@@ -83,7 +83,10 @@ export function PanelLayout({ title, icon, subtitle, toolbar, children, footer, 
         </div>
         {toolbar && <div className="pn-head__toolbar">{toolbar}</div>}
       </header>
-      <div ref={bodyRef} className={clsx('pn-body')} tabIndex={-1} onScroll={listKey !== undefined ? onScroll : undefined}>
+      {/* chunk 22 — the place is also noted at a press: a scroll's own event comes a frame later, so a press in the
+          same frame as a scroll (a script's, or a flick stopped by the tap) opened the sub-view with the place one
+          scroll behind */}
+      <div ref={bodyRef} className={clsx('pn-body')} tabIndex={-1} onScroll={listKey !== undefined ? onScroll : undefined} onPointerDownCapture={listKey !== undefined ? onScroll : undefined}>
         {children}
       </div>
       {footer && <footer className="pn-foot">{footer}</footer>}

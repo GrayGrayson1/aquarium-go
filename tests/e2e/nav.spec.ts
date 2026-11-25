@@ -111,11 +111,22 @@ test.describe('hash routes (desktop 1440×900)', () => {
     const card = page.locator('[data-testid^="shop-offer-"]').filter({ visible: true });
     const inView = await card.evaluateAll((els) => els.findIndex((el) => { const r = el.getBoundingClientRect(); return r.top > 200 && r.bottom < innerHeight - 40; }));
     expect(inView).toBeGreaterThanOrEqual(0);
+    // chunk 22: "where the player left it" is where the list stood at the click. Playwright may scroll the list itself
+    // on its way to a click (WebKit: when the card's centre is covered it tries other alignments), and the list then
+    // rightly comes back to THAT place, not the 600 set above (5 runs in 24 failed so on 0.11.0, with 204 to 457).
+    await body.evaluate((el) => {
+      const w = window as unknown as { __leftAt?: number };
+      w.__leftAt = undefined;
+      document.addEventListener('click', () => { w.__leftAt = el.scrollTop; }, { capture: true, once: true });
+    });
     await card.nth(inView).click();
     await expect(tid(page, 'buy-offer')).toBeVisible();
+    const leftAt = await page.evaluate(() => (window as unknown as { __leftAt?: number }).__leftAt);
+    expect(leftAt, 'the list was scrolled when the offer was opened').toBeGreaterThan(100);
     await page.goBack();
     await expect(tid(page, 'buy-offer')).toBeHidden();
-    await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(top - 40);
+    await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(leftAt! - 40);
+    await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeLessThan(leftAt! + 40);
   });
 
   test('switching tabs rewrites the address, and arrow keys move between tabs', async ({ page }) => {
