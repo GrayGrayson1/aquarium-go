@@ -29,8 +29,8 @@ playing 0.11.0 on a phone, a phone held sideways and a computer. Every new or ch
   is done, the last step lands on Quests, and the spotlight scrolls to a tank size that is off screen.
 - **Shared shops.** Speed buttons look locked for a member who may not use them, the phone's pill says "Shared",
   and the "you can spend $0" notice has an "Ask for money" button.
-- Settings loads when first opened, which keeps the game's first download under its size limit. The simulation's
-  shared build is unchanged: the shop server needs no update.
+- The tour ("Show me around") loads when it starts, which keeps the game's first download under its size limit.
+  The simulation's shared build is unchanged: the shop server needs no update.
 
 ## 0.11.0 — 2026-11-24
 

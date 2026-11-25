@@ -2131,11 +2131,11 @@ friction for the player, we need to resolve that."
   "Shared" on the phone pill, "Ask for money" on the refusal.
 - *What did not change.* Nothing under `src/sim`, `src/data`, `src/types` or the persistence files; no command
   kind, save field, schema version, dependency or migration. **The shared build hash is unchanged**: the release
-  needs Pages and the Render static site, not the shop server. Core files touched: `src/ui/UIRoot.tsx` (Settings
-  became a lazy chunk, which took the main chunk from 3,997 kB to about 3,954 kB of its 4,000 kB limit) and
-  `package.json` (the version).
-- *Every new or changed line of text* is in `docs/agent/design/CHUNK-22/WORDS.md`: 15 new lines (buttons and
-  links), 6 changed, and the lines that became links or moved.
+  needs Pages and the Render static site, not the shop server. Core file touched: `package.json` (the version). The fixes took the main chunk to 4,001.65 kB, over its 4,000 kB
+  limit, so the tour ("Show me around") became its own chunk (`GameHUD.tsx`, `LazyTour`): 3,992.84 kB. Settings was
+  tried first and put back: loaded on demand it made the phone route walk fail on the Settings addresses (5 runs
+  of 8; none of 8 on 0.11.0).
+- *Every new or changed line of text* is in `docs/agent/design/CHUNK-22/WORDS.md`: 17 new lines (buttons, links and one notice), 6 changed, and the lines that became links or moved.
 - *Left open:* BACKLOG B-234 (fifteen items; the guide's waiting steps and "Buy & place" on a phone are the two
   that hurt most); OWNER_QUESTIONS group O (the order of "What next?", what "Fits my tanks" checks, the phone
   pill's count, the words); `docs/agent/IDEAS.md` idea 6 (a tank picker from the tank bar).

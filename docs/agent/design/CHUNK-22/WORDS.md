@@ -23,6 +23,7 @@ does, so it added few words: a handful of buttons and links, and three reworded 
 | Research, in the "No project running" note when a project can start: a button that shows the ones that can | See what you can start |
 | Visitors, the Admission price card, while the price differs from the fair figure the card already names | Set to fair price (${n}) |
 | A shared shop, the notice "That costs $8, and you can spend $0. Ask for more in Money.": a new button that opens the Shop money sheet (the sheet's own existing words) | Ask for money |
+| A notice when the tour ("Show me around") can't be loaded (the tour now loads when it starts; this shows only if that fails, for example with no connection) | The tour didn’t load. Check your connection, then reload the game. |
 | Tooltips on a computer (the key in brackets is the new part) | Feed — drop food into the water (F) · Photo (P) · Just watch (H) · Tank card (T) · Show the whole room (V) / Return to the tank (V) · Previous tank ([) · Next tank (]). With a problem the same key follows the existing words: "{Watch or Danger} — {reasons} (T)" on the tank card button, "Previous tank — {name} needs attention (Danger) ([)" on an arrow. The arrows now always have a tooltip (before, only when another tank needed attention). |
 
 ## Changed lines
