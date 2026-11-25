@@ -235,6 +235,9 @@
 :root[data-contrast='high'] .ag-tour { background: var(--c-bg); backdrop-filter: none; -webkit-backdrop-filter: none; border-color: var(--c-aqua); }
 /* the phone's More sheet: Find anything sits in the header, beside Close */
 .ag-more__find { margin-left: auto; }
+/* chunk 22 (S-2): Find has its word beside the magnifier; the reputation chip before it gives way first (an ellipsis) */
+.ag-more__close.ag-more__find { display: inline-flex; align-items: center; gap: 6px; width: auto; padding: 0 10px; }
+.ag-more__find-label { font-weight: 620; font-size: calc(13px * var(--text-scale)); }
 
 /* QOL-002: a tank's failed and worn gear rows sit in one wrapper; the drawer's list lays them out as before */
 .ag-alert-gear { display: contents; }

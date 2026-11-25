@@ -217,6 +217,10 @@ function AdmissionCard({ g, fair }: { g: GameState; fair?: number }) {
   const proj = useMemo(() => projectAdmission(g, price, fair), [g, price, fair]);
   const cur = useMemo(() => projectAdmission(g, g.facility.admission, fair), [g, fair]);
   const delta = proj.revenue - cur.revenue;
+  // chunk 22 (S-11): the fair price, one tap away (the line naming it sat below the projections, and the slider moves
+  // $1 per 8 px on a phone). The slider's own whole-dollar step and edit; shown while the price differs from it.
+  const fairPrice = fair ? Math.round(fair) : null;
+  const toFair = fairPrice !== null && fairPrice > 0 && fairPrice <= MAX_ADMISSION && price !== fairPrice;
   return (
     <section className="pn-card">
       <SectionHead title="Admission price" icon={<Ticket size={14} />}>
@@ -227,6 +231,13 @@ function AdmissionCard({ g, fair }: { g: GameState; fair?: number }) {
         <span>Free</span>
         <span>$40</span>
       </div>
+      {toFair && (
+        <div className="pn-row" style={{ justifyContent: 'center', marginTop: 6 }}>
+          <Button size="sm" data-testid="admission-fair" onClick={() => commit(fairPrice!)}>
+            Set to fair price ({formatMoney(fairPrice!)})
+          </Button>
+        </div>
+      )}
       <div className="pn-grid pn-grid--3" style={{ marginTop: 14 }}>
         <div className="pn-proj">
           <span className="pn-tiny pn-muted">Visitors / day</span>

@@ -35,7 +35,7 @@ export function endedShown(g: GameState, focusId: string | null): Listing[] {
 }
 
 export function ListingsTab({ g, focusId, onCreate }: { g: GameState; focusId: string | null; onCreate: () => void }) {
-  const active = g.market.listings.filter((l) => l.status === 'active').sort((a, b) => openBids(b) - openBids(a) || a.endsHour - b.endsHour);
+  const active = useSteadyOrder(g.market.listings.filter((l) => l.status === 'active'));
   const ended = endedShown(g, focusId);
 
   return (
@@ -91,6 +91,29 @@ export function ListingsTab({ g, focusId, onCreate }: { g: GameState; focusId: s
 }
 
 const openBids = (l: Listing) => l.bids.filter((b) => b.status === 'open').length;
+
+/** Listings with the most open bids first, then the soonest to end. (exported for tests) */
+export const byBidsThenEnd = (a: Listing, b: Listing) => openBids(b) - openBids(a) || a.endsHour - b.endsHour;
+
+/**
+ * chunk 22 (S-5) — the active listings in an order that holds while the tab is open. It was re-sorted by open bids on
+ * every render, so a bid arriving on another listing (or the player's own counter) swapped the cards under their thumb.
+ * The order is decided when the tab opens and again when a listing is added (byBidsThenEnd, as before); one that ends
+ * just leaves, and new bids move nothing. (exported for tests)
+ */
+export function steadyOrder(prev: readonly string[] | null, active: readonly Listing[]): string[] {
+  const ids = new Set(active.map((l) => l.id));
+  if (prev && active.every((l) => prev.includes(l.id))) return prev.filter((id) => ids.has(id));
+  return [...active].sort(byBidsThenEnd).map((l) => l.id);
+}
+
+function useSteadyOrder(active: Listing[]): Listing[] {
+  const order = useRef<string[] | null>(null);
+  const next = steadyOrder(order.current, active);
+  order.current = next;
+  const byId = new Map(active.map((l) => [l.id, l]));
+  return next.map((id) => byId.get(id)!).filter(Boolean);
+}
 
 /**
  * lane:fix-panels — when a listing actually closed. A sale ends a listing early, but `endsHour` keeps the scheduled
@@ -368,6 +391,7 @@ function BidRow({ g, l, b, buyer }: { g: GameState; l: Listing; b: Bid; buyer?: 
   const { phone } = useSheet();
   const [countering, setCounteringRaw] = useState(false);
   const [confirmAccept, setConfirmAccept] = useState(false);
+  const [fullQuote, setFullQuote] = useState(false); // chunk 22 (S-4)
   // Opening the counter form asks the buyer to wait (sim: holdBidForCounter — no expiry, no change of heart for
   // ≈ 2 real minutes). Every (re-)open renews the hold; while the form stays open it is quietly topped up.
   const setCountering = (on: boolean) => {
@@ -409,7 +433,15 @@ function BidRow({ g, l, b, buyer }: { g: GameState; l: Listing; b: Bid; buyer?: 
     <>
       {b.message && (
         <div className="pn-bid__msg">
-          <MessageSquareQuote size={13} aria-hidden /> <span className="pn-quote">“{b.message}”</span>
+          <MessageSquareQuote size={13} aria-hidden />{' '}
+          {phone ? (
+            // chunk 22 (S-4): on a phone the quote keeps to two lines (a bid filled the screen); a tap shows all of it
+            <button type="button" className={clsx('pn-bid__quote', !fullQuote && 'is-clamped')} aria-expanded={fullQuote} data-testid="bid-quote" onClick={() => setFullQuote(!fullQuote)}>
+              <span className="pn-quote">“{b.message}”</span>
+            </button>
+          ) : (
+            <span className="pn-quote">“{b.message}”</span>
+          )}
         </div>
       )}
       {b.response && (

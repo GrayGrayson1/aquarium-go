@@ -56,6 +56,11 @@
 
 .st-assign, .st-budget { display: grid; gap: 7px; }
 .st-assign__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+/* chunk 22 (S-10): "Change tanks" / "Done" took a 17 px tap on a phone: an invisible box makes it at least 34 px */
+@media (pointer: coarse) {
+  .st-assign__head .pn-inline-link { position: relative; }
+  .st-assign__head .pn-inline-link::before { content: ''; position: absolute; left: -6px; right: -6px; top: 50%; height: max(100%, 34px); transform: translateY(-50%); }
+}
 .st-assign__names { display: block; line-height: 1.5; }
 .st-assign__names svg { vertical-align: -2px; color: var(--c-aqua); }
 .st-assign__chips { display: flex; flex-wrap: wrap; gap: 6px; }

@@ -64,7 +64,9 @@ export function RoomTankDots() {
   return (
     <group name="room-tank-dots">
       {parse(key).map((d) => (
-        <Html key={d.id} position={d.pos} center zIndexRange={[15, 0]} style={{ pointerEvents: 'none' }}>
+        // chunk 22 (S-9): under the game's UI layer (.ag-ui, z-index 10: the HUD, panels, the tank and creature cards,
+        // Settings). At up to 15 a dot floated over an open sheet and read as a badge on whatever it landed on.
+        <Html key={d.id} position={d.pos} center zIndexRange={[9, 0]} style={{ pointerEvents: 'none' }}>
           <AttnDot level={d.level} className="ag-attn--room" testId={`room-tank-attn-${d.id}`} label={`${d.name} needs attention (${ATTENTION_WORD[d.level].toLowerCase()}) — open it to see why`} />
         </Html>
       ))}

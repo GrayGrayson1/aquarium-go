@@ -31,6 +31,7 @@ import { listSpecies } from '@/data/species'; // Audit 2026-11-17 (G5)
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks'; // Audit 2026-11-17 (G5)
 import { isUnlocked, tankTierFor, tankKeyFor } from '@/sim/facility'; // Audit 2026-11-17 (G5)
 import { requiredUnlocks } from '@/sim/economy'; // Audit 2026-11-17 (G5)
+import { sfx } from '@/audio/sfx'; // chunk 22 (S-6)
 
 type Tab = 'research' | 'unlocks' | 'quests' | 'achievements';
 const RESEARCH_TABS: readonly Tab[] = ['research', 'unlocks', 'quests', 'achievements'];
@@ -182,6 +183,7 @@ function ResearchTab({ g }: { g: GameState }) {
   const [status, setStatus] = useState<StatusFilter>('all');
   const shown = list.filter((r) => (status === 'all' || r.status === status) && matches(q, r.def.name, r.def.blurb, BRANCH_LABEL[r.def.branch], ...r.def.grants.map(grantLabel)));
   const narrowed = !!q.trim() || status !== 'all';
+  const canStart = list.some((r) => r.status === 'available');
   return (
     <div className="pn-stack pn-stack--lg">
       <StandingCard g={g} />
@@ -213,7 +215,27 @@ function ResearchTab({ g }: { g: GameState }) {
           </div>
         </div>
       ) : (
-        <Callout tone="info" icon={<FlaskConical size={16} />}>
+        <Callout
+          tone="info"
+          icon={<FlaskConical size={16} />}
+          action={
+            // chunk 22 (S-8): on a phone the reputation card and six mastery rows fill the first screen; this goes
+            // straight to the projects that can start (the "Can start" filter), without reordering the page
+            canStart ? (
+              <Button
+                size="sm"
+                data-testid="research-show-startable"
+                onClick={() => {
+                  setQ('');
+                  setStatus('available');
+                  glow('[data-testid="research-status-available"]', { block: 'start' });
+                }}
+              >
+                See what you can start
+              </Button>
+            ) : undefined
+          }
+        >
           No project running. Pick one below — study continues while you care for your tanks.
         </Callout>
       )}
@@ -505,14 +527,51 @@ function RewardChips({ r }: { r: Reward }) {
  */
 export const boardFullOfRewards = (quests: readonly QuestView[]): boolean => quests.filter((q) => q.status === 'complete' && !q.isTutorial).length >= QUEST_BOARD_SIZE;
 
+/**
+ * chunk 22 (S-6) — claim several finished quests: the same claimQuest command once per quest, in order, through the
+ * same `act`. Each claim is quiet (a failure still says why), and one celebration sums them up when the last result is
+ * in, rather than nine toasts and nine fanfares. One success alone keeps its own words.
+ */
+function claimAll(ids: readonly string[]): void {
+  let settled = 0;
+  const got: string[] = [];
+  const done = () => {
+    if (++settled < ids.length || got.length === 0) return;
+    sfx('celebrate');
+    if (got.length === 1) useUI.getState().toast(got[0], 'celebrate');
+    else
+      useUI.getState().toast(`${got.length} rewards claimed`, 'celebrate', {
+        detail: got.map((m) => m.replace(/^Reward:\s*/, '')).filter(Boolean).join(' · ') || undefined,
+      });
+  };
+  for (const id of ids)
+    act({ k: 'claimQuest', quest: id }, {
+      sound: null,
+      quiet: true,
+      after: (r) => {
+        if (r?.ok) got.push(r.message || 'Quest claimed.');
+        done();
+      },
+    });
+}
+
 function QuestsTab({ g, quests }: { g: GameState; quests: QuestView[] }) {
   const tut = safe(() => currentTutorialStep(g), null);
   // audit 2026-11-17 (A13) — the step in the guide card's own words: the player's temperature unit, "Click" for a mouse
   const fine = useMedia(FINE_POINTER);
   const words = tut ? safe(() => currentCoachStep(g, fine), null) : null;
   const sorted = [...quests].sort((a, b) => Number(b.status === 'complete') - Number(a.status === 'complete'));
+  const complete = sorted.filter((q) => q.status === 'complete');
   return (
     <div className="pn-stack pn-stack--lg">
+      {/* chunk 22 (S-6): nine finished quests were nine taps: one button claims them all, in the list's order */}
+      {complete.length >= 2 && (
+        <div className="pn-row" style={{ justifyContent: 'flex-end' }}>
+          <Button variant="primary" silent data-testid="quests-claim-all" onClick={() => claimAll(complete.map((q) => q.id))}>
+            <Gift size={15} /> Claim all ({complete.length})
+          </Button>
+        </div>
+      )}
       {tut && (
         <div className="pn-card pn-quest pn-quest--tutorial">
           <span className="pn-quest__icon">
