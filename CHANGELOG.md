@@ -6,7 +6,7 @@ additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if 
 
 ## 0.11.1 — 2026-11-25
 
-Less friction, nothing changed in what the game does (the owner's request, ADR-0058): 34 small fixes found by
+Less friction, nothing changed in what the game does (the owner's request, ADR-0058): 35 small fixes found by
 playing 0.11.0 on a phone, a phone held sideways and a computer. Every new or changed line of text is listed in
 `docs/agent/design/CHUNK-22/WORDS.md`.
 
@@ -29,6 +29,8 @@ playing 0.11.0 on a phone, a phone held sideways and a computer. Every new or ch
   is done, the last step lands on Quests, and the spotlight scrolls to a tank size that is off screen.
 - **Shared shops.** Speed buttons look locked for a member who may not use them, the phone's pill says "Shared",
   and the "you can spend $0" notice has an "Ask for money" button.
+- Back, or a typed address, could now and then do nothing on a phone when pressed just as a panel finished
+  opening: the game put the old address back before reading the new one. Fixed.
 - The tour ("Show me around") loads when it starts, which keeps the game's first download under its size limit.
   The simulation's shared build is unchanged: the shop server needs no update.
 

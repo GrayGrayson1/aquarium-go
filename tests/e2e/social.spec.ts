@@ -239,6 +239,12 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await expect(tid(page, 'net-retry')).toHaveText('Try again');
     await expect(tid(page, 'social-error')).toHaveAttribute('role', 'alert');
     await expect(tid(page, 'social-email')).toHaveCount(0);
+    // chunk 22: the panel asks who is signed in as it opens, and the stub answers 300 to 600 ms later with whatever
+    // the connection is THEN. Coming back on line while that ask was still out answered it "signed out", the notice
+    // went by itself, and this click then waited for a button that was gone (10 runs in 20 on 0.11.0). Let that ask
+    // fail first: what is tested here is that Try again asks again.
+    await page.waitForTimeout(800);
+    await expect(tid(page, 'net-retry')).toBeVisible();
     await aq(page, 'social.offline', false);
     await tid(page, 'net-retry').click();
     await expect(tid(page, 'social-error')).toHaveCount(0);

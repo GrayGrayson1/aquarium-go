@@ -301,6 +301,33 @@ describe('nav-sync: stores → address (NAV-011)', () => {
   });
 });
 
+describe('chunk 22: a store change never overwrites an address change that has not been answered yet', () => {
+  it('Back while a panel is still reporting its tab closes the panel (the stores’ write waits for the hashchange)', async () => {
+    gesture();
+    useUI.getState().set({ panel: 'visitors', panelTarget: null });
+    await flush();
+    expect(fakeLocation.hash).toBe('#/visitors');
+    // the browser goes back: the address changes now, its hashchange comes a task later…
+    index--;
+    fakeHistory.state = states[index];
+    setUrl(entries[index]);
+    expect(fakeLocation.hash).toBe('#/');
+    // …and meanwhile the panel, still mounting, reports its tab: a store change that queues an address write
+    R.useNav.setState((n) => ({ tab: { ...n.tab, visitors: 'visitors' } }));
+    await flush();
+    expect(fakeLocation.hash).toBe('#/'); // (it used to be #/visitors again, so the event below reopened the panel)
+    fakeWindow.dispatch('hashchange');
+    await flush();
+    expect(useUI.getState().panel).toBeNull();
+    expect(fakeLocation.hash).toBe('#/');
+    // and the stores write the address again afterwards
+    gesture();
+    useUI.getState().set({ panel: 'market', panelTarget: null });
+    await flush();
+    expect(fakeLocation.hash).toBe('#/shop');
+  });
+});
+
 describe('nav-sync: leaving a game (NAV-012)', () => {
   it('repeated mutate calls with the same saveId never reset anything', async () => {
     useUI.getState().set({ panel: 'market', panelTarget: 'offer:o1' });

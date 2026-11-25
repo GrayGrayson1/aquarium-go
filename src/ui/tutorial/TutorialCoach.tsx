@@ -141,7 +141,8 @@ function usesCard(e: Event, kind: GuideCard['kind'], doing: boolean): boolean {
   const t = e.target as Element | null;
   if (!t?.closest?.(CARD_SEL[kind])) return false;
   if (e.type === 'focusin' && t.closest('.ag-sheet__close')) return false;
-  return !(doing && t.closest('[data-param]'));
+  // (the re-check of chunk 22: scrolling the readings with the wheel is reading them, not the step's tap)
+  return !(doing && e.type !== 'wheel' && t.closest('[data-param]'));
 }
 
 /**

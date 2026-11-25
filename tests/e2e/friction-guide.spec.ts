@@ -261,6 +261,8 @@ test.describe('The guide on a computer (1440×900)', () => {
     await page.locator('[data-guide-showme]').click(); // "Open the tank card"
     await expect(tid(page, 'tank-card')).toBeVisible();
     await page.locator('[data-testid="tank-card"] [data-param="temp"]').first().click(); // the betta's: the temperature
+    // (the re-check: on a slow machine the click can land after the reading has counted, and then it is use; say so)
+    expect((await aq<{ tutorial: { step: number } }>(page, 'summary')).tutorial.step, 'the click landed while the water step was still to do').toBe(3);
     await expect(page.locator('.ag-coach-pill')).toContainText('A leaf to lounge on');
     await expect(tid(page, 'tank-card')).toBeHidden({ timeout: 15_000 });
     await expect.poll(sawDone).toBe(true);

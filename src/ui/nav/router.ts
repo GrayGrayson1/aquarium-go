@@ -118,6 +118,15 @@ let started = false;
 let applying = 0;
 let gestureAt = -Infinity;
 let syncQueued = false;
+/**
+ * chunk 22 — the address as the router last wrote it or last answered it (null before the router starts). When the
+ * address differs, something outside changed it (Back, Forward, a link, a typed address) and its `hashchange` has not
+ * arrived yet: the stores must not write the address meanwhile. They did: a panel still mounting (a phone's sheet
+ * reports its tab a moment after it opens) queued a write that put the old address back before the event was read,
+ * so the event then found the old address and Back did nothing (the phone route walk's intermittent miss, B-204:
+ * 2 runs in 16 on 0.11.0).
+ */
+let seenHash: string | null = null;
 /** A link that went nowhere: say so once the game is on screen (ADR-0019 decision 1). */
 let brokenLinkOnStart = false;
 
@@ -213,6 +222,7 @@ function entryTag(): string | undefined {
 function writeHash(hash: string, mode: 'auto' | 'push' | 'replace'): void {
   if (!hasHistory()) return;
   if (location.hash === hash) {
+    seenHash = hash;
     // the right address already: keep the entry's aquarium tag current (a game coming on screen at #/), and its tank
     // (audit B22: switching tanks at #/ changes no address)
     const tag = gameTag();
@@ -237,12 +247,15 @@ function writeHash(hash: string, mode: 'auto' | 'push' | 'replace'): void {
   } catch (e) {
     console.warn('[nav] could not write the address', e);
   }
+  seenHash = location.hash;
 }
 
 /** Write what is on screen into the address. Only in a game: the title and onboarding have no hash. */
 export function syncAddress(mode: 'auto' | 'push' | 'replace' = 'auto'): void {
   syncQueued = false;
   if (!started || applying) return;
+  // an address change is waiting for its hashchange: that decides, then writes (see `seenHash`)
+  if (seenHash !== null && location.hash !== seenHash) return;
   // audit B13: the tour's stops open panel after panel, each after a click on Next: they replace the address, so Back
   // afterwards doesn't walk back through every panel it showed
   if (mode === 'auto' && useTour.getState().running) mode = 'replace';
@@ -372,6 +385,7 @@ export function go(route: Route, opts: { replace?: boolean; filters?: ShopFilter
 }
 
 function onHashChange(): void {
+  seenHash = location.hash; // answered from here on
   gestureAt = -Infinity; // the entry exists already: nothing that follows may push another
   const tag = entryTag();
   if (tag !== undefined && tag !== gameTag()) {
@@ -604,6 +618,7 @@ const onGesture = () => {
 export function startRouter(opts: { boot?: boolean } = {}): () => void {
   if (started || !hasHistory()) return () => {};
   started = true;
+  seenHash = location.hash;
   const offs: (() => void)[] = [];
   window.addEventListener('hashchange', onHashChange);
   window.addEventListener('pointerdown', onGesture, true);
@@ -643,6 +658,7 @@ export function startRouter(opts: { boot?: boolean } = {}): () => void {
   return () => {
     for (const off of offs) off();
     started = false;
+    seenHash = null;
     syncQueued = false;
   };
 }
