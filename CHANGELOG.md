@@ -6,7 +6,7 @@ additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if 
 
 ## 0.11.1 — 2026-11-25
 
-Less friction, nothing changed in what the game does (the owner's request, ADR-0058): 28 small fixes found by
+Less friction, nothing changed in what the game does (the owner's request, ADR-0058): 34 small fixes found by
 playing 0.11.0 on a phone, a phone held sideways and a computer. Every new or changed line of text is listed in
 `docs/agent/design/CHUNK-22/WORDS.md`.
 

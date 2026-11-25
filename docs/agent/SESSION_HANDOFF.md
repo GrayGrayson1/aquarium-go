@@ -7,17 +7,17 @@ it's used up.
 
 ## Chunk 22 (Captain 1): the friction pass, 0.11.1 on `next`
 
-- **What** (PLAN.md chunk 22; ADR-0058 has the owner's words): 28 small fixes for player friction, found by playing
+- **What** (PLAN.md chunk 22; ADR-0058 has the owner's words): 34 small fixes for player friction, found by playing
   0.11.0, with no change to what anything does. Nothing under `src/sim`, `src/data` or `src/types` changed: **the
   shared build hash is the same as 0.11.0's** (`c14ae6b5b2a29ebf`), so the release is GitHub Pages and the Render
   static site; the shop server needs no deploy (check its `/health` build still matches after the release).
-- **Status:** HANDOFF22_STATUS
+- **Status:** built and on `next` as 0.11.1 (pushed); all four checks pass on the final code `859e938` (typecheck exit 0; 318 unit files, 4,858 tests; build exit 0, the main chunk 3,993.19 kB of 4,000; e2e 544 passed, 1 skipped, none failed). A fresh review (one blocker, fixed), a confirmation review and a re-check (no blockers). **Not released: `main` is still 0.11.0 (`2510248`); it waits for the owner's go-ahead.**
 - **To release** (only with the owner's yes in the session): the routine in the chunk 21 section below, without
   the shop server step; then both `version.json` files and `npx vite-node scripts/shared-smoke.ts`.
 - **Then:** the owner's reading of `docs/agent/design/CHUNK-22/WORDS.md` and OWNER_QUESTIONS group O (four
   questions); BACKLOG B-234 (the guide's waiting steps and "Buy & place" on a phone first); IDEAS 6.
 - **The working files are outside the repo:** `/Volumes/Dev/Projects/AquariumGo-captain1/` has `findings.md` (the
-  50 findings and what became of each), the play scripts (`scripts/`), the screenshots (`shots/`), the checks'
+  46 findings and what became of each), the play scripts (`scripts/`), the screenshots (`shots/`), the checks'
   logs (`logs/`) and the review's diffs (`review/`). The builders' worktrees are
   `/Volumes/Dev/Projects/AquariumGo-wt/c22-live`, `c22-shop`, `c22-guide` (all merged) and `c22-base` (0.11.0, for
   comparing): safe to remove with `git worktree remove`.
