@@ -65,6 +65,10 @@ export function MoreSheetBody({ isLocked, dots, social = false }: { isLocked: (i
           }}
         >
           <Search size={18} aria-hidden />
+          {/* chunk 22 (S-2): a word beside the magnifier (a bare icon read as decoration on a phone) */}
+          <span className="ag-more__find-label" aria-hidden>
+            Find
+          </span>
         </button>
         <button type="button" className="ag-more__close" aria-label="Close More" onClick={() => { sfx('close'); closeMore(); }}>
           <X size={18} aria-hidden />

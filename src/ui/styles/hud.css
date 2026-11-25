@@ -130,6 +130,13 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-event__text { font-size: calc(13px * var(--text-scale)); line-height: 1.4; }
 .ag-event__meta { display: flex; gap: 10px; align-items: center; font-size: calc(11px * var(--text-scale)); color: var(--c-ink-3); margin-top: 1px; }
 .ag-event__meta .ag-linkbtn { font-size: calc(11px * var(--text-scale)); padding: 0; }
+/* chunk 22 (S-10): on a touch screen the bell's small links (a row's tank name and "Claim it", "View listing"…; Mark
+   read, Clear all, Full event log) and its filter chips took a tap 14 to 26 px tall. An invisible box centred on each
+   makes the target at least 34 px without moving or restyling anything. */
+@media (pointer: coarse) {
+  .ag-alerts-pop .ag-linkbtn, .ag-alerts-pop .ag-chip--sm { position: relative; }
+  .ag-alerts-pop .ag-linkbtn::before, .ag-alerts-pop .ag-chip--sm::before { content: ''; position: absolute; left: -3px; right: -3px; top: 50%; height: max(100%, 34px); transform: translateY(-50%); }
+}
 
 /* ───────── Tank bar ───────── */
 .ag-tankbar { position: absolute; top: calc(var(--edge) + var(--topbar-h) + 10px); left: var(--edge); display: flex; gap: 8px; align-items: stretch; transition: opacity .25s; }

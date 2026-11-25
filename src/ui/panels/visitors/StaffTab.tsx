@@ -33,6 +33,7 @@ import { Requirements, reqsFor } from '../common/Requirements';
 import { orderedTanks, unlocked } from '../common/derive';
 import { poolWhen } from '../common/format';
 import { go } from '@/ui/nav/router'; // Audit 2026-11-17 (H26): flags link to their tank
+import { glow } from '@/ui/common/glow'; // chunk 22 (S-3)
 import { StaffAvatar } from './StaffAvatar';
 import './staff.css';
 
@@ -100,6 +101,7 @@ export function StaffTab({ g }: { g: GameState }) {
   const issues = roster.flatMap((m) => (m.today?.day === dayOf(g.clock.hour) ? m.today.issues.map((t) => ({ who: first(m), t })) : []));
   const unpaid = roster.filter((m) => (m.unpaidDays ?? 0) > 0);
   const order = [...roster].sort((a, b) => STAFF_ROLE_ORDER.indexOf(a.role) - STAFF_ROLE_ORDER.indexOf(b.role) || a.hiredHour - b.hiredHour);
+  const applying = st?.candidates.length ?? 0;
   return (
     <div className="pn-stack pn-stack--lg st-tab" data-testid="staff-tab">
       <HiredFlagSync g={g} />
@@ -113,6 +115,22 @@ export function StaffTab({ g }: { g: GameState }) {
           <Tile icon={<Presentation size={14} />} tone="violet" label="Talks today" value={talks} hint={g.facility.openToPublic ? 'at 11 AM, 2 PM and 4 PM' : 'doors are closed'} />
         ) : null}
       </div>
+
+      {/* chunk 22 (S-3): the candidates sit under every team card (about 1,900 px down on a phone) and nothing up here
+          said anyone had applied */}
+      {roster.length < cap && applying > 0 && (
+        <Callout
+          tone="info"
+          icon={<UserPlus size={15} />}
+          action={
+            <Button size="sm" data-testid="staff-see-candidates" onClick={() => glow('[data-testid="staff-hiring"]', { block: 'start' })}>
+              See them
+            </Button>
+          }
+        >
+          <span data-testid="staff-applying">{applying === 1 ? '1 person is applying for a job.' : `${applying} people are applying for a job.`}</span>
+        </Callout>
+      )}
 
       {unpaid.length > 0 && (
         <Callout tone="danger" icon={<TriangleAlert size={16} />} title="Wages unpaid">
@@ -153,7 +171,7 @@ export function StaffTab({ g }: { g: GameState }) {
         )}
       </section>
 
-      <section>
+      <section data-testid="staff-hiring">
         <SectionHead title="Hiring" icon={<UserPlus size={14} />}>
           <span className="pn-tiny pn-muted st-pool-clock">
             <Clock size={12} aria-hidden /> New faces {poolWhen(st?.nextPoolHour ?? -1, g.clock.hour)}

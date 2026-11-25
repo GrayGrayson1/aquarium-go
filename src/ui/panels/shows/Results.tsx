@@ -13,13 +13,28 @@ import { Card, Chip, EmptyState } from '../common/parts';
 import { act } from '../common/act';
 import { TierBadge, Rosette } from './Ribbons';
 import { gameWhen, money, realIn, speedNote } from './util';
+import { unseenShowResults } from '@/ui/common/notify'; // chunk 22 (S-7)
 
 // ───────────────────────────── entries ─────────────────────────────
 
-export function EntriesTab({ g, onBrowse }: { g: GameState; onBrowse: () => void }) {
+export function EntriesTab({ g, onBrowse, onResults }: { g: GameState; onBrowse: () => void; onResults: () => void }) {
   const s = g.shows;
   const now = g.clock.hour;
   const pending = (s?.entries ?? []).filter((e) => e.status === 'entered');
+  // chunk 22 (S-7): when judging ends the entries leave this tab for Results; with results unseen, say so and point
+  // there (it said "No entries waiting" and sent the player to the calendar)
+  if (!pending.length && unseenShowResults(g) > 0)
+    return (
+      <EmptyState
+        icon={<Trophy size={26} />}
+        title="The results are in"
+        action={
+          <Button size="sm" variant="primary" data-testid="shows-entries-see-results" onClick={onResults}>
+            See results
+          </Button>
+        }
+      />
+    );
   if (!pending.length)
     return (
       <EmptyState icon={<ClipboardList size={26} />} title="No entries waiting" action={<Button size="sm" onClick={onBrowse}>See upcoming shows</Button>}>

@@ -363,6 +363,8 @@ a.pn-link { text-decoration: none; }
 .pn-tankcard__money { flex: 1; min-width: 180px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: calc(14px * var(--text-scale)); }
 .pn-tankmanage { display: grid; gap: 16px; padding-top: 14px; border-top: 1px solid var(--c-line); }
 .pn-sheet--phone .pn-tankcard__thumb .pn-tankthumb { width: 104px; height: 70px; }
+/* chunk 22 (S-1): on a phone the value line takes its own row, so View, Tank card and Manage share the next one */
+.pn-sheet--phone .pn-tankcard__money { flex-basis: 100%; }
 
 /* ───────────────────────── Livestock ───────────────────────── */
 .pn-lsrows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -488,6 +490,17 @@ a.pn-link { text-decoration: none; }
 .pn-bid__amount { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: calc(19px * var(--text-scale)); }
 .pn-bid__actions { display: flex; gap: 8px; flex-wrap: wrap; padding-left: 56px; }
 .pn-sheet--phone .pn-bid__actions { padding-left: 0; }
+/* chunk 22 (S-4): a bid on a phone was about 300 px: the buyer's quote keeps to two lines until tapped, and Accept,
+   Counter and Decline share one row (Decline used to wrap to a second) */
+.pn-bid__quote { display: block; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+/* (the clamp is on the words, not the button: WebKit clamps no button) */
+.pn-bid__quote.is-clamped .pn-quote { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.pn-bid__quote:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; border-radius: 4px; }
+/* (Counter and Decline drop their icons there, Accept keeps its tick; a very large bid or larger text still wraps
+   rather than squeezing a word) */
+.pn-sheet--phone .pn-bid__actions { gap: 6px; }
+.pn-sheet--phone .pn-bid__actions > .ag-btn { padding-inline: 10px; }
+.pn-sheet--phone .pn-bid__actions > .ag-btn:not(.ag-btn--primary) > svg { display: none; }
 .pn-bid__counter { display: flex; gap: 12px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; padding: 12px; border-radius: 12px; background: rgba(94, 234, 212, 0.05); border: 1px solid rgba(94, 234, 212, 0.2); }
 .pn-sold { position: relative; overflow: hidden; border-color: rgba(245, 196, 81, 0.45); background: radial-gradient(140% 120% at 0% 0%, rgba(245, 196, 81, 0.2), rgba(245, 196, 81, 0.03) 55%), rgba(255, 255, 255, 0.02); }
 .pn-sold__label { font-size: calc(11px * var(--text-scale)); font-weight: 750; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c-gold); }

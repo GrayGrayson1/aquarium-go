@@ -165,7 +165,7 @@ export function ShowsPanel() {
       ) : tab === 'upcoming' ? (
         <UpcomingTab g={g} onEnter={(showId) => setFlow({ showId })} />
       ) : tab === 'entries' ? (
-        <EntriesTab g={g} onBrowse={() => setTab('upcoming')} />
+        <EntriesTab g={g} onBrowse={() => setTab('upcoming')} onResults={() => setTab('results')} />
       ) : tab === 'results' ? (
         <ResultsTab key={focusResult ?? 'r'} g={g} focusId={focusResult} newSince={newSince} />
       ) : (

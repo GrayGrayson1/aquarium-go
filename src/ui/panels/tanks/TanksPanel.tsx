@@ -200,11 +200,11 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
         <Button size="sm" variant={focused ? 'default' : 'primary'} onClick={focus}>
           <Eye size={15} /> {focused ? 'In view' : 'View'}
         </Button>
-        {focused && (
-          <Button size="sm" data-testid={`tank-row-card-${tank.id}`} onClick={() => go({ kind: 'tankCard', tankId: tank.id, tab: 'water' })}>
-            <ClipboardList size={15} /> Tank card
-          </Button>
-        )}
+        {/* chunk 22 (S-1): every row reaches its tank card (the route focuses the tank first); only the tank in view
+            had the button, so checking another tank's water was View, then hunt for the card */}
+        <Button size="sm" data-testid={`tank-row-card-${tank.id}`} onClick={() => go({ kind: 'tankCard', tankId: tank.id, tab: 'water' })}>
+          <ClipboardList size={15} /> Tank card
+        </Button>
         <Button size="sm" onClick={onToggle} aria-expanded={open}>
           <ChevronDown size={15} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform .2s' }} /> Manage
         </Button>
