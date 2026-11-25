@@ -12,9 +12,11 @@
 .ag-shared-pill.is-open .ag-shared-pill__chev { transform: rotate(180deg); }
 .ag-shared-pill__icon { color: var(--c-aqua); }
 .ag-shared-pill.is-compact .ag-clock-pill__time { gap: 5px; }
-/* phones: "👥 2 ▾" over the time, in the clock pill's width */
+/* phones: "Shared ▾" over the time (chunk 22, G-7; it was "👥 2 ▾"), in the clock pill's width */
 .ag-shared-pill.is-compact { padding: 3px 10px; gap: 0; align-items: center; }
 .ag-shared-pill__here { display: inline-flex; align-items: center; gap: 4px; font-size: calc(12px * var(--text-scale)); font-weight: 700; line-height: 1.2; }
+/* chunk 22 (G-7) — "Shared ▾" in the solo pill's day-line size, so the pill stays about as wide as the solo one */
+.ag-shared-pill__tag { gap: 3px; font-size: calc(10.5px * var(--text-scale)); font-weight: 650; }
 .ag-shared-pill.is-compact .ag-shared-pill__time span:first-of-type { display: inline; }
 @media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   .ag-shared-notice { top: calc(var(--edge) + var(--topbar-h) + 108px); }

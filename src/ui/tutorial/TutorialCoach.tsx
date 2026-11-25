@@ -27,7 +27,7 @@ import { guideTarget, openPanel } from '../hud/Dock';
 import { MORE_ITEMS } from '../hud/TabBar'; // lane:ui-shell (chunk 1)
 import { toggleTankCard } from '../hud/TankBar';
 import { useDockedCard, type DockedCard } from '../hud/cardDock';
-import { setCameraMode } from '../hud/ToolRail';
+import { selectTool, setCameraMode } from '../hud/ToolRail';
 import { setSpeed } from '../hud/TopBar';
 import { personalityLabel } from '../common/format';
 import { tutorialFlag } from '../common/actions';
@@ -108,6 +108,66 @@ function isWaitingStep(o: Objective): boolean {
 /** The guide switched the camera to follow the starter (it hands the view back once the step is done). */
 const guideCamera = { followed: false };
 
+/**
+ * chunk 22 (ADR-0058, G-2) — the card the guide's own button opened ("Meet them": the animal's card; "Open the tank
+ * card"), and for which step. On a phone that card folds the guide into its pill (the tank card does on a computer
+ * too), so the next step's words never showed: once the step is done the guide puts the card away after a moment,
+ * unless the player has used the card or opened something else meanwhile.
+ */
+interface GuideCard {
+  kind: 'creature' | 'tank';
+  /** The animal whose card it is (creature). */
+  id: string | null;
+  tankId: string | null;
+  /** The guide's step index when its button opened the card. */
+  step: number;
+}
+const guideCard: { current: GuideCard | null } = { current: null };
+
+/** How long the card the guide opened stays after its step is done (its "done" line then shows on the guide). */
+export const GUIDE_CARD_MS = 3500;
+
+/**
+ * Put the guide's card away after GUIDE_CARD_MS, unless the player touches the card, opens another card, a panel, a
+ * popover or a tool, or closes the card themselves first. Returns the way to call it off.
+ */
+function putAwayLater(c: GuideCard): () => void {
+  const sel = c.kind === 'creature' ? '[data-testid="creature-card"]' : '[data-testid="tank-card"]';
+  let over = false;
+  const onUse = (e: Event) => {
+    const t = e.target as Element | null;
+    if (t?.closest?.(sel)) stop();
+  };
+  const unsubUI = useUI.subscribe((s, p) => {
+    if (s.panel !== p.panel || s.selectedCreatureId !== p.selectedCreatureId || s.focusedTankId !== p.focusedTankId || s.tool !== p.tool || s.view !== p.view) stop();
+  });
+  const unsubShell = useShell.subscribe((s, p) => {
+    if (s.tankCardOpen !== p.tankCardOpen || s.popover !== p.popover) stop();
+  });
+  document.addEventListener('pointerdown', onUse, true);
+  document.addEventListener('wheel', onUse, true);
+  const timer = window.setTimeout(() => {
+    stop();
+    const ui = useUI.getState();
+    const sh = useShell.getState();
+    if (ui.panel || sh.popover || ui.tool !== 'none') return;
+    if (c.kind === 'creature') {
+      // (a computer's animal card sits on the right, clear of the guide: it stays)
+      if (ui.selectedCreatureId === c.id && (window.matchMedia?.(BOTTOM_SHEET_QUERY).matches ?? false)) ui.set({ selectedCreatureId: null });
+    } else if (sh.tankCardOpen && !ui.selectedCreatureId && ui.focusedTankId === c.tankId) sh.set({ tankCardOpen: false });
+  }, GUIDE_CARD_MS);
+  function stop() {
+    if (over) return;
+    over = true;
+    window.clearTimeout(timer);
+    unsubUI();
+    unsubShell();
+    document.removeEventListener('pointerdown', onUse, true);
+    document.removeEventListener('wheel', onUse, true);
+  }
+  return stop;
+}
+
 /** "Speed up" on a waiting step is temporary: the guide hands back the previous speed when the step completes. */
 const guideSpeed: { from: GameSpeed | null } = { from: null };
 
@@ -145,13 +205,17 @@ export function showMe(target: string, g: GameState) {
     case 'tank-card-toggle': {
       // opens it, or brings a covered card to the front (never closes it)
       const sh = useShell.getState();
+      const wasOpen = sh.tankCardOpen; // chunk 22 (G-2): a card the player had opened is theirs, not the guide's
       if (!sh.tankCardOpen || ui.panel || ui.selectedCreatureId) toggleTankCard();
+      guideCard.current = !wasOpen && useShell.getState().tankCardOpen ? { kind: 'tank', id: null, tankId: useUI.getState().focusedTankId, step: g.progress.tutorial?.step ?? -1 } : null;
       break;
     }
     case 'creature-name': {
       const starter = guideAnimal(g, ui.focusedTankId);
+      const was = ui.selectedCreatureId; // chunk 22 (G-2)
       if (starter) ui.set({ selectedCreatureId: starter.id, view: 'tank', panel: null, focusedTankId: starter.tankId ?? ui.focusedTankId });
       else ui.toast('There’s no animal to show right now. Bring one home from the Market first.', 'info');
+      guideCard.current = starter && was !== starter.id ? { kind: 'creature', id: starter.id, tankId: starter.tankId ?? null, step: g.progress.tutorial?.step ?? -1 } : null;
       break;
     }
     case 'scene':
@@ -295,6 +359,9 @@ export function TutorialCoach() {
   const [confirmSkip, setConfirmSkip] = useState(false);
   const cur = currentCoachStep(game, fine);
   const lastIdx = useRef<number | null>(null);
+  const lastStepId = useRef<string | null>(null); // chunk 22 (G-1): the step just done, at an advance
+  const putAway = useRef<(() => void) | null>(null); // chunk 22 (G-2)
+  useEffect(() => () => putAway.current?.(), []);
   const [justAdvanced, setJustAdvanced] = useState(false);
   const [doneLine, setDoneLine] = useState<string | null>(null);
 
@@ -309,8 +376,27 @@ export function TutorialCoach() {
       setDoneLine(slowed ? `${cur.prevDone ?? 'Done.'} Back to normal speed.` : cur.prevDone);
       setCollapsed(false);
       setConfirmSkip(false);
+      const shown = useSettings.getState().showTutorialHints && !useTour.getState().running;
+      // chunk 22 (ADR-0058, G-1): the feed step is done with one tap of food, but the food stayed in hand, and on a
+      // phone its prompt ("Tap the water to drop …") hides the guide card, so the next step was never read. The guide
+      // puts the food down as it moves on (only here: feeding outside the guide keeps the tool as it was)
+      if (shown && lastStepId.current === 'feed') {
+        const ui = useUI.getState();
+        if (ui.tool === 'feed' || ui.tool === 'target_feed') selectTool('none');
+        const sh = useShell.getState();
+        if (sh.popover === 'food' || sh.popover === 'target_food') sh.set({ popover: null });
+      }
+      // chunk 22 (G-2): the card the guide's button opened for the step just done goes away after a moment
+      const card = guideCard.current;
+      const away = shown && !!card && card.step >= lastIdx.current && card.step < cur.index;
+      if (away && card) {
+        guideCard.current = null;
+        putAway.current?.();
+        putAway.current = putAwayLater(card);
+      }
       const t = window.setTimeout(() => setJustAdvanced(false), 1400);
-      const t2 = window.setTimeout(() => setDoneLine(null), 4200);
+      // (the done line waits for the card to go: under it the guide is only its pill)
+      const t2 = window.setTimeout(() => setDoneLine(null), away ? GUIDE_CARD_MS + 3000 : 4200);
       // a follow-cam the guide started ends with its step (after a moment to enjoy the behaviour)
       const t3 = guideCamera.followed
         ? window.setTimeout(() => {
@@ -327,7 +413,9 @@ export function TutorialCoach() {
     lastIdx.current = cur.index;
   }, [cur?.index]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (cur) lastIdx.current = cur.index;
+    if (!cur) return;
+    lastIdx.current = cur.index;
+    lastStepId.current = cur.step.id;
   });
   // guide finished or skipped while sped up: hand the speed back too
   const hasStep = !!cur;
@@ -345,6 +433,10 @@ export function TutorialCoach() {
     else if (tutDone && saveId && sawGuide.current === saveId) {
       sawGuide.current = null;
       setFinale(true);
+      // chunk 22 (ADR-0058, G-3): the last step ends as Research opens, and on a phone its sheet covers the finale
+      // card: Research turns to its Quests tab, where the guide's reward waits (the finale shows when it closes)
+      const ui = useUI.getState();
+      if (bottomSheets && ui.panel === 'research') ui.set({ panelTarget: 'tab:quests' });
     }
   }, [cur?.index, tutDone, saveId, hints]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -5,8 +5,9 @@
  * unchanged (SHARED-SHOPS.md §8, ADR-0050): "Shared · {shop} · Here: …", the owner's members list (pause and speed,
  * spending), Money and "Back to my aquarium". OWNER: lane "social".
  */
-import { useState } from 'react';
+import { useEffect } from 'react';
 import clsx from 'clsx';
+import { create } from 'zustand';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowLeft, ChevronDown, Moon, Sun, Users } from 'lucide-react';
 import { useSharedMode } from '@/state/sharedMode';
@@ -33,8 +34,23 @@ export function useInSharedShop(): boolean {
 export const hereCount = (n: number): string => `${n} here`;
 
 /**
- * The top-left pill in a shared shop: the shop's name, who's here and the day and time (phones: who's here and the
- * time); it opens the dropdown.
+ * chunk 22 (ADR-0058, G-7) — the phone pill's first line (drafted for the owner): "👥 2 ▾" over the time looked like the
+ * player's own aquarium. No shop or club name fits there (the pill has a few pixels to spare at 360 and 390 px before
+ * the speed buttons give way, and "Highland Betta Club" would need about a hundred), so a short tag says whose it is;
+ * the shop's name and who's here stay in the pill's label, and the dropdown's "Shared · {shop} · Here: …".
+ */
+export const SHARED_TAG = 'Shared';
+
+/**
+ * chunk 22 (ADR-0058, G-8) — whether the Shop money sheet is open: the dropdown's Money button opens it, and so does
+ * the "Ask for money" on the refusal "That costs $8, and you can spend $0. Ask for more in Money." (Toasts.tsx).
+ */
+const useMoneySheet = create<{ open: boolean }>(() => ({ open: false }));
+export const openSharedMoney = (): void => useMoneySheet.setState({ open: true });
+
+/**
+ * The top-left pill in a shared shop: the shop's name, who's here and the day and time (phones: "Shared" and the time,
+ * chunk 22); it opens the dropdown.
  */
 export function SharedPill({ compact }: { compact?: boolean }) {
   const shop = useShared((s) => s.shopName);
@@ -42,7 +58,9 @@ export function SharedPill({ compact }: { compact?: boolean }) {
   const hour = useGameSelector((g) => g.clock.hour, 0);
   const paused = useGameSelector((g) => g.clock.speed === 0, false); // audit B15 review
   const open = useShell((s) => s.popover === 'shared');
-  const [money, setMoney] = useState(false);
+  const money = useMoneySheet((s) => s.open);
+  const setMoney = (v: boolean) => useMoneySheet.setState({ open: v });
+  useEffect(() => () => useMoneySheet.setState({ open: false }), []); // (the next shop opens with it closed)
   const h = hourOfDay(hour);
   const night = h < 6.5 || h >= 20;
   const day = dayOf(hour);
@@ -61,12 +79,11 @@ export function SharedPill({ compact }: { compact?: boolean }) {
         }}
       >
         {compact ? (
-          // phones: two short lines, so the speed buttons keep their room ("👥 2 ▾" over the time)
+          // phones: two short lines, so the speed buttons keep their room ("Shared ▾" over the time; chunk 22, G-7)
           <>
-            <span className="ag-shared-pill__here">
-              <Users size={12} aria-hidden className="ag-shared-pill__icon" />
-              <span className="ag-tabular" data-testid="shared-here-count">{here}</span>
-              <ChevronDown size={12} aria-hidden className="ag-shared-pill__chev" />
+            <span className="ag-shared-pill__here ag-shared-pill__tag" data-testid="shared-pill-tag">
+              {SHARED_TAG}
+              <ChevronDown size={11} aria-hidden className="ag-shared-pill__chev" />
             </span>
             {/* audit B15 review: phones hide the speed's "Paused", so the time line says it while the shop is paused, as
                 the solo pill does (the day, the solo pill's other line, has no room here: the shop's line takes it) */}

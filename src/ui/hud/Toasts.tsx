@@ -37,6 +37,8 @@ import { StaleTabBanner, useStaleBanner } from '@/game/StaleTabBanner';
 import { useShared } from '../shared/store'; // chunk 13
 import { guardLeave } from '../panels/common/leaveGuard'; // audit B6 review
 import { othersEvent } from '../shared/activity';
+import { openSharedMoney, useInSharedShop } from '../shared/SharedMenu'; // chunk 22 (G-8)
+import { SHARED_WORDS } from '../shared/words'; // chunk 22 (G-8)
 
 interface Entry {
   key: string;
@@ -95,7 +97,15 @@ interface View {
   link?: ToastLink;
   /** lane:qa-final — headline feature unlocks (see HEADLINE_UNLOCKS) lead a merged unlock toast. */
   headline?: number;
+  /** chunk 22 (G-8) — a shared shop's spending refusal: its button opens the Shop money sheet to ask for more. */
+  askMoney?: boolean;
 }
+
+/**
+ * chunk 22 (ADR-0058, G-8) — SHARED_WORDS.overspend, the refusal a member who asks first gets ("That costs $8, and you
+ * can spend $0. Ask for more in Money."): it said where to ask with nothing to tap.
+ */
+export const OVERSPEND_TEXT = /^That costs \S+, and you can spend \S+\. Ask for more in Money\.$/;
 
 // ───────────── lane:w2-ui: unlocks say where the new thing lives ─────────────
 // "Unlocked: Shows & championships" alone never told a new player where Shows are. Feature unlocks now carry a short
@@ -126,6 +136,7 @@ function parse(text: string, ids: { listingId?: string; offerId?: string } = {})
   // lane:w2-ui — show results: "The judge’s cards are in Shows." → open Shows › Results (lane:notify: and entries the
   // club sent home — "… The club refunded the fee." — which the Results tab lists too)
   if (SHOW_RESULT_TEXT.test(text)) return { title: text, link: { panel: 'shows', target: 'tab:results', where: '' } };
+  if (OVERSPEND_TEXT.test(text)) return { title: text, askMoney: true }; // chunk 22 (G-8)
   // audit B4: the shop's news opens the shop (or the offer itself), as its bell and Log lines do
   const link = eventLink({ kind: 'info', text, ...ids }) ?? undefined;
   m = /^New arrivals at the shop:\s*(.+?)\.?$/.exec(text);
@@ -478,11 +489,13 @@ export function toastGo(e: Pick<Entry, 'kind' | 'texts' | 'tankId' | 'creatureId
  * the way (review: pinning it grew it over the list for 6 s more), and only its own button ("See them") goes.
  * `title` names where the text goes (its tooltip). (pure; exported for tests)
  */
-export function toastTap(e: Pick<Entry, 'tankId' | 'creatureId' | 'actionLabel'>, v: Pick<View, 'opensLog' | 'link'>, sheet: boolean, animalHere: boolean = !!e.creatureId): { textGoes: boolean; dismiss: boolean; button: string | null; title: string } {
+export function toastTap(e: Pick<Entry, 'tankId' | 'creatureId' | 'actionLabel'>, v: Pick<View, 'opensLog' | 'link' | 'askMoney'>, sheet: boolean, animalHere: boolean = !!e.creatureId): { textGoes: boolean; dismiss: boolean; button: string | null; title: string } {
   const actionable = !!e.tankId || !!v.opensLog || !!v.link;
   // (review: the merged ones open the bell's drawer, and a toast about an animal opens its card)
   const title = v.opensLog ? 'Open Alerts' : v.link ? 'Take me there' : e.creatureId && animalHere ? 'Go to this animal' : 'Go to this tank'; // (an animal that has died or been sold: toastGo opens its tank)
-  return { textGoes: actionable && !sheet, dismiss: sheet, button: e.actionLabel && e.tankId ? e.actionLabel : null, title };
+  // chunk 22 (G-8): the spending refusal's button opens the Shop money sheet
+  const button = e.actionLabel && e.tankId ? e.actionLabel : v.askMoney ? SHARED_WORDS.askForMoney : null;
+  return { textGoes: actionable && !sheet, dismiss: sheet, button, title };
 }
 
 function ToastItem({ e, onDone, sheet = false }: { e: Entry; onDone: () => void; /** a phone sheet is open under the toasts (audit B19) */ sheet?: boolean }) {
@@ -497,6 +510,9 @@ function ToastItem({ e, onDone, sheet = false }: { e: Entry; onDone: () => void;
   const unit = useSettings((s) => s.tempUnit);
   const raw = viewOf(e);
   const v = { ...raw, title: convertTempText(raw.title, unit) ?? raw.title, detail: convertTempText(raw.detail, unit) };
+  // chunk 22 (G-8): "Ask for money" only while the shop it is about is on screen
+  const inShop = useInSharedShop();
+  if (v.askMoney && !inShop) v.askMoney = false;
   const ttl = ttlOf(e.kind, e.texts) + (pinned ? 6000 : 0);
   useEffect(() => {
     if (hover) return;
@@ -509,6 +525,13 @@ function ToastItem({ e, onDone, sheet = false }: { e: Entry; onDone: () => void;
   const animalHere = useGame((s) => { const c = e.creatureId ? s.game?.creatures[e.creatureId] : undefined; return !!c && (c.status === 'alive' || c.status === 'listed'); });
   const tap = toastTap(e, v, sheet, animalHere);
   const onAct = () => {
+    if (v.askMoney) {
+      // chunk 22 (G-8): the Shop money sheet, where "Ask for money" is
+      sfx('open');
+      openSharedMoney();
+      onDone();
+      return;
+    }
     const to = toastGo(e, v, useGame.getState().game);
     // audit B6 review: a listing with typed prices asks before the whole move (Leave completes it, Keep changes nothing)
     if (to?.to === 'panel' || to?.to === 'tank')
