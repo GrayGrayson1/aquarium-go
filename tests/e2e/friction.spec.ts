@@ -155,6 +155,26 @@ test.describe('Friction fixes on a computer (1440×900)', () => {
   });
 });
 
+test.describe('The tour as its own chunk (chunk 22)', () => {
+  test('it starts as before; if its file can’t be fetched the tour ends and says so', async ({ page }) => {
+    await game(page);
+    const start = () => page.evaluate(() => { location.hash = '#/settings/play'; }).then(() => page.getByRole('button', { name: 'Show me around' }).click());
+    await start();
+    await expect(page.locator('.ag-tour, [data-testid="tour-card"]').first()).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.ag-tour, [data-testid="tour-card"]')).toHaveCount(0);
+    // a fresh page whose tour file never arrives (it is also fetched a few seconds after start: that fails too)
+    await page.route(/tutorial\/Tour/, (r) => r.abort());
+    await game(page);
+    await start();
+    await expect(tid(page, 'toast').filter({ hasText: 'The tour didn’t load' }).first()).toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.querySelectorAll('.ag-tour, [data-testid="tour-card"]').length)).toBe(0);
+    // the game is not left waiting on it: the tank bar answers
+    await tid(page, 'tank-open-card').click();
+    await expect(tid(page, 'tank-card')).toBeVisible();
+  });
+});
+
 test.describe('Friction fixes on a phone (390×844, touch)', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   suite(true);

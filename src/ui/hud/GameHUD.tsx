@@ -76,7 +76,42 @@ import { usePanelAsideRules } from '../panels/common/aside'; // chunk 19 (ADR-00
 import { FindAnything, useFindKeys } from '../search/FindAnything'; // chunk 19 (ADR-0055 decision 3, QOL-004)
 import { DecorCamPad, isDecorating } from './DecorCamPad'; // chunk 19 (ADR-0055 decision 4, QOL-005)
 import { UnlockHelpHost } from '../panels/common/UnlockHelp'; // chunk 19 (ADR-0055 decision 5, QOL-006): the one lock box
-import { Tour } from '../tutorial/Tour'; // chunk 19 (ADR-0055 decision 7, QOL-008)
+import { endTour, useTour } from '../tutorial/tourStore'; // chunk 19 (ADR-0055 decision 7, QOL-008)
+/**
+ * chunk 22 — the tour ("Show me around") is its own chunk: the friction fixes took the main chunk 1.65 kB over its
+ * limit (vite.config.ts; BACKLOG B-233 a), and the tour is code most sessions never run. It has no address and holds
+ * no panel open, so loading it late changes nothing else (its store, tourStore.ts, was already apart "so the starters
+ * don't load the tour"). Fetched when a tour starts or a few seconds after the HUD is up, as the welcome-back card is.
+ * If it can't be fetched the tour ends and says so, so nothing waits on a card that never comes.
+ */
+const loadTour = () => import('../tutorial/Tour');
+const Tour = lazy(() => loadTour().then((m) => ({ default: m.Tour })));
+export const TOUR_LOAD_FAILED = 'The tour didn’t load. Check your connection, then reload the game.';
+function TourFailed() {
+  useEffect(() => {
+    endTour();
+    useUI.getState().toast(TOUR_LOAD_FAILED, 'warning');
+  }, []);
+  return null;
+}
+function LazyTour() {
+  const running = useTour((s) => s.running);
+  const [mounted, setMounted] = useState(running);
+  useEffect(() => {
+    if (running) setMounted(true);
+  }, [running]);
+  useEffect(() => {
+    const t = window.setTimeout(() => void loadTour().catch(() => undefined), 9000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return mounted || running ? (
+    <ErrorBoundary name="tour chunk" fallback={running ? <TourFailed /> : null}>
+      <Suspense fallback={null}>
+        <Tour />
+      </Suspense>
+    </ErrorBoundary>
+  ) : null;
+}
 import { toggleWhatNext, whatNextReachable } from '../next/WhatNext'; // chunk 21 (C)
 
 const CALM_AFTER_MS = 6000;
@@ -483,7 +518,7 @@ export function GameHUD() {
         <UnlockHelpHost />
       </ErrorBoundary>
       <ErrorBoundary name="tour">
-        <Tour />
+        <LazyTour />
       </ErrorBoundary>
       <ErrorBoundary name="welcome">
         <LazyWelcomeBack />
