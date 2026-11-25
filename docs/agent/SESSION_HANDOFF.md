@@ -1,16 +1,16 @@
-# Session handoff: after chunk 21 (the Collection, reveals and "What next?": 0.11.0 on `next`, not released)
+# Session handoff: after chunk 21 (the Collection, reveals and "What next?": 0.11.0, released 2026-11-24)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
 
-## Chunk 21 (Chase): built on `next` as 0.11.0, waiting for the owner's go-ahead
+## Chunk 21 (Chase): released as 0.11.0 on 2026-11-24
 
 - **What** (PLAN.md chunk 21; ADR-0057 has the owner's words): the Collection (Encyclopedia › Collection), rare-hatch
   reveals and "What next?". The shared build hash changed (the optional `progress.discoveredAt`).
-- **Status:** chunk 21 is built and on `next` as 0.11.0; all four checks pass on the final code `b30cc49` (typecheck exit 0; 316 unit files, 4,849 tests; build exit 0; e2e 449 of 449). Not released: `main` and the live game are still 0.10.0 (`296291b`). The release waits for the owner's go-ahead.
-- **To release** (only with the owner's yes in the session): merge `next` onto a fresh `origin/main` in the internal
+- **Status:** chunk 21 is built and on `next` as 0.11.0; all four checks pass on the final code `b30cc49` (typecheck exit 0; 316 unit files, 4,849 tests; build exit 0; e2e 449 of 449). Released 2026-11-24 at the owner's go-ahead: `main` is `2510248`; Pages, the Render site and the shop server (build `c14ae6b5b2a29ebf`) all serve 0.11.0; the live shared smoke passed 27 of 27 (PLAN.md, "Releases").
+- **How it was released** (the routine for next time, only with the owner's yes in the session): merge `next` onto a fresh `origin/main` in the internal
   clone and push; watch the Pages run; `render deploys create srv-dbbt6gbncjis73c23br0 --commit <main sha> --confirm
   --wait -o text` (the shop server, same day: the builds must match), then the static site
   (`srv-dath0mfavr4c73dgk3j0`); check both `version.json` files and `/health`; `npx vite-node

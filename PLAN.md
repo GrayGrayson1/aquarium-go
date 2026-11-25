@@ -57,7 +57,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    spotlight and tour. **Done and released as 0.9.2** (2026-11-02; the owner approved the words and asked for the
    release: "Yeah go ahead and make sure this is on GitHub, everything's updated, and it's on Render"; "Releases").
    **Next:** B-231's small notes; B-228 to B-230.
-4. **Released:** 0.10.0 (chunk 20, the audit of 2026-11-17) on 2026-11-17; 0.9.2 (chunk 19, quality of life) on 2026-11-02; 0.9.1 (chunk 18, the owner's deletes) on 2026-11-01; 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+4. **Released:** 0.11.0 (chunk 21, the Collection, reveals and "What next?") on 2026-11-24; 0.10.0 (chunk 20, the audit of 2026-11-17) on 2026-11-17; 0.9.2 (chunk 19, quality of life) on 2026-11-02; 0.9.1 (chunk 18, the owner's deletes) on 2026-11-01; 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
 5. Every owner question is answered (ADR-0024 to ADR-0056) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
@@ -107,7 +107,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 19 | Quality of life: panels stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) | Done 2026-11-02 (released in 0.9.2). On `0cfb443`: typecheck, unit 4,214, build, e2e 381 of 381; the fresh review's ten blockers and the re-check's two fixed, its last re-check clean |
 | Audit | A full audit, with what it found fixed (the owner, 2026-11-11): B-210, B-165, B-181, B-183, B-125, parts of B-121, the shop server's meters, the Pages workflow, unused imports | Done 2026-11-11 in a cloud sandbox (typecheck, unit 4,269 on a stand-in toolchain; the fresh review's two blockers fixed); on the Mac on 2026-11-17 its branch passed typecheck, unit 281 files and 4,269 tests, and the build, and `next` was fast-forwarded to it. Released in 0.10.0 with chunk 20 |
 | 20 | The audit of 2026-11-17: a friendlier game with no dead ends (ADR-0056) | Done 2026-11-17 (released in 0.10.0; Chase, at the owner's request). 257 findings in ten areas fixed; the owner's ten answers built (AUD-001 to AUD-010). Its full run on `658f720`: typecheck, unit 4,761, build, e2e 414 of 415 (the one failure B-204's route walk in WebKit, 10 of 10 alone); `cf0f5cb` before it 415 of 415. Nine area reviews (6 blockers, fixed), three confirmation reviews (2 more, fixed) and a final review (no blockers; its four notes fixed) |
-| 21 | The Collection, rare-hatch reveals and "What next?" (ADR-0057) | Built 2026-11-24 on `next` as 0.11.0, not released (Chase, at the owner's request; three Opus 5.5 builders). All four checks pass on the final code `b30cc49`: typecheck exit 0, 316 unit files and 4,849 tests, build exit 0, e2e 449 of 449. A fresh review (one blocker, fixed) and a confirmation review (one blocker the fix caused, fixed) |
+| 21 | The Collection, rare-hatch reveals and "What next?" (ADR-0057) | Done 2026-11-24, released as 0.11.0 (Chase, at the owner's request; three Opus 5.5 builders). All four checks pass on the final code `b30cc49`: typecheck exit 0, 316 unit files and 4,849 tests, build exit 0, e2e 449 of 449. A fresh review (one blocker, fixed) and a confirmation review (one blocker the fix caused, fixed) |
 
 **Last full test runs:** chunk 20's final code `658f720`, the owner's Mac, 2026-11-17, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 311 files, 4,761 tests passed; build passed; e2e 414 of 415 in Chromium and
@@ -2317,6 +2317,14 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   latest commit"; run alone, in the background) went through this time (`dep-dbkh6lp5efls73d5kt40`, about 10 min, its
   tests first). All three read 0.9.2: both `version.json` files `{"id":"74c9302-…","version":"0.9.2"}`, the shop
   server's `/health` 0.9.2.
+- **0.11.0, released 2026-11-24** at the owner's go-ahead in the session ("Just go ahead and release it"). `next`
+  (`8f955e1`) merged onto `origin/main` in the internal clone as `2510248` and pushed; the Pages run 45550391828
+  passed and `version.json` reads `{"id":"2510248-…","version":"0.11.0"}`. The shared build changed (the new
+  optional `progress.discoveredAt`), so the shop server was deployed from `2510248` first (deploy
+  `dep-dc36m6gu01pc73dnha0g`; `/health` 0.11.0, build `c14ae6b5b2a29ebf`), then the Render site
+  (`dep-dc36mkvlot8c7398mlgg`; `version.json` 0.11.0). `npx vite-node scripts/shared-smoke.ts` against the live
+  server: 27 of 27. The words (`docs/agent/design/CHUNK-21/WORDS.md`) and the sixteen defaults (OWNER_QUESTIONS
+  group N) went out as built; the owner reads them after the release.
 - **0.10.0, released 2026-11-17** at the owner's go-ahead in the session ("You have my full permission to go ahead and
   find issues and just deploy fixes"; ADR-0056): chunk 20, the audit of 2026-11-17, with the audit of 2026-11-11
   merged into it. Step 1's "the owner has played it" waived by that request. The four checks on the final code
