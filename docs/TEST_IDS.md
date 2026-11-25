@@ -298,6 +298,7 @@ gone state (ADR-0019 decision 4). Shared links (`shareUrl`) never carry `?dev=1`
 | `#/encyclopedia` | Species list | `tab:species` |
 | `#/encyclopedia/science` *`/:articleId`* | Aquarium science (an article open) | `tab:science` / `science:<id>` |
 | `#/encyclopedia/:speciesId` | Species page | `species:<id>` |
+| `#/encyclopedia/collection` *`/:speciesId`* | Encyclopedia › Collection (chunk 21; a species' card open and in view; an unknown species opens the Collection with "There’s no card for that species") | `tab:collection` / `collection:<id>` |
 | `#/social` *`/clubs\|trading\|friends\|leaderboards`* | Social tabs (chunk 6; chunk 8: wherever Social exists, `socialAvailable()`: elsewhere a broken link) | `tab:overview\|clubs\|trading\|friends\|leaderboards` |
 | `#/social/join/:code` | Club invite (Clubs highlighted, as the screen phone-join) | `join:<code>` |
 | `#/settings` *`/play\|saves\|account\|notifications\|about`* | Settings tabs (URL word `play` = tab `display`; Notifications from chunk 3; Account from chunk 8, where Social exists) | `useShell.settingsTab` |
@@ -567,3 +568,35 @@ link.
 | `reload-confirm` · `reload-confirm-save` · `reload-confirm-anyway` | The box that asks before an in-app reload with Autosave off, its Save now and reload and its Reload anyway |
 | `error-boundary-reload-off` | The error screen's line that Autosave is off, so reloading loses play since the last save |
 | `param-help-<paramKey>` · `science-link-<articleId>` | A reading's plain-words gloss on the tank card's Water tab; a link to the Aquarium science article that explains a word (on the Water tab, beside compatibility, on an offer's genes and in a morph catalogue) |
+
+## Chunk 21, rare-hatch reveals (feature B; src/ui/reveal)
+
+| test id | element |
+|---|---|
+| `hatch-reveal` | The reveal card (a dialog over the game for a rare first in a brood: one card per brood or catch-up, with a pager) |
+| `hatch-reveal-name` | The animal's name on the open page (absent during the build-up) |
+| `hatch-reveal-pager` · `hatch-reveal-prev` · `hatch-reveal-next` | "1 of 3" and its Previous find / Next find buttons (shown with two finds or more; Left and Right turn it too) |
+| `hatch-reveal-see` | "See it": closes the card and opens the animal's card |
+| `hatch-reveal-collection` | "Open collection": closes the card and opens `#/encyclopedia/collection/{speciesId}` (the Collection, feature A) |
+| `notify-reveal-finds` | Settings › Notifications › In the game: the "Reveal rare finds" switch |
+
+## Chunk 21, "What next?" (feature C; src/ui/next)
+
+| test id | element |
+|---|---|
+| `hud-next` | The tank bar's "What next?" button (also the N key); `aria-expanded` while its sheet is open |
+| `next-sheet` · `next-close` | The "What next?" sheet (a dialog under the tank bar) and its Close |
+| `next-action-<n>` | An action in the sheet, best first (`next-action-0` is the big top one; at most four); `data-rule` is its rule (`danger`, `guide`, `empty`, `hungry`, `care`, `expiring`, `ready`, `unlock`, `quest`, `collect`) and `data-next-key` its key (`hungry:<tankId>`, `guide:<stepId>`, `collect` …) |
+| `next-calm` | "You’re all caught up…", when only the collection is left to suggest |
+
+## Chunk 21, the Collection (feature A; src/ui/panels/encyclopedia)
+
+| test id | element |
+|---|---|
+| `collection` · `collection-summary` · `collection-percent` | Encyclopedia › Collection (chunk 21): the view, its header and the overall percentage |
+| `collection-counting` | "Counting your collection…" while the morph catalogs are built in slices, the first time in a session (review S8) |
+| `collection-nearly` · `collection-tip-<pair\|species\|shop>` · `collection-recent` · `collection-recent-row` | "Nearly there" and a suggestion in it (by kind); "Recently found" and a row in it |
+| `collection-filter-<all\|in_progress\|complete\|not_started>` · `collection-env-<all\|freshwater\|marine\|brackish>` | The Collection's filters |
+| `collection-card-<speciesId>` (`data-status`, `data-found`) · `collection-toggle-<speciesId>` · `collection-body-<speciesId>` · `collection-species-<speciesId>` | A species' card, its header button (`aria-expanded`), its open part and its Open species page button |
+| `collection-missing` · `collection-seen` | In an open card: a morph still to find (a grey outline: its hint, tier and how to find it); a morph seen |
+| `enc-collection-link` · `enc-to-collection` | The Encyclopedia's subtitle link to the Collection ("12% collected", or "Your collection" until the found species' catalogs are built); a species page's link to its card |

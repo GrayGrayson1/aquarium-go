@@ -23,6 +23,7 @@ import { AttnDot, useTankAttentionLevel } from './AttnDot'; // lane:notify
 import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
 import { convertTempText } from '../common/format'; // Audit 2026-11-17 (J1)
 import { openPanel } from './Dock'; // Audit 2026-11-17 (G28 review)
+import { WhatNextButton } from '../next/WhatNext'; // chunk 21 (C)
 
 export function cycleTank(dir: 1 | -1) {
   const g = useGame.getState().game;
@@ -195,7 +196,7 @@ export function TankBar() {
               </span>
             )}
             {gallons > 0 && <span className="ag-switcher__gal"> · {gallons} gal</span>}
-            {n > 1 && <span className="ag-switcher__gal"> · {idx + 1}/{n}</span>}
+            {n > 1 && <span className="ag-switcher__gal ag-switcher__index"> · {idx + 1}/{n}</span>}
           </span>
         </div>
         <button type="button" className="ag-switcher__arrow" data-testid="tank-next" aria-label={arrowLabel(1)} title={arrowCue(1) ? arrowLabel(1) : undefined} disabled={n < 2} onClick={() => cycleTank(1)}>
@@ -230,6 +231,8 @@ export function TankBar() {
         {view === 'tank' ? <LayoutGrid size={16} aria-hidden /> : <Maximize2 size={16} aria-hidden />}
         <span className="ag-hudbtn__label">{view === 'tank' ? 'Room' : 'Tank'}</span>
       </button>
+      {/* chunk 21 (C) — "What next?": the most useful thing to do now, and where (src/ui/next) */}
+      <WhatNextButton />
     </div>
   );
 }

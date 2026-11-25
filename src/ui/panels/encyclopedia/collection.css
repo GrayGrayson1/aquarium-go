@@ -1,0 +1,73 @@
+/* chunk 21 — Encyclopedia › Collection (CollectionView.tsx): the header, suggestions, recent finds, filters and the species
+   cards. Built on the shared tokens; every size scales with --text-scale; reduced motion (the setting or the system's)
+   stills the transitions through panels.css' sheet-wide rules. */
+
+.ag-col { display: grid; gap: 22px; grid-template-columns: minmax(0, 1fr); }
+
+/* ── header ── */
+.ag-col-head { display: grid; gap: 12px; padding: 16px; border-radius: 18px; background: var(--pn-card); border: 1px solid var(--pn-card-line); min-width: 0; }
+.ag-col-head__top { display: flex; gap: 14px; align-items: center; min-width: 0; }
+.ag-col-head__pct { flex: none; font-family: var(--font-display); font-size: calc(38px * var(--text-scale)); font-weight: 560; line-height: 1; color: var(--c-aqua); font-variant-numeric: tabular-nums; }
+.ag-col-head__title { margin: 0; font-family: var(--font-display); font-size: calc(18px * var(--text-scale)); font-weight: 560; line-height: 1.2; }
+.ag-col-head__note { margin: 3px 0 0; color: var(--c-ink-3); font-size: calc(12px * var(--text-scale)); line-height: 1.45; }
+
+/* ── suggestions and recent finds: one tappable row each ── */
+.ag-col-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ag-col-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px 10px; border-radius: 14px; border: 1px solid var(--pn-card-line); background: var(--pn-card); color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; transition: background 0.2s var(--ease), border-color 0.2s; }
+.ag-col-row:hover { background: var(--pn-card-hover); border-color: var(--c-line-strong); }
+.ag-col-row:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
+.ag-col-row__main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ag-col-row__title { font-weight: 620; font-size: calc(13.5px * var(--text-scale)); line-height: 1.3; overflow-wrap: anywhere; }
+.ag-col-row__text { color: var(--c-ink-3); font-size: calc(12px * var(--text-scale)); line-height: 1.4; overflow-wrap: anywhere; }
+.ag-col-row__day { flex: none; color: var(--c-ink-3); font-size: calc(11.5px * var(--text-scale)); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ag-col-row__chev { flex: none; color: var(--c-ink-3); }
+.ag-col-empty { margin: 0; }
+
+/* a portrait in a row or a card head (hidden from screen readers: the words beside it say what it is) */
+.ag-col-pic { flex: none; display: inline-flex; }
+
+/* ── filters ── */
+.ag-col-filters { display: grid; gap: 8px; margin-bottom: 12px; }
+
+/* ── species cards ── */
+.ag-col-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+.ag-col-card { border-radius: 16px; border: 1px solid var(--pn-card-line); background: var(--pn-card); min-width: 0; }
+.ag-col-card.is-unknown { background: rgba(0, 0, 0, 0.2); }
+.ag-col-card.is-complete { border-color: rgba(74, 222, 128, 0.32); }
+.ag-col-card.is-open { border-color: var(--c-line-strong); }
+.ag-col-card__head { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 10px 12px; border: 0; border-radius: 16px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ag-col-card__head:hover { background: var(--pn-card-hover); }
+.ag-col-card__head:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: -2px; }
+.ag-col-card__main { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.ag-col-card__name { font-family: var(--font-display); font-size: calc(15.5px * var(--text-scale)); line-height: 1.2; overflow-wrap: anywhere; }
+.ag-col-card.is-unknown .ag-col-card__name { color: var(--c-ink-3); }
+.ag-col-card__meta { color: var(--c-ink-3); font-size: calc(12px * var(--text-scale)); line-height: 1.4; overflow-wrap: anywhere; }
+.ag-col-card__done { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--c-good); font-size: calc(11.5px * var(--text-scale)); font-weight: 650; white-space: nowrap; }
+.ag-col-card__chev { flex: none; color: var(--c-ink-3); transition: transform 0.2s var(--ease); }
+.ag-col-card.is-open .ag-col-card__chev { transform: rotate(180deg); }
+.ag-col-card__body { display: grid; gap: 14px; padding: 2px 14px 14px; min-width: 0; }
+.ag-col-card__body p { margin: 0; }
+
+/* the card's progress: a thin meter (its words are in the meta line) */
+.ag-col-meter { display: block; height: 5px; border-radius: 99px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.ag-col-meter__fill { display: block; height: 100%; min-width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--c-aqua-2), var(--c-aqua)); }
+.ag-col-card.is-complete .ag-col-meter__fill { background: linear-gradient(90deg, #22c55e, var(--c-good)); }
+
+.ag-col-sub { margin: 0 0 6px; font-size: calc(11px * var(--text-scale)); text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-ink-3); font-weight: 680; }
+
+/* missing morphs: grey outlines */
+.ag-col-morphs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ag-col-morph { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; min-width: 0; }
+.ag-col-morph.is-missing { border: 1px dashed var(--c-line-strong); color: var(--c-ink-3); }
+.ag-col-morph__main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ag-col-morph__name { font-size: calc(13px * var(--text-scale)); font-weight: 600; overflow-wrap: anywhere; }
+.ag-col-morph__how { font-size: calc(11.5px * var(--text-scale)); line-height: 1.4; }
+.ag-col-swatch { flex: none; width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
+.ag-col-swatch.is-missing { background: none; box-shadow: none; border: 1.5px dashed var(--c-ink-4); }
+
+/* seen morphs: colour chips */
+.ag-col-seen { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.ag-col-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 10px 3px 6px; border-radius: var(--r-pill); border: 1px solid var(--c-line); background: rgba(255, 255, 255, 0.05); color: var(--c-ink-2); font-size: calc(12px * var(--text-scale)); font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+
+/* the Encyclopedia's subtitle: the percentage, a link to the Collection from the other sections */
+.ag-linkbtn.ag-col-sublink { display: inline; padding: 0; font-size: inherit; vertical-align: baseline; }

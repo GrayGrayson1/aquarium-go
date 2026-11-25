@@ -108,6 +108,8 @@ export const NOT_FOUND = {
   pastCreature: { panel: 'livestock', target: 'tab:past', title: 'That animal isn’t in your aquarium', detail: 'Showing past residents instead.' },
   listing: { panel: 'market', target: 'tab:listings', title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' },
   species: { panel: 'encyclopedia', target: 'tab:species', title: 'There’s no page for that species', detail: 'Showing every species instead.' },
+  // chunk 21: a Collection card for a species the game doesn't know
+  collection: { panel: 'encyclopedia', target: 'tab:collection', title: 'There’s no card for that species', detail: 'Showing your collection instead.' },
   // DESIGN-S3D §6 (unknown id → not found), with the owner's words (ADR-0026 decision 9, INTAKE C-48)
   line: { panel: 'livestock', target: 'tab:production', title: 'This line isn’t here any more', detail: 'See your lines' },
 } as const satisfies Record<string, { panel: NavPanel; target: string | null; title: string; detail: string }>;
@@ -330,6 +332,7 @@ function applyInner(route: Route, filters: ShopFilters | undefined): void {
       }
       if (p === 'market' && target?.startsWith('listing:') && !g?.market.listings.some((l) => l.id === target.slice(8))) return notFound('listing');
       if (p === 'encyclopedia' && target?.startsWith('species:') && !findSpecies(target.slice(8))) return notFound('species');
+      if (p === 'encyclopedia' && target?.startsWith('collection:') && !findSpecies(target.slice(11))) return notFound('collection'); // chunk 21
       // lane:production (DESIGN-S3D §6, §8.6.1): an unknown line, or setting up a line with no free slot, is not found:
       // Livestock › Production opens with the line's not-found words (ADR-0019 decision 4: the nearest screen)
       if (p === 'livestock' && target?.startsWith('line:')) {

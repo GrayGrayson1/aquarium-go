@@ -15,6 +15,7 @@ import { useNotifyPrefs } from '../notify/prefs';
 import type { NotifyCategory } from '../notify/rules';
 import type { NotifyPermission } from '@/platform';
 import { useMedia, TOUCH_FIRST_QUERY } from '../common/safe'; // audit B14
+import { usePrefs } from '../common/prefs'; // chunk 21 (rare-hatch reveals)
 
 /** §12.3's callout per permission state (web). */
 export const NOTIFY_STATUS: Record<NotifyPermission, { title: string; text: string; tone: 'info' | 'good' | 'watch' | 'muted' }> = {
@@ -40,8 +41,12 @@ const STATUS_ICON: Record<NotifyPermission, typeof Bell> = { default: Bell, gran
 /** Audit B14 — under the status on a touch-first device (a phone or a tablet; review: it said “phone” on tablets too). */
 export const PHONE_NOTE = 'On a phone or tablet, the game pauses when you switch apps, so alerts show in the game.';
 
+/** Chunk 21 (rare-hatch reveals): the in-game card's switch, beside the notification settings. */
+export const REVEAL_SETTING = { title: 'Reveal rare finds', sub: 'Show a card when a Prismatic, a new named strain or a new legendary morph is born' } as const;
+
 export function NotificationsTab() {
   const permission = useNotifyPermission((s) => s.permission);
+  const revealFinds = usePrefs((s) => s.revealFinds !== false); // chunk 21
   const touch = useMedia(TOUCH_FIRST_QUERY);
   const prefs = useNotifyPrefs();
   const [sent, setSent] = useState(false);
@@ -132,6 +137,20 @@ export function NotificationsTab() {
             <div className="ag-notify-row__sub">Urgent animal care still comes through</div>
           </div>
           <Toggle label="Quiet hours, 10:00 PM to 8:00 AM" testId="notify-quiet" checked={prefs.quiet.on} onChange={(v) => prefs.setQuiet(v)} />
+        </div>
+      </Section>
+
+      {/* chunk 21 (rare-hatch reveals): in the game itself, so never locked by the browser's permission */}
+      <Section title="In the game">
+        <div className="ag-notify-row">
+          <span className="ag-notify-row__icon" aria-hidden>
+            <Sparkles size={16} />
+          </span>
+          <div className="ag-grow">
+            <div className="ag-notify-row__title">{REVEAL_SETTING.title}</div>
+            <div className="ag-notify-row__sub">{REVEAL_SETTING.sub}</div>
+          </div>
+          <Toggle label={REVEAL_SETTING.title} testId="notify-reveal-finds" checked={revealFinds} onChange={(v) => usePrefs.getState().update({ revealFinds: v })} />
         </div>
       </Section>
     </>

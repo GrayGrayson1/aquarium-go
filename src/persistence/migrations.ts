@@ -957,11 +957,44 @@ export function repairState(s: Json): string[] {
   renameLegacyMorphs(s);
   renameOverlays(s, repairs); // chunk 6, B-194
   backfillFinds(s as GameState); // lane:genetics — only fills lists a pre-0.4 save lacks; silent
+  repairDiscoveredAt(s, repairs); // chunk 21 (the Collection): its dates, when present (review N2: unknown keys kept)
   if (s.isShowcase === undefined) s.isShowcase = false;
   scrubNonFinite(s, repairs); // chunk 6 (PERSIST-004 A2): nothing unreadable is left anywhere
   // Keep the id counter ahead of every id we know about so new ids never collide after a repair.
   s.idCounter = Math.max(s.idCounter, maxIdSuffix(s));
   return repairs;
+}
+
+/** chunk 21 — far more dates than every species, morph and strain together (about 2,400): a save past it is trimmed. */
+const MAX_DISCOVERED_AT = 30_000;
+
+/**
+ * chunk 21 (the Collection) — `progress.discoveredAt` is optional: absent, nothing happens (the stateHash of a save
+ * without it is unchanged). Present, it must be a record; a date is kept when its key is a usable key and its value a
+ * finite number, whatever the key names (review N2: a newer build may date a kind of find this one doesn't know, and
+ * a save from a newer build must never lose anything; the Collection reads only dates of finds in its lists). Beyond
+ * MAX_DISCOVERED_AT dates the oldest written are kept. Anything else is removed with a note.
+ */
+function repairDiscoveredAt(s: Json, repairs: string[]): void {
+  const p = s.progress;
+  if (!isObj(p) || p.discoveredAt === undefined) return;
+  if (!isObj(p.discoveredAt)) {
+    repairs.push('progress.discoveredAt: unreadable, removed');
+    delete p.discoveredAt;
+    return;
+  }
+  const at = p.discoveredAt as Record<string, unknown>;
+  const keep = (k: string) => isSafeKey(k) && typeof at[k] === 'number' && Number.isFinite(at[k]);
+  const keys = Object.keys(at);
+  const good = keys.filter(keep);
+  const bad = keys.length - good.length;
+  const over = Math.max(0, good.length - MAX_DISCOVERED_AT);
+  if (!bad && !over) return;
+  const kept: Record<string, number> = {};
+  for (const k of good.slice(0, MAX_DISCOVERED_AT)) kept[k] = at[k] as number;
+  p.discoveredAt = kept;
+  if (bad) repairs.push(`progress.discoveredAt: ${bad} unreadable ${bad === 1 ? 'date' : 'dates'} removed`);
+  if (over) repairs.push(`progress.discoveredAt: ${over} beyond ${MAX_DISCOVERED_AT} removed`);
 }
 
 /** A well-formed id, as text for a repair note. */

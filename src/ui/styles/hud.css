@@ -144,6 +144,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-switcher__buy { padding: 0; border: 0; background: none; font: inherit; color: var(--c-aqua); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .ag-switcher__buy:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; border-radius: 4px; }
 .ag-switcher__status { display: inline-flex; align-items: center; gap: 5px; font-size: calc(11.5px * var(--text-scale)); font-weight: 620; white-space: nowrap; }
+.ag-switcher__status > svg { flex: none; } /* chunk 21 review B1: the status icon never shrinks away (the shape cue for Watch and Danger) */
 .ag-switcher__status.is-good { color: var(--c-good); }
 .ag-switcher__status.is-watch { color: var(--c-watch); }
 .ag-switcher__status.is-danger { color: var(--c-danger); }
@@ -569,9 +570,24 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-switcher__food.is-out { color: var(--c-danger); }
 .ag-toast.is-leaving { pointer-events: none; }
 @media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
-  /* phones: the food chip replaces the gallons so the status line never runs out of the switcher */
+  /* phones: the food chip replaces the gallons so the status line never runs out of the switcher (chunk 21 review B1:
+     with one tank too; the "2/3" index stays, marked as such since it used to be told apart only by being last) */
   .ag-switcher__status { min-width: 0; overflow: hidden; }
-  .ag-switcher__status:has(.ag-switcher__food) .ag-switcher__gal:not(:last-child) { display: none; }
+  .ag-switcher__status:has(.ag-switcher__food) .ag-switcher__gal:not(.ag-switcher__index) { display: none; }
+}
+/* chunk 21 review B1 — phones: the status line keeps its icon and every word (its status, the food or gear chip and the
+   "2/3" index) at 360 px with the largest text, now that "What next?" has left the bar on a phone held upright: the
+   icon keeps 4 px to the word and each " · …" part 2.5 px before its dot (a margin: the part's own leading space
+   collapses, as a flex item's does, and a narrow no-break space draws only 1 px in WebKit; the confirmation review, F2),
+   instead of the 5 px gaps, and the bar's padding is a little tighter */
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
+  .ag-switcher__status { gap: 0; }
+  .ag-switcher__status > svg { margin-right: 4px; }
+  .ag-switcher__status > span { margin-left: 2.5px; }
+  .ag-tankbar { gap: 4px; }
+  .ag-tankbar .ag-hudbtn { padding: 0 9px; }
+  .ag-switcher { padding: 0 2px; }
+  .ag-switcher__label { padding: 0 3px; }
 }
 .ag-alert-split { display: flex; align-items: stretch; gap: 6px; }
 .ag-alert-split > .ag-alert-row { flex: 1; min-width: 0; }

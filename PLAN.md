@@ -75,6 +75,11 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    again. **Next:** a problem the owner reports; a line of `docs/agent/design/CHUNK-20/WORDS.md` he wants changed
    (every new or changed line is there); his answers to group M; BACKLOG B-232 (what the round left open).
    `docs/agent/SESSION_HANDOFF.md` has the order of work.
+8. **Chunk 21 is built on `next` as 0.11.0 and waits for the owner's go-ahead to release** (ADR-0057): the
+   Collection, rare-hatch reveals and "What next?". **Next:** his go-ahead for `main` (the shared build changed, so
+   Pages and the shop server go together, then the Render site and the shared smoke); his reading of
+   `docs/agent/design/CHUNK-21/WORDS.md` and of OWNER_QUESTIONS group N (sixteen defaults); `docs/agent/IDEAS.md`
+   has the ideas kept for later.
 
 ## Status
 
@@ -102,6 +107,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 19 | Quality of life: panels stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) | Done 2026-11-02 (released in 0.9.2). On `0cfb443`: typecheck, unit 4,214, build, e2e 381 of 381; the fresh review's ten blockers and the re-check's two fixed, its last re-check clean |
 | Audit | A full audit, with what it found fixed (the owner, 2026-11-11): B-210, B-165, B-181, B-183, B-125, parts of B-121, the shop server's meters, the Pages workflow, unused imports | Done 2026-11-11 in a cloud sandbox (typecheck, unit 4,269 on a stand-in toolchain; the fresh review's two blockers fixed); on the Mac on 2026-11-17 its branch passed typecheck, unit 281 files and 4,269 tests, and the build, and `next` was fast-forwarded to it. Released in 0.10.0 with chunk 20 |
 | 20 | The audit of 2026-11-17: a friendlier game with no dead ends (ADR-0056) | Done 2026-11-17 (released in 0.10.0; Chase, at the owner's request). 257 findings in ten areas fixed; the owner's ten answers built (AUD-001 to AUD-010). Its full run on `658f720`: typecheck, unit 4,761, build, e2e 414 of 415 (the one failure B-204's route walk in WebKit, 10 of 10 alone); `cf0f5cb` before it 415 of 415. Nine area reviews (6 blockers, fixed), three confirmation reviews (2 more, fixed) and a final review (no blockers; its four notes fixed) |
+| 21 | The Collection, rare-hatch reveals and "What next?" (ADR-0057) | Built 2026-11-24 on `next` as 0.11.0, not released (Chase, at the owner's request; three Opus 5.5 builders). All four checks pass on the final code `b30cc49`: typecheck exit 0, 316 unit files and 4,849 tests, build exit 0, e2e 449 of 449. A fresh review (one blocker, fixed) and a confirmation review (one blocker the fix caused, fixed) |
 
 **Last full test runs:** chunk 20's final code `658f720`, the owner's Mac, 2026-11-17, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 311 files, 4,761 tests passed; build passed; e2e 414 of 415 in Chromium and
@@ -2053,6 +2059,41 @@ sweep's last review fixes and the production lines' last ones): all four green, 
 of 415 (57.4 minutes: a new phone-footer case that measured too early, fixed, and WebKit's perf test at a load
 average over 100). The passes before those ran while nine fixers were testing at once and are not counted.
 
+### 21. The Collection, rare-hatch reveals and "What next?" (ADR-0057) — built 2026-11-24 (Chase); 0.11.0 on `next`
+
+The owner, 2026-11-24 (in full in ADR-0057), chose three of the ideas offered after 0.10.0: "get it all built out",
+and the rest "in some kind of documents that we can look at later" (`docs/agent/IDEAS.md`).
+
+- *How it ran.* Three builders (Opus 5.5, extra-high effort), one feature each in its own worktree under
+  `/Volumes/Dev/Projects/AquariumGo-wt/` (`c21-dex`, `c21-reveal`, `c21-next`; branches `feat/*`), from one brief
+  (`/Volumes/Dev/Projects/AquariumGo-chunk21/BRIEF.md`, with their reports, the reviews and the logs). The lead
+  merged, ran the checks, and resumed each builder with what the checks and the reviews found.
+- *The Collection* (COL-001): Encyclopedia › Collection, `#/encyclopedia/collection[/{speciesId}]`. A percentage
+  (every species equal: half for finding it, half for its morphs), a card per species with its missing morphs as
+  grey outlines, each with its tier and a "how to find it" line that never names an unseen trait, "Nearly there" and
+  "Recently found". New optional save field `progress.discoveredAt` (validated in `repairState`, absent leaves
+  `stateHash` unchanged, unknown keys kept, no `SCHEMA_VERSION` bump, no new draws). The morph catalogs are built in
+  slices (`warmCatalog` in `src/sim/life/morphCatalog.ts`; the time budget is in the UI's `catalogWarmup.ts`).
+- *Rare-hatch reveals* (REV-001): `src/ui/reveal`. A Prismatic animal and the first of a named strain always; a new
+  morph alone only at legendary, once a species a game day. Read in the UI from the existing celebrate events and
+  the discovery lists: no sim, type or save change. A switch in Settings › Notifications.
+- *"What next?"* (NXT-001): `src/ui/next`. A pure ranking (`nextBestActions`) over the game's existing rules and a
+  button in the tank bar (floating at the right edge on an upright phone), with the N key. Its sheet and the
+  welcome-back card load lazily, which keeps the main chunk under its limit (3,994.92 kB of 4,000).
+- *The shared build hash changes* (`src/types`, `src/sim`): Pages and the shop server go out together.
+- *What the checks and reviews found.* The builders could not run e2e while building: four new cases failed on the
+  merged code (a scenario recipe without its version, a test game that really had two things to do, and one real
+  bug: a page fading out still answered to the reveal's test id). The first full run found a real defect at every
+  viewport: opening a Collection card by address scrolled the sheet itself and pushed its Close button off screen.
+  The fresh review's blocker: on a phone the new button cut the tank's status line; and the reveal fired after about
+  two broods in three (now about one in eight for bettas, one in forty for guppies and platies). The confirmation
+  review's blocker, caused by the fix: the floating button's sheet was drawn under the toasts and the guide card.
+  All fixed, each with a test shown to fail without the fix.
+- *Left open:* BACKLOG B-233; OWNER_QUESTIONS group N (sixteen defaults the owner can change); every line of text in
+  `docs/agent/design/CHUNK-21/WORDS.md`.
+
+**Checks.** From `~/LocalTest/AquariumGo` under `caffeinate -i -s`. First merge `ff52709`: typecheck exit 0, unit 315 files and 4,830 tests, build exit 0, e2e 419 passed and 14 failed (all in `viewports.spec.ts`: the Collection card opened by address pushed the panel's Close button off screen; fixed with `scrollInPanel`). After the review's fixes and the release step, `5ba0fba`: typecheck exit 0, 316 files and 4,849 tests, build exit 0, e2e 441 of 441 (54.4 min). Final code `b30cc49`, after the confirmation review's fixes: `npm run typecheck` exit 0; `npm test` 316 files passed, 4,849 tests passed; `npm run build` exit 0; `npm run e2e` 449 passed (54.9 min), none failed, none flaky.
+
 ### Audit, 2026-11-11 (Cowork, a cloud sandbox) — merged on 2026-11-17 and released in 0.10.0 with chunk 20
 
 The owner, 2026-11-11: "Do a full audit on Aquarium Go and upgrade everything that you can find. Just do an audit,
@@ -2276,6 +2317,24 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   latest commit"; run alone, in the background) went through this time (`dep-dbkh6lp5efls73d5kt40`, about 10 min, its
   tests first). All three read 0.9.2: both `version.json` files `{"id":"74c9302-…","version":"0.9.2"}`, the shop
   server's `/health` 0.9.2.
+- **0.10.0, released 2026-11-17** at the owner's go-ahead in the session ("You have my full permission to go ahead and
+  find issues and just deploy fixes"; ADR-0056): chunk 20, the audit of 2026-11-17, with the audit of 2026-11-11
+  merged into it. Step 1's "the owner has played it" waived by that request. The four checks on the final code
+  `658f720`: typecheck, unit 311 files and 4,761 tests, build, e2e 414 of 415 (the one failure B-204's route walk in
+  WebKit, 10 of 10 alone in each browser; chunk 20's "Checks" has the passes before it, `cf0f5cb` 415 of 415); the
+  release commit `de56552` (docs only on top of it) passed typecheck, unit 4,761 and the build. `next` pushed from
+  the internal clone (`582e640..de56552`), then merged there onto a fresh `origin/main` as `296291b` (its tree
+  `de56552`'s) and pushed. Pages run `44237212964` deployed it (its typecheck and unit tests first);
+  `version.json` reads `{"id":"296291b-…","version":"0.10.0"}`. **Finished on 2026-11-23** (the owner: "just get it
+  all done you have my permission"; he approved the Render CLI's new sign-in and pressed Restore on the paused
+  Supabase project in his browser, which the session could not do): the project came back `ACTIVE_HEALTHY`; the shop
+  server was deployed from `296291b` (deploy `dep-dc27sl5g1s2s73dkpj5g`; `/health` 0.10.0, build
+  `58ab849c3ef33fc2`, on the database), then the Render static site (deploy `dep-dc27t62jnfac73f1mulg`;
+  `version.json` `296291b`, 0.10.0). `npx vite-node scripts/shared-smoke.ts` from the internal clone at `296291b`: 27
+  of 27 checks passed. The keep-awake job, started by hand (run `45233981416`), passed (its scheduled run of
+  2026-11-19 had failed while the project was paused, as designed). Between 2026-11-17 and 2026-11-23 Pages was on
+  0.10.0 with the shop server on 0.9.2 and the project paused: nobody could sign in or open a shared shop.
+  `scripts/online-smoke.mjs` did not run: it still needs its own sign-up club (B-229).
 
 ## Product decisions in force
 

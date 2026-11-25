@@ -7,7 +7,7 @@
  */
 import type { BuyerArchetype, BuyerProfile, Creature, GameEvent, GameState, LedgerEntry, Listing, PersonalityTag, ShopOffer, VisitorReaction } from '@/types';
 import { newGame, previewStarters } from '@/sim/newGame';
-import { createCreature, addCreature } from '@/sim/life';
+import { createCreature, addCreature, stampDiscovery } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { nextId } from '@/sim/ids';
 import { refreshTankCache } from '@/sim/world';
@@ -343,7 +343,11 @@ export function buildPanelsFixture(opts: { paused?: boolean } = {}): GameState {
     { id: 'q_feed_routine', status: 'active', progress: 0.6, startedHour: now - 40 },
     { id: 'q_beauty_70', status: 'active', progress: 0.82, startedHour: now - 30 },
   ];
-  for (const id of ['betta', 'ocellaris_clownfish', 'axolotl', 'cherry_shrimp', 'mystery_snail', 'pea_puffer', 'lined_seahorse']) if (findSpecies(id) && !p.discoveredSpecies.includes(id)) p.discoveredSpecies.push(id);
+  for (const id of ['betta', 'ocellaris_clownfish', 'axolotl', 'cherry_shrimp', 'mystery_snail', 'pea_puffer', 'lined_seahorse'])
+    if (findSpecies(id) && !p.discoveredSpecies.includes(id)) {
+      p.discoveredSpecies.push(id);
+      stampDiscovery(g, id); // chunk 21: dated for the Collection
+    }
 
   // Log.
   const ev = (hAgo: number, kind: GameEvent['kind'], text: string, extra: Partial<GameEvent> = {}) => g.log.push({ id: nextId(g, 'ev'), hour: now - hAgo, kind, text, ...extra });

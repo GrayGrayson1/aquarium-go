@@ -846,6 +846,14 @@ export interface ProgressState {
   discoveredStrains?: string[];
   /** lane:genetics — every Prismatic animal the player has owned, in the order found. Absent in pre-0.4 saves (backfilled). */
   prismaticFinds?: PrismaticFind[];
+  /**
+   * chunk 21 (the Collection) — the whole game hour each discovery was first recorded, keyed as in the lists above: a
+   * species id, `${speciesId}:${morphName}` or `${speciesId}:${strainId}`. Written beside every list push (buying,
+   * breeding, the starter, dev fixtures); a key is never re-stamped. Absent in older saves, whose discoveries simply
+   * have no date. repairState keeps every usable key with a finite hour (a newer build may date other finds); the
+   * Collection reads only keys in the lists. A migration that renames a morph should move its date to the new key.
+   */
+  discoveredAt?: Record<string, number>;
   /** lane:facility — incremental scan cursors so progression can react to log/market/breeding events. */
   scan?: {
     logSeq: number;

@@ -3,11 +3,23 @@
  *
  * Recorded beside the existing morph discovery (buying, breeding, the starter). Idempotent, and it emits nothing:
  * callers fold anything new into the messages they already send, so a find never adds log noise or shifts event ids.
+ * Chunk 21: each first find is dated in `progress.discoveredAt` (stampDiscovery); no RNG, no event.
  */
 import type { Creature, GameState, MorphStrain } from '@/types';
 import { findSpecies } from '@/data/species';
 import { strainsOf } from './morphCatalog';
 import { isPrismatic } from './rareVariants';
+
+/**
+ * chunk 21 (the Collection) — date a discovery: the whole game hour `key` (a species id, `${speciesId}:${morphName}` or
+ * `${speciesId}:${strainId}`, as in the progress lists) was first recorded. A key already dated keeps its date. Call it
+ * wherever a key is pushed onto one of the lists. Pure bookkeeping: no RNG draw, no event.
+ */
+export function stampDiscovery(state: GameState, key: string): void {
+  if (!key || key in Object.prototype) return; // never a name every object inherits ("__proto__", "constructor")
+  const at = (state.progress.discoveredAt ??= {});
+  if (!Object.hasOwn(at, key)) at[key] = Math.floor(state.clock.hour);
+}
 
 export interface NewFinds {
   /** Strains discovered for the first time by this animal. */
@@ -29,6 +41,7 @@ export function recordFinds(state: GameState, c: Creature): NewFinds {
       const key = `${sp.id}:${s.id}`;
       if (known.includes(key)) continue;
       known.push(key);
+      stampDiscovery(state, key); // chunk 21
       out.strains.push(s);
     }
   }

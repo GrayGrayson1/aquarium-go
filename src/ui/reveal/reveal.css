@@ -1,0 +1,49 @@
+/* Chunk 21, feature B: the rare-hatch reveal card (src/ui/reveal/RevealCard.tsx). OWNER: lane "reveal".
+   Slow, soft motion only (no strobing); none at all under reduced motion. Text follows --text-scale. */
+.ag-hatch { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding-bottom: 2px; }
+.ag-hatch__title { display: inline-flex; align-items: center; gap: 8px; }
+.ag-hatch__title > svg { flex: none; color: var(--c-gold); }
+.ag-hatch__live { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.ag-hatch__page { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+.ag-hatch__stage { position: relative; display: grid; place-items: center; width: 148px; height: 148px; margin: 6px auto 4px; }
+.ag-hatch__stage::before { content: ''; position: absolute; inset: -14px; border-radius: 50%; background: radial-gradient(circle, rgba(245, 196, 81, 0.22), rgba(182, 156, 255, 0.12) 45%, transparent 70%); pointer-events: none; }
+.ag-hatch__portrait { position: relative; width: 132px; height: 132px; box-shadow: 0 0 0 2px rgba(245, 196, 81, 0.55), 0 0 32px rgba(245, 196, 81, 0.28); }
+.ag-hatch__orb { position: relative; width: 112px; height: 112px; border-radius: 50%; background: radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.92), rgba(245, 196, 81, 0.6) 30%, rgba(94, 234, 212, 0.32) 55%, rgba(182, 156, 255, 0.12) 70%, transparent 74%); animation: ag-hatch-pulse 1.3s var(--ease) infinite; }
+@keyframes ag-hatch-pulse {
+  0%, 100% { transform: scale(0.84); opacity: 0.72; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+.ag-hatch__name { margin: 2px 0 0; font-family: var(--font-display); font-size: calc(26px * var(--text-scale)); font-weight: 480; line-height: 1.1; color: var(--c-ink); overflow-wrap: anywhere; }
+.ag-hatch__morph { font-size: calc(13px * var(--text-scale)); color: var(--c-ink-2); overflow-wrap: anywhere; }
+.ag-hatch__chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 4px 0 2px; }
+.ag-hatch__why { margin: 0; max-width: 34ch; font-size: calc(12.5px * var(--text-scale)); line-height: 1.45; color: var(--c-ink-2); }
+.ag-hatch__foot { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; margin-top: 6px; }
+.ag-hatch__pager { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.ag-hatch__pager .ag-iconbtn[aria-disabled='true'] { opacity: 0.4; cursor: default; }
+.ag-hatch__count { min-width: 5ch; font-size: calc(12.5px * var(--text-scale)); font-weight: 620; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
+.ag-hatch__actions { justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; width: 100%; }
+.ag-hatch__actions .ag-btn { flex: 1 1 140px; }
+
+/* A phone held sideways (about 390 px tall): a wider card, the picture beside the words and the pager beside the
+   buttons, so it fits without scrolling (the Modal sets its width inline, hence !important) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .ag-modal-wrap:has(.ag-hatch) { width: min(600px, 100%) !important; }
+  .ag-hatch__foot { flex-direction: row; justify-content: center; flex-wrap: wrap; }
+  .ag-hatch__foot .ag-hatch__actions { width: auto; flex: 1 1 260px; margin-top: 0; }
+  .ag-hatch__page { display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'pic name' 'pic morph' 'pic chips' 'pic why'; column-gap: 16px; row-gap: 2px; text-align: left; align-items: start; }
+  .ag-hatch__page > .ag-hatch__stage { grid-area: pic; width: 104px; height: 104px; margin: 0; }
+  .ag-hatch__page .ag-hatch__portrait { width: 96px; height: 96px; }
+  .ag-hatch__page > .ag-hatch__name { grid-area: name; }
+  .ag-hatch__page > .ag-hatch__morph { grid-area: morph; }
+  .ag-hatch__page > .ag-hatch__chips { grid-area: chips; justify-content: flex-start; }
+  .ag-hatch__page > .ag-hatch__why { grid-area: why; max-width: none; }
+  .ag-hatch__page > .ag-hatch__why ~ .ag-hatch__why { grid-area: auto; grid-column: 2; }
+  .ag-hatch > .ag-hatch__live > .ag-hatch__stage { width: 104px; height: 104px; margin: 0 auto; }
+  .ag-hatch__orb { width: 84px; height: 84px; }
+  .ag-hatch__name { font-size: calc(22px * var(--text-scale)); }
+}
+
+:root[data-reduced-motion='true'] .ag-hatch__orb { animation: none; transform: none; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .ag-hatch__orb { animation: none; transform: none; opacity: 1; }
+}

@@ -45,7 +45,30 @@ import { CreatureCard } from '../cards/CreatureCard';
 import { TankCard } from '../cards/TankCard';
 import { TutorialCoach } from '../tutorial/TutorialCoach';
 import { PartyBanner } from '../photo/PartyBanner';
-import { WelcomeBack } from './WelcomeBack';
+/**
+ * chunk 21 (the confirmation review, F3) — the welcome-back card is its own chunk: it shows only after an absence, and
+ * the main chunk was over its size warning. It is fetched when a summary arrives (the catch-up holds the clock until
+ * the card is closed, in persistence, so a moment's load changes nothing) or a few seconds after the HUD is up, and
+ * kept mounted once shown, as photo mode is, so its exit animation plays.
+ */
+const loadWelcome = () => import('./WelcomeBack');
+const WelcomeBack = lazy(() => loadWelcome().then((m) => ({ default: m.WelcomeBack })));
+function LazyWelcomeBack() {
+  const wanted = useResume((s) => !!s.summary);
+  const [mounted, setMounted] = useState(wanted);
+  useEffect(() => {
+    if (wanted) setMounted(true);
+  }, [wanted]);
+  useEffect(() => {
+    const t = window.setTimeout(() => void loadWelcome().catch(() => undefined), 8000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return mounted || wanted ? (
+    <Suspense fallback={null}>
+      <WelcomeBack />
+    </Suspense>
+  ) : null;
+}
 import { usePrefs } from '../common/prefs';
 import { enterCinematic, useCardDockRules, useDockedCard } from './cardDock';
 import { useFocusedTankGuard } from './tankGuard';
@@ -54,6 +77,7 @@ import { FindAnything, useFindKeys } from '../search/FindAnything'; // chunk 19 
 import { DecorCamPad, isDecorating } from './DecorCamPad'; // chunk 19 (ADR-0055 decision 4, QOL-005)
 import { UnlockHelpHost } from '../panels/common/UnlockHelp'; // chunk 19 (ADR-0055 decision 5, QOL-006): the one lock box
 import { Tour } from '../tutorial/Tour'; // chunk 19 (ADR-0055 decision 7, QOL-008)
+import { toggleWhatNext, whatNextReachable } from '../next/WhatNext'; // chunk 21 (C)
 
 const CALM_AFTER_MS = 6000;
 /** How long after a waking touch its click counts as part of the wake. */
@@ -193,7 +217,7 @@ export function sheetScroller(t: HTMLElement): HTMLElement | null {
   return root.querySelector<HTMLElement>('.pn-body, .ag-sheet__body, .ag-alerts-pop__body');
 }
 
-/** Keyboard: Space pause · 1/2/3 speed · F feed · T tank card · V view · [ ] tanks · H watch · P photo · Esc back out. */
+/** Keyboard: Space pause · 1/2/3 speed · F feed · T tank card · V view · [ ] tanks · H watch · P photo · N what next · Esc back out. */
 function useHudKeys() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -257,6 +281,12 @@ function useHudKeys() {
         case 'H':
           sfx('close');
           enterCinematic('watch');
+          break;
+        case 'n':
+        case 'N':
+          // chunk 21 (C) — "What next?", while its button is on screen (a phone's full panel hides the tank bar)
+          if (!whatNextReachable()) return;
+          toggleWhatNext();
           break;
         case 'p':
         case 'P':
@@ -456,7 +486,7 @@ export function GameHUD() {
         <Tour />
       </ErrorBoundary>
       <ErrorBoundary name="welcome">
-        <WelcomeBack />
+        <LazyWelcomeBack />
       </ErrorBoundary>
     </>
   );

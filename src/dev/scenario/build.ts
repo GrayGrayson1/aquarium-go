@@ -210,6 +210,7 @@ class Builder {
     p.discoveredMorphs = [];
     p.discoveredStrains = [];
     p.prismaticFinds = [];
+    delete p.discoveredAt; // chunk 21: the starter's dates go with its discoveries (registerDiscovery dates the recipe's)
     p.achievements = [];
     touchResidents();
     return g;

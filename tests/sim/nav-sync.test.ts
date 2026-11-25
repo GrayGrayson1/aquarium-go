@@ -197,6 +197,14 @@ describe('nav-sync: address → stores (NAV-010)', () => {
     expect(toastTitle()).toMatchObject({ text: 'This line isn’t here any more', detail: 'See your lines' });
   });
 
+  it('chunk 21: a Collection card opens by its address; an unknown species opens the Collection with its message', () => {
+    R.applyRoute({ kind: 'panel', panel: 'encyclopedia', tab: 'collection', target: 'collection:betta' });
+    expect(useUI.getState()).toMatchObject({ panel: 'encyclopedia', panelTarget: 'collection:betta' });
+    R.applyRoute({ kind: 'panel', panel: 'encyclopedia', tab: 'collection', target: 'collection:dragon' });
+    expect(useUI.getState()).toMatchObject({ panel: 'encyclopedia', panelTarget: 'tab:collection' });
+    expect(useUI.getState().toasts.at(-1)).toMatchObject({ text: 'There’s no card for that species', detail: 'Showing your collection instead.' });
+  });
+
   it('an unknown address opens the tank view with the broken-link toast and no extra entry', async () => {
     useUI.getState().set({ panel: 'build' });
     await flush();

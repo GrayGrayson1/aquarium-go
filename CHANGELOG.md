@@ -4,6 +4,28 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.11.0 — 2026-11-24
+
+Three things to make the game more fun to come back to (the owner's request, ADR-0057). Every new line of text is
+listed in `docs/agent/design/CHUNK-21/WORDS.md`.
+
+- **The Collection.** A new Encyclopedia tab shows your whole collection and its holes: a percentage, a card for
+  every species (an outline until you find it), the morphs you have seen and the ones still missing as grey outlines
+  with their rarity and an honest line on how to find each (it never names a trait you haven't seen). "Nearly there"
+  suggests what is closest, including a morph one of your bonded pairs could produce, and "Recently found" lists your
+  latest finds with their day (finds from before this version have no date).
+- **A reveal when something rare is born.** A Prismatic animal, the first of a named strain, or the first of a
+  legendary morph (at most one such morph a species a game day) opens a card over the game: a short build-up, the
+  animal, why it is a find, and buttons to see it or open its Collection card. Several finds in one brood share one
+  card. It waits for other dialogs, the guide, typing and a hidden tab, respects reduced motion, and has a switch in
+  Settings › Notifications ("Reveal rare finds"). The toast and the log line stay.
+- **"What next?"** A button (in the tank bar; on an upright phone at the right edge; the N key) that names the most
+  useful thing to do now and takes you there: a tank in danger first, then the guide's step, hungry animals, other
+  care, things that won't wait, things to collect or decide, an affordable move or research, a quest half done, and
+  last the collection. It never suggests what you can't do or can't afford.
+- For shared shops: the simulation's shared build changed (the new, optional discovery dates), so the game and the
+  shop server go out together.
+
 ## 0.10.0 — 2026-11-17
 
 A full audit of the game for logic errors and for anything that left a player stuck, lost or guessing: ten auditors

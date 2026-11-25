@@ -259,17 +259,14 @@ describe('§16 Notifications (DES-009; ADR-0022 decision 4)', () => {
 // The audit of 2026-11-17 (B17, J12; ADR-0056 decision 2) changed this on purpose: 0.9.2 still listed 0.5's seven
 // lines under "What’s new in 0.5". The section names the release it describes, and that release is the one on the
 // title screen (the same major.minor as package.json), so it can't go stale unnoticed again.
+// Chunk 21 (0.11.0): the three lines are this release's (ADR-0057).
 describe('§16 Settings › About: What’s new', () => {
   it('lists this release’s changes, one short line each, under this release’s number', async () => {
     const { WHATS_NEW, WHATS_NEW_VERSION } = await import('@/ui/settings/SettingsPanel');
     expect([...WHATS_NEW]).toEqual([
-      'Your first companion never dies of old age',
-      'A little food from the club if you run out of food and money',
-      'Move a whole group of animals at once',
-      'Sell spare equipment, and take down a tank you don’t need',
-      'Production lines sell by themselves, and keepers feed fry',
-      'Shop offers wait while you’re looking',
-      'Clearer advice everywhere: what’s wrong, why, and what to do',
+      'The Collection: see every animal and morph you have found, and what is still missing',
+      'A reveal when something rare is born',
+      '“What next?” names the most useful thing to do and takes you there',
     ]);
     const { readFileSync } = await import('node:fs');
     const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string };

@@ -14,7 +14,7 @@ import { morphCatalog, seenTraitIds, strainTier, oneInLabel, prismaticChance, ty
 import { Chip, SectionHead } from '../common/parts';
 import { RARITY_LABEL, RARITY_TONE, plural } from '../common/format';
 import { NEW_LOCI } from '../market/offerGenetics'; // lane:genetics (0.5)
-import { discoveredMorphNames } from './morphs';
+import { discoveredMorphNames, catalogHint, ruleName } from './morphs';
 import { ScienceLink } from '@/ui/common/ScienceLink'; // Audit 2026-11-17 (J5)
 
 const ORIGIN_LABEL: Record<PrismaticFind['origin'], string> = { shop: 'bought', bred: 'bred from a Prismatic parent', spontaneous: 'bred in your shop' };
@@ -79,10 +79,6 @@ export function GenesLine({ sp }: { sp: SpeciesDefinition }) {
   );
 }
 
-function ruleName(sp: SpeciesDefinition, id: string): string {
-  return sp.genetics.phenotypes.find((r) => r.id === id)?.name ?? id;
-}
-
 /** Recognised strains: name + tier + recipe (trait names the player has seen; ??? for the rest). */
 export function StrainList({ sp, found, seenTraits }: { sp: SpeciesDefinition; found: ReadonlySet<string>; seenTraits: ReadonlySet<string> }) {
   const strains = sp.genetics.strains ?? [];
@@ -129,10 +125,8 @@ function StrainRow({ sp, s, known, seenTraits }: { sp: SpeciesDefinition; s: Mor
   );
 }
 
-/** What an undiscovered morph shows: the trait names already seen elsewhere, ??? for the rest. */
-export function catalogHint(sp: SpeciesDefinition, e: CatalogEntry, seenTraits: ReadonlySet<string>): string {
-  return e.traitIds.map((id) => (seenTraits.has(id) ? ruleName(sp, id) : '???')).join(' · ');
-}
+/** What an undiscovered morph shows (chunk 21: the rule lives in ./morphs, shared with the Collection). */
+export { catalogHint };
 
 /** The colour tree: every reachable morph, grouped by base colour, with how often sellers stock it. */
 export function CatalogTree({ sp, groups, total, seenNames, seenTraits, initiallyOpen }: { sp: SpeciesDefinition; groups: readonly CatalogGroup[]; total: number; seenNames: ReadonlySet<string>; seenTraits: ReadonlySet<string>; initiallyOpen?: readonly string[] }) {

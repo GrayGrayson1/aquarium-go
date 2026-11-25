@@ -2,7 +2,7 @@
  * lane:ui-shell (chunk 1; NAV-010, NAV-016; 0.5 spec §6.2, §21 Phase 1 "Done when") — every §6.2 route opens the right
  * screen, tab or sub-view, on desktop and on a phone. Chunk 6 (NAV-019) adds the routes later chunks built: Livestock ›
  * Production (chunk 4), Settings › Notifications (chunk 3), Operations (DESIGN-S3D §6, chunk 5) and Social (chunk 6, dev
- * mode: the first Social route signs in, so its tabs show).
+ * mode: the first Social route signs in, so its tabs show). Chunk 21 adds Encyclopedia › Collection and a card in it.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { openApp, quickGame, aq, tid, probe } from './helpers';
@@ -57,6 +57,9 @@ const ROUTES: [string, Check][] = [
   ['#/encyclopedia/science', (p) => expect(selectedTab(p, 'panel-encyclopedia', /Aquarium science/)).toBeVisible()],
   ['#/encyclopedia/science/nitrogen_cycle', (p) => expect(tid(p, 'panel-encyclopedia').getByRole('button', { name: /The nitrogen cycle/, expanded: true })).toBeVisible()],
   ['#/encyclopedia/betta', (p) => expect(tid(p, 'panel-encyclopedia').getByRole('heading', { name: /Betta/ }).first()).toBeVisible()],
+  // chunk 21: the Collection, and a species' card open in it
+  ['#/encyclopedia/collection', (p) => expect(selectedTab(p, 'panel-encyclopedia', /Collection/)).toBeVisible()],
+  ['#/encyclopedia/collection/betta', (p) => expect(tid(p, 'collection-toggle-betta')).toHaveAttribute('aria-expanded', 'true')],
   ['#/settings', (p) => expect(tid(p, 'settings-tab-general')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/play', (p) => expect(tid(p, 'settings-tab-display')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/saves', (p) => expect(tid(p, 'settings-tab-saves')).toHaveAttribute('aria-selected', 'true')],

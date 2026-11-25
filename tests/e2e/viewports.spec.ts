@@ -5,7 +5,7 @@
  * dock exactly where MOBILE_QUERY matches (phones held sideways included). The walk is split per viewport (WebKit
  * drops a page's hash changes after about 200 in quick succession, nav-routes-matrix.spec.ts).
  * Chunk 8 (REL-029, REL-031): Settings › Account, signed out and in, and the online-save box (its cards and both
- * buttons on screen).
+ * buttons on screen). Chunk 21: the Encyclopedia's Collection with a card open.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { openApp, quickGame, aq, tid } from './helpers';
@@ -26,7 +26,7 @@ const VIEWPORTS: { name: string; width: number; height: number; phone: boolean }
 /** Every panel (and the tank card), by its address. */
 const SCREENS = [
   '#/tanks', '#/tanks/{tank}', '#/livestock', '#/livestock/production', '#/shop', '#/market/supplies', '#/market/listings', '#/build',
-  '#/build/facility', '#/visitors', '#/visitors/staff', '#/shows', '#/research', '#/finances', '#/encyclopedia', '#/settings',
+  '#/build/facility', '#/visitors', '#/visitors/staff', '#/shows', '#/research', '#/finances', '#/encyclopedia', '#/encyclopedia/collection/betta', '#/settings',
   '#/settings/notifications', '#/settings/account', '#/operations', '#/operations/map', '#/social', '#/log',
 ];
 
