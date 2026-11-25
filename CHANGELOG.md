@@ -4,6 +4,34 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.11.1 — 2026-11-25
+
+Less friction, nothing changed in what the game does (the owner's request, ADR-0058): 28 small fixes found by
+playing 0.11.0 on a phone, a phone held sideways and a computer. Every new or changed line of text is listed in
+`docs/agent/design/CHUNK-22/WORDS.md`.
+
+- **Tank care.** The tank's name and status in the tank bar open its card. The card's Water tab has "Jump to care"
+  (the care buttons sit under sixteen readings). On a phone held sideways the tank card and Settings were almost
+  all header: their details now scroll with the page.
+- **Selling.** Market › Listings shows your listings and their bids first. A bid's three buttons fit on one row on
+  a phone and a long note folds to two lines. Listings no longer change places while you answer them. "Skip to
+  review" lists an animal with the suggested price in four taps.
+- **Breeding and young.** Eggs & fry shows clutches first. A hungry clutch has "Feed in {tank}", a parent to move
+  has "Move {name}", and an animal's card has a way down to its Breeding section. Setting up a production line
+  groups the pairs by species.
+- **Getting around.** Back from an animal's card returns to your place in the Livestock list. Every tank's row has
+  "Tank card". "Find" has a label on a phone. Tooltips name the keys for Feed, Photo, Just watch, the tank card,
+  the room view and the tank arrows. The room view's attention dots no longer draw over open panels, and small
+  links in the alerts drawer and on staff cards are easier to tap.
+- **Fewer taps.** "Claim all" for quest rewards. "Set to fair price" for tickets. "See what you can start" in
+  Research. A note when people have applied for a job. Shows › Entries says when results are in.
+- **The guide.** The food is put down when the feeding step is done, a card the guide opened closes once its step
+  is done, the last step lands on Quests, and the spotlight scrolls to a tank size that is off screen.
+- **Shared shops.** Speed buttons look locked for a member who may not use them, the phone's pill says "Shared",
+  and the "you can spend $0" notice has an "Ask for money" button.
+- Settings loads when first opened, which keeps the game's first download under its size limit. The simulation's
+  shared build is unchanged: the shop server needs no update.
+
 ## 0.11.0 — 2026-11-24
 
 Three things to make the game more fun to come back to (the owner's request, ADR-0057). Every new line of text is
