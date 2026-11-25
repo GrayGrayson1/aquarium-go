@@ -14,7 +14,8 @@ import { issueViews } from '@/ui/panels/operations/issues';
 import { tutorialChain } from '@/data/quests';
 import { ensureShowsState } from '@/sim/shows/state';
 import { refillCalendar } from '@/sim/shows/schedule';
-import { COLLECTION_ADDRESS, NEXT_RULES, OPTIONAL_SHARE, guideShowMe, nextBestActions, nothingUrgent, spendable, type NextAction } from './nextBest';
+import { friendWait } from '@/ui/tutorial/guideText';
+import { COLLECTION_ADDRESS, NEXT_RULES, NO_ANIMALS_WHY, NO_TANK_TITLE, OPTIONAL_SHARE, guideShowMe, nextBestActions, nothingUrgent, spendable, type NextAction } from './nextBest';
 
 function game(opts: { guide?: boolean; money?: number } = {}): GameState {
   const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 71 });
@@ -35,6 +36,16 @@ function expectRanked(list: NextAction[]): void {
   const ranks = list.map((a) => NEXT_RULES.indexOf(a.rule));
   expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
   expect(new Set(list.map((a) => a.key)).size).toBe(list.length);
+}
+/** Every animal gone (sold), as after a die-off or a sell-out. */
+function noAnimals(g: GameState): void {
+  for (const c of Object.values(g.creatures)) c.status = 'sold';
+}
+/** Every tank gone. */
+function noTanks(g: GameState): void {
+  noAnimals(g);
+  for (const id of g.tankOrder) delete g.tanks[id];
+  g.tankOrder = [];
 }
 /** A board quest, done or part done. */
 function quest(g: GameState, id: string, status: 'active' | 'complete', progress: number): void {
@@ -170,6 +181,68 @@ describe('What next? after the guide', () => {
     g.isShowcase = true;
     expect(nextBestActions(g)).toEqual([]);
     expect(nextBestActions(null)).toEqual([]);
+  });
+});
+
+describe('What next? for an empty aquarium (chunk 21 review S2)', () => {
+  it('tanks but no animal: Open the Market, in the guide’s own words, not "all caught up"', () => {
+    const g = game({ money: 500 });
+    noAnimals(g);
+    const list = nextBestActions(g);
+    expectRanked(list);
+    expect(list[0]).toMatchObject({ rule: 'empty', key: 'empty:animals', where: 'Market', title: 'Open the Market', why: NO_ANIMALS_WHY, to: { kind: 'route', route: { kind: 'panel', panel: 'market', tab: 'shop' } } });
+    // (the guide's line for a step waiting on friends with no animal to see, word for word)
+    expect(friendWait(g, 'first_money')?.text).toBe(NO_ANIMALS_WHY);
+    expect(nothingUrgent(list)).toBe(false);
+  });
+
+  it('no animal and no money for one: the way to money instead', () => {
+    const g = game({ money: 0 });
+    noAnimals(g);
+    const top = nextBestActions(g)[0];
+    expect(top).toMatchObject({ rule: 'empty', key: 'empty:animals', title: 'Open Finances', to: { kind: 'route', route: { kind: 'panel', panel: 'finances' } } });
+    expect(top.why).toMatch(/^Not enough money for an animal \(from \$\d+\)\.$/);
+  });
+
+  it('no tank at all: Build › Tanks, in the tank bar’s words; with no money for one, the way to money', () => {
+    const g = game({ money: 500 });
+    noTanks(g);
+    const list = nextBestActions(g);
+    expectRanked(list);
+    expect(list[0]).toMatchObject({ rule: 'empty', key: 'empty:tank', where: 'Build › Tanks', title: NO_TANK_TITLE, why: 'There’s no tank in your aquarium.', to: { kind: 'route', route: { kind: 'panel', panel: 'build', tab: 'tanks' } } });
+    expect(NO_TANK_TITLE).toBe('No tank · Buy one');
+    expect(nothingUrgent(list)).toBe(false);
+    g.finance.money = 10;
+    expect(nextBestActions(g)[0]).toMatchObject({ key: 'empty:tank', title: 'Open Finances', why: 'Not enough money for a tank (from $45).' });
+  });
+
+  it('while the guide runs it comes after the guide’s step, and not twice when the step already goes to the Market', () => {
+    const g = game({ guide: true, money: 500 });
+    noAnimals(g);
+    expect(rules(nextBestActions(g))).toEqual(['guide', 'empty']);
+    // a step waiting on friends with no animal to see: the guide's own button is the Market already
+    g.progress.tutorial.step = tutorialChain('betta').findIndex((s) => s.id === 'first_money');
+    const list = nextBestActions(g);
+    expect(rules(list)).toEqual(['guide']);
+    expect(list[0]).toMatchObject({ why: NO_ANIMALS_WHY, to: { kind: 'route', route: { kind: 'panel', panel: 'market', tab: 'shop' } } });
+  });
+});
+
+describe('What next? with Settings › Guide hints off (chunk 21 review S4)', () => {
+  it('the hidden guide is not led with, and nothing is held back for it', () => {
+    const g = game({ guide: true, money: 5000 });
+    const on = nextBestActions(g, { hints: true });
+    expect(rules(on)[0]).toBe('guide');
+    expect(rules(on)).not.toContain('collect');
+    expect(nextBestActions(g)).toEqual(on); // (absent: on)
+    const off = nextBestActions(g, { hints: false });
+    expectRanked(off);
+    expect(rules(off)).not.toContain('guide');
+    expect(rules(off)).toEqual(['unlock', 'collect']);
+    // and a bid on a listing, hidden while the guide leads, shows with hints off
+    g.market.listings.push({ id: 'l_test', status: 'active', bids: [{ id: 'b_test', buyerId: 'x', amount: 40, message: '', createdHour: g.clock.hour, expiresHour: g.clock.hour + 2, status: 'open' }] } as unknown as Listing);
+    expect(rules(nextBestActions(g, { hints: true }))).not.toContain('expiring');
+    expect(nextBestActions(g, { hints: false })[0]).toMatchObject({ key: 'expiring:bids' });
   });
 });
 

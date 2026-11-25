@@ -11,29 +11,35 @@
  *  1. danger   A tank in danger: the bell's red (the sim's status: starving, harmed by the water, seriously ill,
  *              failing; and gear working against its animals). Its most urgent line, with that line's fix
  *              (`fixForAttention`, the link the tank card and the bell give it). [tank order]
- *  2. guide    The first-hour guide's current step while it runs, doing what the guide card's own button does
- *              (`showMe`, or the Market when no animal is left to show). While the guide runs only rules 1 to 3 are
- *              listed, so nothing pulls the player away from it, and rule 3 is left out when the step is itself a
- *              feeding step (it would be the same thing twice). [one]
- *  3. hungry   A tank with a very hungry animal (the sim's "very hungry" line, hunger 70 and up, ANIMAL_THRESHOLDS):
+ *  2. guide    The first-hour guide's current step while it runs and its card is shown: with Settings › Guide hints
+ *              off the rest of the UI treats the guide as not running (the panels' aside rule, the toasts), and so
+ *              does this (chunk 21 review S4). It does what the guide card's own button does (`showMe`, or the
+ *              Market when no animal is left to show). While the guide runs only rules 1 to 4 are listed, so nothing
+ *              pulls the player away from it; rule 3 is left out when the guide's step already goes to the Market, and
+ *              rule 4 when the step is itself a feeding step (each would be the same thing twice). [one]
+ *  3. empty    An empty aquarium (chunk 21 review S2): no tank at all → Build › Tanks, in the tank bar's words ("No
+ *              tank · Buy one"); tanks but no animal in them → the Market, in the guide's words ("Friends come to see
+ *              your animals…", "Open the Market"). Either becomes the way to money when even the cheapest tank, or
+ *              the cheapest animal in the shop that fits a tank, costs more than the player can spend. [one]
+ *  4. hungry   A tank with a very hungry animal (the sim's "very hungry" line, hunger 70 and up, ANIMAL_THRESHOLDS):
  *              Feed, Target feed or Buy food, as its fix link says. [tank order]
- *  4. care     Any other tank the bell marks amber (water to watch, food running low, failed or worn gear, gear that
+ *  5. care     Any other tank the bell marks amber (water to watch, food running low, failed or worn gear, gear that
  *              can't help, Auto-feed paused, a struggling plant): its first line's fix. The brief's list didn't name
  *              watch-level tank problems; they come after hungry animals and before anything optional. [tank order]
- *  5. expiring Something that won't wait: bids on the player's listings (they lapse within minutes of real time);
+ *  6. expiring Something that won't wait: bids on the player's listings (they lapse within minutes of real time);
  *              the show whose entries close soonest, within SHOW_SOON_HOURS, that the player can enter (the show's
  *              own closed check, a class an animal or tank of theirs is eligible for, the fee affordable, nothing of
  *              theirs entered in it yet); the Prismatic or rare animal (the Market dot's rule) leaving the shop
  *              soonest, within OFFER_SOON_HOURS, that they can buy (its species open to them, a tank of its water,
  *              affordable). The game keeps no list of offers a player is watching, so "an offer you are watching" is
  *              read as the rare stock the Market's dot already points at. [bids, then soonest first]
- *  6. ready    Something to collect or decide: quest rewards to claim; new show results; an automation problem
+ *  7. ready    Something to collect or decide: quest rewards to claim; new show results; an automation problem
  *              (Operations' Problems, at most two); young that need a hand (the clutch card's own warnings, at most
  *              two); in a shared shop, money requests the player may answer (`asksFor`). [that order]
- *  7. unlock   Moving up a facility level, else the cheapest research project that can start now (none running, and
+ *  8. unlock   Moving up a facility level, else the cheapest research project that can start now (none running, and
  *              one that still teaches something), when the player can pay for it. [that order]
- *  8. quest    The active board quest nearest done, at least half way (QUEST_NEAR). [most done first]
- *  9. collect  The collection, at the address COLLECTION_ADDRESS (always last; with nothing else, the sheet says all
+ *  9. quest    The active board quest nearest done, at least half way (QUEST_NEAR). [most done first]
+ * 10. collect  The collection, at the address COLLECTION_ADDRESS (always last; with nothing else, the sheet says all
  *              is well and offers it). Left out while the guide runs.
  *
  * Never something the player can't do: a purchase is checked against what they can spend (`spendable`: nothing while
@@ -43,7 +49,7 @@
  * care fix may use all of it. Locked species, show tiers and research are left out by the sim's own checks. A fix
  * that buys food or gear the player can't afford becomes "Open Finances" with the reason (in a shared shop, for a
  * member who doesn't spend freely, "Ask for money", which opens the shop's dropdown where Money is). The Staff's flags
- * name broken gear and sick animals, which rules 1 and 4 already cover. OWNER: lane "next" (chunk 21).
+ * name broken gear and sick animals, which rules 1 and 5 already cover. OWNER: lane "next" (chunk 21).
  */
 import type { GameState, Tank } from '@/types';
 import type { Route } from '../nav/routes';
@@ -59,6 +65,7 @@ import { formatMoney } from '../kit';
 import { SHARED_WORDS } from '../shared/words';
 import { getWaterReport } from '@/sim/water';
 import { getFoodDef } from '@/data/catalog/foods';
+import { TANK_TIERS } from '@/data/catalog/tanks';
 import { equipmentOfKind } from '@/data/catalog/equipment';
 import { findSpecies } from '@/data/species';
 import { lowerName } from '@/data/speciesWords';
@@ -73,11 +80,11 @@ import { asksFor, canSpend, spendsFreely } from '@/sim/pool';
 import { HOURS_PER_DAY } from '@/sim/time';
 
 /** The rules, best first (the header says what each one is). */
-export type NextRule = 'danger' | 'guide' | 'hungry' | 'care' | 'expiring' | 'ready' | 'unlock' | 'quest' | 'collect';
-export const NEXT_RULES: readonly NextRule[] = ['danger', 'guide', 'hungry', 'care', 'expiring', 'ready', 'unlock', 'quest', 'collect'];
-const RANK: Record<NextRule, number> = { danger: 0, guide: 1, hungry: 2, care: 3, expiring: 4, ready: 5, unlock: 6, quest: 7, collect: 8 };
-/** The rules listed while the first-hour guide runs. */
-const WITH_GUIDE: ReadonlySet<NextRule> = new Set<NextRule>(['danger', 'guide', 'hungry']);
+export type NextRule = 'danger' | 'guide' | 'empty' | 'hungry' | 'care' | 'expiring' | 'ready' | 'unlock' | 'quest' | 'collect';
+export const NEXT_RULES: readonly NextRule[] = ['danger', 'guide', 'empty', 'hungry', 'care', 'expiring', 'ready', 'unlock', 'quest', 'collect'];
+const RANK: Record<NextRule, number> = { danger: 0, guide: 1, empty: 2, hungry: 3, care: 4, expiring: 5, ready: 6, unlock: 7, quest: 8, collect: 9 };
+/** The rules listed while the first-hour guide runs (and its card is shown). */
+const WITH_GUIDE: ReadonlySet<NextRule> = new Set<NextRule>(['danger', 'guide', 'empty', 'hungry']);
 
 /** Where the Collection lives (feature A's route; until it exists the router opens the Encyclopedia instead). */
 export const COLLECTION_ADDRESS = '#/encyclopedia/collection';
@@ -121,6 +128,11 @@ export interface NextContext {
   fine?: boolean;
   /** In a shared shop: who this player is (spending limits, who may answer requests). Absent or null: a solo game. */
   member?: { id: string; owner: boolean } | null;
+  /**
+   * Settings › Guide hints (absent: on). Off, the guide card is hidden and the rest of the UI treats the guide as not
+   * running (the panels' aside rule, the toasts): so does this, with no guide step and nothing held back for it.
+   */
+  hints?: boolean;
 }
 
 interface Ranked extends NextAction {
@@ -156,7 +168,7 @@ export function spendable(g: GameState, member?: NextContext['member']): number 
   return member ? Math.min(money, attempt(() => canSpend(g, member), money)) : money;
 }
 
-// ───────────────────────────── tanks (rules 1, 3 and 4) ─────────────────────────────
+// ───────────────────────────── tanks (rules 1, 4 and 5) ─────────────────────────────
 
 /** The sim's hunger lines ("Ember is very hungry — …", "3 neon tetras are starving — …"), and who they are about. */
 const HUNGRY_LINE = /\b(?:very hungry|starving)\b/;
@@ -193,8 +205,15 @@ function unaffordable(g: GameState, fix: FixLink, money: number, member: NextCon
     what = `Not enough money for ${fix.label.replace(/^Buy /, '')} (from ${formatMoney(cheapest.price)}).`;
   } else return null;
   if (price <= money) return null;
+  return moneyWay(g, what, member);
+}
+
+/**
+ * The way to money, for something the player can't pay for (`what`: why, in a sentence): Finances, where the ways to
+ * raise cash are; in debt, the bell's debt line; a shared shop's member with a limit asks the shop instead (Money).
+ */
+function moneyWay(g: GameState, what: string, member: NextContext['member']): { title: string; why: string; to: NextTo } {
   if (g.finance.money < 0) what = 'Not enough money: purchases are paused while you’re in debt.';
-  // a shared shop's member with a limit asks the shop for money (the dropdown's Money); everyone else, Finances
   if (member && !attempt(() => spendsFreely(g, member), true)) return { title: SHARED_WORDS.askForMoney, why: what, to: { kind: 'shared' } };
   return { title: 'Open Finances', why: what, to: { kind: 'route', route: { kind: 'panel', panel: 'finances' } } };
 }
@@ -237,6 +256,7 @@ export function guideShowMe(step: { id: string; hintTarget: string; body: string
 }
 
 function guideAction(g: GameState, ctx: NextContext): Ranked | null {
+  if (ctx.hints === false) return null; // (Guide hints off: the guide is out of sight, so it isn't "running" here)
   const cur = attempt(() => currentCoachStep(g, !!ctx.fine), null);
   if (!cur) return null;
   const wait = attempt(() => friendWait(g, cur.step.id), null);
@@ -249,7 +269,37 @@ function guideAction(g: GameState, ctx: NextContext): Ranked | null {
 /** Is the guide's step a feeding step (its button opens the food or Target feed)? */
 const feedingStep = (a: NextAction): boolean => a.to.kind === 'guide' && (a.to.action === 'tool-feed' || a.to.action === 'tool-target-feed');
 
-// ───────────────────────────── expiring (rule 5) ─────────────────────────────
+// ───────────────────────────── an empty aquarium (rule 3) ─────────────────────────────
+
+/** The tank bar's words when there is no tank ("No tank · Buy one", TankBar.tsx). */
+export const NO_TANK_TITLE = 'No tank · Buy one';
+/** The guide's words when there is no animal to see (guideText.ts `friendWait`) and its button's ("Open the Market"). */
+export const NO_ANIMALS_WHY = 'Friends come to see your animals, and there are none to see. Bring one home from the Market.';
+
+function emptyAction(g: GameState, money: number, member: NextContext['member']): Ranked | null {
+  const tanks = g.tankOrder.map((id) => g.tanks[id]).filter((t): t is Tank => !!t);
+  if (!tanks.length) {
+    const cheapest = TANK_TIERS.filter((t) => !t.unlock || attempt(() => isUnlocked(g, t.unlock), false)).reduce<number>((m, t) => Math.min(m, t.price), Infinity);
+    const base = { key: 'empty:tank', rule: 'empty' as const, where: 'Build › Tanks', sub: 0 };
+    if (Number.isFinite(cheapest) && cheapest > money) return { ...base, ...moneyWay(g, `Not enough money for a tank (from ${formatMoney(cheapest)}).`, member) };
+    return { ...base, title: NO_TANK_TITLE, why: 'There’s no tank in your aquarium.', to: { kind: 'route', route: { kind: 'panel', panel: 'build', tab: 'tanks' } } };
+  }
+  const here = new Set(tanks.map((t) => t.id));
+  if (Object.values(g.creatures).some((c) => (c.status === 'alive' || c.status === 'listed') && !!c.tankId && here.has(c.tankId))) return null;
+  // the cheapest animal in the shop the player could keep (its species open to them, a tank of its water)
+  let cheapest = Infinity;
+  for (const o of g.market?.stock ?? []) {
+    const sp = findSpecies(o.speciesId);
+    if (!sp || !attempt(() => isSpeciesAvailable(g, sp.id), false)) continue;
+    if (!tanks.some((t) => attempt(() => environmentGate(sp, t).ok, false))) continue;
+    cheapest = Math.min(cheapest, o.unitPrice ?? o.price, o.price);
+  }
+  const base = { key: 'empty:animals', rule: 'empty' as const, where: 'Market', sub: 0 };
+  if (Number.isFinite(cheapest) && cheapest > money) return { ...base, ...moneyWay(g, `Not enough money for an animal (from ${formatMoney(cheapest)}).`, member) };
+  return { ...base, title: 'Open the Market', why: NO_ANIMALS_WHY, to: { kind: 'route', route: { kind: 'panel', panel: 'market', tab: 'shop' } } };
+}
+
+// ───────────────────────────── expiring (rule 6) ─────────────────────────────
 
 function expiringActions(g: GameState, spare: number): Ranked[] {
   const out: Ranked[] = [];
@@ -320,7 +370,7 @@ function expiringActions(g: GameState, spare: number): Ranked[] {
   return out;
 }
 
-// ───────────────────────────── ready to collect or decide (rule 6) ─────────────────────────────
+// ───────────────────────────── ready to collect or decide (rule 7) ─────────────────────────────
 
 function readyActions(g: GameState, member: NextContext['member']): Ranked[] {
   const out: Ranked[] = [];
@@ -406,7 +456,7 @@ function readyActions(g: GameState, member: NextContext['member']): Ranked[] {
   return out;
 }
 
-// ───────────────────────────── unlocks and research (rule 7) ─────────────────────────────
+// ───────────────────────────── unlocks and research (rule 8) ─────────────────────────────
 
 function unlockActions(g: GameState, spare: number): Ranked[] {
   const out: Ranked[] = [];
@@ -444,7 +494,7 @@ function unlockActions(g: GameState, spare: number): Ranked[] {
   return out;
 }
 
-// ───────────────────────────── a quest nearly done (rule 8) ─────────────────────────────
+// ───────────────────────────── a quest nearly done (rule 9) ─────────────────────────────
 
 /** A quest at least this far along counts as "close to done". */
 export const QUEST_NEAR = 0.5;
@@ -487,12 +537,16 @@ export function nextBestActions(g: GameState | null | undefined, ctx: NextContex
   const member = ctx.member ?? null;
   const money = spendable(g, member);
   const all: Ranked[] = [...tankActions(g, money, member)];
+  const empty = emptyAction(g, money, member);
   const guide = guideAction(g, ctx);
   let list: Ranked[];
   if (guide) {
     all.push(guide);
+    // (the guide's own way to the Market when no animal is left to show is the same thing as rule 3's)
+    if (empty && !(empty.key === 'empty:animals' && guide.to.kind === 'route')) all.push(empty);
     list = all.filter((a) => WITH_GUIDE.has(a.rule) && !(a.rule === 'hungry' && feedingStep(guide)));
   } else {
+    if (empty) all.push(empty);
     const spare = money * OPTIONAL_SHARE;
     all.push(...expiringActions(g, spare), ...readyActions(g, member), ...unlockActions(g, spare));
     const q = questAction(g);

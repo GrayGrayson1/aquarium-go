@@ -1,60 +1,28 @@
-/* chunk 21 (C, "What next?") — the tank bar's button and its sheet (WhatNext.tsx). OWNER: lane "next". */
+/* chunk 21 (C, "What next?") — the button (WhatNext.tsx; its sheet's styles are next-sheet.css, loaded with the sheet).
+   OWNER: lane "next". */
 
-/* (two classes on the button: hud.css's `.ag-hudbtn` rules may load after this file) */
-.ag-next-anchor { display: flex; }
+/* (more classes than shell.css's `.ag-popanchor` and hud.css's `.ag-hudbtn` and `.ag-tankbar .ag-hudbtn` rules, which
+   may load after this file) */
+.ag-popanchor.ag-next-anchor { display: flex; }
 .ag-hudbtn.ag-next-btn > svg { color: var(--c-gold); }
 .ag-next-btn__label { white-space: nowrap; }
-/* phones (and a phone held sideways): the icon over a small label, as the tool rail's, so the tank switcher keeps its
-   room; the tank bar's other buttons are icons only there */
+/* phones: the icon over a small label, as the tool rail's (held sideways it is in the tank bar, beside the icon-only
+   Tank card and Room; held upright it floats, below) */
 @media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
-  .ag-hudbtn.ag-next-btn { flex-direction: column; justify-content: center; gap: 2px; padding: 0 9px; }
+  .ag-hudpill.ag-hudbtn.ag-next-btn { flex-direction: column; justify-content: center; gap: 2px; padding: 0 9px; }
   .ag-next-btn__label { font-size: calc(9.5px * var(--text-scale)); font-weight: 650; line-height: 1.1; letter-spacing: 0.01em; }
 }
 
-/* The sheet: on a computer a dropdown under the button (WhatNext.tsx places it); above the toasts, which share the
-   column under the tank bar (two classes, so shell.css's `.ag-popover { z-index: 50 }`, loaded later, doesn't win) */
-.ag-popover.ag-next-pop { z-index: calc(var(--z-toast) + 2); left: 0; top: calc(100% + 10px); width: min(400px, calc(100vw - 2 * var(--edge))); max-height: min(72vh, 620px); overflow-y: auto; overscroll-behavior: contain; gap: 10px; }
-/* phones: full width under the tank bar, ending above the tab bar */
-@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
-  .ag-popover.ag-next-pop {
-    position: fixed;
-    top: calc(var(--safe-t) + var(--edge) + var(--topbar-h) + 58px);
-    left: var(--edge-l);
-    right: var(--edge-r);
-    width: auto;
-    max-height: calc(100dvh - var(--safe-t) - var(--edge) - var(--topbar-h) - 58px - var(--dock-h) - var(--edge) - var(--safe-b) - 8px);
-  }
+/* Phones held upright (chunk 21 review B1): the tank switcher needs the tank bar's whole width for its status line (the
+   tank's status, food and gear words and the "2/3" index; hud.css's phone rule), so the button leaves the bar and floats
+   at the screen's right edge at mid-height: over the tank's lower right corner at most, below the toasts, above the
+   guide card, the tool hint, the food picker and the tab bar, and away from the bell. It rises above the guide card when
+   that reaches higher (TutorialCoach publishes --coach-clear) and, in the room view, above the Reset view chip, which
+   rises with the guide. It steps aside while a bottom sheet (a panel, a tank or animal card) or a tool's picker has the
+   screen, as the tool rail does. A phone held sideways keeps it in the tank bar, which is wide enough there. */
+@media (max-width: 720px) and (min-height: 501px) {
+  .ag-popanchor.ag-next-anchor { position: fixed; right: var(--edge-r); bottom: max(calc(50% - 24px), var(--coach-clear, 0px)); transition: bottom .35s var(--ease), opacity .2s; }
+  .ag-hud.is-facility .ag-popanchor.ag-next-anchor { bottom: max(calc(50% - 24px), calc(var(--coach-clear, 0px) + 110px)); }
+  .ag-hud.has-bottom-sheet .ag-popanchor.ag-next-anchor, .ag-hud:has(.ag-toolpop) .ag-popanchor.ag-next-anchor { opacity: 0; visibility: hidden; transition: opacity .2s, visibility 0s .2s; }
+  .ag-hudpill.ag-hudbtn.ag-next-btn { min-height: 48px; padding: 0 10px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
 }
-/* held sideways: clear of the tool grid on the right */
-@media (max-height: 500px) and (orientation: landscape) {
-  .ag-popover.ag-next-pop { right: calc(var(--edge-r) + var(--rail-w)); }
-}
-:root[data-contrast='high'] .ag-popover.ag-next-pop { background: var(--c-glass-strong); backdrop-filter: none; -webkit-backdrop-filter: none; }
-
-.ag-next-pop__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px -4px -2px 0; }
-.ag-next-pop__title { margin: 0; font-family: var(--font-display); font-size: calc(20px * var(--text-scale)); font-weight: 560; color: var(--c-ink); }
-.ag-next-pop__title:focus { outline: none; } /* (it takes the focus as the sheet opens, as a panel's title does) */
-.ag-next-pop__calm { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 12px; background: rgba(74, 222, 128, 0.08); border: 1px solid rgba(74, 222, 128, 0.25); color: var(--c-good); font-size: calc(13px * var(--text-scale)); line-height: 1.4; }
-.ag-next-pop__calm > svg { flex: none; }
-
-.ag-next-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.ag-next-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 9px 10px 9px 12px; border-radius: 12px; border: 1px solid var(--c-line); background: var(--c-fill); color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; transition: background .15s, border-color .15s; }
-.ag-next-item:hover { background: var(--c-fill-2); border-color: var(--c-line-strong); }
-.ag-next-item:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 1px; }
-/* the top action: the big button */
-.ag-next-item.is-top { min-height: 64px; padding: 13px 12px 13px 14px; gap: 12px; border-color: rgba(94, 234, 212, 0.45); background: linear-gradient(rgba(94, 234, 212, 0.1), rgba(94, 234, 212, 0.1)), var(--c-fill); }
-.ag-next-item.is-top:hover { background: linear-gradient(rgba(94, 234, 212, 0.16), rgba(94, 234, 212, 0.16)), var(--c-fill); }
-.ag-next-item.is-top.is-danger { border-color: rgba(248, 113, 113, 0.55); background: linear-gradient(rgba(248, 113, 113, 0.1), rgba(248, 113, 113, 0.1)), var(--c-fill); }
-.ag-next-item.is-top.is-watch { border-color: rgba(251, 191, 36, 0.5); background: linear-gradient(rgba(251, 191, 36, 0.08), rgba(251, 191, 36, 0.08)), var(--c-fill); }
-.ag-next-item__icon { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: var(--c-fill-2); color: var(--c-ink-2); }
-.ag-next-item.is-top .ag-next-item__icon { width: 36px; height: 36px; border-radius: 12px; }
-.ag-next-item.is-danger .ag-next-item__icon { color: var(--c-danger); background: rgba(248, 113, 113, 0.14); }
-.ag-next-item.is-watch .ag-next-item__icon { color: var(--c-watch); background: rgba(251, 191, 36, 0.12); }
-.ag-next-item.is-guide .ag-next-item__icon { color: var(--c-aqua); background: rgba(94, 234, 212, 0.12); }
-.ag-next-item.is-calm .ag-next-item__icon { color: var(--c-gold); background: rgba(245, 196, 81, 0.12); }
-.ag-next-item__text { flex: 1; min-width: 0; display: grid; gap: 2px; }
-.ag-next-item__where { font-size: calc(11px * var(--text-scale)); font-weight: 600; color: var(--c-ink-3); overflow-wrap: anywhere; }
-.ag-next-item__title { font-size: calc(14px * var(--text-scale)); font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
-.ag-next-item.is-top .ag-next-item__title { font-size: calc(16px * var(--text-scale)); }
-.ag-next-item__why { font-size: calc(12px * var(--text-scale)); color: var(--c-ink-2); line-height: 1.35; }
-.ag-next-item__go { flex: none; color: var(--c-ink-3); }
