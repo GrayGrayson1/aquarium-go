@@ -7629,12 +7629,88 @@
       "tasks": [],
       "tests": [],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "designSections": [
         "PLAN.md chunk 20",
         "ADR-0056"
       ],
-      "note": "Built on next (55e1546); no unit test reads a workflow. GitHub runs a scheduled workflow only from the default branch, so it first runs once next is merged into main: then run it once by hand (Actions › Keep online awake › Run workflow) and check its log says HTTP 200, after the project has been restored (ADR-0056 decision 4). GitHub turns scheduled jobs off in a public repository after 60 days without a commit."
+      "note": "Built on next (55e1546); no unit test reads a workflow. GitHub runs a scheduled workflow only from the default branch, so it first runs once next is merged into main: then run it once by hand (Actions › Keep online awake › Run workflow) and check its log says HTTP 200, after the project has been restored (ADR-0056 decision 4). GitHub turns scheduled jobs off in a public repository after 60 days without a commit. 2026-11-23: the project was restored and the job, started by hand from main (run 45233981416), passed."
+    },
+    {
+      "id": "COL-001",
+      "slice": "ALL",
+      "source": "ADR-0057; PLAN.md chunk 21",
+      "description": "The Encyclopedia has a Collection tab: overall completion, a card per species with its missing morphs, how to find each, Nearly there and Recently found.",
+      "acceptance": [
+        "#/encyclopedia/collection and #/encyclopedia/collection/{speciesId} open it; a card opened by address stays inside the panel's own scroll area.",
+        "A missing morph's hint and its how-to-find line never name a trait the player has not seen.",
+        "progress.discoveredAt is optional, validated in repairState, and absent leaves stateHash unchanged."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/ui-collection.test.ts",
+        "tests/sim/ui-collection-warmup.test.ts",
+        "tests/e2e/collection.spec.ts",
+        "tests/e2e/viewports.spec.ts",
+        "tests/e2e/nav-routes-matrix.spec.ts"
+      ],
+      "evidence": [],
+      "status": "DONE",
+      "designSections": [
+        "PLAN.md chunk 21",
+        "ADR-0057",
+        "docs/agent/design/CHUNK-21/WORDS.md"
+      ],
+      "note": ""
+    },
+    {
+      "id": "REV-001",
+      "slice": "ALL",
+      "source": "ADR-0057; PLAN.md chunk 21",
+      "description": "A rare first among newborn young opens one reveal card.",
+      "acceptance": [
+        "A Prismatic animal and the first of a named strain always reveal; a new morph alone only at the legendary tier, once a species a game day.",
+        "Several finds share one card with a pager; it waits behind dialogs, the guide's step, typing and a hidden tab; reduced motion skips the animation; Settings › Notifications › Reveal rare finds turns it off.",
+        "Nothing replays after a reload; no game state is written."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/reveal-finds.test.ts",
+        "tests/sim/reveal-queue.test.ts",
+        "tests/e2e/reveal.spec.ts"
+      ],
+      "evidence": [],
+      "status": "DONE",
+      "designSections": [
+        "PLAN.md chunk 21",
+        "ADR-0057",
+        "docs/agent/design/CHUNK-21/WORDS.md"
+      ],
+      "note": ""
+    },
+    {
+      "id": "NXT-001",
+      "slice": "ALL",
+      "source": "ADR-0057; PLAN.md chunk 21",
+      "description": "\"What next?\" names the most useful thing to do now and goes there.",
+      "acceptance": [
+        "The ranking is a pure function over the game's existing rules, in the documented order, with deterministic ties.",
+        "It never suggests what the player cannot do or afford, agrees with the guide while it runs, and follows Guide hints off.",
+        "On a phone the button does not cost the tank switcher its status line at 360 and 390 px."
+      ],
+      "tasks": [],
+      "tests": [
+        "src/ui/next/nextBest.test.ts",
+        "tests/e2e/what-next.spec.ts"
+      ],
+      "evidence": [],
+      "status": "DONE",
+      "designSections": [
+        "PLAN.md chunk 21",
+        "ADR-0057",
+        "docs/agent/design/CHUNK-21/WORDS.md"
+      ],
+      "note": ""
     }
   ]
 }

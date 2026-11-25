@@ -17,6 +17,9 @@ Each idea says what it is, what a player would see, why it could matter, what it
   $180 for your blue shrimp." "One rare young hatched: tap to see," which opens the rare-hatch reveal (chunk 21).
   Then one button: "Carry on".
 - **Why.** A reason to come back each day, and good news first instead of a wall of toasts.
+- **What exists already (found in chunk 21).** A "While you were away" card already shows after the hidden-tab
+  catch-up, and a rare find made during it opens its reveal after that card closes. The idea is to make that card a
+  ranked story, and to cover opening a save from the title too (finds made then get no reveal today).
 - **Needs.** A summary of what the catch-up did (births, sales, deaths, offers, problems), ranked; the reveal card
   from chunk 21; care that bad news (a death, a tank in danger) is said plainly and first. Mostly client work; the
   summary would be gathered in `src/sim/catchUp.ts` without new rng draws.

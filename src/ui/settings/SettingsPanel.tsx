@@ -519,15 +519,11 @@ function SoloSavesTab() {
  * names the release it describes and lists what this one brings; each release that changes what players do
  * replaces the lines and the version beside them.
  */
-export const WHATS_NEW_VERSION = '0.10';
+export const WHATS_NEW_VERSION = '0.11';
 export const WHATS_NEW = [
-  'Your first companion never dies of old age',
-  'A little food from the club if you run out of food and money',
-  'Move a whole group of animals at once',
-  'Sell spare equipment, and take down a tank you don’t need',
-  'Production lines sell by themselves, and keepers feed fry',
-  'Shop offers wait while you’re looking',
-  'Clearer advice everywhere: what’s wrong, why, and what to do',
+  'The Collection: see every animal and morph you have found, and what is still missing',
+  'A reveal when something rare is born',
+  '“What next?” names the most useful thing to do and takes you there',
 ] as const;
 
 function AboutTab() {

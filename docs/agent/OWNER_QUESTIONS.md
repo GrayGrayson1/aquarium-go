@@ -272,3 +272,28 @@ record the answers in a new ADR.
 | M39 | The online-save box's button "Keep this device’s" (ADR-0041's approved words) doesn't say that it replaces the save online: should it? Today: the approved words; the box warns "…Keeping this device’s replaces it, and that can’t be undone." only when the online copy is the same aquarium and further along, and says nothing when it is another aquarium. | **"Keep this device’s save", with a note that it replaces the one online and that loading the online save keeps this device's copy as "Previous autosave"** · Keep ADR-0041's words · The new words, and Keep also puts the online copy in Settings › Saves first (a change in what the game does) | J7 |
 | M40 | Two species' pages disagree with the tank the game asks for: the panther grouper needs 300 gallons but its page says "A ten-foot tank of 500 gallons" (and "plan the 500-gallon tank"), and the queen angelfish needs 250 but its page says "An eight-foot tank of 300 gallons". Which should change? Today: the game's minimums, 300 and 250, beside the pages' words. | **The pages say both ("at least 300 gallons; it does best in the 500-gallon tank")** · Change the pages to the minimums · Raise the minimums to 500 and 300 (the shop and compatibility get stricter) | J9 |
 | M41 | Should an animal whose wild status is unknown (the IUCN's "Data Deficient": the platy, the White Cloud Mountain minnow, the figure-eight puffer and the panther grouper) make its tank a conservation exhibit, as a threatened species does? Today: each scores as a threatened one (0.8, against 0.35 for a common species), and so do four Near Threatened species (panda corydoras, nerite snail, coral catshark, brownbanded bamboo shark); nothing a player sees changes either way yet, because the score feeds only an exhibit value no screen reads. | **Only threatened species count (Vulnerable, Endangered or Critically Endangered), so Data Deficient scores as a common species, as the cherry shrimp now does** (nobody recommended an option; this is the IUCN's own meaning) · The same, and Near Threatened too · Keep scoring them as threatened | J40 (the review of the sweep's second half) |
+
+## N. Chunk 21: the defaults taken for the Collection, reveals and "What next?" (open)
+
+Raised by chunk 21's builders and its review (their reports are in `/Volumes/Dev/Projects/AquariumGo-chunk21/` on
+the owner's Mac). Each row is what the game does today (ADR-0057) and the alternative. The words are in
+`docs/agent/design/CHUNK-21/WORDS.md`.
+
+| # | Question | Today |
+|---|---|---|
+| N1 | What should the Collection's percentage count? | Every species equal: half for finding it, half for its morphs; full once found for the 32 species with no named morphs. Weighing by morph count would let betta and fancy guppy (1,226 of 2,253 morphs) dominate and early progress would read near 0% |
+| N2 | Should legendary morphs count toward 100%? | Yes. Some are near 1 in a million at a seller, so the big species complete only through planned breeding |
+| N3 | Which cards come first? | In progress, nearest completion first; then not started; complete last |
+| N4 | "Nearly there": is 5% of a bonded pair's young the right bar, and does "Undiscovered species: one is in the shop now" belong there? | 5%; yes |
+| N5 | Where does the Collection tab sit? | Third, after Aquarium science |
+| N6 | How often should a reveal card appear? | Prismatic and the first of a named strain always; a new morph alone only at legendary, once a species a game day. Measured: about 1 brood in 8 for bettas from market pairs (all strain firsts; bettas have 10 strains), about 1 in 40 for guppies and platies. Fewer: only strains of tier rare or above |
+| N7 | Should a bought Prismatic or rare find get a reveal card? | No: the shop shows its badge before the purchase |
+| N8 | Should finds made while the game was closed get a reveal on opening the save? | No: the welcome-back card and the log list them. Only a hidden tab's return reveals |
+| N9 | In a shared shop, should every member see a reveal for any member's brood? | Yes |
+| N10 | The reveal's sound and its switch's place | The existing unlock chime; Settings › Notifications › "In the game" |
+| N11 | "What next?": how much money must be left before it suggests optional spending (a show fee, rare stock, a move, research)? | It must cost at most half of what the player can spend |
+| N12 | "What next?" while the guide runs | Only danger, the guide's step and hungry animals; with Guide hints off the guide is ignored and everything is listed |
+| N13 | "What next?": Watch-level tank problems (water to watch, low food, worn gear) | Listed, after hungry animals |
+| N14 | "What next?": the thresholds | A show closing within 48 game hours; rare stock leaving within 12; a quest from half done |
+| N15 | "What next?": the N key, the light bulb icon, and its place | N; a light bulb; in the tank bar, and on an upright phone floating at the right edge at mid-height (inside the bar it cut the tank's status line) |
+| N16 | An Operations problem in "What next?" shows with the calm colour and gift icon of "ready" items, though Operations shows it red | As described; giving it the warning colour is a small change |
