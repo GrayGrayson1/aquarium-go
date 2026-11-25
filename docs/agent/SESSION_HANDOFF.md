@@ -1,9 +1,34 @@
-# Session handoff: after chunk 20 (the audit of 2026-11-17, released as 0.10.0)
+# Session handoff: after chunk 21 (the Collection, reveals and "What next?": 0.11.0 on `next`, not released)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
+
+## Chunk 21 (Chase): built on `next` as 0.11.0, waiting for the owner's go-ahead
+
+- **What** (PLAN.md chunk 21; ADR-0057 has the owner's words): the Collection (Encyclopedia › Collection), rare-hatch
+  reveals and "What next?". The shared build hash changed (the optional `progress.discoveredAt`).
+- **Status:** chunk 21 is built and on `next` as 0.11.0; all four checks pass on the final code `b30cc49` (typecheck exit 0; 316 unit files, 4,849 tests; build exit 0; e2e 449 of 449). Not released: `main` and the live game are still 0.10.0 (`296291b`). The release waits for the owner's go-ahead.
+- **To release** (only with the owner's yes in the session): merge `next` onto a fresh `origin/main` in the internal
+  clone and push; watch the Pages run; `render deploys create srv-dbbt6gbncjis73c23br0 --commit <main sha> --confirm
+  --wait -o text` (the shop server, same day: the builds must match), then the static site
+  (`srv-dath0mfavr4c73dgk3j0`); check both `version.json` files and `/health`; `npx vite-node
+  scripts/shared-smoke.ts`. If the Render CLI says its token expired, start `render login` and open its address in
+  the owner's Brave (`open -a "Brave Browser" <url>`): he approves there.
+- **Then:** the owner's reading of `docs/agent/design/CHUNK-21/WORDS.md` and OWNER_QUESTIONS group N; B-233;
+  `docs/agent/IDEAS.md` when he wants the next idea.
+
+**Learned in chunk 21.**
+- *Builders can run their own e2e spec from a worktree on the Dev drive* (plain APFS since 2026-11-03) on their own
+  ports (`E2E_PORT`, `E2E_SHOPS_PORT`, `E2E_PREVIEW_PORT`, `E2E_PROD_PORT`). Tell them to from the start: four new
+  cases failed on first contact because they had only been typechecked. A worktree whose `node_modules` is a link
+  makes the dev server refuse two font files (403); a throwaway Vite config that allows the path gets round it.
+- *Resume a builder with the failure, not a new agent:* each fixed its own cases in minutes with its context intact.
+- *A fix for a layout blocker needs its own review.* Moving a button out of a bar made it `position: fixed`, which
+  trapped its popover's z-index under the toasts: the confirmation review caught it, the e2e could not.
+- *A "can this test fail?" check is worth asking for:* two new cases passed without their fix until reworked.
+- *The Supabase project pauses after a week without use* unless the keep-awake job runs; it passed on 2026-11-23.
 
 ## Chunk 20, the audit of 2026-11-17 (Chase): released as 0.10.0
 
