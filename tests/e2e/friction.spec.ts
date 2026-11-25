@@ -155,6 +155,34 @@ test.describe('Friction fixes on a computer (1440×900)', () => {
   });
 });
 
+test.describe('Settings as a lazy chunk (chunk 22 review B1)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+
+  test('a failed load puts the panel away and says so; a reload (and in Safari the next open) brings Settings back', async ({ page, browserName }) => {
+    // (before the game loads: the chunk is also fetched a few seconds after start, and that must fail too)
+    await page.route(/SettingsPanel/, (r) => r.abort());
+    await game(page);
+    await page.evaluate(() => { location.hash = '#/settings'; });
+    await expect(tid(page, 'toast').filter({ hasText: 'Settings didn’t load' }).first()).toBeVisible();
+    await expect(tid(page, 'panel-settings')).toHaveCount(0);
+    // the HUD is back: no panel is "open" behind an empty screen
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __AQ: { ui(): { panel: string | null } } }).__AQ.ui().panel)).toBeNull();
+    await expect(tid(page, 'tank-open-card')).toBeVisible();
+    await page.unroute(/SettingsPanel/);
+    if (browserName === 'webkit') {
+      // WebKit fetches a failed module again; Chromium keeps the failure until the page reloads
+      await tid(page, 'dock-more').tap();
+      await page.getByRole('button', { name: /Settings/ }).first().tap();
+      await expect(tid(page, 'panel-settings')).toBeVisible();
+      return;
+    }
+    await game(page);
+    await page.evaluate(() => { location.hash = '#/settings'; });
+    await expect(tid(page, 'panel-settings')).toBeVisible();
+    await expect(tid(page, 'settings-save')).toBeVisible();
+  });
+});
+
 test.describe('Friction fixes on a phone (390×844, touch)', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   suite(true);

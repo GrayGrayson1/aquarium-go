@@ -3,7 +3,7 @@
  * Screens: title → starter reveal → naming → game HUD. Settings + dev tools + toasts are global.
  * The root never blocks the 3D canvas: it is pointer-events: none and only its controls receive input.
  */
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
@@ -48,19 +48,50 @@ applyPlatformStorage();
 /** lane:perf — dev tools are code-split: players never download them unless dev mode is switched on. */
 // chunk 22 — Settings loads when it is first opened, as the panels do (PanelHost): it is 46 kB of source that most
 // sessions never open, and the main chunk sat 2.5 kB under its limit (vite.config.ts; BACKLOG B-233 a).
-const SettingsPanel = lazy(() => import('./settings/SettingsPanel').then((m) => ({ default: m.SettingsPanel })));
+// Review B1: a chunk can fail to load (a release while this tab is open removes the old file; the network drops), and
+// React.lazy keeps a failure for good. So it is fetched a few seconds after start, while the files this tab was
+// served with are still there, and a failed load closes the panel, says so, and tries afresh on the next open
+// (Safari and Firefox fetch again; Chromium keeps a failed module for the page's life, hence "reload" in the words).
+const loadSettings = () => import('./settings/SettingsPanel');
+export const SETTINGS_LOAD_FAILED = 'Settings didn’t load. Check your connection, then reload the game.';
+const SETTINGS_PREFETCH_MS = 4000;
+/** Rendered in place of Settings when its chunk failed: put the panel away (the HUD hides for an open panel) and say why. */
+function SettingsFailed({ onFail }: { onFail: () => void }) {
+  useEffect(onFail, [onFail]);
+  return null;
+}
 /** Mounted from the first time Settings is opened, then kept (its closing animation and its tab state live in it). */
 function SettingsHost() {
   const open = useUI((s) => s.panel === 'settings');
   const [wanted, setWanted] = useState(open);
+  const [attempt, setAttempt] = useState(0);
+  const failed = useRef(false);
   useEffect(() => {
-    if (open) setWanted(true);
+    const t = window.setTimeout(() => void loadSettings().catch(() => undefined), SETTINGS_PREFETCH_MS);
+    return () => window.clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    if (failed.current) {
+      failed.current = false;
+      setAttempt((a) => a + 1); // a new lazy component: the old one would throw its kept failure again
+    }
+    setWanted(true);
   }, [open]);
+  const Panel = useMemo(() => lazy(() => loadSettings().then((m) => ({ default: m.SettingsPanel }))), [attempt]);
+  const onFail = useCallback(() => {
+    failed.current = true;
+    const ui = useUI.getState();
+    if (ui.panel === 'settings') ui.set({ panel: null });
+    ui.toast(SETTINGS_LOAD_FAILED, 'warning');
+  }, []);
   if (!wanted && !open) return null;
   return (
-    <Suspense fallback={null}>
-      <SettingsPanel />
-    </Suspense>
+    <ErrorBoundary name="settings chunk" resetKey={attempt} fallback={<SettingsFailed onFail={onFail} />}>
+      <Suspense fallback={null}>
+        <Panel />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 const DevPanel = lazy(() => import('./dev/DevPanel').then((m) => ({ default: m.DevPanel })));

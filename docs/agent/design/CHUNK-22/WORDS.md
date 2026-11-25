@@ -23,7 +23,8 @@ does, so it added few words: a handful of buttons and links, and three reworded 
 | Research, in the "No project running" note when a project can start: a button that shows the ones that can | See what you can start |
 | Visitors, the Admission price card, while the price differs from the fair figure the card already names | Set to fair price (${n}) |
 | A shared shop, the notice "That costs $8, and you can spend $0. Ask for more in Money.": a new button that opens the Shop money sheet (the sheet's own existing words) | Ask for money |
-| Tooltips on a computer (the key in brackets is the new part) | Feed — drop food into the water (F) · Photo (P) · Just watch (H) · Tank card (T) · Show the whole room (V) / Return to the tank (V) · Previous tank ([) · Next tank (]) |
+| A notice when Settings can't be loaded (Settings now loads when first opened; this shows only if that fails, for example with no connection) | Settings didn’t load. Check your connection, then reload the game. |
+| Tooltips on a computer (the key in brackets is the new part) | Feed — drop food into the water (F) · Photo (P) · Just watch (H) · Tank card (T) · Show the whole room (V) / Return to the tank (V) · Previous tank ([) · Next tank (]). With a problem the same key follows the existing words: "{Watch or Danger} — {reasons} (T)" on the tank card button, "Previous tank — {name} needs attention (Danger) ([)" on an arrow. The arrows now always have a tooltip (before, only when another tank needed attention). |
 
 ## Changed lines
 
@@ -33,7 +34,6 @@ does, so it added few words: a handful of buttons and links, and three reworded 
 | Shows › Entries with nothing entered, while new results wait unseen: the title | No entries waiting | The results are in |
 | The same: its line | Enter a healthy, settled adult — or one of your own aquascapes — in an upcoming show. | (no line) |
 | The same: its button (it now opens Results) | See upcoming shows | See results |
-
 | A shared shop on a phone, the pill's first line. The count of people here is no longer on the phone's pill; it is in the dropdown and the pill's spoken label. The club's name did not fit at 390 px. **The owner may prefer the count back.** | 👥 {n} | Shared |
 | A shared shop, the speed buttons' tooltips for a member who may not pause or change the speed (the buttons are dimmed; the added sentence is the existing refusal) | Pause (Space) | Pause (Space). Only {owner} and the people they choose can pause or change the speed. (the same for Normal speed (1), Fast ×3 (2) and Very fast ×10 (3)) |
 
@@ -49,6 +49,6 @@ does, so it added few words: a handful of buttons and links, and three reworded 
 - On a phone, a bid's Counter and Decline buttons lose their icons so the three fit on one row, and a long buyer's
   note shows two lines until tapped.
 - On a phone held sideways: the tank card keeps only the tank's name in its header (the chips, problem lines and
-  "Move tank" scroll with the card), and Settings drops its subtitle and puts "Save now" at the end of the page.
+  "Move tank" scroll with the card; the size line above the name, such as "29 GALLON", is not shown there), and Settings drops its subtitle and puts "Save now" at the end of the page.
 - The guide: its done lines ("Nice to meet you, {name}!", "The water is in good shape.") are now seen on a phone,
   because the card the guide opened closes about 3.5 seconds after its step is done (unless you are using it).

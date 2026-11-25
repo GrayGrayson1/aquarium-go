@@ -532,11 +532,21 @@ export const boardFullOfRewards = (quests: readonly QuestView[]): boolean => que
  * same `act`. Each claim is quiet (a failure still says why), and one celebration sums them up when the last result is
  * in, rather than nine toasts and nine fanfares. One success alone keeps its own words.
  */
+// Review (chunk 22): in a shared shop the results come back with the next step, and the button stays up until then: a
+// second tap would send every claim again (each answered "Already claimed."). One round at a time; the timer frees it
+// if a result never comes (a dropped connection).
+let claimingAll = false;
 function claimAll(ids: readonly string[]): void {
+  if (claimingAll || ids.length === 0) return;
+  claimingAll = true;
+  const free = window.setTimeout(() => { claimingAll = false; }, 5000);
   let settled = 0;
   const got: string[] = [];
   const done = () => {
-    if (++settled < ids.length || got.length === 0) return;
+    if (++settled < ids.length) return;
+    claimingAll = false;
+    window.clearTimeout(free);
+    if (got.length === 0) return;
     sfx('celebrate');
     if (got.length === 1) useUI.getState().toast(got[0], 'celebrate');
     else

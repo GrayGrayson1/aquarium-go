@@ -619,4 +619,7 @@ link.
 | `research-show-startable` | Research: "See what you can start" in the "No project running" note |
 | `admission-fair` | Visitors: "Set to fair price (${n})" |
 | `shared-pill-tag` | A shared shop's phone pill: "Shared" |
-
+| `clutch-open-tanks` · `breeding-move` | Eggs & fry: the "Tanks" link in a clutch's no-nursery advice; "Move {name}" on a Breeding activity row |
+| `production-pairs-all` · `production-pairs-only-<speciesId>` · `production-pairs-head-<speciesId>` | Production › New line, "Which pair breeds?": the species chips and headings |
+| `listing-create` | (chunk 22) in the introduction while nothing is listed, in the Active heading otherwise: always exactly one |
+| `shared-here-count` | (chunk 22) the people-here count, on the computer's pill |
