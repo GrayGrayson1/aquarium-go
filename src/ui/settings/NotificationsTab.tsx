@@ -42,7 +42,7 @@ const STATUS_ICON: Record<NotifyPermission, typeof Bell> = { default: Bell, gran
 export const PHONE_NOTE = 'On a phone or tablet, the game pauses when you switch apps, so alerts show in the game.';
 
 /** Chunk 21 (rare-hatch reveals): the in-game card's switch, beside the notification settings. */
-export const REVEAL_SETTING = { title: 'Reveal rare finds', sub: 'Show a card when a Prismatic, a new named strain or a new rare morph is born' } as const;
+export const REVEAL_SETTING = { title: 'Reveal rare finds', sub: 'Show a card when a Prismatic, a new named strain or a new legendary morph is born' } as const;
 
 export function NotificationsTab() {
   const permission = useNotifyPermission((s) => s.permission);

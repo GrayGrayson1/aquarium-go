@@ -122,13 +122,15 @@ export function RevealCard() {
           <div className="ag-hatch__foot">
             {count > 1 && (
               <div className="ag-hatch__pager">
-                <IconButton label={REVEAL_WORDS.previous} disabled={page <= 0} onClick={() => useReveal.getState().turn(-1)} data-testid="hatch-reveal-prev">
+                {/* at an end the button stays focusable (aria-disabled, not disabled): paging to the last page with it
+                    kept the focus there instead of dropping it to the page (the chunk's review, N6) */}
+                <IconButton label={REVEAL_WORDS.previous} aria-disabled={page <= 0 || undefined} silent={page <= 0} onClick={() => useReveal.getState().turn(-1)} data-testid="hatch-reveal-prev">
                   <ChevronLeft size={16} />
                 </IconButton>
                 <span className="ag-hatch__count" data-testid="hatch-reveal-pager">
                   {REVEAL_WORDS.pager(page + 1, count)}
                 </span>
-                <IconButton label={REVEAL_WORDS.next} disabled={page >= count - 1} onClick={() => useReveal.getState().turn(1)} data-testid="hatch-reveal-next">
+                <IconButton label={REVEAL_WORDS.next} aria-disabled={page >= count - 1 || undefined} silent={page >= count - 1} onClick={() => useReveal.getState().turn(1)} data-testid="hatch-reveal-next">
                   <ChevronRight size={16} />
                 </IconButton>
               </div>

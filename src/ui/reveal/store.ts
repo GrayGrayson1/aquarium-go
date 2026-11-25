@@ -3,11 +3,12 @@
  *
  * Finds wait in `waiting` until the card may open (src/ui/reveal/blockers.ts); opening takes them all as the card's pages.
  * Finds that arrive while the card is open join it as more pages, so a brood (or a whole catch-up) is one card with a
- * pager, never a row of cards. A find is kept once per animal. Another aquarium (a new game, a loaded slot) drops
+ * pager, never a row of cards. A find is kept once per animal, and a morph-only find records its species' game day
+ * (`morphShown`) so the next commit allows no second one that day. Another aquarium (a new game, a loaded slot) drops
  * everything: its backlog is never revealed, and nothing replays after a reload. The reducers are pure (unit-tested).
  */
 import { create } from 'zustand';
-import type { RevealFind } from './finds';
+import { foldMorphLedger, type MorphRevealLedger, type RevealFind } from './finds';
 
 export interface RevealState {
   /** The aquarium the finds belong to. */
@@ -19,9 +20,11 @@ export interface RevealState {
   page: number;
   /** Counts openings: the build-up plays once per opening, not per page. */
   opened: number;
+  /** Species → the game day of its last morph-only reveal (the one-a-day limit, src/ui/reveal/finds.ts). */
+  morphShown: MorphRevealLedger;
 }
 
-export const EMPTY_REVEAL: RevealState = { saveId: null, waiting: [], open: null, page: 0, opened: 0 };
+export const EMPTY_REVEAL: RevealState = { saveId: null, waiting: [], open: null, page: 0, opened: 0, morphShown: {} };
 
 /** Add a commit's finds: to the open card, else to what waits (one page per animal). */
 export function addFinds(s: RevealState, saveId: string, finds: readonly RevealFind[]): Partial<RevealState> {
@@ -35,9 +38,10 @@ export function addFinds(s: RevealState, saveId: string, finds: readonly RevealF
     have.add(f.creatureId);
     add.push(f);
   }
-  if (fresh) return { saveId, waiting: add, open: null, page: 0 };
+  const morphShown = foldMorphLedger(fresh ? {} : s.morphShown, add);
+  if (fresh) return { saveId, waiting: add, open: null, page: 0, morphShown };
   if (!add.length) return {};
-  return open ? { open: [...open, ...add] } : { waiting: [...waiting, ...add] };
+  return open ? { open: [...open, ...add], morphShown } : { waiting: [...waiting, ...add], morphShown };
 }
 
 /** Open the card on what waits, keeping only the animals `keep` still allows (all gone: nothing opens). */
@@ -76,7 +80,7 @@ export const useReveal = create<RevealStore>((set, get) => ({
   show: (keep) => set(openWaiting(get(), keep)),
   close: () => set(closeCard(get())),
   turn: (delta) => set(turnPage(get(), delta)),
-  reset: (saveId) => set({ saveId, waiting: [], open: null, page: 0 }),
+  reset: (saveId) => set({ saveId, waiting: [], open: null, page: 0, morphShown: {} }),
   clear: () => {
     const s = get();
     if (s.waiting.length || s.open) set({ waiting: [], open: null, page: 0 });

@@ -7,12 +7,15 @@
  *    the finds of the catch-up wait behind it and open once, as one card, when the player closes it;
  *  - while the tour runs, or the guide's spotlight dims the screen round the control its step needs now;
  *  - while any other dialog is open (the kit's Modal, Find anything, the More sheet, the shared shop's cards, the
- *    guide's finale), in photo mode, or with the HUD hidden for watching.
+ *    guide's finale), in photo mode, or with the HUD hidden for watching;
+ *  - while the player is typing in a text field (the card would take the focus, and a Space or Enter meant for the
+ *    field would then close it), or placing or moving decor or a tank (the chunk's review, S5 and N6).
  * `revealWaitReason` is the pure rule; `readRevealBlockers` reads the stores and the page.
  */
-import { useUI } from '@/state/ui';
+import { useUI, type ToolId } from '@/state/ui';
 import { useResume } from '@/persistence';
 import { useTour } from '../tutorial/tourStore';
+import { isTextEntry } from '../common/safe';
 
 export interface RevealBlockers {
   screen: string;
@@ -23,7 +26,14 @@ export interface RevealBlockers {
   otherDialog: boolean;
   photo: boolean;
   hudHidden: boolean;
+  /** Focus is in a text field. */
+  typing: boolean;
+  /** A placement tool is in use (decor or a tank being placed or moved). */
+  placing: boolean;
 }
+
+/** The tools that place or move something: a dialog over them would drop the piece mid-drag. */
+export const PLACING_TOOLS: ReadonlySet<ToolId> = new Set<ToolId>(['decor_place', 'decor_move', 'tank_place']);
 
 /** Why the card must wait, or null when it may open now. */
 export function revealWaitReason(b: RevealBlockers): keyof RevealBlockers | null {
@@ -35,6 +45,8 @@ export function revealWaitReason(b: RevealBlockers): keyof RevealBlockers | null
   if (b.otherDialog) return 'otherDialog';
   if (b.photo) return 'photo';
   if (b.hudHidden) return 'hudHidden';
+  if (b.typing) return 'typing';
+  if (b.placing) return 'placing';
   return null;
 }
 
@@ -71,5 +83,7 @@ export function readRevealBlockers(): RevealBlockers {
     otherDialog: has(OTHER_DIALOGS),
     photo: ui.photoMode,
     hudHidden: ui.hudHidden,
+    typing: isTextEntry(doc?.activeElement ?? null),
+    placing: PLACING_TOOLS.has(ui.tool),
   };
 }
