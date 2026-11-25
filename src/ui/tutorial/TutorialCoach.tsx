@@ -121,15 +121,33 @@ interface GuideCard {
   tankId: string | null;
   /** The guide's step index when its button opened the card. */
   step: number;
-  /** performance.now() when it opened. */
-  at: number;
+  /** The player used the card before its step was done (the confirmation review, 2): it is theirs. */
+  used: boolean;
 }
 const guideCard: { current: GuideCard | null } = { current: null };
 let forgetGuideCard: (() => void) | null = null;
 
+const CARD_SEL: Readonly<Record<GuideCard['kind'], string>> = { creature: '[data-testid="creature-card"]', tank: '[data-testid="tank-card"]' };
+/** What counts as using the card: a touch, the wheel, a key, focus moved inside it. */
+const USE_EVENTS = ['pointerdown', 'wheel', 'keydown', 'focusin'] as const;
+
+/**
+ * An event that is the player using the card. Not the card's own focus move to its close button as it opens (Sheet:
+ * 60 ms after it opens, and much later on a slow phone: the confirmation review of chunk 22, 1; a keyboard player's
+ * move there still counts, by its key). And while the step is still to do (`doing`), not the reading the water step
+ * asks for (a tap on it is the step itself: counting it kept the card, and the guide its pill, as before G-2).
+ */
+function usesCard(e: Event, kind: GuideCard['kind'], doing: boolean): boolean {
+  const t = e.target as Element | null;
+  if (!t?.closest?.(CARD_SEL[kind])) return false;
+  if (e.type === 'focusin' && t.closest('.ag-sheet__close')) return false;
+  return !(doing && t.closest('[data-param]'));
+}
+
 /**
  * Remember the card the guide's button just opened, only while that card stays open (the review of chunk 22, S1(b)):
- * one the player closed and opened again is theirs, and the guide leaves it.
+ * one the player closed and opened again is theirs, and the guide leaves it. Its use counts from now (the confirmation
+ * review, 2: the water step is done 2.5 s after its card opens, and a player reading it meanwhile lost it).
  */
 function rememberGuideCard(c: GuideCard | null): void {
   forgetGuideCard?.();
@@ -147,18 +165,23 @@ function rememberGuideCard(c: GuideCard | null): void {
   const offUI = useUI.subscribe((s) => {
     if (c.kind === 'creature' && s.selectedCreatureId !== c.id) drop();
   });
+  const onUse = (e: Event) => {
+    if (usesCard(e, c.kind, true)) c.used = true;
+  };
+  for (const t of USE_EVENTS) document.addEventListener(t, onUse, true);
   forgetGuideCard = () => {
     offShell();
     offUI();
+    for (const t of USE_EVENTS) document.removeEventListener(t, onUse, true);
   };
 }
 
-/** The card the guide opened for the step just done, if it is still the one it opened (and forget it). */
+/** The card the guide opened for the step just done, if it is still the one it opened and unused (and forget it). */
 function takeGuideCard(done: number, now: number): GuideCard | null {
   const c = guideCard.current;
   if (!c || c.step < done || c.step >= now) return null;
   rememberGuideCard(null);
-  return c;
+  return c.used ? null : c;
 }
 
 /**
@@ -171,24 +194,17 @@ export const GUIDE_CARD_MS: Readonly<Record<GuideCard['kind'], number>> = { crea
 /** How long a step's done line shows on the guide card. */
 const DONE_LINE_MS = 4200;
 
-/** The card's own focus move as it opens (Sheet, 60 ms) isn't the player's: focus inside it counts after this. */
-const CARD_FOCUS_QUIET_MS = 400;
-
 /**
  * Put the guide's card away after its GUIDE_CARD_MS, unless the player uses the card (a touch, the wheel, a key or
- * focus moved inside it: the review, S1(a), for keyboard and screen-reader players), opens another card, a panel, a
- * popover or a tool, or closes the card themselves first. A card closed with focus inside it hands focus to the guide
- * card's own button, never to the page. `onGone` runs once it has closed it. Returns the way to call it off.
+ * focus moved inside it: the review, S1(a), for keyboard and screen-reader players; `usesCard`), opens another card,
+ * a panel, a popover or a tool, or closes the card themselves first. A card closed with focus inside it hands focus to
+ * the guide card's own button, never to the page. `onGone` runs once it has closed it. Returns the way to call it off.
  */
 function putAwayLater(c: GuideCard, onGone: () => void): () => void {
-  const sel = c.kind === 'creature' ? '[data-testid="creature-card"]' : '[data-testid="tank-card"]';
+  const sel = CARD_SEL[c.kind];
   let over = false;
-  const inCard = (e: Event) => !!(e.target as Element | null)?.closest?.(sel);
   const onUse = (e: Event) => {
-    if (inCard(e)) stop();
-  };
-  const onFocus = (e: Event) => {
-    if (performance.now() - c.at >= CARD_FOCUS_QUIET_MS && inCard(e)) stop();
+    if (usesCard(e, c.kind, false)) stop();
   };
   const unsubUI = useUI.subscribe((s, p) => {
     if (s.panel !== p.panel || s.selectedCreatureId !== p.selectedCreatureId || s.focusedTankId !== p.focusedTankId || s.tool !== p.tool || s.view !== p.view) stop();
@@ -196,9 +212,7 @@ function putAwayLater(c: GuideCard, onGone: () => void): () => void {
   const unsubShell = useShell.subscribe((s, p) => {
     if (s.tankCardOpen !== p.tankCardOpen || s.popover !== p.popover) stop();
   });
-  const LISTEN = ['pointerdown', 'wheel', 'keydown'] as const;
-  for (const t of LISTEN) document.addEventListener(t, onUse, true);
-  document.addEventListener('focusin', onFocus, true);
+  for (const t of USE_EVENTS) document.addEventListener(t, onUse, true);
   const timer = window.setTimeout(() => {
     stop();
     const ui = useUI.getState();
@@ -226,8 +240,7 @@ function putAwayLater(c: GuideCard, onGone: () => void): () => void {
     window.clearTimeout(timer);
     unsubUI();
     unsubShell();
-    for (const t of LISTEN) document.removeEventListener(t, onUse, true);
-    document.removeEventListener('focusin', onFocus, true);
+    for (const t of USE_EVENTS) document.removeEventListener(t, onUse, true);
   }
   return stop;
 }
@@ -290,7 +303,7 @@ export function showMe(target: string, g: GameState) {
       const sh = useShell.getState();
       const wasOpen = sh.tankCardOpen; // chunk 22 (G-2): a card the player had opened is theirs, not the guide's
       if (!sh.tankCardOpen || ui.panel || ui.selectedCreatureId) toggleTankCard();
-      rememberGuideCard(!wasOpen && useShell.getState().tankCardOpen ? { kind: 'tank', id: null, tankId: useUI.getState().focusedTankId, step: g.progress.tutorial?.step ?? -1, at: performance.now() } : null);
+      rememberGuideCard(!wasOpen && useShell.getState().tankCardOpen ? { kind: 'tank', id: null, tankId: useUI.getState().focusedTankId, step: g.progress.tutorial?.step ?? -1, used: false } : null);
       break;
     }
     case 'creature-name': {
@@ -298,7 +311,7 @@ export function showMe(target: string, g: GameState) {
       const was = ui.selectedCreatureId; // chunk 22 (G-2)
       if (starter) ui.set({ selectedCreatureId: starter.id, view: 'tank', panel: null, focusedTankId: starter.tankId ?? ui.focusedTankId });
       else ui.toast('There’s no animal to show right now. Bring one home from the Market first.', 'info');
-      rememberGuideCard(starter && was !== starter.id ? { kind: 'creature', id: starter.id, tankId: starter.tankId ?? null, step: g.progress.tutorial?.step ?? -1, at: performance.now() } : null);
+      rememberGuideCard(starter && was !== starter.id ? { kind: 'creature', id: starter.id, tankId: starter.tankId ?? null, step: g.progress.tutorial?.step ?? -1, used: false } : null);
       break;
     }
     case 'scene':

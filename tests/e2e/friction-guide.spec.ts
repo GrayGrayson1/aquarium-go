@@ -79,13 +79,32 @@ async function watch(page: Page, key: string, pred: string): Promise<() => Promi
 const doneShown = (step: string, text: string) =>
   `(() => { const d = document.querySelector('section[data-testid="tutorial-card"][data-step="${step}"] .ag-coach__done'); const h = document.querySelector('.ag-hud__coach'); return !!d && d.textContent.includes(${JSON.stringify(text)}) && !!h && getComputedStyle(h).visibility === 'visible'; })()`;
 
-/** `locator` stays visible for `ms`, checked every 200 ms (a card the guide must leave alone, past its timer). */
+/**
+ * `sel` stays on screen for `ms` of the page's own time (a card the guide must leave alone, past its timer): checked
+ * every 100 ms in the page, so a page that stalls for a moment (WebKit on a busy machine) neither fails it nor cuts the
+ * time short, then asserted once.
+ */
 async function staysFor(page: Page, sel: string, ms: number): Promise<void> {
-  const end = Date.now() + ms;
-  while (Date.now() < end) {
-    await expect(page.locator(sel), `still there ${Math.round((end - Date.now()) / 1000)} s before the end`).toBeVisible({ timeout: 1000 });
-    await page.waitForTimeout(200);
-  }
+  const key = `stay${Math.random().toString(36).slice(2)}`;
+  await page.evaluate(
+    ([k, s2, span]) => {
+      const w = window as unknown as { __stay?: Record<string, { start: number; gone: boolean }> };
+      w.__stay ??= {};
+      const rec = { start: performance.now(), gone: false };
+      w.__stay[k] = rec;
+      const id = window.setInterval(() => {
+        const el = document.querySelector(s2);
+        const r = el?.getBoundingClientRect();
+        if (!el || !r || r.height < 2 || getComputedStyle(el).visibility === 'hidden') rec.gone = true;
+        if (performance.now() - rec.start > span + 500) window.clearInterval(id);
+      }, 100);
+    },
+    [key, sel, ms] as const,
+  );
+  const elapsed = () => page.evaluate((k) => performance.now() - (window as unknown as { __stay: Record<string, { start: number }> }).__stay[k].start, key);
+  await expect.poll(elapsed, { timeout: ms + 60_000 }).toBeGreaterThanOrEqual(ms);
+  expect(await page.evaluate((k) => (window as unknown as { __stay: Record<string, { gone: boolean }> }).__stay[k].gone, key), `${sel} went within ${ms} ms`).toBe(false);
+  await expect(page.locator(sel)).toBeVisible();
 }
 
 const box = async (page: Page, sel: string) => page.locator(sel).first().boundingBox();
@@ -147,6 +166,22 @@ test.describe('The guide on a phone (390×844, touch)', () => {
     await expect(page.locator('.ag-coach-pill')).toContainText('Have a look around');
   });
 
+  test('G-2: on a slow phone too (CPU ×5), the card “Meet them” opened goes, its own focus move not counted as use', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'CPU throttling is a Chrome DevTools Protocol call: Chromium only');
+    test.setTimeout(240_000);
+    await guideGame(page);
+    // (the confirmation review of chunk 22, 1: the card moves focus to its close button 60 ms after it opens, which a
+    // slow phone runs 0.4 to 0.8 s late; that move was counted as the player using the card, and it never went)
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 5 });
+    await page.locator('[data-guide-showme]').tap({ timeout: 30_000 }); // "Meet them"
+    await expect(tid(page, 'creature-card')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.ag-coach-pill')).toContainText('Have a look around', { timeout: 30_000 });
+    await expect(tid(page, 'creature-card')).toBeHidden({ timeout: 60_000 });
+    await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'camera', { timeout: 30_000 });
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  });
+
   test('G-3: the last step’s “Open Research” finishes the guide and Research turns to Quests, where the reward is', async ({ page }) => {
     await guideGame(page);
     await toStep(page, 'preview');
@@ -202,6 +237,33 @@ test.describe('The guide on a computer (1440×900)', () => {
     await page.keyboard.press('Tab'); // on through the card
     expect(await focusInCard()).toBe(true);
     await staysFor(page, '[data-testid="tank-card"]', CARD_MS.tank + 2000);
+  });
+
+  test('G-2: a keyboard player who moves in the tank card before the step is done keeps it too', async ({ page }) => {
+    await guideGame(page);
+    await toStep(page, 'water');
+    await page.locator('[data-guide-showme]').focus();
+    await page.keyboard.press('Enter'); // "Open the tank card"
+    await expect(tid(page, 'tank-card')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('[data-testid="tank-card"]'))).toBe(true);
+    // (the confirmation review, 2) two Tabs while the reading is still to count (2.5 s), then nothing
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    expect((await aq<{ tutorial: { step: number } }>(page, 'summary')).tutorial.step).toBe(3); // still the water step
+    await expect(page.locator('.ag-coach-pill')).toContainText('A leaf to lounge on'); // the reading counted: done
+    await staysFor(page, '[data-testid="tank-card"]', CARD_MS.tank + 2000);
+  });
+
+  test('G-2: a tap on the reading the step asks for is the step, not use: the card still goes', async ({ page }) => {
+    await guideGame(page);
+    await toStep(page, 'water');
+    const sawDone = await watch(page, 'reading', `!document.querySelector('[data-testid="tank-card"]') && ${doneShown('habitat', 'The water is in good shape.')}`);
+    await page.locator('[data-guide-showme]').click(); // "Open the tank card"
+    await expect(tid(page, 'tank-card')).toBeVisible();
+    await page.locator('[data-testid="tank-card"] [data-param="temp"]').first().click(); // the betta's: the temperature
+    await expect(page.locator('.ag-coach-pill')).toContainText('A leaf to lounge on');
+    await expect(tid(page, 'tank-card')).toBeHidden({ timeout: 15_000 });
+    await expect.poll(sawDone).toBe(true);
   });
 
   test('G-2 (S1(a)): a card put away with focus inside it hands focus to the guide’s button, not the page', async ({ page }) => {
