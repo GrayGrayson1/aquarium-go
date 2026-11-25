@@ -7,11 +7,11 @@ it's used up.
 
 ## Chunk 22 (Captain 1): the friction pass, 0.11.1 on `next`
 
-- **What** (PLAN.md chunk 22; ADR-0058 has the owner's words): 34 small fixes for player friction, found by playing
+- **What** (PLAN.md chunk 22; ADR-0058 has the owner's words): 35 small fixes for player friction, found by playing
   0.11.0, with no change to what anything does. Nothing under `src/sim`, `src/data` or `src/types` changed: **the
   shared build hash is the same as 0.11.0's** (`c14ae6b5b2a29ebf`), so the release is GitHub Pages and the Render
   static site; the shop server needs no deploy (check its `/health` build still matches after the release).
-- **Status:** built and on `next` as 0.11.1 (pushed); all four checks pass on the final code `859e938` (typecheck exit 0; 318 unit files, 4,858 tests; build exit 0, the main chunk 3,993.19 kB of 4,000; e2e 544 passed, 1 skipped, none failed). A fresh review (one blocker, fixed), a confirmation review and a re-check (no blockers). **Not released: `main` is still 0.11.0 (`2510248`); it waits for the owner's go-ahead.**
+- **Status:** built and on `next` as 0.11.1 (pushed); all four checks pass on the final code `f859bcb` (typecheck exit 0; 318 unit files, 4,859 tests; build exit 0, the main chunk 3,993.34 kB of 4,000; e2e 544 passed, 1 skipped, none failed; `859e938` before it the same). A fresh review (one blocker, fixed), a confirmation review and two re-checks (no blockers). **Not released: `main` is still 0.11.0 (`2510248`); it waits for the owner's go-ahead.**
 - **To release** (only with the owner's yes in the session): the routine in the chunk 21 section below, without
   the shop server step; then both `version.json` files and `npx vite-node scripts/shared-smoke.ts`.
 - **Then:** the owner's reading of `docs/agent/design/CHUNK-22/WORDS.md` and OWNER_QUESTIONS group O (four
@@ -39,9 +39,13 @@ it's used up.
   that fails once stays failed in Chromium until a reload (`React.lazy` keeps the rejection, and so does the
   browser's module map). The tour, which has no address, took its place. Prefetch a lazy chunk a few seconds after
   start, and give its failure a way out.
-- *`nav-routes-matrix` "390×844: visitors to log" is intermittent on the released code too* (2 of 16 runs on
-  0.11.0, at `#/visitors` and `#/more`, in WebKit; B-204): compare a failure's rate with the base commit in a
-  worktree (`c22-base`) before blaming the chunk.
+- *An intermittent e2e case has a cause: measure it against the base commit, then find it.* Three cases failed
+  now and then on 0.11.0 as well (a worktree at the release, `--repeat-each=20`, both engines): the phone route
+  walk (2 of 16) was a real defect, the stores writing the old address back while an address change waited for its
+  `hashchange` (Back did nothing; `router.ts` `seenHash`); `social.spec`'s network error (10 of 20) raced the
+  stub's 300 to 600 ms answer; `nav.spec`'s "back from an offer" (5 of 24 in WebKit) compared with where the test
+  had scrolled, not where the list stood at the click (Playwright scrolls on the way to a click). A page-side probe
+  that wraps a store's `setState` and logs the stack named the first two in minutes.
 - *Subagents can't write report files:* ask for the report as the final message and save what you need yourself.
 
 ## Chunk 21 (Chase): released as 0.11.0 on 2026-11-24
