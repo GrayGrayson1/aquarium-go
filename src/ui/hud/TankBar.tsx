@@ -118,11 +118,6 @@ function useOtherTankCue(focused: string | null): { dir: 1 | -1; level: 'watch' 
 }
 
 const STATUS_ICON = { good: CircleCheck, watch: TriangleAlert, danger: OctagonAlert } as const;
-/**
- * The space before each " · " in the status line: a narrow no-break space (U+202F). Each part is a flex item, whose
- * leading plain space collapses ("Watch· 10 gal"); this one stays, and is narrow enough for a phone (chunk 21 review).
- */
-const SEP = '\u202F';
 const STATUS_WORD = TANK_STATUS_WORD; // Audit 2026-11-17 (J10): one table
 
 export function TankBar() {
@@ -191,17 +186,17 @@ export function TankBar() {
             <Icon size={12} aria-hidden /> {STATUS_WORD[st]}
             {food && (
               <span className={clsx('ag-switcher__food', `is-${food}`)} title={food === 'out' ? 'Out of food for this tank — restock in Market › Supplies' : 'Food for this tank is running low'}>
-                {SEP}· {food === 'out' ? 'No food' : 'Food low'}
+                {' '}· {food === 'out' ? 'No food' : 'Food low'}
               </span>
             )}
             {/* lane:notify — broken gear, or gear that can't help these animals (the Tank card's Equipment tab says which) */}
             {gear && (
               <span className="ag-switcher__food is-low ag-switcher__gear" title={extra.join('\n')}>
-                {SEP}· Check gear
+                {' '}· Check gear
               </span>
             )}
-            {gallons > 0 && <span className="ag-switcher__gal">{SEP}· {gallons} gal</span>}
-            {n > 1 && <span className="ag-switcher__gal ag-switcher__index">{SEP}· {idx + 1}/{n}</span>}
+            {gallons > 0 && <span className="ag-switcher__gal"> · {gallons} gal</span>}
+            {n > 1 && <span className="ag-switcher__gal ag-switcher__index"> · {idx + 1}/{n}</span>}
           </span>
         </div>
         <button type="button" className="ag-switcher__arrow" data-testid="tank-next" aria-label={arrowLabel(1)} title={arrowCue(1) ? arrowLabel(1) : undefined} disabled={n < 2} onClick={() => cycleTank(1)}>
