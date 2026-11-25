@@ -438,7 +438,19 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
       <LeaveConfirm />
       <div className="pn-wizard__nav">
         <Button onClick={back}>{idx === 0 ? 'Cancel' : 'Back'}</Button>
-        <span className="pn-grow pn-small pn-muted pn-wizard__why">{step === 'items' && !itemsValid.ok ? itemsValid.why : step === 'price' && !priceValid ? 'Set a reserve, and a buy-now above it.' : ''}</span>
+        <span className="pn-grow pn-small pn-muted pn-wizard__why">
+          {step === 'items' && !itemsValid.ok ? (
+            itemsValid.why
+          ) : step === 'price' && !priceValid ? (
+            'Set a reserve, and a buy-now above it.'
+          ) : (step === 'price' || step === 'duration') && itemsValid.ok && priceValid ? (
+            // chunk 22 (F-04): the length has a recommended default and the photo is optional, so a player happy with
+            // the suggested prices needn't tap through both (selling one animal from its card took six taps)
+            <button type="button" className="pn-link" data-testid="listing-skip-review" onClick={() => go('review')}>
+              Skip to review
+            </button>
+          ) : null}
+        </span>
         {step === 'review' ? (
           <Button variant="coral" size="lg" data-testid="listing-confirm" silent onClick={confirm} disabled={!itemsValid.ok || !priceValid}>
             <Tag size={16} /> <span className="pn-wizard__confirm" title={starter ? `List — including ${starter.name}` : undefined}>{starter ? `List — including ${starter.name}` : 'Confirm listing'}</span>

@@ -161,45 +161,61 @@ export function TankBar() {
     const c = arrowCue(dir);
     return c ? `${base} — ${c.name} needs attention (${ATTENTION_WORD[c.level]})` : base;
   };
+  // the status line: under the name, inside its button when there is a tank (chunk 22, F-02)
+  const statusLine = (
+    <span className={clsx('ag-switcher__status', `is-${st}`)} title={why || undefined} data-testid="tank-status">
+      <Icon size={12} aria-hidden /> {STATUS_WORD[st]}
+      {food && (
+        <span className={clsx('ag-switcher__food', `is-${food}`)} title={food === 'out' ? 'Out of food for this tank — restock in Market › Supplies' : 'Food for this tank is running low'}>
+          {' '}· {food === 'out' ? 'No food' : 'Food low'}
+        </span>
+      )}
+      {/* lane:notify — broken gear, or gear that can't help these animals (the Tank card's Equipment tab says which) */}
+      {gear && (
+        <span className="ag-switcher__food is-low ag-switcher__gear" title={extra.join('\n')}>
+          {' '}· Check gear
+        </span>
+      )}
+      {gallons > 0 && <span className="ag-switcher__gal"> · {gallons} gal</span>}
+      {n > 1 && <span className="ag-switcher__gal ag-switcher__index"> · {idx + 1}/{n}</span>}
+    </span>
+  );
   return (
     <div className="ag-tankbar">
       <div className="ag-hudpill ag-switcher">
-        <button type="button" className="ag-switcher__arrow" data-testid="tank-prev" aria-label={arrowLabel(-1)} title={arrowCue(-1) ? arrowLabel(-1) : undefined} disabled={n < 2} onClick={() => cycleTank(-1)}>
+        <button type="button" className="ag-switcher__arrow" data-testid="tank-prev" aria-label={arrowLabel(-1)} title={`${arrowLabel(-1)} ([)`} disabled={n < 2} onClick={() => cycleTank(-1)}>
           <ChevronLeft size={18} />
           {arrowCue(-1) && <AttnDot level={arrowCue(-1)!.level} className="ag-switcher__attn" testId="tank-prev-attn" />}
         </button>
         <div className="ag-switcher__label" aria-live="polite">
-          <span className="ag-switcher__name" title={id ? name : undefined}>
-            {id ? (
-              name
-            ) : n === 0 && !placing ? (
-              // Audit 2026-11-17 (G28): with every tank gone, the way to the next one (review: through openPanel, as every
-              // way into Build goes, and not while a tank is being placed or while other tanks exist)
-              <button type="button" className="ag-switcher__buy" data-testid="tank-buy-first" onClick={() => openPanel('build', 'tab:tanks')}>
-                No tank · Buy one
-              </button>
-            ) : (
-              'No tank'
-            )}
-          </span>
-          <span className={clsx('ag-switcher__status', `is-${st}`)} title={why || undefined} data-testid="tank-status">
-            <Icon size={12} aria-hidden /> {STATUS_WORD[st]}
-            {food && (
-              <span className={clsx('ag-switcher__food', `is-${food}`)} title={food === 'out' ? 'Out of food for this tank — restock in Market › Supplies' : 'Food for this tank is running low'}>
-                {' '}· {food === 'out' ? 'No food' : 'Food low'}
+          {id ? (
+            // chunk 22 (F-02): the name and its status are the natural thing to tap ("Danger" looked like a button and
+            // did nothing; its reason is a tooltip a touch screen never shows). They open the tank card, as its button
+            // and the T key do.
+            <button type="button" className="ag-switcher__open" data-testid="tank-open-card" aria-expanded={tankCardOpen} onClick={toggleTankCard}>
+              <span className="ag-switcher__name" title={name}>
+                {name}
               </span>
-            )}
-            {/* lane:notify — broken gear, or gear that can't help these animals (the Tank card's Equipment tab says which) */}
-            {gear && (
-              <span className="ag-switcher__food is-low ag-switcher__gear" title={extra.join('\n')}>
-                {' '}· Check gear
+              {statusLine}
+            </button>
+          ) : (
+            <>
+              <span className="ag-switcher__name">
+                {n === 0 && !placing ? (
+                  // Audit 2026-11-17 (G28): with every tank gone, the way to the next one (review: through openPanel, as every
+                  // way into Build goes, and not while a tank is being placed or while other tanks exist)
+                  <button type="button" className="ag-switcher__buy" data-testid="tank-buy-first" onClick={() => openPanel('build', 'tab:tanks')}>
+                    No tank · Buy one
+                  </button>
+                ) : (
+                  'No tank'
+                )}
               </span>
-            )}
-            {gallons > 0 && <span className="ag-switcher__gal"> · {gallons} gal</span>}
-            {n > 1 && <span className="ag-switcher__gal ag-switcher__index"> · {idx + 1}/{n}</span>}
-          </span>
+              {statusLine}
+            </>
+          )}
         </div>
-        <button type="button" className="ag-switcher__arrow" data-testid="tank-next" aria-label={arrowLabel(1)} title={arrowCue(1) ? arrowLabel(1) : undefined} disabled={n < 2} onClick={() => cycleTank(1)}>
+        <button type="button" className="ag-switcher__arrow" data-testid="tank-next" aria-label={arrowLabel(1)} title={`${arrowLabel(1)} (])`} disabled={n < 2} onClick={() => cycleTank(1)}>
           <ChevronRight size={18} />
           {arrowCue(1) && <AttnDot level={arrowCue(1)!.level} className="ag-switcher__attn" testId="tank-next-attn" />}
         </button>
@@ -212,7 +228,7 @@ export function TankBar() {
         data-attention={attn}
         aria-pressed={tankCardOpen}
         aria-label={`Tank card: water, equipment and care${cardWhy ? ` — ${cardWhy}` : ''}`}
-        title={cardWhy || undefined}
+        title={`${cardWhy || 'Tank card'} (T)` /* chunk 22 (F-05): its key, as the speed buttons tell theirs */}
         disabled={!id}
         onClick={toggleTankCard}
       >
@@ -226,6 +242,7 @@ export function TankBar() {
         data-testid="view-toggle"
         data-tutorial-id="view-toggle"
         aria-label={view === 'tank' ? 'Show the whole room' : 'Return to the tank'}
+        title={`${view === 'tank' ? 'Show the whole room' : 'Return to the tank'} (V)`}
         onClick={toggleView}
       >
         {view === 'tank' ? <LayoutGrid size={16} aria-hidden /> : <Maximize2 size={16} aria-hidden />}

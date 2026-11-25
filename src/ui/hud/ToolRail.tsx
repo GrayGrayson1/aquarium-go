@@ -379,8 +379,8 @@ function LightsPopover() {
 
 // ───────────── rail ─────────────
 
-function ToolButton({ icon: Icon, label, shortLabel, hint, active, onClick, testId, tutorialId, locked, lockHint, children, expanded }: {
-  icon: ComponentType<LucideProps>; label: string; /** Phone rail label when `label` is too long. */ shortLabel?: string; /** Tooltip / accessible description (defaults to the label). */ hint?: string; active?: boolean; onClick: () => void; testId: string; tutorialId?: string; locked?: boolean; lockHint?: string; children?: ReactNode; expanded?: boolean;
+function ToolButton({ icon: Icon, label, shortLabel, hint, shortcut, active, onClick, testId, tutorialId, locked, lockHint, children, expanded }: {
+  icon: ComponentType<LucideProps>; label: string; /** chunk 22 (F-05): its key, told in the tooltip as the speed buttons tell theirs ("Pause (Space)"). */ shortcut?: string; /** Phone rail label when `label` is too long. */ shortLabel?: string; /** Tooltip / accessible description (defaults to the label). */ hint?: string; active?: boolean; onClick: () => void; testId: string; tutorialId?: string; locked?: boolean; lockHint?: string; children?: ReactNode; expanded?: boolean;
 }) {
   return (
     <div className="ag-popanchor ag-tool-wrap">
@@ -392,7 +392,7 @@ function ToolButton({ icon: Icon, label, shortLabel, hint, active, onClick, test
         aria-pressed={active}
         aria-expanded={expanded}
         aria-label={locked ? `${label} (locked): ${lockHint ?? ''}` : hint ?? label}
-        title={locked ? lockHint : hint ?? label}
+        title={locked ? lockHint : `${hint ?? label}${shortcut ? ` (${shortcut})` : ''}`}
         onClick={onClick}
       >
         <span className="ag-tool__icon">
@@ -451,7 +451,7 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
   };
   return (
     <div className="ag-toolrail" role="toolbar" aria-label="Tank tools" data-occlude={occlude ? 'right' : undefined}>
-      <ToolButton icon={Utensils} label="Feed" hint="Feed — drop food into the water" testId="tool-feed" active={tool === 'feed'} expanded={popover === 'food'} onClick={() => toggleFeed('feed')}>
+      <ToolButton icon={Utensils} label="Feed" hint="Feed — drop food into the water" shortcut="F" testId="tool-feed" active={tool === 'feed'} expanded={popover === 'food'} onClick={() => toggleFeed('feed')}>
         {popover === 'food' && <FoodPicker key="food" mode="feed" />}
       </ToolButton>
       <ToolButton icon={Crosshair} label="Target" hint="Target feed — offer food to one animal directly" testId="tool-target-feed" active={tool === 'target_feed'} expanded={popover === 'target_food'} onClick={() => toggleFeed('target_feed')}>
@@ -473,6 +473,7 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
       <ToolButton
         icon={Camera}
         label="Photo"
+        shortcut="P"
         testId="tool-photo"
         onClick={() => {
           sfx('camera');
@@ -505,6 +506,7 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
         icon={Eye}
         label="Just watch"
         shortLabel="Watch"
+        shortcut="H"
         testId="tool-watch"
         onClick={() => {
           sfx('close');

@@ -69,6 +69,9 @@
 .ag-thead__issue { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0; }
 .ag-thead__issuetext { flex: 1 1 180px; min-width: 0; }
 .ag-thead__issue .ag-fixlink { margin-top: 0; flex: none; }
+/* chunk 22 (F-01): the tank card's Water tab, the filter's link and the way down to Care on one line */
+.ag-waterlinks { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+.ag-waterlinks .ag-fixlink { margin-top: 0; flex: none; }
 .ag-reason__body .ag-fixlink { justify-self: start; align-self: flex-start; width: auto; }
 .ag-fixwrap { display: inline-flex; border-radius: var(--r-pill); }
 .ag-equip.is-worn .ag-equip__icon { color: var(--c-watch); }

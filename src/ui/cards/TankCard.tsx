@@ -26,6 +26,7 @@ import {
   TriangleAlert,
   OctagonAlert,
   ChevronDown,
+  ArrowDown,
   Coins,
   Tag,
   Eye,
@@ -61,7 +62,7 @@ import { AttnDot } from '../hud/AttnDot'; // lane:notify
 import { Portrait } from '../common/Portrait';
 import { CompatView } from '../common/CompatView';
 import { useShell } from '../common/shellStore';
-import { safe, useGameThrottled } from '../common/safe';
+import { safe, useGameThrottled, useMedia, SHORT_LANDSCAPE_QUERY } from '../common/safe';
 import { act, tutorialFlag } from '../common/actions';
 import { startTankMove } from './tankMove'; // lane:ui-shell (chunk 6, B-196)
 import { withFallback } from './waterFallback';
@@ -91,6 +92,7 @@ import { CHIP_ICON } from '../common/tankChipIcons'; // lane:automation (chunk 5
 import { fixForAttention, fixForWaterIssue } from '../common/fixLinks'; // chunk 19 (ADR-0055 decision 2, QOL-002)
 import { isWorn } from '../common/notify'; // chunk 19 (QOL-002)
 import { FixButton } from './FixButton'; // chunk 19 (QOL-002)
+import { glow } from '../common/glow'; // chunk 22 (F-01)
 import { animalStatus, withWaterHarm } from '@/sim/tankStatus'; // Audit 2026-11-17 (D16)
 import { TANK_STATUS_WORD } from '../common/tankStatus'; // Audit 2026-11-17 (J10)
 
@@ -230,7 +232,16 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
         <Meter label="Biological filter" value={report.cycleProgress * 100} tone="auto" display={report.cycleProgress >= CYCLE_READY ? 'Mature' : report.cycleProgress >= 0.4 ? 'Establishing' : 'New'} /* Audit 2026-11-17 C15: the report's line (it said 80%) */ />
       </div>
       {/* Audit 2026-11-17 (J5): what the Biological filter is, where the player meets it */}
-      <ScienceLink article="cycling" label="What the Biological filter is: what “cycling” means">What’s the Biological filter?</ScienceLink>
+      {/* chunk 22 (F-01): Care sits under every reading (16 rows on a phone: two swipes before a routine water change);
+          a link beside the filter's goes straight to it, as a problem's own fix link does */}
+      <div className="ag-waterlinks">
+        <ScienceLink article="cycling" label="What the Biological filter is: what “cycling” means">What’s the Biological filter?</ScienceLink>
+        {!readOnly && (
+          <button type="button" className="ag-fixlink" data-testid="water-jump-care" onClick={() => { sfx('click'); glow('[data-testid="tank-card"] [data-fix="care"]', { block: 'start' }); }}>
+            Jump to care <ArrowDown size={12} aria-hidden />
+          </button>
+        )}
+      </div>
 
       {report.issues.length > 0 && (
         <ul className="ag-issues">
@@ -747,10 +758,19 @@ export function TankCard() {
     const why = (attn?.items ?? []).filter((i) => i.tab === t).map((i) => i.short ?? i.text).join(' ');
     return <AttnDot inline level={l} className="ag-tab__attn" testId={`tank-tab-attn-${t}`} label={`${l === 'danger' ? 'Danger' : 'Watch'}${why ? ` — ${why}` : ' — look here'}`} />;
   };
-  const header: ReactNode = tank ? (
-    <div className="ag-thead">
+  // chunk 22 (A-6): a phone held sideways is 390 px tall. The header (the chips, up to four problem lines, the keeper
+  // and Move tank) took 144 to 209 px of the 250 between the top bar and the tab bar, and it never scrolled: with a
+  // problem tank no reading and no care button was on screen at all. There, only the name stays in the header and
+  // the rest leads the scrolling body.
+  const shortLandscape = useMedia(SHORT_LANDSCAPE_QUERY);
+  const headTop: ReactNode = tank ? (
+    <>
       <div className="ag-overline">{tier ? (/gallon/i.test(tier.name) ? tier.name : `${tier.name} · ${tier.gallons} gal`) : 'Aquarium'}</div>
       <h2 className="ag-thead__name">{tank.name}</h2>
+    </>
+  ) : null;
+  const headRest: ReactNode = tank ? (
+    <>
       <div className="ag-row ag-wrap" style={{ gap: 6 }}>
         <WaterChip wc={tank.waterClass} size="sm" />
         <StatusBadge status={tank.cache.status} label={TANK_STATUS_WORD[tank.cache.status] /* Audit 2026-11-17 (J10) */} />
@@ -782,12 +802,14 @@ export function TankCard() {
           <Move size={14} aria-hidden /> Move tank
         </Button>
       )}
-    </div>
+    </>
   ) : null;
+  const header: ReactNode = tank ? <div className={clsx('ag-thead', shortLandscape && 'ag-thead--short')}>{shortLandscape ? <h2 className="ag-thead__name">{tank.name}</h2> : <>{headTop}{headRest}</>}</div> : null;
   return (
     <Sheet open={visible} onClose={close} side="left" testId="tank-card" label="Tank card" className="ag-tcard" header={header}>
       {tank && game && (
         <>
+          {shortLandscape && <div className="ag-thead ag-thead--body" data-testid="tank-card-details">{headRest}</div>}
           <div className="ag-tcard__tabs">
             <Tabs<TabId>
               label="Tank card section"

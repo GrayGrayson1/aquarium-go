@@ -40,18 +40,29 @@ export function ListingsTab({ g, focusId, onCreate }: { g: GameState; focusId: s
 
   return (
     <div className="pn-stack pn-stack--lg">
-      <div className="pn-sellhero">
-        <div className="pn-grow">
-          <div className="pn-sellhero__title">Sell to collectors, breeders & aquariums</div>
-          <div className="pn-small pn-dim">List one animal, a group, a breeding pair, juveniles, frags and cuttings — or a whole working aquarium. Buyers bid over time; you choose.</div>
+      {/* chunk 22 (F-03): the introduction is for a player with nothing listed. With listings up, a visit is about
+          their bids (the Market's dot counts them), and on a phone the block pushed the first bid a screen down: the
+          button moves into the Active heading and the bids come first. */}
+      {active.length === 0 && (
+        <div className="pn-sellhero">
+          <div className="pn-grow">
+            <div className="pn-sellhero__title">Sell to collectors, breeders & aquariums</div>
+            <div className="pn-small pn-dim">List one animal, a group, a breeding pair, juveniles, frags and cuttings — or a whole working aquarium. Buyers bid over time; you choose.</div>
+          </div>
+          <Button variant="coral" size="lg" onClick={onCreate} data-testid="listing-create">
+            <Plus size={17} /> New listing
+          </Button>
         </div>
-        <Button variant="coral" size="lg" onClick={onCreate} data-testid="listing-create">
-          <Plus size={17} /> New listing
-        </Button>
-      </div>
+      )}
 
       <section>
-        <SectionHead title={`Active · ${active.length}`} icon={<Gavel size={14} />} />
+        <SectionHead title={`Active · ${active.length}`} icon={<Gavel size={14} />}>
+          {active.length > 0 && (
+            <Button variant="coral" size="sm" onClick={onCreate} data-testid="listing-create">
+              <Plus size={15} /> New listing
+            </Button>
+          )}
+        </SectionHead>
         {active.length === 0 ? (
           <EmptyState icon={<Tag size={24} />} title="Nothing listed right now">
             When you list something, bids from buyers arrive here. Waiting can bring a better offer — but never a guaranteed one.

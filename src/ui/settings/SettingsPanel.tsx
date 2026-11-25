@@ -36,6 +36,7 @@ import { useRenderQuality } from '@/render/shared/quality'; // lane:pc-perf
 import type { QualityLevel } from '@/types';
 import { sfx } from '@/audio/sfx';
 import { Sheet } from '../common/Sheet';
+import { useMedia, SHORT_LANDSCAPE_QUERY } from '../common/safe'; // chunk 22 (A-7)
 import { Button, Row, Segmented, Slider, Tabs, Toggle, Section, Modal } from '../kit';
 import { usePrefs } from '../common/prefs';
 import { listSlots, saveNow, saveBeforeLeaving, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, timeAgo, isSameGame, loadKeepAdvice, freeSaveSlot, type SaveMeta } from '../common/saves';
@@ -632,8 +633,11 @@ export function SettingsPanel() {
   const close = () => useUI.getState().set({ panel: null });
   const shared = useSharedMode((s) => s.club !== null); // chunk 13: a shared shop has no save button
   const saveFooter = inGame && !shared && SAVE_FOOTER_TABS.includes(tab);
+  // chunk 22 (A-7): a phone held sideways is 390 px tall; the header, the tabs and a fixed footer left one line of
+  // settings on screen (33 px). There "Save now" ends the scrolling page instead of standing under it.
+  const shortLandscape = useMedia(SHORT_LANDSCAPE_QUERY);
   return (
-    <Sheet open={open} onClose={close} side="right" testId="panel-settings" label="Settings" className="ag-settings" title="Settings" subtitle={shared ? versionLabel() : `Saved on this device · ${versionLabel()}`} footer={saveFooter ? <SaveNowFooter /> : undefined}>
+    <Sheet open={open} onClose={close} side="right" testId="panel-settings" label="Settings" className="ag-settings" title="Settings" subtitle={shared ? versionLabel() : `Saved on this device · ${versionLabel()}`} footer={saveFooter && !shortLandscape ? <SaveNowFooter /> : undefined}>
       <div className="ag-tcard__tabs">
         <Tabs<Tab>
           label="Settings section"
@@ -661,6 +665,11 @@ export function SettingsPanel() {
         {tab === 'notifications' && <NotificationsTab />}
         {tab === 'about' && <AboutTab />}
       </div>
+      {saveFooter && shortLandscape && (
+        <div className="ag-settings__savefoot">
+          <SaveNowFooter />
+        </div>
+      )}
     </Sheet>
   );
 }

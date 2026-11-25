@@ -287,3 +287,16 @@
 .ag-thead__reason.is-danger { color: var(--c-danger); }
 /* lane:ui-shell (chunk 6, B-196) — the header's Move tank action, left-aligned under the chips */
 .ag-thead__move { justify-self: start; margin-top: 4px; }
+/* chunk 22 (A-7): Settings on a phone held sideways, "Save now" at the end of the page (SettingsPanel) */
+.ag-settings__savefoot { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--c-line); }
+@media (max-height: 500px) and (orientation: landscape) {
+  /* and no subtitle there, as the panels' headers drop theirs (panels.css, R07-03); About has the version */
+  .ag-settings.ag-sheet--bottom .ag-sheet__sub { display: none; }
+  .ag-settings.ag-sheet--bottom .ag-sheet__head { padding-top: 4px; padding-bottom: 8px; align-items: center; min-height: 58px; }
+}
+/* chunk 22 (A-6): a phone held sideways. Only the name stays in the tank card's header; the chips, the problem lines
+   and Move tank lead the body and scroll with it (.ag-thead--body), above the sticky tabs (whose own margin pulls
+   them 16 px up, hence the 30). */
+.ag-thead--short .ag-thead__name { margin: 0; font-size: calc(20px * var(--text-scale)); }
+.ag-thead--body { margin-bottom: 30px; }
+.ag-tcard:has(.ag-thead--short) .ag-sheet__head { min-height: 58px; padding-top: 4px; padding-bottom: 8px; align-items: center; } /* 58: the one toast a sideways phone shows sits in this row */
