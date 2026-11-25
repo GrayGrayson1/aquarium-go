@@ -121,22 +121,74 @@ interface GuideCard {
   tankId: string | null;
   /** The guide's step index when its button opened the card. */
   step: number;
+  /** performance.now() when it opened. */
+  at: number;
 }
 const guideCard: { current: GuideCard | null } = { current: null };
-
-/** How long the card the guide opened stays after its step is done (its "done" line then shows on the guide). */
-export const GUIDE_CARD_MS = 3500;
+let forgetGuideCard: (() => void) | null = null;
 
 /**
- * Put the guide's card away after GUIDE_CARD_MS, unless the player touches the card, opens another card, a panel, a
- * popover or a tool, or closes the card themselves first. Returns the way to call it off.
+ * Remember the card the guide's button just opened, only while that card stays open (the review of chunk 22, S1(b)):
+ * one the player closed and opened again is theirs, and the guide leaves it.
  */
-function putAwayLater(c: GuideCard): () => void {
+function rememberGuideCard(c: GuideCard | null): void {
+  forgetGuideCard?.();
+  forgetGuideCard = null;
+  guideCard.current = c;
+  if (!c) return;
+  const drop = () => {
+    if (guideCard.current === c) guideCard.current = null;
+    forgetGuideCard?.();
+    forgetGuideCard = null;
+  };
+  const offShell = useShell.subscribe((s) => {
+    if (c.kind === 'tank' && !s.tankCardOpen) drop();
+  });
+  const offUI = useUI.subscribe((s) => {
+    if (c.kind === 'creature' && s.selectedCreatureId !== c.id) drop();
+  });
+  forgetGuideCard = () => {
+    offShell();
+    offUI();
+  };
+}
+
+/** The card the guide opened for the step just done, if it is still the one it opened (and forget it). */
+function takeGuideCard(done: number, now: number): GuideCard | null {
+  const c = guideCard.current;
+  if (!c || c.step < done || c.step >= now) return null;
+  rememberGuideCard(null);
+  return c;
+}
+
+/**
+ * How long the card the guide opened stays after its step is done (its "done" line then shows on the guide). The
+ * animal's card longer (the review, S1(c)): "Meet them" is done as the card opens, so this is all the time a new player
+ * has to read it; the tank card's reading has been on screen a few seconds already (A11's WATER_READ_MS).
+ */
+export const GUIDE_CARD_MS: Readonly<Record<GuideCard['kind'], number>> = { creature: 8000, tank: 3500 };
+
+/** How long a step's done line shows on the guide card. */
+const DONE_LINE_MS = 4200;
+
+/** The card's own focus move as it opens (Sheet, 60 ms) isn't the player's: focus inside it counts after this. */
+const CARD_FOCUS_QUIET_MS = 400;
+
+/**
+ * Put the guide's card away after its GUIDE_CARD_MS, unless the player uses the card (a touch, the wheel, a key or
+ * focus moved inside it: the review, S1(a), for keyboard and screen-reader players), opens another card, a panel, a
+ * popover or a tool, or closes the card themselves first. A card closed with focus inside it hands focus to the guide
+ * card's own button, never to the page. `onGone` runs once it has closed it. Returns the way to call it off.
+ */
+function putAwayLater(c: GuideCard, onGone: () => void): () => void {
   const sel = c.kind === 'creature' ? '[data-testid="creature-card"]' : '[data-testid="tank-card"]';
   let over = false;
+  const inCard = (e: Event) => !!(e.target as Element | null)?.closest?.(sel);
   const onUse = (e: Event) => {
-    const t = e.target as Element | null;
-    if (t?.closest?.(sel)) stop();
+    if (inCard(e)) stop();
+  };
+  const onFocus = (e: Event) => {
+    if (performance.now() - c.at >= CARD_FOCUS_QUIET_MS && inCard(e)) stop();
   };
   const unsubUI = useUI.subscribe((s, p) => {
     if (s.panel !== p.panel || s.selectedCreatureId !== p.selectedCreatureId || s.focusedTankId !== p.focusedTankId || s.tool !== p.tool || s.view !== p.view) stop();
@@ -144,28 +196,59 @@ function putAwayLater(c: GuideCard): () => void {
   const unsubShell = useShell.subscribe((s, p) => {
     if (s.tankCardOpen !== p.tankCardOpen || s.popover !== p.popover) stop();
   });
-  document.addEventListener('pointerdown', onUse, true);
-  document.addEventListener('wheel', onUse, true);
+  const LISTEN = ['pointerdown', 'wheel', 'keydown'] as const;
+  for (const t of LISTEN) document.addEventListener(t, onUse, true);
+  document.addEventListener('focusin', onFocus, true);
   const timer = window.setTimeout(() => {
     stop();
     const ui = useUI.getState();
     const sh = useShell.getState();
     if (ui.panel || sh.popover || ui.tool !== 'none') return;
+    const focused = !!document.activeElement?.closest?.(sel);
+    let closed = false;
     if (c.kind === 'creature') {
       // (a computer's animal card sits on the right, clear of the guide: it stays)
-      if (ui.selectedCreatureId === c.id && (window.matchMedia?.(BOTTOM_SHEET_QUERY).matches ?? false)) ui.set({ selectedCreatureId: null });
-    } else if (sh.tankCardOpen && !ui.selectedCreatureId && ui.focusedTankId === c.tankId) sh.set({ tankCardOpen: false });
-  }, GUIDE_CARD_MS);
+      if (ui.selectedCreatureId === c.id && (window.matchMedia?.(BOTTOM_SHEET_QUERY).matches ?? false)) {
+        ui.set({ selectedCreatureId: null });
+        closed = true;
+      }
+    } else if (sh.tankCardOpen && !ui.selectedCreatureId && ui.focusedTankId === c.tankId) {
+      sh.set({ tankCardOpen: false });
+      closed = true;
+    }
+    if (!closed) return;
+    if (focused) focusGuide(sel);
+    onGone();
+  }, GUIDE_CARD_MS[c.kind]);
   function stop() {
     if (over) return;
     over = true;
     window.clearTimeout(timer);
     unsubUI();
     unsubShell();
-    document.removeEventListener('pointerdown', onUse, true);
-    document.removeEventListener('wheel', onUse, true);
+    for (const t of LISTEN) document.removeEventListener(t, onUse, true);
+    document.removeEventListener('focusin', onFocus, true);
   }
   return stop;
+}
+
+/**
+ * Focus was in the card the guide put away: on to the guide card's own button (its first button if the step has
+ * none), as soon as the guide is back from its pill (it waits for the pill to leave). Not if the player has put focus
+ * somewhere else meanwhile.
+ */
+function focusGuide(cardSel: string): void {
+  const until = performance.now() + 2000;
+  const tick = () => {
+    const a = document.activeElement as HTMLElement | null;
+    const lost = !a || a === document.body || !!a.closest(cardSel);
+    if (!lost) return;
+    const card = document.querySelector<HTMLElement>('section[data-testid="tutorial-card"]');
+    const btn = card?.querySelector<HTMLElement>('[data-guide-showme]') ?? card?.querySelector<HTMLElement>('button');
+    if (btn) btn.focus({ preventScroll: true });
+    else if (performance.now() < until) window.setTimeout(tick, 50);
+  };
+  window.setTimeout(tick, 50);
 }
 
 /** "Speed up" on a waiting step is temporary: the guide hands back the previous speed when the step completes. */
@@ -207,7 +290,7 @@ export function showMe(target: string, g: GameState) {
       const sh = useShell.getState();
       const wasOpen = sh.tankCardOpen; // chunk 22 (G-2): a card the player had opened is theirs, not the guide's
       if (!sh.tankCardOpen || ui.panel || ui.selectedCreatureId) toggleTankCard();
-      guideCard.current = !wasOpen && useShell.getState().tankCardOpen ? { kind: 'tank', id: null, tankId: useUI.getState().focusedTankId, step: g.progress.tutorial?.step ?? -1 } : null;
+      rememberGuideCard(!wasOpen && useShell.getState().tankCardOpen ? { kind: 'tank', id: null, tankId: useUI.getState().focusedTankId, step: g.progress.tutorial?.step ?? -1, at: performance.now() } : null);
       break;
     }
     case 'creature-name': {
@@ -215,7 +298,7 @@ export function showMe(target: string, g: GameState) {
       const was = ui.selectedCreatureId; // chunk 22 (G-2)
       if (starter) ui.set({ selectedCreatureId: starter.id, view: 'tank', panel: null, focusedTankId: starter.tankId ?? ui.focusedTankId });
       else ui.toast('There’s no animal to show right now. Bring one home from the Market first.', 'info');
-      guideCard.current = starter && was !== starter.id ? { kind: 'creature', id: starter.id, tankId: starter.tankId ?? null, step: g.progress.tutorial?.step ?? -1 } : null;
+      rememberGuideCard(starter && was !== starter.id ? { kind: 'creature', id: starter.id, tankId: starter.tankId ?? null, step: g.progress.tutorial?.step ?? -1, at: performance.now() } : null);
       break;
     }
     case 'scene':
@@ -361,9 +444,25 @@ export function TutorialCoach() {
   const lastIdx = useRef<number | null>(null);
   const lastStepId = useRef<string | null>(null); // chunk 22 (G-1): the step just done, at an advance
   const putAway = useRef<(() => void) | null>(null); // chunk 22 (G-2)
-  useEffect(() => () => putAway.current?.(), []);
   const [justAdvanced, setJustAdvanced] = useState(false);
   const [doneLine, setDoneLine] = useState<string | null>(null);
+  // chunk 22 (G-2, the review's S1(c)): the done line has one timer, so the guide can show it again, for its full time,
+  // when it puts the card away (under the card the guide is only its pill, and the line went unseen)
+  const doneTimer = useRef(0);
+  const lastDone = useRef<string | null>(null);
+  const showDone = useRef((line: string | null, ms: number) => {
+    window.clearTimeout(doneTimer.current);
+    lastDone.current = line;
+    setDoneLine(line);
+    doneTimer.current = window.setTimeout(() => setDoneLine(null), ms);
+  }).current;
+  useEffect(
+    () => () => {
+      putAway.current?.();
+      window.clearTimeout(doneTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!cur) return;
@@ -373,7 +472,7 @@ export function TutorialCoach() {
       // two waiting steps in a row ("Word gets around" → reputation): ×3 carries over instead of dropping to 1× for
       // a second wait the player would have to speed up again
       const slowed = isWaitingStep(cur.step.objective) ? false : restoreGuideSpeed();
-      setDoneLine(slowed ? `${cur.prevDone ?? 'Done.'} Back to normal speed.` : cur.prevDone);
+      const line = slowed ? `${cur.prevDone ?? 'Done.'} Back to normal speed.` : cur.prevDone;
       setCollapsed(false);
       setConfirmSkip(false);
       const shown = useSettings.getState().showTutorialHints && !useTour.getState().running;
@@ -386,17 +485,17 @@ export function TutorialCoach() {
         const sh = useShell.getState();
         if (sh.popover === 'food' || sh.popover === 'target_food') sh.set({ popover: null });
       }
-      // chunk 22 (G-2): the card the guide's button opened for the step just done goes away after a moment
-      const card = guideCard.current;
-      const away = shown && !!card && card.step >= lastIdx.current && card.step < cur.index;
+      // chunk 22 (G-2): the card the guide's button opened for the step just done goes away after a moment, and the
+      // done line shows again, for its full time, once it has gone (until then it is held: the guide is a pill)
+      const card = takeGuideCard(lastIdx.current, cur.index);
+      // (a computer's animal card sits on the right, clear of the guide: it isn't put away)
+      const away = shown && !!card && (card.kind === 'tank' || bottomSheets);
       if (away && card) {
-        guideCard.current = null;
         putAway.current?.();
-        putAway.current = putAwayLater(card);
+        putAway.current = putAwayLater(card, () => showDone(lastDone.current, DONE_LINE_MS));
       }
+      showDone(line, away && card ? GUIDE_CARD_MS[card.kind] + 1000 : DONE_LINE_MS);
       const t = window.setTimeout(() => setJustAdvanced(false), 1400);
-      // (the done line waits for the card to go: under it the guide is only its pill)
-      const t2 = window.setTimeout(() => setDoneLine(null), away ? GUIDE_CARD_MS + 3000 : 4200);
       // a follow-cam the guide started ends with its step (after a moment to enjoy the behaviour)
       const t3 = guideCamera.followed
         ? window.setTimeout(() => {
@@ -406,7 +505,6 @@ export function TutorialCoach() {
         : 0;
       return () => {
         window.clearTimeout(t);
-        window.clearTimeout(t2);
         if (t3) window.clearTimeout(t3);
       };
     }

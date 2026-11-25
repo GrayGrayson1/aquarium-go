@@ -4,12 +4,16 @@
  * - G-1: the guide's feed step puts the food down as it moves on, so a phone shows the next step's card (the prompt
  *   "Tap the water to drop …" hid it);
  * - G-2: a card the guide's own button opened ("Meet them", "Open the tank card") goes away a moment after its step
- *   is done, so the next step's words show instead of its pill; a card the player is using stays;
+ *   is done (the animal's card after 8 s, the tank card after 3.5 s), so the next step's words show instead of its
+ *   pill, with the done line; a card the player is using stays, by touch or by keyboard (the review of chunk 22,
+ *   S1(a)), and one closed with focus inside it hands focus to the guide's button; a card the player closed and
+ *   opened again is theirs (S1(b));
  * - G-3: the last step ends as Research opens: on a phone, where Research covers the finale, it turns to Quests;
  * - G-4: the axolotl's "Room to grow" brings Build's 40-gallon breeder into view, and the spotlight rings it;
  * - G-5: on a computer, with Build open beside the tank, the placing prompt starts right of the guide card;
  * - G-6 to G-8, in a shared shop on the stub server: a member who may not pause sees the speed buttons locked (a
- *   press still says why); the phone's pill names the shop; the spending refusal's "Ask for money" opens Shop money.
+ *   press still says why); the phone's pill says the shop is shared; the spending refusal's "Ask for money" opens Shop
+ *   money.
  */
 import { test, expect, type Browser, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
 import { aq, clickTank, openApp, quickGame, tid } from './helpers';
@@ -39,6 +43,51 @@ async function toStep(page: Page, id: string): Promise<void> {
   await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', id);
 }
 
+/** chunk 22 (G-2): how long the guide leaves the card its button opened, after the step (TutorialCoach's GUIDE_CARD_MS). */
+const CARD_MS = { creature: 8000, tank: 3500 };
+
+/**
+ * Watch the page for a moment that may be brief (a done line shows for about 4 s): `pred` is checked every 100 ms in
+ * the page from now on, and `seen` polls whether it has held at least once. (Polling the screen afterwards would race
+ * the line's own timer on a busy machine.)
+ */
+async function watch(page: Page, key: string, pred: string): Promise<() => Promise<boolean>> {
+  await page.evaluate(
+    ([k, src]) => {
+      const w = window as unknown as { __seen?: Record<string, boolean> };
+      w.__seen ??= {};
+      w.__seen[k] = false;
+      // eslint-disable-next-line no-new-func
+      const f = new Function(`return (${src});`) as () => boolean;
+      const id = window.setInterval(() => {
+        try {
+          if (f()) {
+            w.__seen![k] = true;
+            window.clearInterval(id);
+          }
+        } catch {
+          /* not yet */
+        }
+      }, 100);
+    },
+    [key, pred] as const,
+  );
+  return () => page.evaluate((k) => !!(window as unknown as { __seen?: Record<string, boolean> }).__seen?.[k], key);
+}
+
+/** The guide card shows `step` with a done line containing `text`, on screen (not hidden behind a prompt). */
+const doneShown = (step: string, text: string) =>
+  `(() => { const d = document.querySelector('section[data-testid="tutorial-card"][data-step="${step}"] .ag-coach__done'); const h = document.querySelector('.ag-hud__coach'); return !!d && d.textContent.includes(${JSON.stringify(text)}) && !!h && getComputedStyle(h).visibility === 'visible'; })()`;
+
+/** `locator` stays visible for `ms`, checked every 200 ms (a card the guide must leave alone, past its timer). */
+async function staysFor(page: Page, sel: string, ms: number): Promise<void> {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    await expect(page.locator(sel), `still there ${Math.round((end - Date.now()) / 1000)} s before the end`).toBeVisible({ timeout: 1000 });
+    await page.waitForTimeout(200);
+  }
+}
+
 const box = async (page: Page, sel: string) => page.locator(sel).first().boundingBox();
 const overlap = (a: { x: number; y: number; width: number; height: number }, b: { x: number; y: number; width: number; height: number }) =>
   a.x < b.x + b.width - 1 && a.x + a.width > b.x + 1 && a.y < b.y + b.height - 1 && a.y + a.height > b.y + 1;
@@ -53,6 +102,7 @@ test.describe('The guide on a phone (390×844, touch)', () => {
     await page.locator('[data-testid^="food-option-"]').first().tap();
     await expect.poll(async () => (await ui(page)).tool).toBe('feed');
     await expect(page.locator('.ag-toolhint')).toBeVisible();
+    const sawDone = await watch(page, 'g1', doneShown('water', 'ate well'));
     // one tap on the water (a tap that lands on no water drops nothing: a little lower then)
     const fed = () => aq<{ tutorial: { step: number } }>(page, 'summary').then((s) => s.tutorial.step > 2);
     for (const fy of [0.42, 0.48, 0.36]) {
@@ -65,19 +115,23 @@ test.describe('The guide on a phone (390×844, touch)', () => {
     await expect(page.locator('.ag-toolhint')).toHaveCount(0);
     await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'water');
     await expect(tid(page, 'tutorial-card')).toBeVisible();
-    await expect(page.locator('.ag-coach__done')).toContainText('ate well');
+    // and its done line was on screen (it used to show under the prompt, hidden with the card)
+    await expect.poll(sawDone).toBe(true);
   });
 
   test('G-2: the card “Meet them” opened goes away a moment after the step, and the next step’s words show', async ({ page }) => {
     await guideGame(page);
+    const sawDone = await watch(page, 'meet', `!document.querySelector('[data-testid="creature-card"]') && ${doneShown('camera', 'Nice to meet you')}`);
     await page.locator('[data-guide-showme]').tap(); // "Meet them": the starter's card
     await expect(tid(page, 'creature-card')).toBeVisible();
     // the step is done at once; under the card the guide is its pill, as before
     await expect(page.locator('.ag-coach-pill')).toContainText('Have a look around');
-    // then the card goes, and the guide shows the next step with the last one's done line
-    await expect(tid(page, 'creature-card')).toBeHidden({ timeout: 12_000 });
+    // the card is the player's to read for a while (the review, S1(c): 8 s; it can't go sooner than that after this)
+    await staysFor(page, '[data-testid="creature-card"]', 5000);
+    // then it goes, and the guide shows the next step with the last one's done line
+    await expect(tid(page, 'creature-card')).toBeHidden({ timeout: 20_000 });
     await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'camera');
-    await expect(page.locator('.ag-coach__done')).toContainText('Nice to meet you');
+    await expect.poll(sawDone).toBe(true);
     expect((await ui(page)).selectedCreatureId).toBeNull();
   });
 
@@ -86,10 +140,10 @@ test.describe('The guide on a phone (390×844, touch)', () => {
     await page.locator('[data-guide-showme]').tap();
     await expect(tid(page, 'creature-card')).toBeVisible();
     await expect(page.locator('.ag-coach-pill')).toBeVisible();
-    // a touch on the card once the step is done: the player is reading it
+    await expect(page.locator('.ag-coach-pill')).toContainText('Have a look around'); // the step is done
+    // a touch on the card once the step is done: the player is reading it, and it stays past the guide's 8 s
     await page.locator('[data-testid="creature-card"] .ag-chead__species').tap();
-    await page.waitForTimeout(6000);
-    await expect(tid(page, 'creature-card')).toBeVisible();
+    await staysFor(page, '[data-testid="creature-card"]', CARD_MS.creature + 2000);
     await expect(page.locator('.ag-coach-pill')).toContainText('Have a look around');
   });
 
@@ -127,12 +181,57 @@ test.describe('The guide on a computer (1440×900)', () => {
   test('G-2: the tank card “Open the tank card” opened goes once the reading is read, and the habitat step shows', async ({ page }) => {
     await guideGame(page);
     await toStep(page, 'water');
+    const sawDone = await watch(page, 'water', `!document.querySelector('[data-testid="tank-card"]') && ${doneShown('habitat', 'The water is in good shape.')}`);
     await page.locator('[data-guide-showme]').click(); // "Open the tank card"
     await expect(tid(page, 'tank-card')).toBeVisible();
     await expect(page.locator('.ag-coach-pill')).toBeVisible(); // the card folds the guide
     await expect(tid(page, 'tank-card')).toBeHidden({ timeout: 15_000 });
     await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'habitat');
-    await expect(page.locator('.ag-coach__done')).toContainText('The water is in good shape.');
+    await expect.poll(sawDone).toBe(true);
+  });
+
+  test('G-2 (S1(a)): a keyboard player who moves in the tank card keeps it once the step is done', async ({ page }) => {
+    await guideGame(page);
+    await toStep(page, 'water');
+    await page.locator('[data-guide-showme]').focus();
+    await page.keyboard.press('Enter'); // "Open the tank card", from the keyboard
+    await expect(tid(page, 'tank-card')).toBeVisible();
+    const focusInCard = () => page.evaluate(() => !!document.activeElement?.closest('[data-testid="tank-card"]'));
+    await expect.poll(focusInCard).toBe(true); // the card takes focus as it opens
+    await expect(page.locator('.ag-coach-pill')).toContainText('A leaf to lounge on'); // the reading counted: done
+    await page.keyboard.press('Tab'); // on through the card
+    expect(await focusInCard()).toBe(true);
+    await staysFor(page, '[data-testid="tank-card"]', CARD_MS.tank + 2000);
+  });
+
+  test('G-2 (S1(a)): a card put away with focus inside it hands focus to the guide’s button, not the page', async ({ page }) => {
+    await guideGame(page);
+    await toStep(page, 'water');
+    await page.locator('[data-guide-showme]').focus();
+    await page.keyboard.press('Enter');
+    await expect(tid(page, 'tank-card')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('[data-testid="tank-card"]'))).toBe(true);
+    // no key once the step is done: the card goes, and focus lands on the guide card's own button ("Open Build")
+    await expect(tid(page, 'tank-card')).toBeHidden({ timeout: 15_000 });
+    await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'habitat');
+    await expect
+      .poll(() => page.evaluate(() => { const a = document.activeElement; return a === document.body ? 'body' : a?.closest('section[data-testid="tutorial-card"]') ? (a.textContent ?? '').trim() : a?.tagName ?? 'none'; }))
+      .toBe('Open Build');
+  });
+
+  test('G-2 (S1(b)): a tank card the player closed and opened again is theirs: the guide leaves it', async ({ page }) => {
+    await guideGame(page);
+    await toStep(page, 'water');
+    await page.locator('[data-guide-showme]').click(); // "Open the tank card"
+    await expect(tid(page, 'tank-card')).toBeVisible();
+    // closed with T before the reading counts, then opened again from the tank bar
+    await page.keyboard.press('t');
+    await expect(tid(page, 'tank-card')).toBeHidden();
+    expect((await aq<{ tutorial: { step: number } }>(page, 'summary')).tutorial.step).toBe(3); // still the water step
+    await tid(page, 'tank-card-toggle').click();
+    await expect(tid(page, 'tank-card')).toBeVisible();
+    await expect(page.locator('.ag-coach-pill')).toContainText('A leaf to lounge on'); // the reading counted: done
+    await staysFor(page, '[data-testid="tank-card"]', CARD_MS.tank + 2000);
   });
 
   test('G-5: with Build open beside the tank, the placing prompt starts right of the guide card', async ({ page }) => {
@@ -283,7 +382,9 @@ test.describe('A shared shop: a member on a phone (390×844, touch)', () => {
           const r = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
           const pill = r('.ag-topbar .ag-shared-pill');
           const speed = r('.ag-topbar .ag-speed');
-          return { pill: pill.right, pillH: pill.height, speedL: speed.left, speedR: speed.right, money: r('[data-testid="hud-money"]').left, bell: r('[data-testid="hud-alerts"]').right };
+          // (the buttons themselves: they keep their least width and can run out of the speed pill's box)
+          const fast = r('[data-testid="hud-speed-10"]');
+          return { pill: pill.right, pillH: pill.height, speedL: Math.min(speed.left, r('[data-testid="hud-speed-0"]').left), speedR: Math.max(speed.right, fast.right), money: r('[data-testid="hud-money"]').left, bell: r('[data-testid="hud-alerts"]').right };
         });
         expect(b.pill, `at ${width}`).toBeLessThanOrEqual(b.speedL);
         expect(b.speedR, `at ${width}`).toBeLessThanOrEqual(b.money);

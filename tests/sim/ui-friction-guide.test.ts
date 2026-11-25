@@ -5,7 +5,8 @@
  * - G-8: the shared shop's spending refusal ("That costs $8, and you can spend $0. Ask for more in Money.") is known in
  *   every amount the words can write, and its toast offers "Ask for money"; no other toast does;
  * - G-7: the phone pill's tag;
- * - G-2: the card the guide's button opened goes after a moment, not at once.
+ * - G-2: the card the guide's button opened goes after a moment, not at once (the animal's card later than the tank
+ *   card's).
  */
 import { describe, it, expect } from 'vitest';
 import { OVERSPEND_TEXT, toastTap, viewOf } from '@/ui/hud/Toasts';
@@ -44,8 +45,11 @@ describe('G-7 and G-2', () => {
     expect(SHARED_TAG).toBe('Shared');
   });
 
-  it('the guide leaves its card up for a moment after the step', () => {
-    expect(GUIDE_CARD_MS).toBeGreaterThanOrEqual(3000);
-    expect(GUIDE_CARD_MS).toBeLessThanOrEqual(5000);
+  it('the guide leaves its card up for a moment after the step: the animal’s card (just opened) longer', () => {
+    // the review of chunk 22, S1(c): "Meet them" is done as the card opens, so this is all the reading time it gets
+    expect(GUIDE_CARD_MS.creature).toBeGreaterThanOrEqual(7000);
+    expect(GUIDE_CARD_MS.creature).toBeLessThanOrEqual(10000);
+    expect(GUIDE_CARD_MS.tank).toBeGreaterThanOrEqual(3000);
+    expect(GUIDE_CARD_MS.tank).toBeLessThanOrEqual(5000);
   });
 });
