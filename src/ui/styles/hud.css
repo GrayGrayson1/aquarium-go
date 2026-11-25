@@ -143,8 +143,10 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 /* Audit 2026-11-17 (G28): "No tank · Buy one" opens Build › Tanks */
 .ag-switcher__buy { padding: 0; border: 0; background: none; font: inherit; color: var(--c-aqua); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .ag-switcher__buy:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; border-radius: 4px; }
-.ag-switcher__status { display: inline-flex; align-items: center; gap: 5px; font-size: calc(11.5px * var(--text-scale)); font-weight: 620; white-space: nowrap; }
-.ag-switcher__status > svg { flex: none; } /* chunk 21 review B1: the status icon never shrinks away (the shape cue for Watch and Danger) */
+.ag-switcher__status { display: inline-flex; align-items: center; gap: 2px; font-size: calc(11.5px * var(--text-scale)); font-weight: 620; white-space: nowrap; }
+/* chunk 21 review B1: the status icon never shrinks away (the shape cue for Watch and Danger). Its 5 px to the word, and
+   about 5 px before each "·" (2 px of gap and the narrow no-break space TankBar puts there), as before */
+.ag-switcher__status > svg { flex: none; margin-right: 3px; }
 .ag-switcher__status.is-good { color: var(--c-good); }
 .ag-switcher__status.is-watch { color: var(--c-watch); }
 .ag-switcher__status.is-danger { color: var(--c-danger); }
@@ -577,7 +579,8 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 /* chunk 21 review B1 — phones: the status line keeps its icon and every word (its status, the food or gear chip and the
    "2/3" index) at 360 px with the largest text, now that "What next?" has left the bar on a phone held upright: its
-   parts are spaced by their own " · " (no flex gap but the icon's), and the bar's padding is a little tighter */
+   parts are spaced only by the narrow no-break space before each "·" (TankBar; no flex gap but the icon's 4 px), and the
+   bar's padding is a little tighter */
 @media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   .ag-switcher__status { gap: 0; }
   .ag-switcher__status > svg { margin-right: 4px; }

@@ -225,6 +225,11 @@ describe('What next? for an empty aquarium (chunk 21 review S2)', () => {
     const list = nextBestActions(g);
     expect(rules(list)).toEqual(['guide']);
     expect(list[0]).toMatchObject({ why: NO_ANIMALS_WHY, to: { kind: 'route', route: { kind: 'panel', panel: 'market', tab: 'shop' } } });
+    // but with no animal affordable, the way to money is not the guide's Market, and stays (confirmation review N-d)
+    g.finance.money = 0;
+    const poor = nextBestActions(g);
+    expect(rules(poor)).toEqual(['guide', 'empty']);
+    expect(poor[1]).toMatchObject({ key: 'empty:animals', title: 'Open Finances' });
   });
 });
 

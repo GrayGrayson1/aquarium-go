@@ -45,7 +45,30 @@ import { CreatureCard } from '../cards/CreatureCard';
 import { TankCard } from '../cards/TankCard';
 import { TutorialCoach } from '../tutorial/TutorialCoach';
 import { PartyBanner } from '../photo/PartyBanner';
-import { WelcomeBack } from './WelcomeBack';
+/**
+ * chunk 21 (the confirmation review, F3) — the welcome-back card is its own chunk: it shows only after an absence, and
+ * the main chunk was over its size warning. It is fetched when a summary arrives (the catch-up holds the clock until
+ * the card is closed, in persistence, so a moment's load changes nothing) or a few seconds after the HUD is up, and
+ * kept mounted once shown, as photo mode is, so its exit animation plays.
+ */
+const loadWelcome = () => import('./WelcomeBack');
+const WelcomeBack = lazy(() => loadWelcome().then((m) => ({ default: m.WelcomeBack })));
+function LazyWelcomeBack() {
+  const wanted = useResume((s) => !!s.summary);
+  const [mounted, setMounted] = useState(wanted);
+  useEffect(() => {
+    if (wanted) setMounted(true);
+  }, [wanted]);
+  useEffect(() => {
+    const t = window.setTimeout(() => void loadWelcome().catch(() => undefined), 8000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return mounted || wanted ? (
+    <Suspense fallback={null}>
+      <WelcomeBack />
+    </Suspense>
+  ) : null;
+}
 import { usePrefs } from '../common/prefs';
 import { enterCinematic, useCardDockRules, useDockedCard } from './cardDock';
 import { useFocusedTankGuard } from './tankGuard';
@@ -463,7 +486,7 @@ export function GameHUD() {
         <Tour />
       </ErrorBoundary>
       <ErrorBoundary name="welcome">
-        <WelcomeBack />
+        <LazyWelcomeBack />
       </ErrorBoundary>
     </>
   );

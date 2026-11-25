@@ -3,14 +3,15 @@
  * useful things to do now (./NextSheet.tsx, with the ranking in ./nextBest.ts).
  *
  * Only this file is in the main chunk (chunk 21 review S3): the sheet, the ranking and the way there are their own
- * chunk, fetched when the pointer or the focus reaches the button, or when it opens. A load that fails leaves the
- * sheet out (its error boundary) and the button as it was.
+ * chunk, fetched when the pointer or the focus reaches the button, when it opens, or anyway a few seconds after the
+ * HUD is on screen (so the N key's first press is quick too). A load that fails leaves the sheet out (its error
+ * boundary) and the button as it was.
  *
  * Where the button sits (next.css): in the tank bar after Room on a computer and on a phone held sideways; on a phone
- * held upright it floats at the right edge at mid-height, because the tank switcher needs the whole bar for its
- * status line (chunk 21 review B1). OWNER: lane "next" (chunk 21).
+ * held upright it floats at the right edge, because the tank switcher needs the whole bar for its status line (chunk 21
+ * review B1), placed by ./float.ts (its own small chunk, loaded as the HUD comes up). OWNER: lane "next" (chunk 21).
  */
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence } from 'motion/react';
 import { Lightbulb } from 'lucide-react';
@@ -36,8 +37,22 @@ export function whatNextReachable(): boolean {
   return !!btn && btn.getClientRects().length > 0 && getComputedStyle(btn).visibility === 'visible';
 }
 
+/** How long after the HUD is up the sheet's chunk is fetched anyway. */
+const IDLE_MS = 5000;
+
 export function WhatNextButton() {
   const open = useShell((s) => s.popover === 'next');
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    let live = true;
+    import('./float').then((m) => live && (stop = m.startWhatNextFloat()), () => undefined);
+    const t = window.setTimeout(prefetch, IDLE_MS);
+    return () => {
+      live = false;
+      stop?.();
+      window.clearTimeout(t);
+    };
+  }, []);
   return (
     <div className="ag-popanchor ag-next-anchor">
       <button

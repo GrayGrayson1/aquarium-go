@@ -15,7 +15,8 @@
  *              off the rest of the UI treats the guide as not running (the panels' aside rule, the toasts), and so
  *              does this (chunk 21 review S4). It does what the guide card's own button does (`showMe`, or the
  *              Market when no animal is left to show). While the guide runs only rules 1 to 4 are listed, so nothing
- *              pulls the player away from it; rule 3 is left out when the guide's step already goes to the Market, and
+ *              pulls the player away from it; rule 3's "Open the Market" is left out when the guide's step already
+ *              goes there (its way to money stays), and
  *              rule 4 when the step is itself a feeding step (each would be the same thing twice). [one]
  *  3. empty    An empty aquarium (chunk 21 review S2): no tank at all → Build › Tanks, in the tank bar's words ("No
  *              tank · Buy one"); tanks but no animal in them → the Market, in the guide's words ("Friends come to see
@@ -542,8 +543,10 @@ export function nextBestActions(g: GameState | null | undefined, ctx: NextContex
   let list: Ranked[];
   if (guide) {
     all.push(guide);
-    // (the guide's own way to the Market when no animal is left to show is the same thing as rule 3's)
-    if (empty && !(empty.key === 'empty:animals' && guide.to.kind === 'route')) all.push(empty);
+    // (the guide's own way to the Market when no animal is left to show is the same thing as rule 3's "Open the
+    // Market"; but not as its way to money, when no animal is affordable: that one is still listed)
+    const sameAsGuide = empty?.key === 'empty:animals' && guide.to.kind === 'route' && empty.to.kind === 'route' && empty.to.route.kind === 'panel' && empty.to.route.panel === 'market';
+    if (empty && !sameAsGuide) all.push(empty);
     list = all.filter((a) => WITH_GUIDE.has(a.rule) && !(a.rule === 'hungry' && feedingStep(guide)));
   } else {
     if (empty) all.push(empty);

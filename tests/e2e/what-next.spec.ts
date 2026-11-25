@@ -123,7 +123,38 @@ function layout(page: Page) {
     };
     const s = document.querySelector<HTMLElement>('.ag-switcher__status')!;
     const index = s.querySelector('.ag-switcher__index');
+    // the drawn room before each "·" (the confirmation review, F2: "Watch· 10 gal"): from the end of what comes
+    // before it (the status word, or the part before) to the dot itself
+    const words = [...s.childNodes].filter((n) => n.nodeType === 3 && (n.textContent ?? '').trim());
+    const wordRange = document.createRange();
+    if (words.length) {
+      wordRange.setStart(words[0], 0);
+      wordRange.setEnd(words[words.length - 1], (words[words.length - 1].textContent ?? '').length);
+    }
+    let prevRight = wordRange.getBoundingClientRect().right;
+    let sepGap = Infinity;
+    for (const el of [...s.children].filter((c) => c.tagName.toLowerCase() !== 'svg' && getComputedStyle(c).display !== 'none')) {
+      const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        const i = (n.textContent ?? '').indexOf('·');
+        if (i < 0) continue;
+        const dot = document.createRange();
+        dot.setStart(n, i);
+        dot.setEnd(n, i + 1);
+        sepGap = Math.min(sepGap, dot.getBoundingClientRect().left - prevRight);
+        break;
+      }
+      prevRight = el.getBoundingClientRect().right;
+    }
+    const btnEl = document.querySelector<HTMLElement>('[data-testid="hud-next"]');
+    const br = btnEl?.getBoundingClientRect();
+    const hit = br && br.width > 0 ? document.elementFromPoint(br.left + br.width / 2, br.top + br.height / 2) : null;
     return {
+      sepGap,
+      btnShown: !!btnEl && getComputedStyle(btnEl).visibility === 'visible' && Number(getComputedStyle(btnEl.closest('.ag-next-anchor')!).opacity) > 0,
+      // (what a tap at its centre reaches: the button, not a toast, the guide card or the room view's edge cue over it)
+      btnTopmost: !!hit?.closest('[data-testid="hud-next"]'),
+      toolRow: box(document.querySelector('.ag-toolrail')),
       // (innerText breaks the line between flex items; what shows is the words in order)
       status: { scroll: s.scrollWidth, client: s.clientWidth, icon: s.querySelector('svg')!.getBoundingClientRect().width, text: s.innerText.replace(/\s+/g, ' ').trim(), right: s.getBoundingClientRect().right, indexRight: index ? index.getBoundingClientRect().right : null },
       btn: box(document.querySelector('[data-testid="hud-next"]')),
@@ -147,8 +178,38 @@ function expectFloatingClear(l: Awaited<ReturnType<typeof layout>>, what: string
   if (!b) return;
   expect(b.left >= 0 && b.top >= 0 && b.right <= l.width && b.bottom <= l.height, `${what}: on screen`).toBe(true);
   expect(b.right, `${what}: at the right edge`).toBeGreaterThan(l.width - 30);
-  for (const [name, other] of [['tank bar', l.bar], ['bell', l.bell], ['tab bar', l.tabs], ['guide card', l.coach], ['Reset view', l.roomChip], ...l.toasts.map((t, i) => [`toast ${i}`, t] as const)] as const)
+  expect(l.btnShown, `${what}: the button is shown`).toBe(true);
+  expect(l.btnTopmost, `${what}: a tap at its centre reaches it`).toBe(true);
+  for (const [name, other] of [['tank bar', l.bar], ['bell', l.bell], ['tab bar', l.tabs], ['tool row', l.toolRow], ['guide card', l.coach], ['Reset view', l.roomChip], ...l.toasts.map((t, i) => [`toast ${i}`, t] as const)] as const)
     expect(apart(b, other), `${what}: clear of the ${name}`).toBe(true);
+}
+
+/** Toasts under the tank bar: the phone's column shows two at most (the newest). */
+async function twoToasts(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const ui = (window as unknown as { __AQ: { ui(): { toast(t: string, k?: string): void } } }).__AQ.ui();
+    ui.toast('A first toast, for the layout check', 'info');
+    ui.toast('A second toast, for the layout check', 'info');
+  });
+  await expect.poll(async () => (await layout(page)).toasts.length).toBe(2);
+}
+
+/**
+ * The confirmation review, F1: on a phone held upright the button is either shown and clear of everything around it
+ * (the toast column's room, the guide card, the tool row or the Reset view chip, the tab bar) or, when the guide card
+ * leaves no room between it and the toasts' room, out of the way. Never over the toasts or the tank bar.
+ */
+function expectFloatingPlaced(l: Awaited<ReturnType<typeof layout>>, what: string): void {
+  const toastRoom = l.bar!.bottom + 8 + 2 * 46 + 5 + 8; // (two compact toasts under the tank bar: float.ts)
+  const below = [l.coach, l.toolRow, l.roomChip, l.tabs].filter((b): b is Box => !!b && b.bottom > toastRoom);
+  const floor = Math.min(...below.map((b) => b.top));
+  const room = floor - 8 - toastRoom;
+  if (room < 48) {
+    expect(l.btnShown, `${what}: no room (${Math.round(room)} px), so the button is out of the way`).toBe(false);
+    return;
+  }
+  expectFloatingClear(l, what);
+  expect(l.btn!.top, `${what}: under the toasts' room`).toBeGreaterThanOrEqual(toastRoom - 1);
 }
 
 /** A game past the guide, paused, with $5,000 to buy tanks. */
@@ -202,6 +263,7 @@ async function statusLineHolds(page: Page, floating: boolean): Promise<void> {
         const l = await layout(page);
         expect(l.status.scroll, `${what}: the status line isn't clipped (${l.status.text.trim()})`).toBeLessThanOrEqual(l.status.client);
         expect(l.status.icon, `${what}: the status icon is drawn`).toBeGreaterThan(0);
+        expect(l.sepGap, `${what}: a space before each "·" (${l.status.text})`).toBeGreaterThanOrEqual(1.5);
         if (n > 1) expect(l.status.indexRight!, `${what}: the index is in view`).toBeLessThanOrEqual(l.status.right + 0.5);
         if (floating) expectFloatingClear(l, what);
         else {
@@ -244,6 +306,34 @@ test.describe('What next? on a phone (390×844, touch)', () => {
     await statusLineHolds(page, true);
   });
 
+  test('the confirmation review, C1: with toasts showing, the open sheet is above them, and its top action is what a tap reaches', async ({ page }) => {
+    const id = await hungryGame(page);
+    await twoToasts(page);
+    await tid(page, 'hud-next').tap();
+    await expect(tid(page, 'next-sheet')).toBeVisible();
+    const hits = await page.evaluate(() => {
+      const inSheet = (el: Element) => {
+        const r = el.getBoundingClientRect();
+        return !!document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('[data-testid="next-sheet"]');
+      };
+      const toasts = [...document.querySelectorAll('[data-testid="toast"]')].map((t) => t.getBoundingClientRect());
+      const top = document.querySelector('[data-testid="next-action-0"]')!.getBoundingClientRect();
+      return {
+        title: inSheet(document.querySelector('#ag-next-title')!),
+        top: inSheet(document.querySelector('[data-testid="next-action-0"]')!),
+        // (they do share the column under the tank bar: the test means something)
+        overlap: toasts.some((t) => t.bottom > top.top && t.top < top.bottom),
+      };
+    });
+    expect(hits.overlap, 'a toast lies under the top action').toBe(true);
+    expect(hits.title, 'the title is above the toasts').toBe(true);
+    expect(hits.top, 'the top action is above the toasts').toBe(true);
+    await tid(page, 'next-action-0').tap();
+    await expect(tid(page, 'next-sheet')).toBeHidden();
+    await expect(page.locator('.ag-foodlist')).toBeVisible();
+    expect((await ui(page)).focusedTankId).toBe(id);
+  });
+
   test('the floating button stays clear of the guide card, and in the room view of the Reset view chip, at 130 % text', async ({ page }) => {
     await openApp(page);
     await quickGame(page, 'betta');
@@ -277,3 +367,79 @@ test.describe('What next? on a phone held sideways (844×390, touch)', () => {
     await statusLineHolds(page, false);
   });
 });
+
+test.describe('What next? on a phone with its browser bars (390×664, touch)', () => {
+  test.use({ viewport: { width: 390, height: 664 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+
+  test('the confirmation review, F1: the button is placed clear of the toasts, the tank bar and the guide card, in both views, with and without the guide', async ({ page }) => {
+    await floatingAround(page);
+  });
+
+  test('the confirmation review, C1: with the guide card showing at 130 % text, the open sheet is above it, and its lower action is what a tap reaches', async ({ page }) => {
+    await openApp(page);
+    await quickGame(page, 'betta');
+    await aq(page, 'dev.setSpeed', 0);
+    await textScale(page, 1.3);
+    // no animal left (the guide's step can't show one): the sheet lists the guide's step and "Open the Market"
+    await page.evaluate(() => (window as unknown as { __AQ: { mutate(f: (s: { creatures: Record<string, { status: string }> }) => void): void } }).__AQ.mutate((s) => {
+      for (const c of Object.values(s.creatures)) c.status = 'sold';
+    }));
+    await expect.poll(async () => (await layout(page)).coach).not.toBeNull();
+    const l = await layout(page);
+    expectFloatingPlaced(l, 'the guide card at 130 %');
+    await tid(page, 'hud-next').tap();
+    await expect(tid(page, 'next-action-1')).toHaveAttribute('data-rule', 'empty');
+    const hits = await page.evaluate(() => {
+      const coach = document.querySelector('.ag-hud__coach .ag-coach')!.getBoundingClientRect();
+      const second = document.querySelector('[data-testid="next-action-1"]')!.getBoundingClientRect();
+      const x = second.left + second.width / 2;
+      // a point of the second action that the guide card lies under, if any; else its centre
+      const y = second.bottom > coach.top ? Math.max(second.top, coach.top) + Math.min(8, (second.bottom - Math.max(second.top, coach.top)) / 2) : second.top + second.height / 2;
+      return { overlap: second.bottom > coach.top, hit: !!document.elementFromPoint(x, y)?.closest('[data-testid="next-sheet"]') };
+    });
+    expect(hits.overlap, 'the guide card lies under the second action').toBe(true);
+    expect(hits.hit, 'the second action is above the guide card').toBe(true);
+    await tid(page, 'next-action-1').tap();
+    await expect(tid(page, 'panel-market')).toBeVisible();
+  });
+});
+
+test.describe('What next? on a small phone with its browser bars (375×548, touch)', () => {
+  test.use({ viewport: { width: 375, height: 548 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+
+  test('the confirmation review, F1: the button is placed clear of the toasts, the tank bar and the guide card, in both views, with and without the guide', async ({ page }) => {
+    await floatingAround(page);
+  });
+});
+
+/**
+ * The confirmation review, F1: with two toasts up, in the tank view and the room view, at the default text size and
+ * 130 %, with the guide card and after skipping the guide: the button is clear of everything (and a tap reaches it),
+ * or out of the way when there is no room; and while it is shown it opens the sheet.
+ */
+async function floatingAround(page: Page): Promise<void> {
+  await openApp(page);
+  await quickGame(page, 'betta');
+  await aq(page, 'dev.setSpeed', 0);
+  for (const guide of [true, false]) {
+    if (!guide) await aq(page, 'act', 'tutorialSkip');
+    for (const view of ['tank', 'room'] as const) {
+      for (const scale of [1, 1.3]) {
+        await textScale(page, scale);
+        await twoToasts(page);
+        const what = `${guide ? 'the guide card' : 'no guide'}, the ${view} view, text ${scale * 100}%`;
+        if (guide) await expect.poll(async () => (await layout(page)).coach, { message: what }).not.toBeNull();
+        else await expect.poll(async () => (await layout(page)).coach, { message: what }).toBeNull();
+        if (view === 'room') await expect.poll(async () => (await layout(page)).roomChip, { message: what }).not.toBeNull();
+        await page.waitForTimeout(700); // (float.ts places it every 300 ms; its move eases over 350 ms)
+        expectFloatingPlaced(await layout(page), what);
+      }
+      await tid(page, 'view-toggle').tap();
+    }
+  }
+  // without the guide, it is there and opens the sheet
+  await textScale(page, 1);
+  await expect.poll(async () => (await layout(page)).btnShown).toBe(true);
+  await tid(page, 'hud-next').tap();
+  await expect(tid(page, 'next-sheet')).toBeVisible();
+}
