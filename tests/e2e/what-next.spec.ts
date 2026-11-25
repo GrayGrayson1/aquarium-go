@@ -375,29 +375,33 @@ test.describe('What next? on a phone with its browser bars (390×664, touch)', (
     await floatingAround(page);
   });
 
-  test('the confirmation review, C1: with the guide card showing at 130 % text, the open sheet is above it, and its lower action is what a tap reaches', async ({ page }) => {
+  test('the confirmation review, C1: with the guide card over the spotlight’s dim, the open sheet is above it, and its lower action is what a tap reaches', async ({ page }) => {
     await openApp(page);
     await quickGame(page, 'betta');
     await aq(page, 'dev.setSpeed', 0);
-    await textScale(page, 1.3);
-    // no animal left (the guide's step can't show one): the sheet lists the guide's step and "Open the Market"
-    await page.evaluate(() => (window as unknown as { __AQ: { mutate(f: (s: { creatures: Record<string, { status: string }> }) => void): void } }).__AQ.mutate((s) => {
+    // the guide on its feed step (its spotlight dims the screen, and lifts the guide card above the dim), with no
+    // animal left, so the sheet lists the guide's step and "Open the Market"
+    type Api2 = { __AQ: { mutate(f: (s: { creatures: Record<string, { status: string }>; progress: { tutorial: { step: number } } }) => void): void } };
+    await page.evaluate(() => (window as unknown as Api2).__AQ.mutate((s) => {
       for (const c of Object.values(s.creatures)) c.status = 'sold';
+      s.progress.tutorial.step = 2; // (the betta's chain: meet, camera, feed)
     }));
-    await expect.poll(async () => (await layout(page)).coach).not.toBeNull();
-    const l = await layout(page);
-    expectFloatingPlaced(l, 'the guide card at 130 %');
+    await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'feed');
+    await expect(page.locator('.ag-spot__dim')).toHaveCount(1);
+    await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('.ag-hud__coach')!).zIndex)).toBe('66');
+    await page.waitForTimeout(700); // (float.ts places the button every 300 ms)
+    expectFloatingPlaced(await layout(page), 'the guide card over the dim');
     await tid(page, 'hud-next').tap();
     await expect(tid(page, 'next-action-1')).toHaveAttribute('data-rule', 'empty');
     const hits = await page.evaluate(() => {
       const coach = document.querySelector('.ag-hud__coach .ag-coach')!.getBoundingClientRect();
       const second = document.querySelector('[data-testid="next-action-1"]')!.getBoundingClientRect();
       const x = second.left + second.width / 2;
-      // a point of the second action that the guide card lies under, if any; else its centre
-      const y = second.bottom > coach.top ? Math.max(second.top, coach.top) + Math.min(8, (second.bottom - Math.max(second.top, coach.top)) / 2) : second.top + second.height / 2;
-      return { overlap: second.bottom > coach.top, hit: !!document.elementFromPoint(x, y)?.closest('[data-testid="next-sheet"]') };
+      // a point of the second action that the guide card lies under
+      const y = (Math.max(second.top, coach.top) + second.bottom) / 2;
+      return { overlap: second.bottom > coach.top + 4, at: `${Math.round(second.top)}-${Math.round(second.bottom)} over ${Math.round(coach.top)}`, hit: !!document.elementFromPoint(x, y)?.closest('[data-testid="next-sheet"]') };
     });
-    expect(hits.overlap, 'the guide card lies under the second action').toBe(true);
+    expect(hits.overlap, `the guide card lies under the second action (${hits.at})`).toBe(true);
     expect(hits.hit, 'the second action is above the guide card').toBe(true);
     await tid(page, 'next-action-1').tap();
     await expect(tid(page, 'panel-market')).toBeVisible();
