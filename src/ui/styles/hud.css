@@ -48,6 +48,10 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-speed { padding: 0 12px 0 4px; gap: 10px; min-height: 48px; }
 .ag-speed .ag-seg { background: transparent; border: 0; padding: 0; }
 .ag-speed .ag-seg__item { min-width: 40px; min-height: 38px; padding: 0 10px; }
+/* chunk 22 (G-6) — a shared shop's member who may not pause or change the speed: the buttons look locked (a press
+   still says why) */
+.ag-seg__item.is-locked { opacity: 0.45; cursor: not-allowed; }
+.ag-speed:has(.ag-seg__item.is-locked) .ag-speed__label { opacity: 0.6; }
 .ag-speed__label { min-width: 46px; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-2); font-weight: 650; font-variant-numeric: tabular-nums; text-align: center; }
 
 .ag-money-pill { position: relative; gap: 9px; padding: 0 16px 0 8px; min-height: 48px; }
@@ -624,6 +628,18 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
     right: calc(min(var(--sheet-w), 100vw) + var(--edge) * 3 + 76px);
     width: fit-content;
   }
+  /* chunk 22 (ADR-0058, G-5) — and beside an open panel (Build stays open while a piece is placed: the guide's habitat
+     step), where qol.css centres the prompt from the left edge and the guide card covered its start ("…ana · R
+     rotates"): it starts right of the card, and the piece's buttons take a line of their own, as on a phone */
+  :root:not(:has(.pn-sheet--side.is-max)) .ag-hud.has-panel:has(.ag-hud__coach .ag-coach) .ag-toolhint {
+    left: calc(340px + var(--edge) * 2);
+    right: calc(var(--pn-w) + var(--pn-right) + var(--edge));
+    width: fit-content;
+    max-width: calc(100% - 340px - var(--pn-w) - var(--pn-right) - var(--edge) * 3);
+  }
+  :root:not(:has(.pn-sheet--side.is-max)) .ag-hud.has-panel:has(.ag-hud__coach .ag-coach) .ag-toolhint:has(.ag-toolhint__piece) { flex-wrap: wrap; row-gap: 6px; }
+  :root:not(:has(.pn-sheet--side.is-max)) .ag-hud.has-panel:has(.ag-hud__coach .ag-coach) .ag-toolhint:has(.ag-toolhint__piece) > .ag-grow { flex: 1 1 60%; }
+  :root:not(:has(.pn-sheet--side.is-max)) .ag-hud.has-panel:has(.ag-hud__coach .ag-coach) .ag-toolhint__piece { order: 5; flex: 1 0 100%; justify-content: center; }
 }
 
 /* lane:qa-visual — phones: a soft top scrim under the top bar + tank bar. Bright room details (a hall's glowing

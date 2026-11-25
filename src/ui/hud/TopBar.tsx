@@ -25,6 +25,8 @@ import { go } from '../nav/router'; // lane:automation (chunk 5)
 import '../styles/operations-hud.css'; // lane:automation (chunk 5)
 import { opsDot } from '../common/ops'; // lane:automation (chunk 5)
 import { SharedPill, useInSharedShop } from '../shared/SharedMenu'; // chunk 19 (ADR-0055 decision 6, QOL-007)
+import { mayPause, useShared } from '../shared/store'; // chunk 22 (G-6)
+import { SHARED_WORDS } from '../shared/words'; // chunk 22 (G-6)
 import { openFind, useFind } from '../search/FindAnything'; // chunk 19 (QOL-004)
 
 export function setSpeed(s: GameSpeed) {
@@ -188,8 +190,22 @@ function ClockPill({ compact }: { compact?: boolean }) {
   );
 }
 
+/**
+ * chunk 22 (ADR-0058, G-6) — in a shared shop, why this member may not pause or change the speed (the refusal's own
+ * rule and words, src/ui/shared/dispatch.ts), or null when they may (and always outside a shared shop).
+ */
+function useSpeedLock(): string | null {
+  const shared = useInSharedShop();
+  const may = useShared((s) => mayPause(s));
+  const owner = useShared((s) => s.ownerName);
+  return shared && !may ? SHARED_WORDS.notAllowed(owner) : null;
+}
+
 function SpeedControls() {
   const speed = useGameSelector((g) => g.clock.speed, 1 as GameSpeed);
+  const locked = useSpeedLock();
+  // (locked, each still takes the press: the refusal's toast says whose the speed is)
+  const lock = (title: string) => (locked ? { title: `${title}. ${locked}`, locked: true } : { title });
   return (
     <div className="ag-hudpill ag-speed" data-tutorial-id="speed-controls">
       <Segmented<GameSpeed>
@@ -198,10 +214,10 @@ function SpeedControls() {
         testIdPrefix="hud-speed-"
         onChange={(s) => setSpeed(s)}
         items={[
-          { id: 0, label: '', title: 'Pause (Space)', icon: <Pause size={15} aria-hidden /> },
-          { id: 1, label: '', title: 'Normal speed (1)', icon: <Play size={15} aria-hidden /> },
-          { id: 3, label: '', title: 'Fast ×3 (2)', icon: <FastForward size={15} aria-hidden /> },
-          { id: 10, label: '', title: 'Very fast ×10 (3)', icon: <ChevronsRight size={17} aria-hidden /> },
+          { id: 0, label: '', ...lock('Pause (Space)'), icon: <Pause size={15} aria-hidden /> },
+          { id: 1, label: '', ...lock('Normal speed (1)'), icon: <Play size={15} aria-hidden /> },
+          { id: 3, label: '', ...lock('Fast ×3 (2)'), icon: <FastForward size={15} aria-hidden /> },
+          { id: 10, label: '', ...lock('Very fast ×10 (3)'), icon: <ChevronsRight size={17} aria-hidden /> },
         ]}
       />
       <span className="ag-speed__label" aria-hidden>

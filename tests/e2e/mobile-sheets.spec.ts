@@ -202,11 +202,15 @@ test.describe('phone 390×844 (touch)', () => {
     await phoneGame(page, { guide: true });
     await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'meet');
     await page.locator('[data-guide-showme]').tap(); // "Meet them" opens the starter's card
-    await settled(page, '[data-testid="creature-card"]');
     // the meet step is done: the next one ("Have a look around") waits in the pill, in view just above the card
     const pill = page.locator('.ag-coach-pill[data-testid="tutorial-card"]');
-    await expect(pill).toBeVisible();
     await expect(pill).toContainText('Have a look around');
+    // chunk 22 (ADR-0058, G-2): a card the guide's button opened now goes by itself a moment after its step, unless the
+    // player uses it. This case is about the player who does (reading the card), so it touches the card once the step
+    // is done, and the pill path below stays what it was (friction-guide.spec.ts has the card that goes by itself)
+    await page.locator('[data-testid="creature-card"] .ag-chead__species').tap();
+    await settled(page, '[data-testid="creature-card"]');
+    await expect(pill).toBeVisible();
     expect(await page.evaluate(() => getComputedStyle(document.querySelector('.ag-hud__coach')!).visibility)).toBe('visible');
     await expect
       .poll(async () => {

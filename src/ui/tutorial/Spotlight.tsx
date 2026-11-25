@@ -25,6 +25,8 @@ export interface Rect {
 
 const PAD = 6;
 const EVERY_MS = 200;
+/** chunk 22 (G-4): how many measures in a row may bring a panel's candidate into view (about 2 s). */
+const BRING_TRIES = 10;
 
 /** Sheets, popovers and the guide itself: a target under one of these isn't really on screen. */
 const COVERS = '.ag-sheet, .pn-sheet, .ag-popover, .ag-coach, .ag-coach-pill, .ag-modal, .ag-welcome, .ag-tour';
@@ -58,6 +60,42 @@ export function findTarget(candidates: readonly string[], allowCovered = false):
   return null;
 }
 
+/**
+ * chunk 22 (ADR-0058, G-4) — the best candidate that is drawn, when it sits in an open panel's scrolling body but
+ * scrolled out of sight (Build's 40-gallon breeder below the water types and the smaller tanks): `findTarget` counts
+ * it as off screen and the spotlight drew nothing. It is brought into view so the ring then finds it, and only until it
+ * has been in view once (`tries`, per candidate; a panel that has just opened may scroll back to its top as it turns
+ * to its tab, so a few tries): after that the player's own scrolling wins. A candidate drawn outside a panel's body
+ * is left to `findTarget`.
+ */
+function bringIntoView(candidates: readonly string[], tries: Map<string, number>): void {
+  for (const sel of candidates) {
+    let el: HTMLElement | null = null;
+    try {
+      el = document.querySelector<HTMLElement>(sel);
+    } catch {
+      el = null;
+    }
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2 || getComputedStyle(el).visibility === 'hidden') continue;
+    const body = el.closest<HTMLElement>('.pn-body');
+    if (!body) return;
+    const b = body.getBoundingClientRect();
+    const n = tries.get(sel) ?? 0;
+    // in view (its top, for one taller than the list): done with it
+    if (r.top >= b.top - 1 && (r.bottom <= b.bottom + 1 || r.top <= b.top + b.height / 2)) {
+      tries.set(sel, Infinity);
+      return;
+    }
+    if (n >= BRING_TRIES) return;
+    tries.set(sel, n + 1);
+    // (the panel's own list only, centred: scrollIntoView could also move the page behind a sheet still sliding in)
+    body.scrollTo({ top: Math.max(0, body.scrollTop + (r.top - b.top) - Math.max(0, (b.height - r.height) / 2)), behavior: reducedMotion() ? 'auto' : 'smooth' });
+    return;
+  }
+}
+
 /** Track the first visible candidate (re-measured a few times a second and on resize). */
 export function useSpotlightTarget(candidates: readonly string[], opts: { allowCovered?: boolean; scrollIntoView?: boolean } = {}): Rect | null {
   const key = candidates.join('\n');
@@ -66,7 +104,9 @@ export function useSpotlightTarget(candidates: readonly string[], opts: { allowC
     let timer = 0;
     let last = '';
     let scrolled = '';
+    const brought = new Map<string, number>(); // chunk 22 (G-4)
     const measure = () => {
+      if (opts.scrollIntoView) bringIntoView(candidates, brought);
       const hit = findTarget(candidates, opts.allowCovered);
       if (hit && opts.scrollIntoView && scrolled !== hit.el.dataset.testid + hit.el.className) {
         // a target inside a scrolling list (a sheet, the dock on a phone) is brought into view once

@@ -440,9 +440,12 @@ export function Chip({ children, selected, onClick, tone, icon, className, title
   );
 }
 
-/** Segmented control. `testIdPrefix` → data-testid `${prefix}${id}` on each segment. */
+/**
+ * Segmented control. `testIdPrefix` → data-testid `${prefix}${id}` on each segment. chunk 22 (G-6): a `locked` segment
+ * is drawn dimmed and announced as unavailable (aria-disabled) but still takes the press, so its refusal can say why.
+ */
 export function Segmented<T extends string | number>({ value, onChange, items, label, testIdPrefix, size = 'md', className }: {
-  value: T; onChange: (v: T) => void; items: { id: T; label: ReactNode; title?: string; icon?: ReactNode; disabled?: boolean }[]; label: string; testIdPrefix?: string; size?: 'sm' | 'md'; className?: string;
+  value: T; onChange: (v: T) => void; items: { id: T; label: ReactNode; title?: string; icon?: ReactNode; disabled?: boolean; locked?: boolean }[]; label: string; testIdPrefix?: string; size?: 'sm' | 'md'; className?: string;
 }) {
   return (
     <div
@@ -474,8 +477,9 @@ export function Segmented<T extends string | number>({ value, onChange, items, l
           aria-label={it.title ?? (typeof it.label === 'string' ? it.label : undefined)}
           title={it.title}
           disabled={it.disabled}
+          aria-disabled={it.locked || undefined}
           data-testid={testIdPrefix ? `${testIdPrefix}${it.id}` : undefined}
-          className="ag-seg__item"
+          className={clsx('ag-seg__item', it.locked && 'is-locked')}
           onClick={() => { sfx('click'); onChange(it.id); }}
         >
           {it.icon}

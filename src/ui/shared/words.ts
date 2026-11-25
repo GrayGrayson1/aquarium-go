@@ -25,7 +25,8 @@ export const SHARED_WORDS = {
   saving: 'Saving your aquarium…',
   waking: 'Waking the shared shop… This takes about a minute when nobody’s been in for a while.',
   catchingUpEmpty: 'Catching up on the time nobody was here…',
-  // audit 2026-11-17, I25: where the way back is (the top-left pill's menu: the shop's name, or "👥 2 ▾" on a phone)
+  // audit 2026-11-17, I25: where the way back is (the top-left pill's menu: the shop's name, or "Shared ▾" on a phone
+  // since chunk 22)
   firstTime: (club: string) => `Your own aquarium is saved and waits for you. Everything here is shared with ${club}. To go back, open the menu at the top left and choose “Back to my aquarium”.`,
   gotIt: 'Got it',
   // inside

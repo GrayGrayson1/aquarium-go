@@ -170,13 +170,22 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
       await tid(ben, 'alerts-close').click();
     });
     await test.step('pause is refused for the member, then the owner grants it, and the pause pops up for the owner', async () => {
-      await tid(ben, 'hud-speed-0').click();
+      // chunk 22 (ADR-0058, G-6): the member's speed buttons are drawn locked (aria-disabled, the reason in the label),
+      // and still take the press so the refusal can say why. Playwright won't press what is marked aria-disabled, so
+      // this press is forced, once nothing lies over the button (a player's click reaches it)
+      await expect(tid(ben, 'hud-speed-0')).toHaveAttribute('aria-disabled', 'true');
+      await expect
+        .poll(() => ben.evaluate(() => { const el = document.querySelector('[data-testid="hud-speed-0"]')!; const r = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)); }))
+        .toBe(true);
+      await tid(ben, 'hud-speed-0').click({ force: true });
       await expect(ben.getByText('Only Ola and the people they choose can pause or change the speed.')).toBeVisible();
       const benId = (await visit(ben)).you!.id;
       await openMenu(ola);
       await tid(ola, `shared-grant-${benId}`).click();
       await expect.poll(async () => (await visit(ben)).members.find((m) => m.id === benId)?.pause, { timeout: 10_000 }).toBe(true);
       await closeMenu(ola);
+      // granted: the buttons are as anyone's again
+      await expect(tid(ben, 'hud-speed-0')).not.toHaveAttribute('aria-disabled', 'true');
       await tid(ben, 'hud-speed-0').click();
       await expect.poll(async () => (await gameOf(ola)).clock.speed, { timeout: 10_000 }).toBe(0);
       await expect(ola.getByText('Ben paused the shop.')).toBeVisible();
