@@ -297,3 +297,15 @@ the owner's Mac). Each row is what the game does today (ADR-0057) and the altern
 | N14 | "What next?": the thresholds | A show closing within 48 game hours; rare stock leaving within 12; a quest from half done |
 | N15 | "What next?": the N key, the light bulb icon, and its place | N; a light bulb; in the tank bar, and on an upright phone floating at the right edge at mid-height (inside the bar it cut the tank's status line) |
 | N16 | An Operations problem in "What next?" shows with the calm colour and gift icon of "ready" items, though Operations shows it red | As described; giving it the warning colour is a small change |
+
+## O. Chunk 22: what the friction pass left for the owner (open)
+
+Chunk 22 (ADR-0058) changed nothing in what the game does. These came up in play and are decisions, so they were
+left as they are. Each row says what the game does today.
+
+| Id | Question | Today |
+|---|---|---|
+| O1 | Should "What next?" put young that are dying now (eggs being eaten, hungry fry) and unclaimed rewards above a rare shop offer and a show that closes soon? In a late-game shop it listed a powerhead, equipment, a rare angelfish and a show, and left out nine rewards and three broods being eaten (finding B-10). | The order of chunk 21 (ADR-0057): "something that won't wait" (bids, a show closing, rare stock leaving) comes before "something to collect or decide" (rewards, young), and four lines show. |
+| O2 | Should the shop's "Fits my tanks" chip leave out animals that are High risk with the animals already in your tanks, or should each shop card show its verdict? (finding C-12) | The chip checks water and tank size only: a female betta shows as fitting a tank that holds a male, and the High risk verdict is on the offer's page. |
+| O3 | A shared shop's pill on a phone now says "Shared" where it showed the number of people here (the club's name did not fit). Put the count back beside it, or keep "Shared"? | "Shared" and the time; the count and names are in the dropdown. |
+| O4 | The new wording in `docs/agent/design/CHUNK-22/WORDS.md`: any line to change? | As listed there. |

@@ -75,6 +75,20 @@ Each idea says what it is, what a player would see, why it could matter, what it
   tests shift when timings change. Start by measuring: play a new game and write down when each first happens.
 - **Size.** Medium; mostly decisions.
 
+### 6. A tank picker from the tank bar (2026-11-25)
+
+- **What.** Tapping the tank's name opens a short list of every tank (one row each: name, status dot, size), with a
+  search box once there are many, instead of stepping through them with the arrows.
+- **What a player sees.** In a shop with twenty tanks: tap the name, tap "Reef": there. Today the arrows step one
+  tank at a time (each with a camera move), or the Tanks panel lists them in rows 350 px tall on a phone.
+- **Why.** Found in chunk 22's play-test (finding B-6): getting to one tank among many is the slowest common step
+  in a big shop.
+- **What exists already.** Chunk 22 made the name open the tank card, put "Tank card" on every Tanks row and
+  labelled Find on a phone; Find already goes to a tank by name.
+- **Needs.** A decision on what the name does (the card, as now, or the list), a compact list component, and its
+  place on a phone beside "What next?". No sim change.
+- **Size.** Small.
+
 ## Built
 
 | Idea | Chunk |

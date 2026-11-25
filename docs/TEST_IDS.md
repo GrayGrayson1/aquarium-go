@@ -431,7 +431,7 @@ Index-based cone and jar ids, one id for the Operations tools tile, `staff-budge
 | `staff-budget` · `staff-budget-status` · `staff-orders` | Visitors › Staff: the $1 budget slider, its status line, the orders switch |
 | `production-ops-link` · `livestock-production-dot` | Production's link row to Operations › Lines, and the Production tab's dot |
 | `notify-cat-auto` | Settings › Notifications' Automation category |
-| `line-listed-<lineId>` · `map-tier2` · `map-slot-<n>` · `tank-row-card-<tankId>` · `production-note-fix` · `staff-duty-<staffId>` | Chunk 6 (DES-013, ADR-0035 decision 3): early Lines' "Listed now {n} · best bid {$}"; the phone's early map Tier 2 row and the early map's locked line slots; the Tanks row's Tank card button (the tank in view); the held-up note's Fix; the stock manager's duty line |
+| `line-listed-<lineId>` · `map-tier2` · `map-slot-<n>` · `tank-row-card-<tankId>` (chunk 22: on every row) · `production-note-fix` · `staff-duty-<staffId>` | Chunk 6 (DES-013, ADR-0035 decision 3): early Lines' "Listed now {n} · best bid {$}"; the phone's early map Tier 2 row and the early map's locked line slots; the Tanks row's Tank card button (the tank in view); the held-up note's Fix; the stock manager's duty line |
 
 ## 0.5 Social stub (chunk 6: lane social; 0.5 spec §13, §19)
 
@@ -600,3 +600,23 @@ link.
 | `collection-card-<speciesId>` (`data-status`, `data-found`) · `collection-toggle-<speciesId>` · `collection-body-<speciesId>` · `collection-species-<speciesId>` | A species' card, its header button (`aria-expanded`), its open part and its Open species page button |
 | `collection-missing` · `collection-seen` | In an open card: a morph still to find (a grey outline: its hint, tier and how to find it); a morph seen |
 | `enc-collection-link` · `enc-to-collection` | The Encyclopedia's subtitle link to the Collection ("12% collected", or "Your collection" until the found species' catalogs are built); a species page's link to its card |
+
+## Chunk 22, the friction fixes (ADR-0058)
+
+| test id | element |
+|---|---|
+| `tank-open-card` | The tank bar's name and status, one button that opens and closes the tank card (`aria-expanded`); `tank-status` is inside it |
+| `water-jump-care` | The tank card's Water tab: "Jump to care" |
+| `tank-card-details` | On a phone held sideways: the tank card's chips, problem lines and Move tank, first in the scrolling body |
+| `creature-jump-breeding` | An animal's card: "Breeding", the jump to its Breeding section (`data-fix="breeding"`) |
+| `listing-skip-review` | The listing wizard's "Skip to review" (Price and Length steps) |
+| `bid-quote` | A bid's note on a phone: two lines until tapped (`aria-expanded`) |
+| `supplies-open-build-equipment` | Market › Supplies: the "Build › Equipment" link |
+| `clutch-feed` | Eggs & fry: "Feed in {tank}" on a hungry clutch |
+| `staff-applying` · `staff-see-candidates` · `staff-hiring` | Visitors › Staff: the "people are applying" note, its button, and the Hiring section it scrolls to |
+| `quests-claim-all` | Research › Quests: "Claim all ({n})" |
+| `shows-entries-see-results` | Shows › Entries, empty with unseen results: "See results" |
+| `research-show-startable` | Research: "See what you can start" in the "No project running" note |
+| `admission-fair` | Visitors: "Set to fair price (${n})" |
+| `shared-pill-tag` | A shared shop's phone pill: "Shared" |
+

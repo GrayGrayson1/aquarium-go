@@ -75,11 +75,15 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    again. **Next:** a problem the owner reports; a line of `docs/agent/design/CHUNK-20/WORDS.md` he wants changed
    (every new or changed line is there); his answers to group M; BACKLOG B-232 (what the round left open).
    `docs/agent/SESSION_HANDOFF.md` has the order of work.
-8. **Chunk 21 is built on `next` as 0.11.0 and waits for the owner's go-ahead to release** (ADR-0057): the
-   Collection, rare-hatch reveals and "What next?". **Next:** his go-ahead for `main` (the shared build changed, so
-   Pages and the shop server go together, then the Render site and the shared smoke); his reading of
-   `docs/agent/design/CHUNK-21/WORDS.md` and of OWNER_QUESTIONS group N (sixteen defaults); `docs/agent/IDEAS.md`
-   has the ideas kept for later.
+8. **Chunk 21 is released as 0.11.0** (2026-11-24, ADR-0057; "Releases"): the Collection, rare-hatch reveals and
+   "What next?". Open from it: the owner's reading of `docs/agent/design/CHUNK-21/WORDS.md`, OWNER_QUESTIONS group N
+   and BACKLOG B-233; `docs/agent/IDEAS.md` has the ideas kept for later.
+9. **Chunk 22, the friction pass, is built on `next` as 0.11.1 and waits for the owner's go-ahead to release**
+   (2026-11-25, ADR-0058; the brief below): 28 small fixes found by playing the game, with no change to what
+   anything does. `src/sim`, `src/data` and `src/types` are untouched, so the shared build hash is unchanged: the
+   release is GitHub Pages and the Render static site only; the shop server needs no deploy. **Next:** his
+   go-ahead for `main`; his reading of `docs/agent/design/CHUNK-22/WORDS.md` and OWNER_QUESTIONS group O (four
+   questions); BACKLOG B-234 (what the pass left, the guide's waiting steps first).
 
 ## Status
 
@@ -108,6 +112,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | Audit | A full audit, with what it found fixed (the owner, 2026-11-11): B-210, B-165, B-181, B-183, B-125, parts of B-121, the shop server's meters, the Pages workflow, unused imports | Done 2026-11-11 in a cloud sandbox (typecheck, unit 4,269 on a stand-in toolchain; the fresh review's two blockers fixed); on the Mac on 2026-11-17 its branch passed typecheck, unit 281 files and 4,269 tests, and the build, and `next` was fast-forwarded to it. Released in 0.10.0 with chunk 20 |
 | 20 | The audit of 2026-11-17: a friendlier game with no dead ends (ADR-0056) | Done 2026-11-17 (released in 0.10.0; Chase, at the owner's request). 257 findings in ten areas fixed; the owner's ten answers built (AUD-001 to AUD-010). Its full run on `658f720`: typecheck, unit 4,761, build, e2e 414 of 415 (the one failure B-204's route walk in WebKit, 10 of 10 alone); `cf0f5cb` before it 415 of 415. Nine area reviews (6 blockers, fixed), three confirmation reviews (2 more, fixed) and a final review (no blockers; its four notes fixed) |
 | 21 | The Collection, rare-hatch reveals and "What next?" (ADR-0057) | Done 2026-11-24, released as 0.11.0 (Chase, at the owner's request; three Opus 5.5 builders). All four checks pass on the final code `b30cc49`: typecheck exit 0, 316 unit files and 4,849 tests, build exit 0, e2e 449 of 449. A fresh review (one blocker, fixed) and a confirmation review (one blocker the fix caused, fixed) |
+| 22 | The friction pass: immediate improvements to the flow, no change to what anything does (ADR-0058) | CHUNK22_STATUS |
 
 **Last full test runs:** chunk 20's final code `658f720`, the owner's Mac, 2026-11-17, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 311 files, 4,761 tests passed; build passed; e2e 414 of 415 in Chromium and
@@ -2093,6 +2098,50 @@ and the rest "in some kind of documents that we can look at later" (`docs/agent/
   `docs/agent/design/CHUNK-21/WORDS.md`.
 
 **Checks.** From `~/LocalTest/AquariumGo` under `caffeinate -i -s`. First merge `ff52709`: typecheck exit 0, unit 315 files and 4,830 tests, build exit 0, e2e 419 passed and 14 failed (all in `viewports.spec.ts`: the Collection card opened by address pushed the panel's Close button off screen; fixed with `scrollInPanel`). After the review's fixes and the release step, `5ba0fba`: typecheck exit 0, 316 files and 4,849 tests, build exit 0, e2e 441 of 441 (54.4 min). Final code `b30cc49`, after the confirmation review's fixes: `npm run typecheck` exit 0; `npm test` 316 files passed, 4,849 tests passed; `npm run build` exit 0; `npm run e2e` 449 passed (54.9 min), none failed, none flaky.
+
+### 22. The friction pass: immediate improvements, no change to what anything does (ADR-0058) — built 2026-11-25 (Captain 1); 0.11.1 on `next`
+
+The owner, 2026-11-25 (in full in ADR-0058): "Find immediate improvements that wouldn't change any of the functions
+or break anything and add them to the game. As far as the friction of the player, if there's anything that would be
+friction for the player, we need to resolve that."
+
+- *How it ran.* Research first, by playing the real game with scripted Playwright sessions (a step runner that
+  taps, prints what is on screen and takes screenshots) on a phone (390×844), a phone held sideways (844×390) and a
+  computer (1440×900): the lead played the core care loops; two play-testers (Opus 5.5) played the mid- and
+  late-game shop, and the guided first hour, buying, breeding and a shared shop on the local stub. Then three
+  builders (Opus 5.5), one area each in its own worktree under `/Volumes/Dev/Projects/AquariumGo-wt/` (`c22-live`,
+  `c22-shop`, `c22-guide`), each running its own e2e spec against its own dev server, and the lead building the
+  rest. The findings, scripts, screenshots, logs and the review are outside the repo, in
+  `/Volumes/Dev/Projects/AquariumGo-captain1/` (`findings.md` is the list).
+- *What was found.* 50 findings; four were the same thing seen twice. The worst five: on a phone held sideways the
+  tank card showed no reading and no care button at all (its header never scrolled; Settings had one line); an
+  alert about eggs being eaten led six screens above the clutch, whose advice had no button; on a phone the guide
+  left a card open over its own next step and the food in hand, so the next step was never read; selling and
+  answering bids took too many taps (an introduction above waiting bids, one bid a screen, six taps to list one
+  animal, listings changing places mid-answer); and the tank's status word looked tappable and did nothing, with
+  the care buttons under sixteen readings.
+- *What was built* (28 fixes; the CHANGELOG's 0.11.1 entry is the player's summary). Tank care: the tank bar's
+  name and status open the card; "Jump to care"; the tank card and Settings on a sideways phone. Selling: listings
+  before the introduction, a stable order, compact bids, "Skip to review". Breeding: clutches first, "Feed in
+  {tank}", "Move {name}", a jump to Breeding on an animal's card, pairs grouped by species. Getting around: the
+  Livestock list keeps its place, "Tank card" on every row, "Find" labelled, the keys in tooltips, the room dots
+  under panels, bigger tap targets. Fewer taps: "Claim all", "Set to fair price", "See what you can start", the
+  applicants note, "The results are in". The guide: the food put down, the opened card closed, Quests at the end,
+  the spotlight scrolling to its target, the hint clear of the card. Shared shops: locked-looking speed buttons,
+  "Shared" on the phone pill, "Ask for money" on the refusal.
+- *What did not change.* Nothing under `src/sim`, `src/data`, `src/types` or the persistence files; no command
+  kind, save field, schema version, dependency or migration. **The shared build hash is unchanged**: the release
+  needs Pages and the Render static site, not the shop server. Core files touched: `src/ui/UIRoot.tsx` (Settings
+  became a lazy chunk, which took the main chunk from 3,997 kB to about 3,954 kB of its 4,000 kB limit) and
+  `package.json` (the version).
+- *Every new or changed line of text* is in `docs/agent/design/CHUNK-22/WORDS.md`: 15 new lines (buttons and
+  links), 6 changed, and the lines that became links or moved.
+- *Left open:* BACKLOG B-234 (fifteen items; the guide's waiting steps and "Buy & place" on a phone are the two
+  that hurt most); OWNER_QUESTIONS group O (the order of "What next?", what "Fits my tanks" checks, the phone
+  pill's count, the words); `docs/agent/IDEAS.md` idea 6 (a tank picker from the tank bar).
+- *The review.* CHUNK22_REVIEW
+
+**Checks.** CHUNK22_CHECKS
 
 ### Audit, 2026-11-11 (Cowork, a cloud sandbox) — merged on 2026-11-17 and released in 0.10.0 with chunk 20
 
