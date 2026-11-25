@@ -51,4 +51,4 @@ does, so it added few words: a handful of buttons and links, and three reworded 
 - On a phone held sideways: the tank card keeps only the tank's name in its header (the chips, problem lines and
   "Move tank" scroll with the card; the size line above the name, such as "29 GALLON", is not shown there), and Settings drops its subtitle and puts "Save now" at the end of the page.
 - The guide: its done lines ("Nice to meet you, {name}!", "The water is in good shape.") are now seen on a phone,
-  because the card the guide opened closes about 3.5 seconds after its step is done (unless you are using it).
+  because the card the guide opened closes after its step is done (the animal's card after about 8 seconds, the tank card after about 3.5), unless you are using it.
