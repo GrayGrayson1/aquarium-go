@@ -169,9 +169,26 @@ test.describe('The tour as its own chunk (chunk 22)', () => {
     await start();
     await expect(tid(page, 'toast').filter({ hasText: 'The tour didn’t load' }).first()).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.querySelectorAll('.ag-tour, [data-testid="tour-card"]').length)).toBe(0);
-    // the game is not left waiting on it: the tank bar answers
-    await tid(page, 'tank-open-card').click();
-    await expect(tid(page, 'tank-card')).toBeVisible();
+    // the tour has ended, not just failed to draw (reveals and the guide wait while it "runs"): the app's own store
+    const running = () => page.evaluate(async () => ((await import(/* @vite-ignore */ `${location.origin}/src/ui/tutorial/tourStore.ts`)) as { useTour: { getState(): { running: boolean } } }).useTour.getState().running);
+    await expect.poll(running).toBe(false);
+    // and a second start says so again (a tour stuck "running" would make it do nothing)
+    await tid(page, 'toast').filter({ hasText: 'The tour didn’t load' }).first().getByRole('button').first().click().catch(() => undefined);
+    await expect(tid(page, 'toast').filter({ hasText: 'The tour didn’t load' })).toHaveCount(0, { timeout: 20_000 });
+    await start();
+    await expect(tid(page, 'toast').filter({ hasText: 'The tour didn’t load' }).first()).toBeVisible();
+    await expect.poll(running).toBe(false);
+  });
+
+  test('a tour file that never arrives ends the tour after a wait, and says so', async ({ page }) => {
+    await page.route(/tutorial\/Tour/, () => undefined); // held: neither answered nor refused
+    await game(page);
+    await page.evaluate(() => { location.hash = '#/settings/play'; });
+    await page.getByRole('button', { name: 'Show me around' }).click();
+    const running = () => page.evaluate(async () => ((await import(/* @vite-ignore */ `${location.origin}/src/ui/tutorial/tourStore.ts`)) as { useTour: { getState(): { running: boolean } } }).useTour.getState().running);
+    await expect.poll(running).toBe(true);
+    await expect(tid(page, 'toast').filter({ hasText: 'The tour didn’t load' }).first()).toBeVisible({ timeout: 20_000 });
+    await expect.poll(running).toBe(false);
   });
 });
 

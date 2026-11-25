@@ -94,6 +94,19 @@ function TourFailed() {
   }, []);
   return null;
 }
+/** Confirmation review: a fetch that never answers must not leave the tour "running" with nothing on screen (reveals
+ *  wait on it, and Escape lives in the chunk). Shown while the chunk loads; gives up after a while. */
+const TOUR_LOAD_WAIT_MS = 10_000;
+function TourLoading() {
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      endTour();
+      useUI.getState().toast(TOUR_LOAD_FAILED, 'warning');
+    }, TOUR_LOAD_WAIT_MS);
+    return () => window.clearTimeout(t);
+  }, []);
+  return null;
+}
 function LazyTour() {
   const running = useTour((s) => s.running);
   const [mounted, setMounted] = useState(running);
@@ -106,7 +119,7 @@ function LazyTour() {
   }, []);
   return mounted || running ? (
     <ErrorBoundary name="tour chunk" fallback={running ? <TourFailed /> : null}>
-      <Suspense fallback={null}>
+      <Suspense fallback={running ? <TourLoading /> : null}>
         <Tour />
       </Suspense>
     </ErrorBoundary>

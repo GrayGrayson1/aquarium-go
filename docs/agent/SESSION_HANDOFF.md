@@ -1,9 +1,48 @@
-# Session handoff: after chunk 21 (the Collection, reveals and "What next?": 0.11.0, released 2026-11-24)
+# Session handoff: after chunk 22 (the friction pass: 0.11.1 on `next`, waiting for the owner's go-ahead)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
+
+## Chunk 22 (Captain 1): the friction pass, 0.11.1 on `next`
+
+- **What** (PLAN.md chunk 22; ADR-0058 has the owner's words): 28 small fixes for player friction, found by playing
+  0.11.0, with no change to what anything does. Nothing under `src/sim`, `src/data` or `src/types` changed: **the
+  shared build hash is the same as 0.11.0's** (`c14ae6b5b2a29ebf`), so the release is GitHub Pages and the Render
+  static site; the shop server needs no deploy (check its `/health` build still matches after the release).
+- **Status:** HANDOFF22_STATUS
+- **To release** (only with the owner's yes in the session): the routine in the chunk 21 section below, without
+  the shop server step; then both `version.json` files and `npx vite-node scripts/shared-smoke.ts`.
+- **Then:** the owner's reading of `docs/agent/design/CHUNK-22/WORDS.md` and OWNER_QUESTIONS group O (four
+  questions); BACKLOG B-234 (the guide's waiting steps and "Buy & place" on a phone first); IDEAS 6.
+- **The working files are outside the repo:** `/Volumes/Dev/Projects/AquariumGo-captain1/` has `findings.md` (the
+  50 findings and what became of each), the play scripts (`scripts/`), the screenshots (`shots/`), the checks'
+  logs (`logs/`) and the review's diffs (`review/`). The builders' worktrees are
+  `/Volumes/Dev/Projects/AquariumGo-wt/c22-live`, `c22-shop`, `c22-guide` (all merged) and `c22-base` (0.11.0, for
+  comparing): safe to remove with `git worktree remove`.
+
+**Learned in chunk 22.**
+- *Play the game with a step runner before reading code.* `scripts/run.mjs` in the working folder takes a viewport,
+  a scenario preset and steps (`tap:`, `log`, `shot:`, `go:#/…`, `js:`), prints the visible text of whatever is
+  open and saves screenshots. Reading text is cheap; look at a screenshot only where the text raises a question.
+  Launch Chromium with the config's GPU switches (`--use-angle=metal --enable-gpu --ignore-gpu-blocklist
+  --enable-webgl`): without them the scene draws in software and three browsers take the load past 25.
+- *A phone held sideways is 390 px tall.* Measure what is left for content between the top bar and the tab bar
+  (about 250 px) on every sheet: the tank card had 0 to 23 px and Settings 33 px, and no test had looked.
+- *One spec without the full config's builds:* a throwaway Playwright config (git-excluded
+  `scripts/_audit/c22/pw.config.ts`) pointed at a dev server you start yourself runs a spec in both engines in
+  seconds. A worktree whose `node_modules` is a link needs a Vite config that allows that path, or two font files
+  return 403 and every spec that collects console errors fails. Give each builder its own `--output` folder.
+- *Don't make a routed screen a lazy chunk without running the route walk.* Settings loaded on demand passed its
+  own tests and made `nav-routes-matrix`'s phone walk fail on the Settings addresses 5 times in 8; and a lazy chunk
+  that fails once stays failed in Chromium until a reload (`React.lazy` keeps the rejection, and so does the
+  browser's module map). The tour, which has no address, took its place. Prefetch a lazy chunk a few seconds after
+  start, and give its failure a way out.
+- *`nav-routes-matrix` "390×844: visitors to log" is intermittent on the released code too* (2 of 16 runs on
+  0.11.0, at `#/visitors` and `#/more`, in WebKit; B-204): compare a failure's rate with the base commit in a
+  worktree (`c22-base`) before blaming the chunk.
+- *Subagents can't write report files:* ask for the report as the final message and save what you need yourself.
 
 ## Chunk 21 (Chase): released as 0.11.0 on 2026-11-24
 
