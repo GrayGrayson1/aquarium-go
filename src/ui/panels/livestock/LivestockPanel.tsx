@@ -3,9 +3,9 @@
  * eggs & fry with stage + ETA and move-to-nursery; bulk list / quick sell. OWNER: lane "ui-panels".
  */
 import { useGame } from '@/state/game'; // chunk 11: switches read the live game
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import clsx from 'clsx';
-import { SlidersHorizontal, Fish, Search, Star, Tag, Egg, HandCoins, Heart, Mars, Venus, CircleDashed, ArrowRightLeft, Sparkles, X, Baby, HeartPulse, Check } from 'lucide-react';
+import { SlidersHorizontal, Fish, Search, Star, Tag, Egg, HandCoins, Heart, Mars, Venus, CircleDashed, ArrowRightLeft, Sparkles, X, Baby, HeartPulse, Check, Utensils } from 'lucide-react';
 import type { Creature, GameState } from '@/types';
 import { Button, Money, Modal, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
@@ -27,7 +27,8 @@ import { OffspringOdds } from '../common/Offspring';
 import { orderedTanks, ownedCreatures, valueOf, isListed, speciesOf, creatureCondition, conditionWord, ageDaysOf, formatAge, wellbeing, morphName } from '../common/derive';
 import { PERSONALITY_LABEL, PERSONALITY_TONE, LIFE_STAGE_LABEL, CLUTCH_STAGE_LABEL, WATER_CLASS_WORDS /* Audit 2026-11-17 (J4) */, plural, untilTime, pct, nameList } from '../common/format';
 import { SpeciesCareStrip } from '../encyclopedia/SpeciesGuide'; // lane:guide
-import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { go, useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1); chunk 22: go (L-1)
+import { goFix } from '@/ui/common/fixLinks'; // chunk 22 (L-3)
 import { ProductionTab, productionDot } from './Production'; // lane:production (chunk 4)
 import { AttnDot } from '@/ui/hud/AttnDot'; // lane:automation (chunk 5)
 
@@ -35,19 +36,44 @@ type Tab = 'animals' | 'young' | 'past' | 'production';
 type StatusFilter = 'all' | 'attention' | 'listed' | 'favorites' | 'juveniles';
 type SortKey = 'value' | 'age' | 'name' | 'health';
 
+/**
+ * chunk 22 (ADR-0058, L-2) — the Animals list as it was when an animal's card opened from it: its search, filters,
+ * ticked animals, how many rows were showing and where it was scrolled. The panel closes for the card, so the next
+ * Livestock panel that opens on Animals in this aquarium (Back from the card, or the dock) comes back there, once.
+ * UI only: never saved.
+ */
+let animalsPlace: { saveId: string; q: string; tankF: string; speciesF: string; status: StatusFilter; sort: SortKey; filtersOpen: boolean; picked: string[]; shown: number; top: number } | null = null;
+
 export function LivestockPanel() {
   const g = usePanelGame(900);
   const target = useUI((s) => s.panelTarget);
   const selectedId = useUI((s) => s.selectedCreatureId);
+  // (read once, as the panel mounts; a link to another tab or a filter drops it)
+  const [back] = useState(() => {
+    const t = useUI.getState().panelTarget;
+    return animalsPlace && animalsPlace.saveId === useGame.getState().game?.saveId && (!t || t === 'tab:animals') ? animalsPlace : null;
+  });
+  useEffect(() => {
+    animalsPlace = null;
+  }, []);
   const [tab, setTab] = useState<Tab>('animals');
-  const [q, setQ] = useState('');
-  const [tankF, setTankF] = useState<string>('all');
-  const [speciesF, setSpeciesF] = useState<string>('all');
-  const [status, setStatus] = useState<StatusFilter>('all');
-  const [sort, setSort] = useState<SortKey>('value');
-  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [q, setQ] = useState(back?.q ?? '');
+  const [tankF, setTankF] = useState<string>(back?.tankF ?? 'all');
+  const [speciesF, setSpeciesF] = useState<string>(back?.speciesF ?? 'all');
+  const [status, setStatus] = useState<StatusFilter>(back?.status ?? 'all');
+  const [sort, setSort] = useState<SortKey>(back?.sort ?? 'value');
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(back?.picked));
   const [confirmSell, setConfirmSell] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(back?.filtersOpen ?? false);
+  // L-2: the list's scroll comes back after PanelLayout's own (its layout effect runs first and goes to the top)
+  const listRef = useRef<HTMLUListElement>(null);
+  const restoreTop = useRef<number | null>(back?.top ?? null);
+  useLayoutEffect(() => {
+    if (!g || restoreTop.current === null) return;
+    const body = listRef.current?.closest('.pn-body');
+    if (body) body.scrollTop = restoreTop.current;
+    restoreTop.current = null;
+  });
   /** lane:production — the line on show ('new' while setting one up); null = the first line. */
   const [lineSel, setLineSel] = useState<string | null>(null);
   useNavTab('livestock', tab); // lane:ui-shell (chunk 1)
@@ -257,6 +283,10 @@ export function LivestockPanel() {
           selectedId={selectedId}
           totalAlive={data.alive.length}
           resetKey={`${q}|${tankF}|${speciesF}|${status}|${sort}`}
+          listRef={listRef}
+          initialShown={back?.shown}
+          onLeave={(shown, top) => (animalsPlace = { saveId: g.saveId, q, tankF, speciesF, status, sort, filtersOpen, picked: [...picked], shown, top })}
+          onlyAttention={status === 'attention' && !q.trim() && tankF === 'all' && speciesF === 'all'}
           onReset={() => {
             setQ('');
             setTankF('all');
@@ -339,11 +369,11 @@ export function LivestockPanel() {
   );
 }
 
-function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick, selectedId, totalAlive, resetKey, onReset }: { g: GameState; list: Creature[]; values: Map<string, number>; tankName: Map<string, string>; well: Map<string, { status: 'good' | 'watch' | 'danger'; headline: string; note?: string }>; listedIds: Set<string>; picked: Set<string>; onPick: (id: string, on: boolean) => void; selectedId: string | null; totalAlive: number; resetKey: string; onReset: () => void }) {
+function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick, selectedId, totalAlive, resetKey, onReset, listRef, initialShown, onLeave, onlyAttention }: { g: GameState; list: Creature[]; values: Map<string, number>; tankName: Map<string, string>; well: Map<string, { status: 'good' | 'watch' | 'danger'; headline: string; note?: string }>; listedIds: Set<string>; picked: Set<string>; onPick: (id: string, on: boolean) => void; selectedId: string | null; totalAlive: number; resetKey: string; onReset: () => void; listRef: RefObject<HTMLUListElement | null>; initialShown?: number; onLeave: (shown: number, top: number) => void; onlyAttention: boolean }) {
   const { phone, close } = useSheet();
   const { t } = useTempText(); // Audit 2026-11-17 (D8): condition notes carry the sim's °C
   // lane:fix-panels — rows mount a page at a time (every row asks for a portrait render; 337 at once stuttered the tank)
-  const { shown, more } = usePaged(list.length, resetKey);
+  const { shown, more } = usePaged(list.length, resetKey, initialShown); // chunk 22 (L-2): as many as before a card opened
   if (totalAlive === 0)
     return (
       <EmptyState icon={<Fish size={26} />} title={Object.keys(g.creatures).length ? 'No animals right now' : 'No animals yet'} /* lane:qa-play: "yet" read oddly after a loss or a sale */ action={<Button variant="primary" onClick={() => useUI.getState().set({ panel: 'market', panelTarget: 'tab:shop' })}>Visit the market</Button>}>
@@ -351,19 +381,23 @@ function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick
       </EmptyState>
     );
   if (list.length === 0)
-    return (
+    // chunk 22 (L-4): with only Needs attention narrowing the list, an empty list is good news, not a search miss
+    return onlyAttention ? (
+      <EmptyState icon={<HeartPulse size={24} />} title="Every animal is doing well" action={<Button onClick={onReset}>Clear filters</Button>} />
+    ) : (
       <EmptyState icon={<Search size={24} />} title="Nobody matches" action={<Button onClick={onReset}>Clear filters</Button>}>
         Try a different search or filter.
       </EmptyState>
     );
   return (
-    <ul className="pn-lsrows" role="list">
+    <ul ref={listRef} className="pn-lsrows" role="list">
       {list.slice(0, shown).map((c) => {
         const w = well.get(c.id) ?? { status: creatureCondition(c), headline: conditionWord(c) };
         const cond = w.status;
         const listed = listedIds.has(c.id);
         const status = activeBreeding(safe(() => breedingStatus(g, c.id), null));
         const open = () => {
+          onLeave(shown, listRef.current?.closest('.pn-body')?.scrollTop ?? 0); // chunk 22 (L-2)
           useUI.getState().set({ selectedCreatureId: c.id, ...(c.tankId ? { focusedTankId: c.tankId, view: 'tank' as const } : {}) });
           // lane:qa-play — on desktop too: the creature card never shows while a panel is open (one docked card, see
           // hud/cardDock.ts), so "Open X's card" used to only highlight the row. Livestock reopens from the dock.
@@ -495,34 +529,6 @@ export function YoungView({ g }: { g: GameState }) { // (exported for tests/sim/
 
   return (
     <div className="pn-stack pn-stack--lg">
-      {breeders.length > 0 && (
-        <section>
-          <SectionHead title="Breeding activity" icon={<Heart size={14} />} />
-          <div className="pn-col pn-gap-2">
-            {breeders.map(({ c, s }) => (
-              <div key={c.id} className="pn-card pn-breedrow">
-                <CreaturePortrait creature={c} size={44} />
-                <div className="pn-grow">
-                  <div className="pn-row pn-gap-2">
-                    <b className="pn-serif">{c.name}</b>
-                    <span className="pn-muted pn-small">{speciesOf(c.speciesId)?.commonName}</span>
-                  </div>
-                  <div className="pn-small pn-dim">
-                    {t(s.label)}
-                    {s.detail ? ` — ${t(s.detail)}` : ''}
-                  </div>
-                  {typeof s.progress === 'number' && (
-                    <div style={{ marginTop: 8 }}>
-                      <Bar value={s.progress * 100} tone="gold" label={`${c.name} breeding progress`} thin />
-                    </div>
-                  )}
-                  {c.repro.partnerId && g.creatures[c.repro.partnerId] && c.sex !== 'male' && <OffspringOdds a={c} b={g.creatures[c.repro.partnerId]} max={3} />}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
       {clutches.length > 0 && (
         <section>
           <SectionHead title="Clutches" icon={<Egg size={14} />} />
@@ -547,6 +553,8 @@ export function YoungView({ g }: { g: GameState }) { // (exported for tests/sim/
               const st = safe(() => clutchStatus(g, cl.id), null);
               const carrierEats = (sp?.breeding.predationWithoutNursery ?? 0) > 0;
               const carrierPron = guard?.sex === 'female' || guard?.reproRole === 'female' ? 'her' : 'him';
+              // chunk 22 (L-3): hungry young get the tank's food picker, as a Feed fix link opens it (sim's "Hungry — offer …")
+              const hungry = !!st?.warnings.some((w) => w.startsWith('Hungry'));
               return (
                 <div key={cl.id} className="pn-card pn-clutch">
                   <div className="pn-row pn-gap-3 pn-row--top">
@@ -610,6 +618,11 @@ export function YoungView({ g }: { g: GameState }) { // (exported for tests/sim/
                   )}
                   {st?.keepNote && <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>{t(st.keepNote)}</div>}
                   <div className="pn-row pn-gap-2 pn-row--wrap" style={{ marginTop: 10 }}>
+                    {hungry && tank && (
+                      <Button size="sm" variant="primary" data-testid="clutch-feed" onClick={() => goFix({ kind: 'feed', tankId: cl.tankId })}>
+                        <Utensils size={14} /> Feed in {tank.name}
+                      </Button>
+                    )}
                     {cl.infertile && cl.visual === 'egg_case' ? (
                       <Button size="sm" variant="primary" onClick={() => act({ k: 'liftOutClutch', clutch: cl.id, from: cl.tankId }, { sound: 'splash' })}>
                         <X size={14} /> Lift out
@@ -683,7 +696,12 @@ export function YoungView({ g }: { g: GameState }) { // (exported for tests/sim/
                       ))
                     ) : (
                       <span className="pn-small pn-muted">
-                        No suitable nursery yet. Mark a spare {sp ? sp.waterClasses.map((w) => WATER_CLASS_WORDS[w]).join(' or ') : tank?.environment ?? ''} tank as <b>Nursery</b> in Tanks{others.length ? ', or move them to an empty tank:' : '.'}
+                        No suitable nursery yet. Mark a spare {sp ? sp.waterClasses.map((w) => WATER_CLASS_WORDS[w]).join(' or ') : tank?.environment ?? ''} tank as <b>Nursery</b> in{' '}
+                        {/* chunk 22 (L-1): "Tanks" opens Tanks, where a tank's purpose is set */}
+                        <button type="button" className="pn-inline-link" data-testid="clutch-open-tanks" onClick={() => go({ kind: 'panel', panel: 'tanks' })}>
+                          Tanks
+                        </button>
+                        {others.length ? ', or move them to an empty tank:' : '.'}
                       </span>
                     )}
                     {!(cl.infertile && cl.visual === 'egg_case') && !carried && !inNursery && nurseries.length === 0 &&
@@ -696,6 +714,52 @@ export function YoungView({ g }: { g: GameState }) { // (exported for tests/sim/
                 </div>
               );
             })}
+          </div>
+        </section>
+      )}
+      {/* chunk 22 (ADR-0058, L-1): the clutches first (an alert’s "Open Eggs & fry" lands on the young that need the player), then what the adults are up to */}
+      {breeders.length > 0 && (
+        <section>
+          <SectionHead title="Breeding activity" icon={<Heart size={14} />} />
+          <div className="pn-col pn-gap-2">
+            {breeders.map(({ c, s }) => (
+              <div key={c.id} className="pn-card pn-breedrow">
+                <CreaturePortrait creature={c} size={44} />
+                <div className="pn-grow">
+                  <div className="pn-row pn-gap-2">
+                    <b className="pn-serif">{c.name}</b>
+                    <span className="pn-muted pn-small">{speciesOf(c.speciesId)?.commonName}</span>
+                  </div>
+                  <div className="pn-small pn-dim">
+                    {t(s.label)}
+                    {s.detail ? ` — ${t(s.detail)}` : ''}
+                  </div>
+                  {/* chunk 22 (L-6): a line that says to move this animal ("Move her to her own tank to recover", "Move
+                      Sapphire out — his job is done") opens its card with the Move dialog, as a clutch card's Move does */}
+                  {/^Move /.test(s.detail ?? '') && (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      data-testid="breeding-move"
+                      style={{ marginTop: 8 }}
+                      onClick={() => {
+                        useUI.getState().set({ selectedCreatureId: c.id, ...(c.tankId ? { focusedTankId: c.tankId, view: 'tank' as const } : {}) });
+                        close();
+                        useShell.getState().set({ moveCreatureId: c.id });
+                      }}
+                    >
+                      <ArrowRightLeft size={14} /> Move {c.name}
+                    </Button>
+                  )}
+                  {typeof s.progress === 'number' && (
+                    <div style={{ marginTop: 8 }}>
+                      <Bar value={s.progress * 100} tone="gold" label={`${c.name} breeding progress`} thin />
+                    </div>
+                  )}
+                  {c.repro.partnerId && g.creatures[c.repro.partnerId] && c.sex !== 'male' && <OffspringOdds a={c} b={g.creatures[c.repro.partnerId]} max={3} />}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       )}
