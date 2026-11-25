@@ -17,7 +17,7 @@ Every line below is new; none is covered by the designs. "{…}" is filled in by
 | Where it shows | Text |
 |---|---|
 | Encyclopedia, the section strip | Collection |
-| Encyclopedia, the subtitle's first part (a link on Species and Aquarium science, plain on Collection; the rest of the subtitle is unchanged) | {n}% collected (e.g. "0.5% collected", "12% collected") |
+| Encyclopedia, the subtitle's first part (a link on Species and Aquarium science, plain on Collection; the subtitle's old "· {n} morphs seen" part is removed, since the Collection has the one count) | {n}% collected (e.g. "0.5% collected", "12% collected") |
 | A species page, under its summary (species with named morphs) | Collection: {seen} of {total} morphs |
 | The loading card's "Then:" pill, and Find anything's screen name | Encyclopedia › Collection |
 | A toast, a Collection address naming a species the game doesn't know | There’s no card for that species / Showing your collection instead. |
@@ -50,6 +50,13 @@ Every line below is new; none is covered by the designs. "{…}" is filled in by
 | An open card: button | Open species page |
 
 House style: sentence case, curly apostrophes, no exclamation marks, no em dashes in new text ("·" separators).
+
+Added by the review's fixes:
+
+| Where it shows | Text |
+|---|---|
+| Encyclopedia, the subtitle's first part for a moment, until the found species' morphs are counted | Your collection |
+| Collection, for a moment the first time it opens in a session | Counting your collection… |
 
 ## B. Rare-hatch reveals
 
@@ -136,3 +143,12 @@ are the game's own words reused as they are (not new).
 
 No new line has an exclamation mark or an em dash; the em dashes in the table come from the game's existing lines
 (the sim's status lines, research descriptions).
+
+Added by the review's fixes (an empty aquarium is never "all caught up"):
+
+| Where it shows | Text |
+|---|---|
+| No tank, the line above the title / title / line | Build › Tanks / No tank · Buy one (*existing*, the tank bar's) / There’s no tank in your aquarium. |
+| No tank and not enough money for the cheapest one, line (title "Open Finances", or "Ask for money" in a shared shop) | Not enough money for a tank (from {price}). |
+| Tanks but no animal, title / line | Open the Market (*existing*, the guide's button) / the guide's own line about friends coming to see your animals (*existing*) |
+| No animal and not enough money for the cheapest one, line | Not enough money for an animal (from {price}). |
