@@ -3,7 +3,7 @@
  * Screens: title → starter reveal → naming → game HUD. Settings + dev tools + toasts are global.
  * The root never blocks the 3D canvas: it is pointer-events: none and only its controls receive input.
  */
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
@@ -15,7 +15,6 @@ import { StarterReveal } from './screens/StarterReveal';
 import { NamingScreen } from './screens/NamingScreen';
 import { GameHUD } from './hud/GameHUD';
 import { Toasts } from './hud/Toasts';
-import { SettingsPanel } from './settings/SettingsPanel';
 import { BootCard } from './nav/BootCard';
 import { startRouter, useNav } from './nav/router';
 import { startNotifications } from './notify/deliver'; // lane:notify (chunk 3)
@@ -47,6 +46,23 @@ registerDisplayFont();
 applyPlatformStorage();
 
 /** lane:perf — dev tools are code-split: players never download them unless dev mode is switched on. */
+// chunk 22 — Settings loads when it is first opened, as the panels do (PanelHost): it is 46 kB of source that most
+// sessions never open, and the main chunk sat 2.5 kB under its limit (vite.config.ts; BACKLOG B-233 a).
+const SettingsPanel = lazy(() => import('./settings/SettingsPanel').then((m) => ({ default: m.SettingsPanel })));
+/** Mounted from the first time Settings is opened, then kept (its closing animation and its tab state live in it). */
+function SettingsHost() {
+  const open = useUI((s) => s.panel === 'settings');
+  const [wanted, setWanted] = useState(open);
+  useEffect(() => {
+    if (open) setWanted(true);
+  }, [open]);
+  if (!wanted && !open) return null;
+  return (
+    <Suspense fallback={null}>
+      <SettingsPanel />
+    </Suspense>
+  );
+}
 const DevPanel = lazy(() => import('./dev/DevPanel').then((m) => ({ default: m.DevPanel })));
 
 /** Mirror accessibility settings onto <html> (text scale, contrast, reduced motion). */
@@ -106,7 +122,7 @@ export function UIRoot() {
         {/* lane:core (chunk 6, B-002) — outside the HUD's boundary: it must show whatever else is failing */}
         <SimFailureBanner />
         <ErrorBoundary name="settings">
-          <SettingsPanel />
+          <SettingsHost />
         </ErrorBoundary>
         {/* chunk 8 — the online-save box, over the game */}
         <ErrorBoundary name="cloud">
