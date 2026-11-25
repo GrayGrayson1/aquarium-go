@@ -268,10 +268,11 @@ export const PAGE_ROWS = 40;
 /**
  * lane:fix-panels — how many rows of a long list to show: starts at PAGE_ROWS, grows as the sentinel scrolls into
  * view, and starts over whenever `resetKey` changes (a new filter, sort or tab). Long lists (337 animals on a big
- * facility) used to mount every row at once, and every row asked for a portrait render.
+ * facility) used to mount every row at once, and every row asked for a portrait render. `initial` (chunk 22, L-2): a
+ * list coming back starts with as many rows as it had.
  */
-export function usePaged(total: number, resetKey: unknown): { shown: number; more: () => void } {
-  const [shown, setShown] = useState(PAGE_ROWS);
+export function usePaged(total: number, resetKey: unknown, initial?: number): { shown: number; more: () => void } {
+  const [shown, setShown] = useState(() => Math.max(PAGE_ROWS, initial ?? 0));
   const first = useRef(true);
   useEffect(() => {
     if (first.current) first.current = false;

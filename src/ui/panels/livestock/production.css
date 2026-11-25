@@ -76,6 +76,10 @@ button.pr-pair { cursor: pointer; }
 .pr-radio { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--c-ink-3); } /* chunk 6 (ACC-005) */
 .pr-pair.is-on .pr-radio { border: 6px solid var(--c-aqua); }
 .pr-link { border: 0; background: transparent; color: var(--c-aqua); font: inherit; font-weight: 600; cursor: pointer; min-height: 44px; }
+/* chunk 22 (L-5): a heading per species in the pair list, and the chips that narrow it to one */
+.pr-pairs__only { margin-bottom: 12px; }
+.pr-pairs__sp { margin-top: 8px; color: var(--c-ink-2); font-weight: 650; font-size: calc(13px * var(--text-scale)); }
+.pr-pairs__sp:first-child { margin-top: 0; }
 
 .pr-tankrow { border-radius: var(--r-md); border: 1px solid var(--c-line); background: var(--c-fill); }
 .pr-tankrow__head { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 10px 14px; border: 0; background: transparent; color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }

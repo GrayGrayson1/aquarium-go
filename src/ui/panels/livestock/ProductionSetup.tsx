@@ -3,7 +3,7 @@
  * reuses: the pair list (step 1, "Choose another pair"), the tank rows (step 2, "Choose another tank") and the Sort
  * sheet (ADR-0030 decision 6). OWNER: lane "ui-panels". Nothing exists before Start line: leaving the flow drops it.
  */
-import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { Fragment, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { ArrowLeft, ArrowRight, Check, CircleCheck, Heart, Lock, Play, Plus, ShieldCheck, Sprout, Gem, Store, ChevronDown } from 'lucide-react';
 import type { GameState, ProductionKeepRule, ProductionLine } from '@/types';
@@ -28,6 +28,7 @@ import { act } from '../common/act';
 import { useSheet } from '../common/PanelLayout';
 import { CreaturePortrait } from '../common/Portrait';
 import { useTempText } from '../common/hooks'; // Audit 2026-11-17 (J1)
+import { Chip } from '../common/parts'; // chunk 22 (L-5)
 
 /** The List automatically rule's line (set-up step 3 and the line's rules; Audit 2026-11-17, H1: the owner's "Sell by itself"). */
 export const LIST_AUTOMATICALLY = 'Juveniles go on sale the day quarantine ends: a buyer who likes the price buys them without you. What doesn’t sell is listed again a little cheaper.';
@@ -87,7 +88,13 @@ function pairsKey(g: GameState, speciesId?: string): string {
 
 function PairList({ g, picked, onPick, speciesId }: { g: GameState; picked: string | null; onPick: (p: Pair) => void; speciesId?: string }) {
   const key = pairsKey(g, speciesId);
-  const pairs = useMemo(() => candidatePairs(g, speciesId), [key]); // eslint-disable-line react-hooks/exhaustive-deps -- `key` covers what it reads from `g`
+  const all = useMemo(() => candidatePairs(g, speciesId), [key]); // eslint-disable-line react-hooks/exhaustive-deps -- `key` covers what it reads from `g`
+  // chunk 22 (ADR-0058, L-5): under a heading per species (the sim lists them species by species, in its own order),
+  // and with many, a chip per species narrows the list; which pairs, their order and a pick stay the sim's
+  const groups = [...new Set(all.map((p) => p.speciesId))];
+  const [only, setOnly] = useState<string | null>(null);
+  const narrow = only && groups.includes(only) ? only : null;
+  const pairs = narrow ? all.filter((p) => p.speciesId === narrow) : all;
   const enabled = pairs.filter((p) => !p.inLine);
   const focusKey = picked && enabled.some((p) => pairKey(p) === picked) ? picked : enabled[0] ? pairKey(enabled[0]) : null;
   // a radio group: the arrow keys move the choice (DESIGN-S3D §13)
@@ -100,19 +107,41 @@ function PairList({ g, picked, onPick, speciesId }: { g: GameState; picked: stri
     onPick(next);
     (e.currentTarget.querySelector(`[data-pair="${pairKey(next)}"]`) as HTMLButtonElement | null)?.focus();
   };
+  const name = (id: string) => findSpecies(id)?.commonName ?? id;
   return (
-    <div className="pr-pairs" role="radiogroup" aria-label="Which pair breeds?" onKeyDown={onKey}>
-      {pairs.map((p) => (
-        <PairRow key={pairKey(p)} g={g} p={p} picked={picked === pairKey(p)} focusable={pairKey(p) === focusKey} onPick={() => onPick(p)} />
-      ))}
-      <div className="pr-pair pr-pair--dashed">
-        <Store size={16} aria-hidden />
-        <span className="pr-pair__text">Need another pair? Buy a mate, then come back.</span>
-        <button type="button" className="pr-link" onClick={() => useUI.getState().set({ panel: 'market', panelTarget: 'tab:shop' })}>
-          Shop
-        </button>
+    <>
+      {groups.length > 1 && all.length > 10 && (
+        <div className="pn-chips pr-pairs__only">
+          <Chip pressed={!narrow} onClick={() => setOnly(null)} testId="production-pairs-all">
+            All species
+          </Chip>
+          {groups.map((id) => (
+            <Chip key={id} pressed={narrow === id} onClick={() => setOnly(id)} testId={`production-pairs-only-${id}`}>
+              {name(id)} ({all.filter((p) => p.speciesId === id).length})
+            </Chip>
+          ))}
+        </div>
+      )}
+      <div className="pr-pairs" role="radiogroup" aria-label="Which pair breeds?" onKeyDown={onKey}>
+        {pairs.map((p, i) => (
+          <Fragment key={pairKey(p)}>
+            {groups.length > 1 && p.speciesId !== pairs[i - 1]?.speciesId && (
+              <div className="pr-pairs__sp" data-testid={`production-pairs-head-${p.speciesId}`}>
+                {name(p.speciesId)}
+              </div>
+            )}
+            <PairRow g={g} p={p} picked={picked === pairKey(p)} focusable={pairKey(p) === focusKey} onPick={() => onPick(p)} />
+          </Fragment>
+        ))}
+        <div className="pr-pair pr-pair--dashed">
+          <Store size={16} aria-hidden />
+          <span className="pr-pair__text">Need another pair? Buy a mate, then come back.</span>
+          <button type="button" className="pr-link" onClick={() => useUI.getState().set({ panel: 'market', panelTarget: 'tab:shop' })}>
+            Shop
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
